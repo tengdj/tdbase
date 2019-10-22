@@ -56,6 +56,7 @@ int main(int argc, char **argv){
 		decompressed->completeOperation();
 		sprintf(path,"lod%d.off", i*10);
 		print_mesh_file(decompressed, path);
+		cout<<decompressed->dataOffset<<endl;
 		delete decompressed;
 	}
 

@@ -29,14 +29,12 @@
   */
 void MyMesh::writeCompressedData()
 {
+
     i_nbDecimations = i_curDecimationId + 1;
     i_nbQuantizations = i_curQuantizationId;
 
     // Write the base mesh.
     writeBaseMesh();
-
-    //printf("Writing the compressed data.\n");
-
     unsigned i_deci = i_curDecimationId;
     unsigned i_quant = i_curQuantizationId - 1;
 
@@ -184,8 +182,8 @@ void MyMesh::writeBaseMesh()
     //writeBits(b_useConnectivityPredictionFaces, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
     //writeBits(b_useConnectivityPredictionEdges, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
     //writeBits(b_useTriangleMeshConnectivityPredictionFaces, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    geometrySize += 3;
-    connectivitySize += 4;
+    //geometrySize += 3;
+    //connectivitySize += 4;
    
    // printf("After codec writing ");
    // printPdata();

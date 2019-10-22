@@ -66,7 +66,6 @@ void MyMesh::startNextDecompresssionOp()
   */
 void MyMesh::beginUndecimationConquest()
 {
-    //printf("Begin undecimation conquest n°%u.\n", i_curDecimationId);
 
     for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
@@ -76,16 +75,6 @@ void MyMesh::beginUndecimationConquest()
 
     // Add the first halfedge to the queue.
     pushHehInit();
-
-    operation = RemovedVertexCoding;
-  //  printf("Removed vertex decoding begining.\n");
-
-    f_avgSurfaceFaceWithCenterRemoved = 0;
-    f_avgSurfaceFaceWithoutCenterRemoved = 0;
-    i_nbFacesWithCenterRemoved = 0;
-    i_nbFacesWithoutCenterRemoved = 0;
-
-    // Read if the prediction was used or not.
 
     // Read the min values and the ranges.
     uint16_t i16_min;
@@ -148,24 +137,14 @@ void MyMesh::undecimationStep()
         }
         while (hIt != h);
 
-        bool b_split;
-        float f_faceSurface = faceSurface(h);
-
-        b_split = sym == 1 ? true : false;
-
-        // Update the average surfaces.
-        updateAvgSurfaces(b_split, f_faceSurface);
-
         // Decode the geometry symbol.
-        if (b_split)
+        if (sym == 1)
             decodeGeometrySym(h, f);
         else
             f->setUnsplittable();
 
         return;
     }
-
-   // printf("Removed vertex decoding completed.\n");
 
     // Stop the decoder.
     done_decoding(&rangeCoder);
@@ -176,8 +155,6 @@ void MyMesh::undecimationStep()
 #ifdef USE_BIJECTION
     deleteqsmodel(&gammaModel);
 #endif
-
-    operation = InsertedEdgeDecoding;
 
     beginInsertedEdgeDecoding();
 }
@@ -190,24 +167,13 @@ void MyMesh::beginInsertedEdgeDecoding()
 {
     // Add the first halfedge to the queue.
     pushHehInit();
-
     operation = InsertedEdgeDecoding;
-  //  printf("Inserted edge decoding begining.\n");
-
-    f_avgInsertedEdgesLength = 0;
-    f_avgOriginalEdgesLength = 0;
-    i_nbInsertedEdges = 0;
-    i_nbOriginalEdges = 0;
 
     // Init the range coder models.
     initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 0);
 
     // Start the decoder.
     start_decoding(&rangeCoder);
-// todo removed teng
-//    // Read if the prediction was used or not.
-//    b_predictionUsed = decode_culshift(&rangeCoder, 1);
-//    decode_update(&rangeCoder, 1, b_predictionUsed, 1 << 1);
 }
 
 
@@ -240,11 +206,10 @@ void MyMesh::InsertedEdgeDecodingStep()
 
         assert(!hIt->isNew());
 
-        bool b_original = true;
         float f_edgeLen = edgeLen(h);
 
         // Test if there is a symbol for this edge.
-        // There is no symbol if the two faces of an egde are unsplitable.
+        // There is no symbol if the two faces of an edge are unsplitable.
         if (h->facet()->isSplittable()
             || h->opposite()->facet()->isSplittable())
         {
@@ -258,21 +223,13 @@ void MyMesh::InsertedEdgeDecodingStep()
             qsupdate(&connectModel, sym);
 
             // Determine if the edge is original or not.
-
-            b_original = sym == 0 ? true : false;
-
             // Mark the edge to be removed.
-            if (!b_original)
+            if (sym != 0)
                 h->setAdded();
         }
 
-        // Update the average edge lengths.
-        updateAvgEdgeLen(b_original, f_edgeLen);
-
         return;
     }
-
-    //printf("Inserted edge decoding completed.\n");
 
     // Stop the decoder.
     done_decoding(&rangeCoder);
@@ -281,7 +238,6 @@ void MyMesh::InsertedEdgeDecodingStep()
     deleteqsmodel(&connectModel);
 
     insertRemovedVertices();
-
     removeInsertedEdges();
 
     i_curDecimationId++; // Increment the current decimation operation id.
@@ -295,8 +251,6 @@ void MyMesh::InsertedEdgeDecodingStep()
   */
 void MyMesh ::insertRemovedVertices()
 {
-   // printf("Insert removed vertices.\n");
-
     // Add the first halfedge to the queue.
     pushHehInit();
 
@@ -353,8 +307,6 @@ void MyMesh ::insertRemovedVertices()
   */
 void MyMesh::removeInsertedEdges()
 {
-    //printf("Remove inserted edges.\n");
-
     for (MyMesh::Halfedge_iterator hit = halfedges_begin();
          hit!=halfedges_end(); ++hit)
     {

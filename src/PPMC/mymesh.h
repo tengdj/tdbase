@@ -60,7 +60,7 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
     enum ProcessedFlag {NotProcessed, Processed};
 
   public:
-        MyFace(): flag(Unknown), processedFlag(NotProcessed) {}
+    MyFace(): flag(Unknown), processedFlag(NotProcessed) {}
 
 	inline void resetState()
 	{
@@ -68,10 +68,10 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
           processedFlag = NotProcessed;
 	}
 
-        inline void resetProcessedFlag()
-        {
-          processedFlag = NotProcessed;
-        }
+	inline void resetProcessedFlag()
+	{
+	  processedFlag = NotProcessed;
+	}
 
 	inline bool isConquered() const
 	{
@@ -100,42 +100,42 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	  flag=Unsplittable;
 	}
 
-        inline void setProcessedFlag()
-        {
-            processedFlag = Processed;
-        }
+	inline void setProcessedFlag()
+	{
+		processedFlag = Processed;
+	}
 
-        inline bool isProcessed() const
-        {
-            return (processedFlag == Processed);
-        }
+	inline bool isProcessed() const
+	{
+		return (processedFlag == Processed);
+	}
 
-        inline Point getRemovedVertexPos() const
-        {
-            return removedVertexPos;
-        }
+	inline Point getRemovedVertexPos() const
+	{
+		return removedVertexPos;
+	}
 
-        inline void setRemovedVertexPos(Point p)
-        {
-            removedVertexPos = p;
-        }
+	inline void setRemovedVertexPos(Point p)
+	{
+		removedVertexPos = p;
+	}
 
-        inline VectorInt getResidual() const
-        {
-            return residual;
-        }
+	inline VectorInt getResidual() const
+	{
+		return residual;
+	}
 
-        inline void setResidual(VectorInt v)
-        {
-            residual = v;
-        }
+	inline void setResidual(VectorInt v)
+	{
+		residual = v;
+	}
 
   private:
 	Flag flag;
-        ProcessedFlag processedFlag;
+	ProcessedFlag processedFlag;
 
-        Point removedVertexPos;
-        VectorInt residual;
+	Point removedVertexPos;
+	VectorInt residual;
 };
 
 // My vertex type has a isConquered flag
@@ -145,9 +145,8 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
     enum Flag {Unconquered=0, Conquered=1};
 
   public:
-        MyVertex(): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(), flag(Unconquered) {}
-
-	MyVertex(const Point &p): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(p), flag(Unconquered) {}
+    MyVertex(): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(), flag(Unconquered), id(0), i_quantCellId(0){}
+	MyVertex(const Point &p): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(p), flag(Unconquered), id(0), i_quantCellId(0){}
 
 	inline void resetState()
 	{
@@ -164,41 +163,41 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 	  flag=Conquered;
 	}
 
-        inline size_t getId() const
-        {
-            return id;
-        }
+	inline size_t getId() const
+	{
+		return id;
+	}
 
-        inline void setId(size_t nId)
-        {
-            id = nId;
-        }
+	inline void setId(size_t nId)
+	{
+		id = nId;
+	}
 
-        inline unsigned getQuantCellId() const
-        {
-            return i_quantCellId;
-        }
+	inline unsigned getQuantCellId() const
+	{
+		return i_quantCellId;
+	}
 
-        inline void setQuantCellId(unsigned nId)
-        {
-            i_quantCellId = nId;
-        }
+	inline void setQuantCellId(unsigned nId)
+	{
+		i_quantCellId = nId;
+	}
 
-        inline Point getOldPos() const
-        {
-            return oldPos;
-        }
+	inline Point getOldPos() const
+	{
+		return oldPos;
+	}
 
-        inline void setOldPos(Point pos)
-        {
-            oldPos = pos;
-        }
+	inline void setOldPos(Point pos)
+	{
+		oldPos = pos;
+	}
 
   private:
 	Flag flag;
-        size_t id;
-        unsigned i_quantCellId;
-        Point oldPos;
+	size_t id;
+	unsigned i_quantCellId;
+	Point oldPos;
 };
 
 
@@ -216,9 +215,9 @@ class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 
 	inline void resetState()
 	{
-	  flag = NotYetInQueue;
-	  flag2 = Original;
-          processedFlag = NotProcessed;
+		flag = NotYetInQueue;
+		flag2 = Original;
+		processedFlag = NotProcessed;
 	}
 
         /* Flag 1 */
@@ -323,8 +322,8 @@ struct MyItems : public CGAL::Polyhedron_items_3
 
 // Operation list.
 enum Operation {Idle,
-                DecimationConquest, RemovedVertexCoding, InsertedEdgeCoding, AdaptiveQuantization, // Compression.
-                UndecimationConquest, InsertedEdgeDecoding, AdaptiveUnquantization // Decompression.
+                DecimationConquest, RemovedVertexCoding, InsertedEdgeCoding, // Compression.
+                UndecimationConquest, InsertedEdgeDecoding // Decompression.
                 };
 
 
@@ -411,8 +410,6 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
         float facePerimeter(const Face_handle fh) const;
         float faceSurface(Halfedge_handle heh) const;
         void pushHehInit();
-        void updateAvgSurfaces(bool b_split, float f_faceSurface);
-        void updateAvgEdgeLen(bool b_original, float f_edgeLen);
 
         // IOs
         void writeCompressedData();
@@ -492,15 +489,10 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 
         int alphaBetaMin, gammaMin;
 
-        // Variable for connectivity prediction.
-        float f_avgSurfaceFaceWithoutCenterRemoved;
-        float f_avgSurfaceFaceWithCenterRemoved;
 
         float f_avgInsertedEdgesLength;
         float f_avgOriginalEdgesLength;
 
-        unsigned i_nbFacesWithoutCenterRemoved;
-        unsigned i_nbFacesWithCenterRemoved;
 
         unsigned i_nbInsertedEdges;
         unsigned i_nbOriginalEdges;

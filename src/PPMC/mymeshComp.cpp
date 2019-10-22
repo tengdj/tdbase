@@ -46,10 +46,6 @@ void MyMesh::beginDecimationConquest()
         fit->resetState();
 
   // Select the first gate to begin the decimation.
-  //float curRand = (float) rand();
- 
-  // std::cerr << std::setprecision(15) << "random: " << curRand << std::endl;
-  // size_t i_heInitId = curRand / RAND_MAX * size_of_halfedges();
   size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
   Halfedge_iterator hitInit = halfedges_begin();
   for (unsigned i = 0; i < i_heInitId; ++i)
@@ -130,8 +126,6 @@ void MyMesh::decimationStep()
         }
     }
 
-    ////printf("Decimation conquest completed.\n");
-
     if (i_nbRemovedVertices == 0)
     {
         if (!b_testConvexity)
@@ -147,15 +141,6 @@ void MyMesh::decimationStep()
             b_jobCompleted = true;
             i_curDecimationId--;
             writeCompressedData();
-           // print p_data content here
-/*
-   	for (size_t myidx = 0; myidx < 1000; ++myidx) {
-		printf("%02X ", p_data[myidx]);
-	}
-  	 printf("\n");
-*/
-           // Finished here
-            //writeCompressedFile();
         }
         else
         {
@@ -306,13 +291,7 @@ void MyMesh::beginRemovedVertexCodingConquest()
     geometrySym.push_back(std::deque<VectorInt>());
     connectFaceSym.push_back(std::deque<unsigned>());
 
-    f_avgSurfaceFaceWithCenterRemoved = 0;
-    f_avgSurfaceFaceWithoutCenterRemoved = 0;
-    i_nbFacesWithCenterRemoved = 0;
-    i_nbFacesWithoutCenterRemoved = 0;
-
     operation = RemovedVertexCoding;
-    //printf("Removed vertex coding begining.\n");
 }
 
 
@@ -333,15 +312,12 @@ void MyMesh::RemovedVertexCodingStep()
             continue;
 
         // Determine face symbol.
-        unsigned sym, symPred;
+        unsigned sym;
         bool b_split = f->isSplittable();
         float f_faceSurface = faceSurface(h);
 
         // No connectivity prediction.
         sym = b_split ? 1 : 0;
-
-        // Update the average surfaces.
-        updateAvgSurfaces(b_split, f_faceSurface);
 
         // Push the symbols.
         connectFaceSym[i_curDecimationId].push_back(sym);
@@ -367,12 +343,6 @@ void MyMesh::RemovedVertexCodingStep()
 
         return;
     }
-
-
-#if 0
-    //printf("Encoding ratios: %.2f %.2f\n",
-           (float)i_nbGoodPredictions / size_of_facets(), f_nb / size_of_facets());
-#endif
 
     operation = InsertedEdgeCoding;
     beginInsertedEdgeCoding();
@@ -402,16 +372,12 @@ void MyMesh::determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh)
 
     VectorInt distQuant = fh->getResidual();
 
-   // printf("\ndistQuant %d %d %d\n", distQuant.x(), distQuant.y(), distQuant.z());
-  // printf("\nnormal %d %d %d\n", normal.x(), normal.y(), normal.z());
-
 #ifdef USE_BIJECTION
     VectorInt frenetCoord = frenetRotation(distQuant, t1, t2, normal);
 #endif
 
     // Store the geometry symbols.
 #ifdef USE_BIJECTION
-    //printf("\npushing %d %d %d\n", frenetCoord.x(), frenetCoord.y(), frenetCoord.z());
     geometrySym[i_curDecimationId].push_back(frenetCoord);
 #else
     geometrySym[i_curDecimationId].push_back(distQuant);
@@ -426,16 +392,10 @@ void MyMesh::beginInsertedEdgeCoding()
 {
     // Add the first halfedge to the queue.
     pushHehInit();
-
-    f_avgInsertedEdgesLength = 0;
-    f_avgOriginalEdgesLength = 0;
-    i_nbInsertedEdges = 0;
-    i_nbOriginalEdges = 0;
     // Resize the vector to add the current conquest symbols.
     connectEdgeSym.push_back(std::deque<unsigned>());
 
     operation = InsertedEdgeCoding;
-    //printf("Inserted edge coding begining.\n");
 }
 
 
@@ -481,9 +441,6 @@ void MyMesh::InsertedEdgeCodingStep()
         else
             sym = 1;
 
-        // Update the average edge lengths.
-        updateAvgEdgeLen(b_original, f_edgeLen);
-
         // Store the symbol if needed.
         if (b_toCode)
             connectEdgeSym[i_curDecimationId].push_back(sym);
@@ -509,10 +466,6 @@ void MyMesh::encodeInsertedEdges(unsigned i_operationId)
 
     assert(symbols.size() > 0);
 
-//    if (b_useConnectivityPredictionEdges)
-//        b_predictionUsed = edgesConnectPredictionUsed[i_operationId];
-//    else
-//
     // Init the connectivity range coder.
     initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 1);
 
@@ -542,18 +495,14 @@ void MyMesh::encodeInsertedEdges(unsigned i_operationId)
   */
 void MyMesh::encodeRemovedVertices(unsigned i_operationId)
 {
- 
-   
     // Start the encoder.
     start_encoding(&rangeCoder, 0, 0);
 
     // Encode the type of operation on one bit.
     encode_shift(&rangeCoder, 1, DECIMATION_OPERATION_ID, 1);
     
-
     std::deque<unsigned> &connSym = connectFaceSym[i_operationId];
     std::deque<VectorInt> &geomSym = geometrySym[i_operationId];
-  //      printf("\ni_operationID: %u\n\n", i_operationId);
 
     unsigned i_lenGeom = geomSym.size();
     unsigned i_lenConn = connSym.size();
@@ -562,7 +511,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
 
     // Determine the min and max values for the geometry coding.
     alphaBetaMin = geomSym[0].x();
-   //  printf("\ngeomSym: %d %d %d\n\n", geomSym[0].x(), geomSym[0].y(), geomSym[0].z());
     int alphaBetaMax = geomSym[0].x();
 
 #ifdef USE_BIJECTION
@@ -605,58 +553,21 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
     unsigned gammaRange = std::max(gammaMax - gammaMin + 1, 2);
 #endif
 
-    //assert(alphaBetaRange < 1 << 12);
-    //assert(gammaRange < 1 << 12);
-
     // Write the min value and the range.
     int16_t i16_min;
-
     assert(alphaBetaMin >= -(1 << 14) && alphaBetaMin <= (1 << 14));
     i16_min = alphaBetaMin;
-
-    // printf("alphaBetaMin: %ld", alphaBetaMin);
-    //printf("\n\n---------------- Encoding short first -----\n\n");
     encode_short(&rangeCoder, *(uint16_t *)&i16_min);
     assert(alphaBetaRange < (1 << 14));
-   // printf("\n\n---------------- Encoding second first -----%u\n\n", alphaBetaRange);
-
     encode_short(&rangeCoder, alphaBetaRange);
 
-    /*
-    if (dataOffset > 167 && dataOffset < 250) {
-    	printf("current p_data 7: %d\n", dataOffset);
-        printPdata();
-    }
-    */
 #ifdef USE_BIJECTION
     assert(gammaMin >= -(1 << 14) && gammaMin <= (1 << 14));
     i16_min = gammaMin;
-  //  printf("gammaMin: %ld", gammaMin);
-
     encode_short(&rangeCoder, *(uint16_t *)&i16_min);
     assert(gammaRange < (1 << 14));
-    // difference here
-    //
-    /*
-    if (dataOffset > 167 && dataOffset < 250) {
-    	printf("current p_data 7b: %d\n", dataOffset);
-        printPdata();
-    }
-   */
-    /*
-    // printf("gammaRange: %ld\n", gammaRange);
-    */
     encode_short(&rangeCoder, gammaRange);
 #endif
-    /*
-    if (dataOffset > 167 && dataOffset < 250) {
-    	printf("current p_data 8: %d\n", dataOffset);
-        printPdata();
-    }
-     
-    if (dataOffset > 174) {
-           //exit(0);
-    } */
 
     // Range coder to only measure the size of the connectivity data.
     size_t *p_dataOffsetMes = new size_t;
@@ -673,8 +584,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
     initqsmodel(&gammaModel, gammaRange, 18, 1 << 17, NULL, 1);
 #endif
     initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 1);
-
-
 
     unsigned k = 0;
     for (unsigned i = 0; i < i_lenConn; ++i)
@@ -695,7 +604,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
         if (b_split)
         {
             VectorInt v = geomSym[k];
-
             for (unsigned j = 0; j < 3; ++j)
             {
 #ifdef USE_BIJECTION

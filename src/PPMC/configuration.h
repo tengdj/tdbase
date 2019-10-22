@@ -37,6 +37,8 @@
 #define INV_ALPHA 2
 #define INV_GAMMA 2
 
-#define USE_BIJECTION
+//#define USE_BIJECTION
+
+using namespace std;
 
 #endif // CONFIGURATION_H
