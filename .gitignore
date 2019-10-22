@@ -1,0 +1,7 @@
+.project
+.cproject
+.settings/
+*.o
+*.off
+build/
+/Default/
