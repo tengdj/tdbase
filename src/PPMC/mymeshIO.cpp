@@ -35,25 +35,13 @@ void MyMesh::writeCompressedData()
 
     // Write the base mesh.
     writeBaseMesh();
-    unsigned i_deci = i_curDecimationId;
-    unsigned i_quant = i_curQuantizationId - 1;
-
-    while (!typeOfOperation.empty())
+    int i_deci = i_curDecimationId;
+    assert(i_deci>0);
+    while (i_deci>=0)
     {
-        unsigned i_curOperationType = typeOfOperation.back();
-        typeOfOperation.pop_back();
-
-        switch (i_curOperationType)
-        {
-        case DECIMATION_OPERATION_ID:
-            encodeRemovedVertices(i_deci);
-            encodeInsertedEdges(i_deci);
-            i_deci--;
-            break;
-        default:
-            assert(0);
-            break;
-        }
+		encodeRemovedVertices(i_deci);
+		encodeInsertedEdges(i_deci);
+		i_deci--;
     }
 }
 
@@ -175,19 +163,6 @@ void MyMesh::writeBaseMesh()
     unsigned i_bitOffset = 0;
     dataOffset++;
 
-    // Write the codec option status.
-    //writeBits(b_useAdaptiveQuantization, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //writeBits(b_useLiftingScheme, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //writeBits(b_useCurvaturePrediction, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //writeBits(b_useConnectivityPredictionFaces, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //writeBits(b_useConnectivityPredictionEdges, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //writeBits(b_useTriangleMeshConnectivityPredictionFaces, 1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //geometrySize += 3;
-    //connectivitySize += 4;
-   
-   // printf("After codec writing ");
-   // printPdata();
-
     // Write the geometry quantization of the mesh.
     assert(i_quantBits - 1 < 1 << 4);
     writeBits(i_quantBits - 1, 4, p_data + dataOffset - 1, i_bitOffset, dataOffset);
@@ -206,16 +181,11 @@ void MyMesh::writeBaseMesh()
     // Write the number of non-convex level of details.
     writeBits(i_nbDecimations - i_levelNotConvexId, 6, p_data + dataOffset - 1, i_bitOffset, dataOffset);
     connectivitySize += 6;
-    //printf("After writing number of LoDs");
-    //printPdata();
 
     // Write the number of vertices and faces on 16 bits.
-    //printf("Base mesh: %u vertices and %u faces.\n", i_nbVerticesBaseMesh, i_nbFacesBaseMesh);
     writeBits(i_nbVerticesBaseMesh, 16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
     writeBits(i_nbFacesBaseMesh, 16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
     connectivitySize += 32;
-   // printf("After writing # of vertices and faces");
-   // printPdata();
 
     // Write the base mesh vertex coordinates.
     unsigned i_nbAdditionalBitsGeometry = 0;
@@ -282,8 +252,6 @@ void MyMesh::writeBaseMesh()
 // Read the base mesh.
 void MyMesh::readBaseMesh()
 {
-    //printf("Reading the base mesh.\n");
-
     // Read the bounding box min coordinate.
     float coord[3];
     for (unsigned i = 0; i < 3; ++i)
@@ -295,14 +263,6 @@ void MyMesh::readBaseMesh()
 
     unsigned i_bitOffset = 0;
     dataOffset++;
-
-    // Read the codec option status.
-    //b_useAdaptiveQuantization = readBits(1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //b_useLiftingScheme = readBits(1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //b_useCurvaturePrediction = readBits(1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //b_useConnectivityPredictionFaces = readBits(1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //b_useConnectivityPredictionEdges = readBits(1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    //b_useTriangleMeshConnectivityPredictionFaces = readBits(1, p_data + dataOffset - 1, i_bitOffset, dataOffset);
 
     // Read the geometry quantization of the mesh.
     i_quantBits = readBits(4, p_data + dataOffset - 1, i_bitOffset, dataOffset) + 1;
@@ -369,5 +329,4 @@ void MyMesh::readBaseMesh()
     if(i_bitOffset == 0)
         dataOffset--;
 
-    //printf("Done with Reading the base mesh in the function.\n");
 }

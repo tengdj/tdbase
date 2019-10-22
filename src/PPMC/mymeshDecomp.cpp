@@ -38,25 +38,11 @@ void MyMesh::startNextDecompresssionOp()
 
         operation = Idle;
         b_jobCompleted = true;
-    }
-    else
-    {
+    } else {
         // Start the decoder.
         start_decoding(&rangeCoder);
 
-        // Read the operation type.
-        unsigned char i_operationType = decode_culshift(&rangeCoder, 1);
-        decode_update(&rangeCoder, 1, i_operationType, 1 << 1);
-
-        switch (i_operationType)
-        {
-        case DECIMATION_OPERATION_ID:
-            beginUndecimationConquest();
-            break;
-        default:
-            assert(0);
-            break;
-        }
+        beginUndecimationConquest();
     }
 }
 
@@ -82,17 +68,8 @@ void MyMesh::beginUndecimationConquest()
     alphaBetaMin = *(int16_t *)&i16_min;
     unsigned alphaBetaRange = decode_short(&rangeCoder);
 
-#ifdef USE_BIJECTION
-    i16_min = decode_short(&rangeCoder);
-    gammaMin = *(int16_t *)&i16_min;
-    unsigned gammaRange = decode_short(&rangeCoder);
-#endif
-
     // Init the range coder models.
     initqsmodel(&alphaBetaModel, alphaBetaRange, 18, 1 << 17, NULL, 0);
-#ifdef USE_BIJECTION
-    initqsmodel(&gammaModel, gammaRange, 18, 1 << 17, NULL, 0);
-#endif
     initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 0);
 
     // Set the current operation.
@@ -152,9 +129,6 @@ void MyMesh::undecimationStep()
     // Delete the models.
     deleteqsmodel(&connectModel);
     deleteqsmodel(&alphaBetaModel);
-#ifdef USE_BIJECTION
-    deleteqsmodel(&gammaModel);
-#endif
 
     beginInsertedEdgeDecoding();
 }
@@ -321,63 +295,23 @@ void MyMesh::removeInsertedEdges()
   */
 void MyMesh::decodeGeometrySym(Halfedge_handle heh_gate, Face_handle fh)
 {
-#ifdef USE_BIJECTION
-    Vector t1 = CGAL::NULL_VECTOR;
-    Vector t2 = CGAL::NULL_VECTOR;
-
-    Vector normal = computeNormal(heh_gate);
-    if (normal == CGAL::NULL_VECTOR)
-    {
-        t1 = Vector(1,0,0);
-        t2 = Vector(0,1,0);
-        normal = Vector(0,0,1);
-    }
-    else
-        determineFrenetFrame(heh_gate, normal, t1, t2);
-#endif
 
     int coord[3];
     for (unsigned i = 0; i < 3; ++i)
     {
         int syfreq, ltfreq;
-#ifdef USE_BIJECTION
-        if (i < 2)
-        {
-#endif
-            // Decode the alpha and beta symbols.
-            ltfreq = decode_culshift(&rangeCoder, 18);
-            unsigned sym = qsgetsym(&alphaBetaModel, ltfreq);
-            qsgetfreq(&alphaBetaModel, sym, &syfreq, &ltfreq);
-            decode_update(&rangeCoder, syfreq, ltfreq, 1 << 18);
-            // Update the alpha and beta model.
-            qsupdate(&alphaBetaModel, sym);
-            // Store the value.
-            coord[i] = alphaBetaMin + sym;
-#ifdef USE_BIJECTION
-        }
-        else
-        {
-            // Encode the gamma symbol.
-            ltfreq = decode_culshift(&rangeCoder, 18);
-            unsigned sym = qsgetsym(&gammaModel, ltfreq);
-            qsgetfreq(&gammaModel, sym, &syfreq, &ltfreq);
-            decode_update(&rangeCoder, syfreq, ltfreq, 1 << 18);
-            // Update the gamma model.
-            qsupdate(&gammaModel, sym);
-            // Store the value.
-            coord[i] = gammaMin + sym;
-        }
-#endif
+		// Decode the alpha and beta symbols.
+		ltfreq = decode_culshift(&rangeCoder, 18);
+		unsigned sym = qsgetsym(&alphaBetaModel, ltfreq);
+		qsgetfreq(&alphaBetaModel, sym, &syfreq, &ltfreq);
+		decode_update(&rangeCoder, syfreq, ltfreq, 1 << 18);
+		// Update the alpha and beta model.
+		qsupdate(&alphaBetaModel, sym);
+		// Store the value.
+		coord[i] = alphaBetaMin + sym;
     }
 
-#ifdef USE_BIJECTION
-    VectorInt frenetCoord(coord[0], coord[1], coord[2]);
-    // Compute the barycenter with the same way as decoding to avoid computation errors.
-    VectorInt correction = invFrenetRotation(frenetCoord, t1, t2, normal);
-#else
     VectorInt correction(coord[0], coord[1], coord[2]);
-    // Compute the barycenter with the same way as decoding to avoid computation errors.
-#endif
 
     fh->setSplittable();
     fh->setResidual(correction);

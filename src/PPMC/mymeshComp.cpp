@@ -278,9 +278,6 @@ void MyMesh::determineResiduals()
   */
 void MyMesh::beginRemovedVertexCodingConquest()
 {
-    // Encode the type of operation on one bit.
-    typeOfOperation.push_back(DECIMATION_OPERATION_ID);
-
     for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
           fit->resetProcessedFlag();
 
@@ -354,34 +351,8 @@ void MyMesh::RemovedVertexCodingStep()
   */
 void MyMesh::determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh)
 {
-#ifdef USE_BIJECTION
-    Vector t1 = CGAL::NULL_VECTOR;
-    Vector t2 = CGAL::NULL_VECTOR;
-
-    Vector normal = computeNormal(heh_gate);
-
-    if (normal == CGAL::NULL_VECTOR)
-    {
-        t1 = Vector(1,0,0);
-        t2 = Vector(0,1,0);
-        normal = Vector(0,0,1);
-    }
-    else
-        determineFrenetFrame(heh_gate, normal, t1, t2);
-#endif
-
     VectorInt distQuant = fh->getResidual();
-
-#ifdef USE_BIJECTION
-    VectorInt frenetCoord = frenetRotation(distQuant, t1, t2, normal);
-#endif
-
-    // Store the geometry symbols.
-#ifdef USE_BIJECTION
-    geometrySym[i_curDecimationId].push_back(frenetCoord);
-#else
     geometrySym[i_curDecimationId].push_back(distQuant);
-#endif
 }
 
 
@@ -497,9 +468,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
 {
     // Start the encoder.
     start_encoding(&rangeCoder, 0, 0);
-
-    // Encode the type of operation on one bit.
-    encode_shift(&rangeCoder, 1, DECIMATION_OPERATION_ID, 1);
     
     std::deque<unsigned> &connSym = connectFaceSym[i_operationId];
     std::deque<VectorInt> &geomSym = geometrySym[i_operationId];
@@ -513,11 +481,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
     alphaBetaMin = geomSym[0].x();
     int alphaBetaMax = geomSym[0].x();
 
-#ifdef USE_BIJECTION
-    gammaMin = geomSym[0].z();
-    int gammaMax = geomSym[0].z();
-#endif
-
     for (unsigned i = 0; i < i_lenGeom; ++i)
     {
         VectorInt v = geomSym[i];
@@ -526,32 +489,19 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
             alphaBetaMin = v.x();
         if(v.y() < alphaBetaMin)
             alphaBetaMin = v.y();
-#ifdef USE_BIJECTION
-        if(v.z() < gammaMin)
-            gammaMin = v.z();
-#else
         if(v.z() < alphaBetaMin)
             alphaBetaMin = v.z();
-#endif
 
         if(v.x() > alphaBetaMax)
             alphaBetaMax = v.x();
         if(v.y() > alphaBetaMax)
             alphaBetaMax = v.y();
-#ifdef USE_BIJECTION
-        if(v.z() > gammaMax)
-            gammaMax = v.z();
-#else
         if(v.z() > alphaBetaMax)
             alphaBetaMax = v.z();
-#endif
     }
 
     // Check that we have at least two geometry symbols.
     unsigned alphaBetaRange = std::max(alphaBetaMax - alphaBetaMin + 1, 2);
-#ifdef USE_BIJECTION
-    unsigned gammaRange = std::max(gammaMax - gammaMin + 1, 2);
-#endif
 
     // Write the min value and the range.
     int16_t i16_min;
@@ -560,14 +510,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
     encode_short(&rangeCoder, *(uint16_t *)&i16_min);
     assert(alphaBetaRange < (1 << 14));
     encode_short(&rangeCoder, alphaBetaRange);
-
-#ifdef USE_BIJECTION
-    assert(gammaMin >= -(1 << 14) && gammaMin <= (1 << 14));
-    i16_min = gammaMin;
-    encode_short(&rangeCoder, *(uint16_t *)&i16_min);
-    assert(gammaRange < (1 << 14));
-    encode_short(&rangeCoder, gammaRange);
-#endif
 
     // Range coder to only measure the size of the connectivity data.
     size_t *p_dataOffsetMes = new size_t;
@@ -580,9 +522,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
 
     // Init the models.
     initqsmodel(&alphaBetaModel, alphaBetaRange, 18, 1 << 17, NULL, 1);
-#ifdef USE_BIJECTION
-    initqsmodel(&gammaModel, gammaRange, 18, 1 << 17, NULL, 1);
-#endif
     initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 1);
 
     unsigned k = 0;
@@ -606,28 +545,13 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
             VectorInt v = geomSym[k];
             for (unsigned j = 0; j < 3; ++j)
             {
-#ifdef USE_BIJECTION
-                if (j < 2)
-                {
-#endif
+
                     sym = v[j] - alphaBetaMin;
                     // Encode the alpha and beta symbols.
                     qsgetfreq(&alphaBetaModel, sym, &syfreq, &ltfreq);
                     encode_shift(&rangeCoder, syfreq, ltfreq, 18);
                     // Update the alpha and beta model.
                     qsupdate(&alphaBetaModel, sym);
-#ifdef USE_BIJECTION
-                }
-                else
-                {
-                    sym = v[j] - gammaMin;
-                    // Encode the gamma symbol.
-                    qsgetfreq(&gammaModel, sym, &syfreq, &ltfreq);
-                    encode_shift(&rangeCoder, syfreq, ltfreq, 18);
-                    // Update the gamma model.
-                    qsupdate(&gammaModel, sym);
-                }
-#endif
             }
             k++;
         }
@@ -641,9 +565,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
 
     // Destroy the models.
     deleteqsmodel(&alphaBetaModel);
-#ifdef USE_BIJECTION
-    deleteqsmodel(&gammaModel);
-#endif
     deleteqsmodel(&connectModel);
 
     delete[] p_dataMes;

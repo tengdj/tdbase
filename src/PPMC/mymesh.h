@@ -444,9 +444,6 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 
         // The vertices of the edge that is the departure of the coding and decoding conquests.
         Vertex_handle vh_departureConquest[2];
-
-        std::deque<unsigned> typeOfOperation; // O - decimation, 1 - adaptive quantization.
-
         // Geometry symbol list.
         std::deque<std::deque<VectorInt> > geometrySym;
         std::deque<std::deque<unsigned> > adaptiveQuantSym;
