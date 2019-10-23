@@ -35,32 +35,11 @@ using namespace std;
  *
  * */
 
-struct timeval get_cur_time(){
-	struct timeval t1;
-	gettimeofday(&t1, NULL);
-	return t1;
-}
-double get_time_elapsed(struct timeval t1){
-	struct timeval t2;
-    double elapsedTime;
-	gettimeofday(&t2, NULL);
-	// compute and print the elapsed time in millisec
-	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-	elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
-	return elapsedTime;
-}
 
 int i_mode = COMPRESSION_MODE_ID; // compression mode
 unsigned i_quantBit = 12;
 unsigned i_decompPercentage = 100;
-bool optimization = false;
-bool b_useAdaptiveQuantization = optimization;
-bool b_useLiftingScheme = optimization;
-bool b_useCurvaturePrediction = optimization;
-bool b_useConnectivityPredictionFaces = optimization;
-bool b_useConnectivityPredictionEdges = optimization;
 bool b_allowConcaveFaces = true;
-bool b_useTriangleMeshConnectivityPredictionFaces = true;
 std::ofstream *myFile;
 long total_size = 0;
 int num_objects = 0;

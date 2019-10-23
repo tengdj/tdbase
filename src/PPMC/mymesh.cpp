@@ -166,9 +166,6 @@ void MyMesh::computeBoundingBox()
     bbMin = bBox.min();
     bbMax = bBox.max();
 
-    bbMin0 = bbMin;
-    bbMax0 = bbMax;
-
     Vector bbVect = bbMax - bbMin;
     f_bbVolume = bbVect.x() * bbVect.y() * bbVect.z();
 }
@@ -196,8 +193,6 @@ Vector MyMesh::getBBoxCenter() const
   */
 void MyMesh::determineQuantStep()
 {
-    //printf("Determine the quantization step.\n");
-
     float f_maxRange = 0;
     for (unsigned i = 0; i < 3; ++i)
     {
@@ -212,7 +207,6 @@ void MyMesh::determineQuantStep()
 // Compute and store the quantized positions of the mesh vertices.
 void MyMesh::quantizeVertexPositions()
 {
-    //printf("Quantize the vertex positions.\n");
     unsigned i_maxCoord = 1 << i_quantBits;
 
     // Update the positions to fit the quantization.

@@ -494,10 +494,6 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
         unsigned i_nbInsertedEdges;
         unsigned i_nbOriginalEdges;
 
-        // save the first computed MBB, since the bbMin/bbMax
-        // values can be updated by another function
-        Point bbMin0;
-        Point bbMax0;
 };
 
 

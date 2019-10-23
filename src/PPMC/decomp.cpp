@@ -8,24 +8,6 @@
 
 #include "ppmc.h"
 
-using namespace std;
-
-
-
-void print_mesh(MyMesh *mesh){
-	std::stringstream os;
-	os << *mesh;
-	cout << os.str()<<endl;
-}
-
-void print_mesh_file(MyMesh *mesh, char *path){
-	ofstream myfile;
-	myfile.open(path);
-	myfile << *mesh;
-	myfile.close();
-}
-
-
 int main(int argc, char **argv){
 
 	int i_mode = COMPRESSION_MODE_ID; // compression mode
@@ -39,15 +21,18 @@ int main(int argc, char **argv){
 	// Init the random number generator.
 	std::cerr<<"start compressing"<<endl;
 	srand(PPMC_RANDOM_CONSTANT);
+	struct timeval starttime = get_cur_time();
 	MyMesh *compressed = new MyMesh(i_decompPercentage,
 				 COMPRESSION_MODE_ID, i_quantBit,
 				 b_allowConcaveFaces,
 				 input_line.c_str(), input_line.size());
 	compressed->completeOperation();
+	cout<<compressed->dataOffset<<" "<<get_time_elapsed(starttime)<<endl;
 
 	std::cerr<<"start decompressing"<<endl;
 	char path[100];
 	for(int i=0;i<=10;i++){
+		starttime = get_cur_time();
 		srand(PPMC_RANDOM_CONSTANT);
 		MyMesh *decompressed = new MyMesh(10*i,
 				 DECOMPRESSION_MODE_ID, i_quantBit,
@@ -56,8 +41,8 @@ int main(int argc, char **argv){
 		decompressed->completeOperation();
 		sprintf(path,"lod%d.off", i*10);
 		print_mesh_file(decompressed, path);
-		cout<<decompressed->dataOffset<<endl;
 		delete decompressed;
+		cout<<decompressed->dataOffset<<" "<<get_time_elapsed(starttime)<<endl;
 	}
 
 	delete compressed;
