@@ -99,7 +99,6 @@ void MyMesh::undecimationStep()
         unsigned sym = qsgetsym(&connectModel, ltfreq);
         qsgetfreq(&connectModel, sym, &syfreq, &ltfreq);
         decode_update(&rangeCoder, syfreq, ltfreq, 1 << 10);
-        // Update the model.
         qsupdate(&connectModel, sym);
 
         // Add the other halfedges to the queue
@@ -116,7 +115,7 @@ void MyMesh::undecimationStep()
 
         // Decode the geometry symbol.
         if (sym == 1)
-            decodeGeometrySym(h, f);
+            decodeGeometrySym(f);
         else
             f->setUnsplittable();
 
@@ -141,13 +140,14 @@ void MyMesh::beginInsertedEdgeDecoding()
 {
     // Add the first halfedge to the queue.
     pushHehInit();
-    operation = InsertedEdgeDecoding;
 
     // Init the range coder models.
     initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 0);
 
     // Start the decoder.
     start_decoding(&rangeCoder);
+    operation = InsertedEdgeDecoding;
+
 }
 
 
@@ -179,8 +179,6 @@ void MyMesh::InsertedEdgeDecodingStep()
         }
 
         assert(!hIt->isNew());
-
-        float f_edgeLen = edgeLen(h);
 
         // Test if there is a symbol for this edge.
         // There is no symbol if the two faces of an edge are unsplitable.
@@ -284,8 +282,9 @@ void MyMesh::removeInsertedEdges()
     for (MyMesh::Halfedge_iterator hit = halfedges_begin();
          hit!=halfedges_end(); ++hit)
     {
-        if(hit->isAdded())
-            join_facet(hit);
+        if(hit->isAdded()){
+        	join_facet(hit);
+        }
     }
 }
 
@@ -293,20 +292,20 @@ void MyMesh::removeInsertedEdges()
 /**
   * Decode the geometry symbols.
   */
-void MyMesh::decodeGeometrySym(Halfedge_handle heh_gate, Face_handle fh)
+void MyMesh::decodeGeometrySym(Face_handle fh)
 {
 
     int coord[3];
     for (unsigned i = 0; i < 3; ++i)
     {
-        int syfreq, ltfreq;
 		// Decode the alpha and beta symbols.
+        int syfreq, ltfreq;
 		ltfreq = decode_culshift(&rangeCoder, 18);
 		unsigned sym = qsgetsym(&alphaBetaModel, ltfreq);
 		qsgetfreq(&alphaBetaModel, sym, &syfreq, &ltfreq);
 		decode_update(&rangeCoder, syfreq, ltfreq, 1 << 18);
-		// Update the alpha and beta model.
 		qsupdate(&alphaBetaModel, sym);
+
 		// Store the value.
 		coord[i] = alphaBetaMin + sym;
     }

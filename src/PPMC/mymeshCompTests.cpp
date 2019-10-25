@@ -67,12 +67,10 @@ bool MyMesh::isConvex(const std::vector<Vertex_const_handle> & polygon) const
   Vector n = computeNormal(polygon);
   int s = polygon.size();
   std::vector<Point> projPoints(s);
-//   printf("s: %i\n", s);
   for(int i=0; i<s; ++i)
   {
         //project polygon[i]->point() on the plane with normal n
         projPoints[i] = polygon[i]->point() - n*(Vector(polygon[0]->point(), polygon[i]->point())*n);
-// 	printf("%f %f %f\n", projPoints[i][0], projPoints[i][1], projPoints[i][2]);
   }
 
   //now use the following test: a polygon is concave if for each edge, all the other points lie on the same side of the edge
@@ -101,12 +99,12 @@ bool MyMesh::isConvex(const std::vector<Vertex_const_handle> & polygon) const
           globalSide = comp[globalSide*3+side];
           if(globalSide==3)
           {
-// 		printf("non convex\n");
+        	  	// non convex
                 return false;
           }
         }
   }
-//   printf("convex\n");
+  //convex
   return true;
 }
 
@@ -207,9 +205,9 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 	  }
 	  while(++hit != end);
 
-	  bool b_ret = !willViolateManifold(heh_oneRing)
-				   && (b_testConvexity ? isConvex(vh_oneRing) : true);
-	  return b_ret;
+	  bool removable = !willViolateManifold(heh_oneRing)
+				   && (b_allowConvexity ? true:isConvex(vh_oneRing));
+	  return removable;
 	}
 	return false;
 }

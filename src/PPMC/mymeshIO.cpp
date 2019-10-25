@@ -48,7 +48,6 @@ void MyMesh::writeCompressedData()
 
 /**
   * Read the compressed data from the buffer.
-  * \return the bounding box min position.
   */
 void MyMesh::readCompressedData()
 {
@@ -329,4 +328,26 @@ void MyMesh::readBaseMesh()
     if(i_bitOffset == 0)
         dataOffset--;
 
+}
+
+void MyMesh::writeMeshOff(const char psz_filePath[]) const
+{
+    std::filebuf fb;
+    fb.open(psz_filePath, std::ios::out | std::ios::trunc);
+    if(fb.is_open())
+    {
+        std::ostream os(&fb);
+        os << *this;
+    }else{
+    	std::cerr<<"cannot find path "<<psz_filePath<<std::endl;
+    }
+}
+
+
+void MyMesh::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const
+{
+    // Output the current mesh in an off file.
+    std::ostringstream fileName;
+    fileName << pathPrefix << "_" << i_id << ".off";
+    writeMeshOff(fileName.str().c_str());
 }

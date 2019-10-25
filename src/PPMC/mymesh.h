@@ -392,7 +392,7 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
         void InsertedEdgeDecodingStep();
         void insertRemovedVertices();
         void removeInsertedEdges();
-        void decodeGeometrySym(Halfedge_handle heh_gate, Face_handle fh);
+        void decodeGeometrySym(Face_handle fh);
         void beginRemovedVertexCodingConquest();
         void determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh);
 
@@ -420,7 +420,11 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
         int16_t readInt16();
         void writeBaseMesh();
         void readBaseMesh();
+        void writeMeshOff(const char psz_filePath[]) const;
+        void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const;
 
+        //todo teng debug
+        void teng_test();
 
         // Variables.
 
@@ -440,7 +444,7 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
         unsigned i_curOperationId;
 
         unsigned i_levelNotConvexId;
-        bool b_testConvexity;
+        bool b_allowConvexity;
 
         // The vertices of the edge that is the departure of the coding and decoding conquests.
         Vertex_handle vh_departureConquest[2];
@@ -475,24 +479,16 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
         char *p_data;
         size_t dataOffset; // the offset to read and write.
 
-        std::string filePathOutput;
         unsigned i_decompPercentage;
 
         // Compression and decompression variables.
         rangecoder rangeCoder;
 
         // Range coder data model.
-        qsmodel alphaBetaModel, gammaModel, quantModel, connectModel;
+        qsmodel alphaBetaModel, quantModel, connectModel;
 
-        int alphaBetaMin, gammaMin;
+        int alphaBetaMin;
 
-
-        float f_avgInsertedEdgesLength;
-        float f_avgOriginalEdgesLength;
-
-
-        unsigned i_nbInsertedEdges;
-        unsigned i_nbOriginalEdges;
 
 };
 

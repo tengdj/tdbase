@@ -16,7 +16,8 @@
 * You should have received a copy of the GNU General Public License
 * along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
 *****************************************************************************/
-#include "ppmc.h"
+#include "../PPMC/ppmc.h"
+#include "../util/util.h"
 
 #include <unistd.h>
 #include <sys/time.h>
@@ -24,17 +25,6 @@
 
 using namespace CGAL;
 using namespace std;
-
-/*
- * ppmc takes objects from standard in
- * compress them to a binary file, and output the offset
- * and length information together with the MBB information
- * of each object to the standard out.
- * note that, the mbb information for all the objects processed
- * by this instance will also be attached to the end of the binary file
- *
- * */
-
 
 int i_mode = COMPRESSION_MODE_ID; // compression mode
 unsigned i_quantBit = 12;

@@ -24,6 +24,21 @@
 #include <algorithm>
 
 
+void MyMesh::teng_test(){
+	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		Halfedge_handle heh = fit->halfedge();
+		Halfedge_handle hIt = heh;
+		do {
+			Vertex_handle vh = hIt->vertex();
+			Point p = vh->point();
+			cout<<p<<endl;
+			hIt = hIt->next();
+		} while (hIt != heh);
+		break;
+	}
+	cout<<size_of_facets()<<" "<<size_of_halfedges()/2<<" "<<size_of_vertices()<<endl;
+}
+
 MyMesh::MyMesh(unsigned i_decompPercentage,
                const int i_mode,
                unsigned i_quantBits,
@@ -34,7 +49,7 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
     CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(), i_mode(i_mode),
     b_jobCompleted(false), operation(Idle),
     i_curDecimationId(0), i_curQuantizationId(0), i_curOperationId(0),
-    i_levelNotConvexId(0), b_testConvexity(false), connectivitySize(0),
+    i_levelNotConvexId(0), b_allowConvexity(b_allowConcaveFaces), connectivitySize(0),
     geometrySize(0), i_quantBits(i_quantBits), dataOffset(0),
     i_decompPercentage(i_decompPercentage)
 	{
@@ -73,17 +88,14 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
 		// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 		vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 		vh_departureConquest[1] = halfedges_begin()->vertex();
-
-		if (!b_allowConcaveFaces) {
-			b_testConvexity = true;
-		}
     } else {
         memcpy(p_data, data, length);
     	readCompressedData();
         // Set the vertices of the edge that is the departure of the coding and decoding conquests.
         vh_departureConquest[0] = vertices_begin();
         vh_departureConquest[1] = ++vertices_begin();
-        if (i_levelNotConvexId - i_nbDecimations > 0){
+
+        if (i_levelNotConvexId < i_nbDecimations){
             // Decompress until the first convex LOD is reached.
             while (i_curDecimationId < i_levelNotConvexId) {
                 batchOperation();
@@ -100,7 +112,6 @@ MyMesh::~MyMesh(){
 	if(p_data!=NULL){
 	   delete[] p_data;
 	}
-   // fbDebug.close();
 }
 
 /**
@@ -157,7 +168,6 @@ void MyMesh::completeOperation()
 // Compute the mesh vertex bounding box.
 void MyMesh::computeBoundingBox()
 {
-    //printf("Compute the mesh bounding box.\n");
     std::list<Point> vList;
     for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
         vList.push_back(vit->point());

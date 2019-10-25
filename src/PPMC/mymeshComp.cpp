@@ -128,15 +128,13 @@ void MyMesh::decimationStep()
 
     if (i_nbRemovedVertices == 0)
     {
-        if (!b_testConvexity)
+        if (b_allowConvexity)
         {
             for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
             {
                 if(isRemovable(vit))
                     printf("Still a vertex that can be removed !\n");
             }
-
-            ////printf("End of mesh compression.\n");
             operation = Idle;
             b_jobCompleted = true;
             i_curDecimationId--;
@@ -144,7 +142,7 @@ void MyMesh::decimationStep()
         }
         else
         {
-            b_testConvexity = false;
+        	b_allowConvexity = true;
             i_levelNotConvexId = i_curDecimationId;
             beginDecimationConquest();
         }
@@ -208,7 +206,8 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         // keep the removed vertex position.
         hNewFace->facet()->setRemovedVertexPos(vPos);
 
-        //scan the outside halfedges of the new face and add them to the queue if the state of its face is unknown. Also mark it as in_queue
+        //scan the outside halfedges of the new face and add them to
+        //the queue if the state of its face is unknown. Also mark it as in_queue
         h = hNewFace;
         do
         {
@@ -236,7 +235,6 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
   */
 void MyMesh::determineResiduals()
 {
-    //printf("Determine the geometry residuals.\n");
 
     // Add the first halfedge to the queue.
     pushHehInit();
@@ -311,7 +309,6 @@ void MyMesh::RemovedVertexCodingStep()
         // Determine face symbol.
         unsigned sym;
         bool b_split = f->isSplittable();
-        float f_faceSurface = faceSurface(h);
 
         // No connectivity prediction.
         sym = b_split ? 1 : 0;
@@ -398,16 +395,14 @@ void MyMesh::InsertedEdgeCodingStep()
         }
 
         // Don't write a symbol if the two faces of an egde are unsplitable.
+        // this can help to save some space, since it is guaranteed that the edge is not inserted
         bool b_toCode = h->facet()->isUnsplittable()
                         && h->opposite()->facet()->isUnsplittable()
                         ? false : true;
 
         // Determine the edge symbol.
         unsigned sym;
-        bool b_original = h->isOriginal();
-        float f_edgeLen = edgeLen(h);
-
-        if (b_original)
+        if (h->isOriginal())
             sym = 0;
         else
             sym = 1;
@@ -449,7 +444,6 @@ void MyMesh::encodeInsertedEdges(unsigned i_operationId)
         int syfreq, ltfreq;
         qsgetfreq(&connectModel, sym, &syfreq, &ltfreq);
         encode_shift(&rangeCoder, syfreq, ltfreq, 10);
-        // Update the model.
         qsupdate(&connectModel, sym);
     }
 
