@@ -258,17 +258,15 @@ SegPoints(float VEC[3],
 // be expected.
 //--------------------------------------------------------------------------
 
-
-//296 X 59220 = 17529120 takes 68.336000 milliseconds
-//loading triangles takes 3.562000 milliseconds
-//get distance take 1107.899000 miliseconds
-//min distance is: 67.654335
-//stats: 17526132 2088 80 820 0
-
 float
 TriDist(float P[3], float Q[3],
 		const float S[3][3], const float T[3][3], int counter[5])
 {
+	bool shown_disjoint = false;
+
+	// some temporary vectors
+	float V[3];
+	float Z[3];
 	// Compute vectors along the 6 sides
 	float Sv[3][3], Tv[3][3];
 
@@ -287,12 +285,6 @@ TriDist(float P[3], float Q[3],
 	// of the edges are the closest points for the triangles.
 	// Even if these tests fail, it may be helpful to know the closest
 	// points found, and whether the triangles were shown disjoint
-
-	// some temporary vectors
-	float V[3];
-	float Z[3];
-
-	int shown_disjoint = 0;
 
 	float mindd = DBL_MAX; // Set first minimum safely high
 	float minP[3], minQ[3];
@@ -327,7 +319,7 @@ TriDist(float P[3], float Q[3],
 				float p = VdotV(V, VEC);
 				if (a < 0) a = 0;
 				if (b > 0) b = 0;
-				if ((p - a + b) > 0) shown_disjoint = 1;
+				if ((p - a + b) > 0) shown_disjoint = true;
 			}
 		}
 	}
@@ -384,7 +376,7 @@ TriDist(float P[3], float Q[3],
 		// If Sn is a separating direction,
 
 		if (point >= 0){
-			shown_disjoint = 1;
+			shown_disjoint = true;
 			// Test whether the point found, when projected onto the
 			// other triangle, lies within the face.
 
@@ -439,7 +431,7 @@ TriDist(float P[3], float Q[3],
 		}
 
 		if (point >= 0){
-			shown_disjoint = 1;
+			shown_disjoint = true;
 
 			VmV(V,S[point],T[0]);
 			VcrossV(Z,Tn,Tv[0]);
