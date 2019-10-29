@@ -15,9 +15,17 @@ float TriDist(float S[3][3], float T[3][3]){
 
 int main(int argc, char **argv){
 
-	float S[3][3], T[3][3];
-	cout<<TriDist(S,T)<<endl;
+	int *S = new int[9];
+	for(int i=0;i<9;i++){
+		S[i]=i;
+	}
 
+	for(int i=0;i<3;i++){
+		int *curs = S+i*3;
+		for(int j=0;j<3;j++){
+			cout<<curs[j]<<endl;
+		}
+	}
 }
 
 

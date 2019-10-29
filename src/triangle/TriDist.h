@@ -47,6 +47,7 @@
 #include <float.h>
 
 #include "../util/util.h"
+using namespace std;
 
 // computes the closest points on two triangles, and returns the 
 // distance between them.
@@ -59,7 +60,7 @@
 // coincident points on the intersection of the triangles, as might 
 // be expected.
 
-float TriDist(float p[3], float q[3], const float s[3][3], const float t[3][3], int counter[5]);
-
+float TriDist(float p[3], float q[3], const float s[3][3], const float t[3][3]);
+float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_threads);
 
 #endif

@@ -1,8 +1,8 @@
 prefix=/usr/local
 
-CPPFLAGS	= -std=c++0x -g -O2 -Wno-unused-result -fno-stack-protector
+CPPFLAGS	= -std=c++11 -g -O2 
 INCFLAGS	= -I ./ 
-LIBS		= -lgeos -lspatialindex -lboost_program_options -lstdc++ -lgmp -lmpfr -lpthread
+LIBS		= -lgeos -lspatialindex -lboost_program_options -lstdc++ -L/usr/local/cuda/lib64 -lgmp -lmpfr -lpthread -lcuda -lcudart
 CGALFLAGS	= -lCGAL -Wl,-rpath
 
 ifdef DEBUG
@@ -18,6 +18,7 @@ endif
    
 CC = gcc
 CXX = g++
+NVCC = nvcc
 
 
 #compile all the cpp files
@@ -26,6 +27,12 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 
 %.o: %.cpp
 	$(CXX) $(INCFLAGS) $(CPPFLAGS) -c $? -o $@
+
+#compile all the cu files
+SRCS_CU := $(wildcard */*.cu)
+OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS))
+%_cu.o: %.cu
+	$(NVCC) $(INCFLAGS) $(CPPFLAGS) -c $? -o $@
 
 #compile additional range coder .c files
 RC_SRCS := $(wildcard PPMC/rangeCoder/*.c)
@@ -50,7 +57,7 @@ decompress: $(RC_OBJS) $(PPMC_OBJS) test/decompress.o
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 
-triangle: $(TRIANGLE_OBJS) $(PPMC_OBJS) $(RC_OBJS) test/Triangle_Compute.o
+triangle: triangle/TriDist_cu.o $(PPMC_OBJS) $(RC_OBJS) test/Triangle_Compute.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) $(CGALFLAGS) -o ../build/$@
 	
 test: test/test.o

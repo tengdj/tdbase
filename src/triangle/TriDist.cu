@@ -47,7 +47,7 @@
 //--------------------------------------------------------------------------
 
 #include "TriDist.h"
-
+#include <pthread.h>
 // useful functions
 
 // copy
@@ -127,14 +127,14 @@ VxS(float Vr[3], const float V[3], float s)
 }
 
 //--------------------------------------------------------------------------
-// SegPoints() 
+// SegPoints()
 //
 // Returns closest points between an segment pair.
 // Implemented from an algorithm described in
 //
 // Vladimir J. Lumelsky,
 // On fast computation of distance between line segments.
-// In Information Processing Letters, no. 21, pages 55-61, 1985.   
+// In Information Processing Letters, no. 21, pages 55-61, 1985.
 //--------------------------------------------------------------------------
 
 void
@@ -244,25 +244,29 @@ SegPoints(float VEC[3],
 }
 
 //--------------------------------------------------------------------------
-// TriDist() 
+// TriDist()
 //
-// Computes the closest points on two triangles, and returns the 
+// Computes the closest points on two triangles, and returns the
 // distance between them.
-// 
+//
 // S and T are the triangles, stored tri[point][dimension].
 //
-// If the triangles are disjoint, P and Q give the closest points of 
-// S and T respectively. However, if the triangles overlap, P and Q 
-// are basically a random pair of points from the triangles, not 
-// coincident points on the intersection of the triangles, as might 
+// If the triangles are disjoint, P and Q give the closest points of
+// S and T respectively. However, if the triangles overlap, P and Q
+// are basically a random pair of points from the triangles, not
+// coincident points on the intersection of the triangles, as might
 // be expected.
 //--------------------------------------------------------------------------
 
 float
-TriDist(float P[3], float Q[3],
-		const float S[3][3], const float T[3][3])
+TriDist(const float *S, const float *T)
 {
+	return 0;
 	bool shown_disjoint = false;
+
+	// closest points
+	float P[3];
+	float Q[3];
 
 	// some temporary vectors
 	float V[3];
@@ -270,13 +274,13 @@ TriDist(float P[3], float Q[3],
 	// Compute vectors along the 6 sides
 	float Sv[3][3], Tv[3][3];
 
-	VmV(Sv[0],S[1],S[0]);
-	VmV(Sv[1],S[2],S[1]);
-	VmV(Sv[2],S[0],S[2]);
+	VmV(Sv[0],S+3,S);
+	VmV(Sv[1],S+6,S+3);
+	VmV(Sv[2],S,S+6);
 
-	VmV(Tv[0],T[1],T[0]);
-	VmV(Tv[1],T[2],T[1]);
-	VmV(Tv[2],T[0],T[2]);
+	VmV(Tv[0],T+3,T);
+	VmV(Tv[1],T+6,T+3);
+	VmV(Tv[2],T,T+6);
 
 	// For each edge pair, the vector connecting the closest points
 	// of the edges defines a slab (parallel planes at head and tail
@@ -287,24 +291,21 @@ TriDist(float P[3], float Q[3],
 	// points found, and whether the triangles were shown disjoint
 
 	float mindd = DBL_MAX; // Set first minimum safely high
-	float minP[3], minQ[3];
 	float VEC[3];
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
 			// Find closest points on edges i & j, plus the
 			// vector (and distance squared) between these points
-			SegPoints(VEC,P,Q,S[i],Sv[i],T[j],Tv[j]);
+			SegPoints(VEC,P,Q,S+i*3,Sv[i],T+j*3,Tv[j]);
 			VmV(V,Q,P);
 			float dd = VdotV(V,V);
 			if (dd <= mindd){
 				mindd = dd;
-				VcV(minP,P);
-				VcV(minQ,Q);
 
 				// Verify this closest point pair for the segment pairs with minimum distance
-				VmV(Z,S[(i+2)%3],P);
+				VmV(Z,S+((i+2)%3)*3,P);
 				float a = VdotV(Z,VEC);
-				VmV(Z,T[(j+2)%3],Q);
+				VmV(Z,T+((j+2)%3)*3,Q);
 				float b = VdotV(Z,VEC);
 
 				// the closest distance of segment pairs is the closest distance of the two triangles
@@ -351,13 +352,13 @@ TriDist(float P[3], float Q[3],
 
 		float Tp[3];
 
-		VmV(V,S[0],T[0]);
+		VmV(V,S,T);
 		Tp[0] = VdotV(V,Sn);
 
-		VmV(V,S[0],T[1]);
+		VmV(V,S,T+3);
 		Tp[1] = VdotV(V,Sn);
 
-		VmV(V,S[0],T[2]);
+		VmV(V,S,T+6);
 		Tp[2] = VdotV(V,Sn);
 
 		// If Sn is a separating direction,
@@ -379,20 +380,20 @@ TriDist(float P[3], float Q[3],
 			// Test whether the point found, when projected onto the
 			// other triangle, lies within the face.
 
-			VmV(V,T[point],S[0]);
+			VmV(V,T+point*3,S);
 			VcrossV(Z,Sn,Sv[0]);
 			if (VdotV(V,Z) > 0){
-				VmV(V,T[point],S[1]);
+				VmV(V,T+point*3,S+3);
 				VcrossV(Z,Sn,Sv[1]);
 				if (VdotV(V,Z) > 0) {
-					VmV(V,T[point],S[2]);
+					VmV(V,T+point*3,S+6);
 					VcrossV(Z,Sn,Sv[2]);
 					if (VdotV(V,Z) > 0) {
 						// T[point] passed the test - it's a closest point for
 						// the T triangle; the other point is on the face of S
 
-						VpVxS(P,T[point],Sn,Tp[point]/Snl);
-						VcV(Q,T[point]);
+						VpVxS(P,T+point*3,Sn,Tp[point]/Snl);
+						VcV(Q,T+point*3);
 						return sqrt(VdistV2(P,Q));
 					}
 				}
@@ -407,13 +408,13 @@ TriDist(float P[3], float Q[3],
 	if (Tnl > 1e-15){
 
 		float Sp[3];
-		VmV(V,T[0],S[0]);
+		VmV(V,T,S);
 		Sp[0] = VdotV(V,Tn);
 
-		VmV(V,T[0],S[1]);
+		VmV(V,T,S+3);
 		Sp[1] = VdotV(V,Tn);
 
-		VmV(V,T[0],S[2]);
+		VmV(V,T,S+6);
 		Sp[2] = VdotV(V,Tn);
 
 		int point = -1;
@@ -430,17 +431,17 @@ TriDist(float P[3], float Q[3],
 		if (point >= 0){
 			shown_disjoint = true;
 
-			VmV(V,S[point],T[0]);
+			VmV(V,S+3*point,T);
 			VcrossV(Z,Tn,Tv[0]);
 			if (VdotV(V,Z) > 0){
-				VmV(V,S[point],T[1]);
+				VmV(V,S+3*point,T+3);
 				VcrossV(Z,Tn,Tv[1]);
 				if (VdotV(V,Z) > 0){
-					VmV(V,S[point],T[2]);
+					VmV(V,S+3*point,T+6);
 					VcrossV(Z,Tn,Tv[2]);
 					if (VdotV(V,Z) > 0){
-						VcV(P,S[point]);
-						VpVxS(Q,S[point],Tn,Sp[point]/Tnl);
+						VcV(P,S+3*point);
+						VpVxS(Q,S+3*point,Tn,Sp[point]/Tnl);
 						return sqrt(VdistV2(P,Q));
 					}
 				}
@@ -453,10 +454,89 @@ TriDist(float P[3], float Q[3],
 	// we assume case 3 or 4, otherwise we conclude case 2,
 	// that the triangles overlap.
 	if (shown_disjoint){
-		VcV(P,minP);
-		VcV(Q,minQ);
 		return sqrt(mindd);
 	}else {
 		return 0;
 	}
 }
+
+/*
+ * param dist: head address of space for distances, size = s1*s2*sizeof(float)
+ * param P: closest points in S
+ * param Q: closest points in T
+ * param S: first triangle set size = s1*3*3*sizeof(float)
+ * param T: second triangle set size = s2*3*3*sizeof(float)
+ * param s1: number of triangles in set S
+ * param s2: number of triangles in set T
+ *
+ * */
+
+struct TriDist_param{
+	const float *S;
+	const float * T;
+	int s1;
+	int s2;
+	int num_threads;
+	int id;
+	float dist;
+};
+
+void *TriDist_unit(void *params_void){
+	struct TriDist_param *param = (struct TriDist_param *)params_void;
+	//cout<<"thread "<<param->id<<" is started"<<endl;
+	for(int i=0;i<param->s1;i++){
+		for(int j=0;j<param->s2;j++){
+			const float *cur_S = param->S+i*9;
+			const float *cur_T = param->T+j*9;
+			float dist = TriDist(cur_S, cur_T);
+			if(dist < param->dist){
+				param->dist = dist;
+			}
+		}
+	}
+	return NULL;
+}
+
+float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_threads){
+	cout<<"starting "<<num_threads<<" threads"<<endl;
+
+	pthread_t threads[num_threads];
+	struct TriDist_param params[num_threads];
+	int each_thread = s1/num_threads;
+	for(int i=0;i<num_threads;i++){
+		int start = each_thread*i;
+		if(start>=s1){
+			break;
+		}
+		params[i].s1 = min(start+each_thread, s1)-start;
+		params[i].s2 = s2;
+		params[i].S = S+start*9;
+		params[i].T = T;
+		params[i].id = i+1;
+		params[i].dist = DBL_MAX;
+
+		int rc = pthread_create(&threads[i], NULL, TriDist_unit, (void *)&params[i]);
+		if (rc) {
+			cout << "Error:unable to create thread," << rc << endl;
+			exit(-1);
+		}
+	}
+
+
+	float min = DBL_MAX;
+	for(int i = 0; i < num_threads; i++ ){
+		void *status;
+		int rc = pthread_join(threads[i], &status);
+		if (rc) {
+			cout << "Error:unable to join," << rc << endl;
+			exit(-1);
+		}
+		if(params[i].dist < min){
+			min = params[i].dist;
+		}
+		//cerr << "Main: completed thread id :" << i <<endl;
+	}
+
+	return min;
+}
+

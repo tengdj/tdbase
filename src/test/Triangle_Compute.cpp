@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
+#include <thread>
 
 #include "../triangle/TriDist.h"
 #include "spatial.h"
@@ -54,23 +55,24 @@ typedef struct MyTriangle {
 	Point points[3];
 } MyTriangle;
 
-float get_distance(MyTriangle &t1, MyTriangle &t2, int counter[5]){
-	float p[3], q[3], s[3][3], t[3][3];
-	for(int i=0;i<3;i++){
-		s[i][0] = t1.points[i].x();
-		s[i][1] = t1.points[i].y();
-		s[i][2] = t1.points[i].z();
-		t[i][0] = t2.points[i].x();
-		t[i][1] = t2.points[i].y();
-		t[i][2] = t2.points[i].z();
-	}
-	return TriDist(p,q,s,t,counter);
-}
+//float get_distance(MyTriangle &t1, MyTriangle &t2){
+//	float p[3], q[3], s[3][3], t[3][3];
+//	for(int i=0;i<3;i++){
+//		s[i][0] = t1.points[i].x();
+//		s[i][1] = t1.points[i].y();
+//		s[i][2] = t1.points[i].z();
+//		t[i][0] = t2.points[i].x();
+//		t[i][1] = t2.points[i].y();
+//		t[i][2] = t2.points[i].z();
+//	}
+//	return TriDist(p,q,s,t);
+//}
 
 int main(int argc, char **argv){
 
+	int thread_num = std::thread::hardware_concurrency();
 	if(argc>1){
-		compression_rate = atoi(argv[1]);
+		thread_num = atoi(argv[1]);
 	}
 	string input_line1, input_line2;
 	getline(std::cin, input_line1);
@@ -84,19 +86,27 @@ int main(int argc, char **argv){
 	MyMesh *geom1 = decompress(compressed_geom1);
 	MyMesh *geom2 = decompress(compressed_geom2);
 
-	float p[3], q[3], s[3][3], t[3][3];
-	long X = 0;
-	long Y = 0;
-	float min_distance = DBL_MAX-1;
 
 	long size1 = geom1->size_of_facets(), size2 = geom2->size_of_facets();
 
 	printf("%ld X %ld = %ld takes %f milliseconds\n", size1, size2, size1*size2, get_time_elapsed(start));
-	start = get_cur_time();
-	MyTriangle *tset1 = new MyTriangle[size1];
-	MyTriangle *tset2 = new MyTriangle[size2];
+	/*
+	 * param dist: head address of space for distances, size = s1*s2*sizeof(float)
+	 * param P: closest points in S size = 3*s1*s2
+	 * param Q: closest points in T size = 3*s1*s2
+	 * param S: first triangle set size = s1*3*3*sizeof(float)
+	 * param T: second triangle set size = s2*3*3*sizeof(float)
+	 * param s1: number of triangles in set S
+	 * param s2: number of triangles in set T
+	 *
+	 * */
+	float *S = new float[9*size1];
+	float *T = new float[9*size2];
 
-	int index = 0;
+
+	start = get_cur_time();
+
+	float *cur_S = S;
 	for(MyMesh::Face_iterator fit = geom1->facets_begin(); fit!=geom1->facets_end(); ++fit){
 
 		MyMesh::Halfedge_handle heh = fit->halfedge();
@@ -104,58 +114,53 @@ int main(int argc, char **argv){
 		int i = 0;
 		do {
 			MyMesh::Vertex_handle vh = hIt->vertex();
-			tset1[index].points[i] = vh->point();
+			Point p = vh->point();
+			*cur_S = p.x();
+			cur_S++;
+			*cur_S = p.y();
+			cur_S++;
+			*cur_S = p.z();
+			cur_S++;
 			i++;
 			hIt = hIt->next();
 		} while (hIt != heh&&i<3);
-		index++;
 	}
 
-	index = 0;
+	float *cur_T = T;
 	for(MyMesh::Face_iterator fit = geom2->facets_begin(); fit!=geom2->facets_end(); ++fit){
 		MyMesh::Halfedge_handle heh = fit->halfedge();
 		MyMesh::Halfedge_handle hIt = heh;
 		int i = 0;
 		do {
 			MyMesh::Vertex_handle vh = hIt->vertex();
-			tset2[index].points[i] = vh->point();
+			Point p = vh->point();
+			*cur_T = p.x();
+			cur_T++;
+			*cur_T = p.y();
+			cur_T++;
+			*cur_T = p.z();
+			cur_T++;
 			i++;
 			hIt = hIt->next();
 		} while (hIt != heh&&i<3);
-		index++;
 	}
 	printf("loading triangles takes %f milliseconds\n", get_time_elapsed(start));
 
-	int counter[5] = {0,0,0,0,0};
 	start = get_cur_time();
-	for(int i=0;i<size1;i++){
-		for(int j=0;j<size2;j++){
-			float distance = get_distance(tset1[i],tset2[j],counter);
-			if(distance<min_distance){
-				min_distance = distance;
-			}
-			if(distance == 0){
-				cout<<i<<" "<<j<<endl;
-				for(int k = 0;k<3;k++){
-					cout<<tset1[i].points[k]<<"   "<<tset2[j].points[k]<<endl;
-				}
-				cout<<endl;
-			}
-		}
-	}
 
+	float min_distance = TriDist_batch(S, T, size1, size2, thread_num);
 
 
 	printf("get distance take %f miliseconds\n",get_time_elapsed(start));
 	printf("min distance is: %f\n", min_distance);
-	printf("stats: %d %d %d %d %d\n",counter[0],counter[1],counter[2],counter[3],counter[4]);
 
 
 	delete geom1;
 	delete geom2;
 	delete compressed_geom1;
 	delete compressed_geom2;
-	delete tset1;
-	delete tset2;
+
+	delete S;
+	delete T;
 
 }
