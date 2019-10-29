@@ -57,7 +57,7 @@ decompress: $(RC_OBJS) $(PPMC_OBJS) test/decompress.o
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 
-triangle: triangle/TriDist_cu.o $(PPMC_OBJS) $(RC_OBJS) test/Triangle_Compute.o
+triangle: triangle/TriDist_cu.o triangle/TriDist.o $(PPMC_OBJS) $(RC_OBJS) test/Triangle_Compute.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) $(CGALFLAGS) -o ../build/$@
 	
 test: test/test.o

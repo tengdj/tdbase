@@ -62,5 +62,6 @@ using namespace std;
 
 float TriDist(float p[3], float q[3], const float s[3][3], const float t[3][3]);
 float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_threads);
-
+float SegDist_batch(const float *S1, const float *S2, int size1, int size2, int num_threads);
+float SegDist_batch_gpu(const float *S, const float *T, int size1, int size2);
 #endif
