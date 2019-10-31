@@ -152,6 +152,7 @@ SegPoints(float VEC[3],
   A_dot_B = VdotV(A,B);
   A_dot_T = VdotV(A,T);
   B_dot_T = VdotV(B,T);
+  assert(A_dot_A!=0&&B_dot_B!=0);
 
   // t parameterizes ray P,A
   // u parameterizes ray Q,B
@@ -548,10 +549,6 @@ void *TriDist_unit(void *params_void){
 }
 
 float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_threads){
-	teng[0] = 0;
-	teng[1] = 0;
-	teng[2] = 0;
-	teng[3] = 0;
 	cout<<"starting "<<num_threads<<" threads"<<endl;
 
 	pthread_t threads[num_threads];
@@ -591,33 +588,25 @@ float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_thr
 		//cerr << "Main: completed thread id :" << i <<endl;
 	}
 
-	cout<<teng[0]<<" "<<teng[1]<<" "<<teng[2]<<" "<<teng[3]<<" "<<endl;
 	return min;
 }
 
-float SegDist(const float *seg1, const float *seg2){
+inline
+float SegDist(const float *seg1, const float *seg2, const float *A, const float *B, float A_dot_A, float B_dot_B){
+
 	float X[3], Y[3];
 
 	const float *P = seg1;
 	const float *Q = seg2;
 
-	float A[3], B[3]; // vector of two segments
-	VmV(A, seg1+3, seg1);
-	VmV(B, seg2+3, seg2);
-
-	float Tmp[3], A_dot_A, B_dot_B, A_dot_B, A_dot_T, B_dot_T;
+	float Tmp[3], A_dot_B, A_dot_T, B_dot_T;
 
 	VmV(Tmp,Q,P);
-	A_dot_A = VdotV(A,A);
-	B_dot_B = VdotV(B,B);
 	A_dot_B = VdotV(A,B);
 	A_dot_T = VdotV(A,Tmp);
 	B_dot_T = VdotV(B,Tmp);
 
-	if(A_dot_A==0){
-		cout<<seg1[0]<<" "<<seg1[1]<<" "<<seg1[2]<<endl;
-		cout<<(seg1+3)[0]<<" "<<(seg1+3)[1]<<" "<<(seg1+3)[2]<<endl;
-	}
+	assert(A_dot_A!=0&&B_dot_B!=0);
 
 	// t parameterizes ray P,A
 	// u parameterizes ray Q,B
@@ -634,72 +623,62 @@ float SegDist(const float *seg1, const float *seg2){
 	}
 
 	// find u for point on ray Q,B closest to point at t
-	if(B_dot_B==0){
-		u = 0;
-	}else{
-		u = (t*A_dot_B - B_dot_T)/B_dot_B;
-	}
+	u = (t*A_dot_B - B_dot_T)/B_dot_B;
 
 	// if u is on segment Q,B, t and u correspond to
 	// closest points, otherwise, recompute and
 	// clamp t
 	if (u <= 0) {
 		VcV(Y, Q);
-		if(A_dot_A==0){
-			t = 0;
-		}else{
-			t = A_dot_T / A_dot_A;
-		}
-
-		if (t <= 0) {
-			VcV(X, P);
-		} else if (t >= 1) {
-			VpV(X, P, A);
-		} else {
-			VpVxS(X, P, A, t);
-		}
+		t = A_dot_T / A_dot_A;
 	} else if (u >= 1) {
 		VpV(Y, Q, B);
-		if(A_dot_A==0){
-			t = 0;
-		}else{
-			t = (A_dot_B + A_dot_T) / A_dot_A;
-		}
-
-		if (t <= 0) {
-			VcV(X, P);
-		} else if (t >= 1) {
-			VpV(X, P, A);
-		} else {
-			VpVxS(X, P, A, t);
-		}
+		t = (A_dot_B + A_dot_T) / A_dot_A;
 	} else { // on segment
 		VpVxS(Y, Q, B, u);
-		if (t <= 0) {
-			VcV(X, P);
-		} else if (t >= 1) {
-			VpV(X, P, A);
-		} else { // 0<=t<=1
-			VpVxS(X, P, A, t);
-		}
 	}
 
+	if (t <= 0) {
+		VcV(X, P);
+	} else if (t >= 1) {
+		VpV(X, P, A);
+	} else { // 0<=t<=1
+		VpVxS(X, P, A, t);
+	}
 	VmV(Tmp,X,Y);
 	return VdotV(Tmp,Tmp);
 }
 
 void *SegDist_unit(void *params_void){
 	struct TriDist_param *param = (struct TriDist_param *)params_void;
+	float *A = new float[param->s1*3];
+	float *B = new float[param->s2*3];
+	float *AdA = new float[param->s1];
+	float *BdB = new float[param->s2];
+	for(int i=0;i<param->s1;i++){
+		VmV(A+i*3, param->S+i*6+3, param->S+i*6);
+		AdA[i] = VdotV(A+i*3, A+i*3);
+	}
+	for(int i=0;i<param->s2;i++){
+		VmV(B+i*3, param->T+i*6+3, param->T+i*6);
+		BdB[i] = VdotV(B+i*3, B+i*3);
+	}
 	for(int i=0;i<param->s1;i++){
 		for(int j=0;j<param->s2;j++){
-			const float *cur_S = param->S+i*3;
-			const float *cur_T = param->T+j*3;
-			float dist = SegDist(cur_S, cur_T);
+			const float *cur_S = param->S+i*6;
+			const float *cur_T = param->T+j*6;
+			const float *cur_A = A+i*3;
+			const float *cur_B = B+j*3;
+			float dist = SegDist(cur_S, cur_T, cur_A, cur_B, AdA[i], BdB[j]);
 			if(dist < param->dist){
 				param->dist = dist;
 			}
 		}
 	}
+	delete A;
+	delete B;
+	delete AdA;
+	delete BdB;
 	return NULL;
 }
 
@@ -717,7 +696,7 @@ float SegDist_batch(const float *S, const float *T, int size1, int size2, int nu
 		}
 		params[i].s1 = min(start+each_thread, size1)-start;
 		params[i].s2 = size2;
-		params[i].S = S+start*3;
+		params[i].S = S+start*6;
 		params[i].T = T;
 		params[i].id = i+1;
 		params[i].dist = DBL_MAX;

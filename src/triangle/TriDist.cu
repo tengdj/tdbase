@@ -115,29 +115,21 @@ VdotV(const float V1[3], const float V2[3])
 }
 
 __device__
-inline float SegDist_kernel(const float *seg1, const float *seg2)
+inline float SegDist_kernel(const float *S, const float *T,
+							const float *A, const float *B)
 {
-	float X[3], Y[3];
 
-	const float *P = seg1;
-	const float *Q = seg2;
-
-	float A[3], B[3]; // vector of two segments
-	VmV(A, seg1+3, seg1);
-	VmV(B, seg2+3, seg2);
-
-	float Tmp[3], A_dot_A, B_dot_B, A_dot_B, A_dot_T, B_dot_T;
-
-	VmV(Tmp,Q,P);
-	A_dot_A = VdotV(A,A);
-	B_dot_B = VdotV(B,B);
-	A_dot_B = VdotV(A,B);
-	A_dot_T = VdotV(A,Tmp);
-	B_dot_T = VdotV(B,Tmp);
+	float t = 0.0, u = 0.0, dist = 0.0, t1 = 0.0;
+	float ST[3]; // temporary vector S->T
+	VmV(ST,T,S);
+	float A_dot_A = VdotV(A,A);
+	float B_dot_B = VdotV(B,B);
+	float A_dot_B = VdotV(A,B);
+	float A_dot_ST = VdotV(A,ST);
+	float B_dot_ST = VdotV(B,ST);
 
 	// t parameterizes ray P,A
 	// u parameterizes ray Q,B
-	float t,u;
 
 	// compute t for the closest point on ray P,A to
 	// ray Q,B
@@ -146,72 +138,62 @@ inline float SegDist_kernel(const float *seg1, const float *seg2)
 	if(denom == 0){
 		t = 0;
 	}else{
-		t = (A_dot_T*B_dot_B - B_dot_T*A_dot_B) / denom;
+		t = (A_dot_ST*B_dot_B - B_dot_ST*A_dot_B) / denom;
 	}
 
 	// find u for point on ray Q,B closest to point at t
-	if(B_dot_B==0){
-		u = 0;
-	}else{
-		u = (t*A_dot_B - B_dot_T)/B_dot_B;
-	}
-
+	// B_dot_B can never be 0
+	u = (t*A_dot_B - B_dot_ST)/B_dot_B;
 	// if u is on segment Q,B, t and u correspond to
 	// closest points, otherwise, recompute and
 	// clamp t
+
 	if (u <= 0) {
-		VcV(Y, Q);
-		if(A_dot_A==0){
-			t = 0;
-		}else{
-			t = A_dot_T / A_dot_A;
-		}
-
-		if (t <= 0) {
-			VcV(X, P);
-		} else if (t >= 1) {
-			VpV(X, P, A);
-		} else {
-			VpVxS(X, P, A, t);
-		}
+		u = 0;
+		t = A_dot_ST / A_dot_A;
 	} else if (u >= 1) {
-		VpV(Y, Q, B);
-		if(A_dot_A==0){
-			t = 0;
-		}else{
-			t = (A_dot_B + A_dot_T) / A_dot_A;
-		}
-
-		if (t <= 0) {
-			VcV(X, P);
-		} else if (t >= 1) {
-			VpV(X, P, A);
-		} else {
-			VpVxS(X, P, A, t);
-		}
-	} else { // on segment
-		VpVxS(Y, Q, B, u);
-		if (t <= 0) {
-			VcV(X, P);
-		} else if (t >= 1) {
-			VpV(X, P, A);
-		} else { // 0<=t<=1
-			VpVxS(X, P, A, t);
-		}
+		u = 1;
+		t = (A_dot_B + A_dot_ST) / A_dot_A;
+	}
+	if(t<=0){
+		t = 0;
+	} else if(t >= 1){
+		t = 1;
 	}
 
-	VmV(Tmp,X,Y);
-	return VdotV(Tmp,Tmp);
+	t1 = A[0]*t-ST[0]-B[0]*u;
+	dist += t1*t1;
+	t1 = A[1]*t-ST[1]-B[1]*u;
+	dist += t1*t1;
+	t1 = A[2]*t-ST[2]-B[2]*u;
+	dist += t1*t1;
+
+	return dist;
 }
 
 
 __global__
-void SegDist_cuda(const float *S, const float *T, float *dist){
+void SegDist_cuda(const float *S, const float *T,
+				  const float *A, const float *B,
+				  float *dist){
 	int x = blockIdx.x;
 	int y = threadIdx.x;
 	int id = x*blockDim.x+y;
+	const float *cur_S = S+x*6;
+	const float *cur_T = T+y*6;
+	const float *cur_A = A+x*3;
+	const float *cur_B = B+y*3;
+	float dd = SegDist_kernel(cur_S, cur_T, cur_A, cur_B);
+	//float dd = SegDist_kernel(S, T, A, B);
 
-	float dd = SegDist_kernel(S+x*3, T+y*3);
+//	float idf = (float)id;
+//	float AA[3],BB[3],
+//			SS[6]={2+idf,2+idf,2+idf,3+idf,3+idf,3+idf},
+//			TT[6]={0+idf,0+idf,0+idf,1+idf,1+idf,1+idf};
+//	VmV(AA,SS+3,SS);
+//	VmV(BB,TT+3,TT);
+//	float dd = SegDist_kernel(SS, TT, AA, BB);
+
 	if(dist[id]>dd){
 		dist[id] = dd;
 	}
@@ -232,77 +214,130 @@ void get_max(float *d, float *max_d, int batch)
 }
 
 __global__
-void test_cuda(int *d)
-{
-	int i = blockIdx.x*blockDim.x + threadIdx.x;
-	//int id = blockIdx.x;
-	//int dim = blockDim.x;
-	d[i] = threadIdx.x;
-
+void get_vector_kernel(float *S, float *A){
+	int id = blockIdx.x*blockDim.x+threadIdx.x;
+	float *cur_A = A+id*3;
+	VmV(cur_A, S+id*6+3, S+id*6);
 }
 
+
+// the computing capacity of the gpu
 int max_len_x = 200;
 int max_len_y = 512;
 
 float SegDist_batch_gpu(const float *S, const float *T, int size1, int size2){
-//	float *t_d, *t_d1;
-//	float d[10];
-//	cudaMalloc(&t_d, 10*sizeof(float));
-//	cudaMalloc(&t_d1, 10*sizeof(float));
-//	cudaMemset(t_d, 0, 10*sizeof(float));
-//
-//	get_max<<<2,5>>>(t_d1, t_d);
-//	cudaMemcpy(d, t_d, 10*sizeof(int), cudaMemcpyDeviceToHost);
-//	for(int i=0;i<10;i++){
-//		cout<<i<<" "<<d[i]<<endl;
-//	}
-//	return 0;
 
-	float *d_x, *d_y, *d_dist;
+	struct timeval start = get_cur_time();
+	float *d_S, *d_T, *d_A, *d_B;
+	float *d_dist;
 
 	int len_x = min(max_len_x, size1);
 	int len_y = min(max_len_y, size2);
 	float min_dist = DBL_MAX;
 
-	cudaMalloc(&d_x, (size1+1)*3*sizeof(float));
-	cudaMalloc(&d_y, (size2+1)*3*sizeof(float));
-	cudaMemcpy(d_x, S, (size1+1)*3*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_y, T, (size2+1)*3*sizeof(float), cudaMemcpyHostToDevice);
+	// copy data into device
+	cudaMalloc(&d_S, size1*6*sizeof(float));
+	cudaMalloc(&d_T, size2*6*sizeof(float));
+	cudaMemcpy(d_S, S, size1*6*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_T, T, size2*6*sizeof(float), cudaMemcpyHostToDevice);
 
+	// some temporary space for computation
+	cudaMalloc(&d_A, size1*3*sizeof(float));
+	cudaMalloc(&d_B, size2*3*sizeof(float));
+
+	// compute the vectors of segments in S and T, save to A and B
+	for(int i=0;i<size1;){
+		float *cur_S = d_S+i*6;
+		float *cur_A = d_A+i*3;
+
+		int b_num;
+		int t_num;
+		if(size1>i+max_len_x*max_len_y){
+			b_num = max_len_x;
+			t_num = max_len_y;
+			i += max_len_x*max_len_y;
+		}else if(size1 < i+max_len_y){
+			b_num = 1;
+			t_num = size1-i;
+			i = size1;
+		}else{
+			b_num = (size1-i)/max_len_y;
+			t_num = max_len_y;
+			i += b_num*max_len_y;
+		}
+		get_vector_kernel<<<b_num, t_num>>>(cur_S, cur_A);
+	}
+	for(int i=0;i<size2;){
+		float *cur_T = d_T+i*6;
+		float *cur_B = d_B+i*3;
+
+		int b_num;
+		int t_num;
+		if(size2>i+max_len_x*max_len_y){
+			b_num = max_len_x;
+			t_num = max_len_y;
+			i += max_len_x*max_len_y;
+		}else if(size2 < i+max_len_y){
+			b_num = 1;
+			t_num = size2-i;
+			i = size2;
+		}else{
+			b_num = (size2-i)/max_len_y;
+			t_num = max_len_y;
+			i += b_num*max_len_y;
+		}
+		get_vector_kernel<<<b_num, t_num>>>(cur_T, cur_B);
+	}
+	cudaDeviceSynchronize();
+
+	// space for the distances got from gpu
 	cudaMalloc(&d_dist, len_x*len_y*sizeof(float));
 	float *dist = new float[len_x*len_y];
 	for(int i=0;i<len_x*len_y;i++){
 		dist[i] = DBL_MAX;
 	}
 	cudaMemcpy(d_dist, dist, len_x*len_y*sizeof(float), cudaMemcpyHostToDevice);
+	cout<<"preprocessing data takes "<<get_time_elapsed(start)<<" ms"<<endl;
 
-	const float *cur_S;
-	const float *cur_T;
-
-	cout<<"start computing"<<endl;
+	start = get_cur_time();
+	const float *cur_S, *cur_T, *cur_A, *cur_B;
+	int times = 0;
 	for(int i=0;i<size1;i+=len_x){
 		for(int j=0;j<size2;j+=len_y){
-			//cout<<i<<" "<<j<<endl;
-			cur_S = d_x+i*3;
-			cur_T = d_y+j*3;
+			times++;
+			cur_S = d_S+i*6;
+			cur_T = d_T+j*6;
+			cur_A = d_A+i*3;
+			cur_B = d_B+j*3;
 			int tsize1 = min(len_x, size1-i);
 			int tsize2 = min(len_y, size2-j);
-
-			SegDist_cuda<<<tsize1, tsize2>>>(cur_S,cur_T,d_dist);
+			SegDist_cuda<<<tsize1, tsize2>>>(cur_S, cur_T, cur_A, cur_B, d_dist);
 		}
 	}
+	cudaDeviceSynchronize();
+	double time_elapsed = get_time_elapsed(start);
 
+	cout<<"run "<<times<<" rounds in "<<time_elapsed<<" ms, each round takes "<<time_elapsed/times<<" ms "<<endl;
+
+	start = get_cur_time();
 	cudaMemcpy(dist, d_dist, len_x*len_y*sizeof(float), cudaMemcpyDeviceToHost);
 	for(int i=0;i<len_x*len_y;i++){
 		if(min_dist > dist[i]){
 			min_dist = dist[i];
 		}
 	}
+	min_dist = sqrt(min_dist);
+	cout<<"reduce minimum distance takes "<<get_time_elapsed(start)<<" ms"<<endl;
 
-	cudaFree(d_x);
-	cudaFree(d_y);
+	start = get_cur_time();
+	cudaFree(d_S);
+	cudaFree(d_T);
+	cudaFree(d_A);
+	cudaFree(d_B);
 	cudaFree(d_dist);
 	delete dist;
+	cout<<"clean spaces takes "<<get_time_elapsed(start)<<" ms"<<endl;
 
-	return sqrt(min_dist);
+
+	return min_dist;
 }

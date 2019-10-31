@@ -1,9 +1,10 @@
 prefix=/usr/local
 
-CPPFLAGS	= -std=c++11 -g -O2 
+CPPFLAGS	= -std=c++11 -g -O2
 INCFLAGS	= -I ./ 
 LIBS		= -lgeos -lspatialindex -lboost_program_options -lstdc++ -L/usr/local/cuda/lib64 -lgmp -lmpfr -lpthread -lcuda -lcudart
 CGALFLAGS	= -lCGAL -Wl,-rpath
+NVCCFLAGS 	= -arch sm_30
 
 ifdef DEBUG
     CPPFLAGS += -DDEBUG
@@ -32,7 +33,7 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 SRCS_CU := $(wildcard */*.cu)
 OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS))
 %_cu.o: %.cu
-	$(NVCC) $(INCFLAGS) $(CPPFLAGS) -c $? -o $@
+	$(NVCC) $(INCFLAGS) $(CPPFLAGS) $(NVCCFLAGS) -c $? -o $@
 
 #compile additional range coder .c files
 RC_SRCS := $(wildcard PPMC/rangeCoder/*.c)
