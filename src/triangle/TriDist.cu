@@ -150,11 +150,12 @@ inline float SegDist_kernel(const float *S, const float *T,
 
 	if (u <= 0) {
 		u = 0;
-		t = A_dot_ST / A_dot_A;
 	} else if (u >= 1) {
 		u = 1;
-		t = (A_dot_B + A_dot_ST) / A_dot_A;
 	}
+
+	t = (A_dot_B*u+A_dot_ST)/A_dot_A;
+
 	if(t<=0){
 		t = 0;
 	} else if(t >= 1){
@@ -184,14 +185,11 @@ void SegDist_cuda(const float *S, const float *T,
 	const float *cur_A = A+x*3;
 	const float *cur_B = B+y*3;
 	float dd = SegDist_kernel(cur_S, cur_T, cur_A, cur_B);
-	//float dd = SegDist_kernel(S, T, A, B);
 
 //	float idf = (float)id;
-//	float AA[3],BB[3],
+//	float AA[3]={1,1,1},BB[3]={1,1,1},
 //			SS[6]={2+idf,2+idf,2+idf,3+idf,3+idf,3+idf},
 //			TT[6]={0+idf,0+idf,0+idf,1+idf,1+idf,1+idf};
-//	VmV(AA,SS+3,SS);
-//	VmV(BB,TT+3,TT);
 //	float dd = SegDist_kernel(SS, TT, AA, BB);
 
 	if(dist[id]>dd){
