@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM nvidia/cuda
 
 MAINTAINER Dejun Teng<tengdj@gmail.com>
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/ \
