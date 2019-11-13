@@ -49,20 +49,26 @@ TRIANGLE_SRCS := $(wildcard triangle/*.cpp)
 TRIANGLE_OBJS := $(patsubst %.cpp,%.o,$(TRIANGLE_SRCS))
 
 
-all: compress decompress triangle test
+all: compress decompress triangle test skeleton
 
-compress: $(RC_OBJS) $(PPMC_OBJS) test/compress.o
+compress: test/compress.o $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-decompress: $(RC_OBJS) $(PPMC_OBJS) test/decompress.o
+decompress: test/decompress.o $(RC_OBJS) $(PPMC_OBJS) 
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+
+skeleton: test/skeleton.o index/Skeleton.o $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 
-triangle: triangle/TriDist_cu.o triangle/TriDist.o $(PPMC_OBJS) $(RC_OBJS) test/Triangle_Compute.o
+
+triangle:  test/Triangle_Compute.o triangle/TriDist_cu.o triangle/TriDist.o $(PPMC_OBJS) $(RC_OBJS)
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) $(CGALFLAGS) -o ../build/$@
 	
 test: test/test.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
+	
+
 	
 .PHONY: all clean
 

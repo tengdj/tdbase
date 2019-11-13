@@ -7,13 +7,9 @@
 
 #ifndef RTREE_H_
 #define RTREE_H_
-#include <CGAL/Simple_cartesian.h>
-#include <CGAL/Polyhedron_3.h>
+
 #include <stdlib.h>
-
-typedef CGAL::Simple_cartesian<float> RTreeKernel;
-typedef RTreeKernel::Point_3 Point;
-
+#include <vector>
 
 namespace hispeed{
 
@@ -38,9 +34,12 @@ class AlignedRTree{
 public:
 	std::vector<long> get(mbb &q);
 
-
-
 };
+
+
+
+
+
 
 }
 #endif /* RTREE_H_ */
