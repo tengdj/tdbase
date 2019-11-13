@@ -5,7 +5,7 @@
  *      Author: teng
  */
 
-#include "RTree.h"
+#include "index.h"
 
 
 namespace hispeed{

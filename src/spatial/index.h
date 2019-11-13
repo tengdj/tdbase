@@ -1,22 +1,18 @@
 /*
- * RTree.h
+ * index.h
  *
  *  Created on: Oct 30, 2019
  *      Author: teng
  */
 
-#ifndef RTREE_H_
-#define RTREE_H_
+#ifndef HISPEED_INDEX_H_
+#define HISPEED_INDEX_H_
 
 #include <stdlib.h>
 #include <vector>
+#include "spatial.h"
 
 namespace hispeed{
-
-typedef struct mbb{
-	Point min;
-	Point max;
-} mbb;
 
 typedef struct range{
 	float low;
@@ -37,9 +33,10 @@ public:
 };
 
 
-
-
-
+inline mbb get_mbb(MyMesh *mesh){
+	mbb ret(mesh->bbMin, mesh->bbMax);
+	return ret;
+}
 
 }
-#endif /* RTREE_H_ */
+#endif /* HISPEED_INDEX_H_ */

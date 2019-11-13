@@ -5,7 +5,7 @@
  *      Author: teng
  */
 
-#include "skeleton.h"
+#include "spatial.h"
 
 
 namespace hispeed{
@@ -15,7 +15,7 @@ void get_skeleton_points(Skeleton &skeleton, std::vector<Point> &P){
 		auto p = skeleton[v].point;
 		for(vertex_descriptor vd : skeleton[v].vertices){
 			uint idx = vd;
-			//cout << "2 " << p << "  " << idx << "\n";
+			cout <<v<< " " << idx << "\n";
 		}
 		P.push_back(Point(p.x(),p.y(),p.z()));
     }
@@ -25,7 +25,7 @@ void get_skeleton_edges(Skeleton &skeleton){
 	for(Skeleton_edge e : CGAL::make_range(edges(skeleton))){
 		const Point& s = skeleton[source(e, skeleton)].point;
 		const Point& t = skeleton[target(e, skeleton)].point;
-		cout << "2 "<< s << " " << t << "\n";
+		cout << "2 "<<source(e, skeleton)<<" "<< s << " " <<target(e, skeleton)<<" "<< t << "\n";
 	}
 }
 
@@ -67,6 +67,29 @@ Skeleton * extract_skeleton(MyMesh *currentMesh){
 #ifdef DEBUG
         std::cerr<<"extracted"<<endl;
 #endif
+
+        int index = 0;
+        char path[256];
+        for(Skeleton_vertex v : CGAL::make_range(vertices(*skeleton))){
+        	mbb box;
+            for(vertex_descriptor vd : (*skeleton)[v].vertices){
+            	auto p = get(CGAL::vertex_point, tmesh, vd);
+            	box.update(p);
+            }
+			Polyhedron *pbox = hispeed::make_cube(box);
+			sprintf(path,"offs/%d.off",index++);
+			if(index%5==0){
+				hispeed::print_mesh_file(pbox,path);
+			}
+			delete pbox;
+        }
+//    	BOOST_FOREACH(Skeleton_vertex v, boost::vertices(*skeleton)){
+//
+//    		for(vertex_descriptor vd : (*skeleton)[v].vertices){
+//    			box.update(points[vd]);
+//    		}
+
+//    	}
         return skeleton;
 }
 
