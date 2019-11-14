@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <vector>
 #include "spatial.h"
+#include "../geometry/aab.h"
 
 namespace hispeed{
 
@@ -21,10 +22,10 @@ typedef struct range{
 
 
 class AlignedRTree{
-	mbb *rtree;
+	aab *rtree;
 public:
-	range get_range(mbb &, mbb &);
-	std::vector<long> get(mbb &q);
+	range get_range(aab &, aab &);
+	std::vector<long> get(aab &q);
 
 };
 

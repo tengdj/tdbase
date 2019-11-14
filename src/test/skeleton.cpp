@@ -21,11 +21,11 @@ int main(int argc, char **argv){
 	decompressed->set_skeleton_sample_rate(20);
 	decompressed->generate_mbbs();
 
-	std::vector<mbb> skeleton_mbbs = decompressed->get_mbbs();
+	std::vector<aab> skeleton_mbbs = decompressed->get_mbbs();
 
 	int index = 0;
 	char path[256];
-	for(mbb box:skeleton_mbbs){
+	for(aab box:skeleton_mbbs){
 		Polyhedron *pbox = make_cube(box);
 		std::stringstream os;
 		sprintf(path,"offs/%d.off",index++);

@@ -327,7 +327,7 @@ void MyMesh::generate_mbbs(){
 
 	mbbs.clear();
 	for(int i=0;i<skeleton_points.size();i++){
-		mbbs.push_back(mbb());
+		mbbs.push_back(aab());
 	}
 
 	// reset the box_id of all facets

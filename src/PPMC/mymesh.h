@@ -55,9 +55,11 @@
 // Range coder includes.
 #include "../PPMC/rangeCoder/qsmodel.h"
 #include "../PPMC/rangeCoder/rangecod.h"
+#include "../geometry/aab.h"
 
-typedef CGAL::Simple_cartesian<float> MyKernel;
-typedef MyKernel::Point_3 Point;
+// moved to aab.h
+//typedef CGAL::Simple_cartesian<float> MyKernel;
+//typedef MyKernel::Point_3 Point;
 typedef MyKernel::Vector_3 Vector;
 
 typedef CGAL::Simple_cartesian<double> MyKernelDouble;
@@ -75,6 +77,8 @@ typedef CGAL::Mean_curvature_flow_skeletonization<Triangle_mesh> Skeletonization
 typedef Skeletonization::Skeleton                             Skeleton;
 typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
 typedef Skeleton::edge_descriptor                             Skeleton_edge;
+
+using namespace hispeed;
 
 // My face type has a vertex flag
 template <class Refs>
@@ -361,56 +365,6 @@ enum Operation {Idle,
                 UndecimationConquest, InsertedEdgeDecoding // Decompression.
                 };
 
-
-class mbb{
-public:
-	float min[3];
-	float max[3];
-	mbb(){
-		for(int i=0;i<3;i++){
-			min[i] = DBL_MAX;
-			max[i] = -DBL_MAX;
-		}
-	}
-	mbb(Point min, Point max){
-		for(int i=0;i<3;i++){
-			this->min[i] = min[i];
-			this->max[i] = max[i];
-		}
-	}
-	mbb(std::vector<Point> &points){
-		for(Point p:points){
-			update(p);
-		}
-	}
-
-	void update(Point &p){
-		for(int i=0;i<3;i++){
-			if(min[i]>p[i]){
-				min[i] = p[i];
-			}
-			if(max[i]<p[i]){
-				max[i] = p[i];
-			}
-		}
-	}
-
-	friend std::ostream&
-	operator<<(std::ostream& os, const mbb &p){
-		for(int i=0;i<3;i++){
-			os<<p.min[i]<<" ";
-		}
-		os<<"-> ";
-		for(int i=0;i<3;i++){
-			os<<p.max[i]<<" ";
-		}
-		return os;
-	}
-
-
-};
-
-
 class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
 
@@ -571,7 +525,7 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	 * for skeleton index
 	 * */
 	Skeleton *skeleton = NULL;
-	std::vector<mbb> mbbs;
+	std::vector<aab> mbbs;
 	// instead of using all the points
 	// in the skeleton, sample it to
 	// generate less mbbs
@@ -587,10 +541,11 @@ public:
 		assert(rate>0&&rate<=100);
 		skeleton_sample_rate = rate;
 	}
-	// generate local mbbs with the skeleton extracted
+	// generate local minimum boundary boxes
+	// with the skeleton extracted
 	void generate_mbbs();
 
-	inline std::vector<mbb>& get_mbbs(){
+	inline std::vector<aab>& get_mbbs(){
 		return mbbs;
 	}
 

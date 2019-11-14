@@ -13,6 +13,7 @@
 
 #include "../PPMC/ppmc.h"
 #include "../util/util.h"
+#include "../geometry/aab.h"
 
 using namespace CGAL;
 using namespace std;
@@ -21,7 +22,7 @@ using namespace std;
 
 namespace hispeed{
 
-Polyhedron *make_cube(mbb box);
+Polyhedron *make_cube(aab box);
 
 void write_polyhedron(Polyhedron *mesh, char *path);
 // some utility functions to operate mesh polyhedrons

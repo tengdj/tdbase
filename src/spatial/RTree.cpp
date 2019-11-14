@@ -11,16 +11,18 @@
 namespace hispeed{
 
 
-std::vector<long> AlignedRTree::get(mbb &q){
-
+std::vector<long> AlignedRTree::get(aab &q){
+	std::vector<long> ret;
+	return ret;
 }
 
 
 /*
  * get the distance range between any point in box a, and b
  * */
-range AlignedRTree::get_range(mbb &a, mbb &b){
-	;
+range AlignedRTree::get_range(aab &a, aab &b){
+	range r;
+	return r;
 }
 
 

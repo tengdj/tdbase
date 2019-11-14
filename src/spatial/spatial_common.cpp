@@ -6,6 +6,7 @@
  */
 
 #include "spatial.h"
+#include "../geometry/aab.h"
 
 namespace hispeed{
 
@@ -14,7 +15,7 @@ namespace hispeed{
  * return a axis aligned box from the min and max points given
  *
  * */
-Polyhedron *make_cube(mbb box) {
+Polyhedron *make_cube(aab box) {
 
     // appends a cube of size [0,1]^3 to the polyhedron P.
 	Polyhedron *P = new Polyhedron();
