@@ -24,21 +24,6 @@
 #include <algorithm>
 
 
-void MyMesh::teng_test(){
-	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		Halfedge_handle heh = fit->halfedge();
-		Halfedge_handle hIt = heh;
-		do {
-			Vertex_handle vh = hIt->vertex();
-			Point p = vh->point();
-			cout<<p<<endl;
-			hIt = hIt->next();
-		} while (hIt != heh);
-		break;
-	}
-	cout<<size_of_facets()<<" "<<size_of_halfedges()/2<<" "<<size_of_vertices()<<endl;
-}
-
 MyMesh::MyMesh(unsigned i_decompPercentage,
                const int i_mode,
                unsigned i_quantBits,
@@ -261,3 +246,118 @@ Point MyMesh::getPos(PointInt p) const
                  (p.y() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.y(),
                  (p.z() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.z());
 }
+
+
+///////////////////////teng/////////////////////////////////
+
+
+void MyMesh::teng_test(){
+	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		Halfedge_handle heh = fit->halfedge();
+		Halfedge_handle hIt = heh;
+		do {
+			Vertex_handle vh = hIt->vertex();
+			Point p = vh->point();
+			cout<<p<<endl;
+			hIt = hIt->next();
+		} while (hIt != heh);
+		break;
+	}
+	cout<<size_of_facets()<<" "<<size_of_halfedges()/2<<" "<<size_of_vertices()<<endl;
+}
+
+/*
+ *
+ * extract the skeleton of current polyhedron
+ *
+ * */
+void MyMesh::extract_skeleton(){
+
+	if(skeleton == NULL){
+		skeleton = new Skeleton();
+	}
+	std::stringstream os;
+	os << *this;
+	Triangle_mesh tmesh;
+	os >> tmesh;
+	if (!CGAL::is_triangle_mesh(tmesh)){
+		std::cerr << "Input geometry is not triangulated." << std::endl;
+		exit(-1);
+	}
+	try{
+		Skeletonization mcs(tmesh);
+		// 1. Contract the mesh by mean curvature flow.
+		mcs.contract_geometry();
+		// 2. Collapse short edges and split bad triangles.
+		mcs.collapse_edges();
+		mcs.split_faces();
+		// 3. Fix degenerate vertices.
+		mcs.detect_degeneracies();
+		// Perform the above three steps in one iteration.
+		mcs.contract();
+		// Iteratively apply step 1 to 3 until convergence.
+		mcs.contract_until_convergence();
+		// Convert the contracted mesh into a curve skeleton and
+		// get the correspondent surface points
+		mcs.convert_to_skeleton(*skeleton);
+
+	}catch(std::exception &exc){
+		std::cerr<<exc.what()<<std::endl;
+		exit(-1);
+	}
+}
+
+
+void MyMesh::generate_mbbs(){
+	if(skeleton==NULL){
+		extract_skeleton();
+	}
+	assert(skeleton!=NULL);
+
+	// get the points in the skeleton
+	std::vector<Point> skeleton_points;
+	srand(315);
+	BOOST_FOREACH(Skeleton_vertex v, boost::vertices(*skeleton)){
+		if(rand()%100+1>skeleton_sample_rate){
+			continue;
+		}
+		auto p = (*skeleton)[v].point;
+		skeleton_points.push_back(Point(p.x(),p.y(),p.z()));
+	}
+
+	mbbs.clear();
+	for(int i=0;i<skeleton_points.size();i++){
+		mbbs.push_back(mbb());
+	}
+
+	// reset the box_id of all facets
+	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		fit->set_box_id(-1);
+	}
+
+	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		if(fit->get_box_id()==-1){
+			Halfedge_handle heh = fit->halfedge();
+			Halfedge_handle hIt = heh;
+			do {
+				Vertex_handle vh = hIt->vertex();
+				Point p = vh->point();
+				// update the corresponding mbb
+				int min_index = 0;
+				float min_dist = DBL_MAX;
+				for(int i=0;i<skeleton_points.size();i++){
+					float dist = get_distance(p,skeleton_points[i]);
+					if(dist<min_dist){
+						min_index = i;
+						min_dist = dist;
+					}
+				}
+				mbbs[min_index].update(p);
+				hIt = hIt->next();
+			} while (hIt != heh);
+		}
+	}
+
+}
+
+

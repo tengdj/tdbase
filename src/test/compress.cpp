@@ -25,6 +25,7 @@
 
 using namespace CGAL;
 using namespace std;
+using namespace hispeed;
 
 int i_mode = COMPRESSION_MODE_ID; // compression mode
 unsigned i_quantBit = 12;

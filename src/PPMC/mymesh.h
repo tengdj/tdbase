@@ -23,22 +23,38 @@
 #include <iostream>
 #include <fstream>
 #include <stdint.h>
+#include <queue>
+#include <assert.h>
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/circulator.h>
 #include <CGAL/bounding_box.h>
 
-
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/IO/Polyhedron_iostream.h>
-//#include <CGAL/IO/Polyhedron_VRML_1_ostream.h>
+#include <CGAL/box_intersection_d.h>
+#include <CGAL/Bbox_3.h>
+#include <CGAL/intersections.h>
+#include <CGAL/Nef_polyhedron_3.h>
+#include <CGAL/Triangulation_3.h>
+#include <CGAL/convex_decomposition_3.h>
+#include <CGAL/Tetrahedron_3.h>
+#include <CGAL/Surface_mesh.h>
 
-#include <queue>
+#include <CGAL/Delaunay_triangulation_3.h>
+#include <CGAL/boost/graph/graph_traits_Polyhedron_3.h>
+#include <CGAL/boost/graph/properties_Polyhedron_3.h>
+#include <CGAL/extract_mean_curvature_flow_skeleton.h>
+#include <CGAL/Delaunay_triangulation_3.h>
+#include <CGAL/boost/graph/split_graph_into_polylines.h>
+#include <CGAL/OFF_to_nef_3.h>
+#include <boost/foreach.hpp>
+
 
 // Range coder includes.
 #include "../PPMC/rangeCoder/qsmodel.h"
 #include "../PPMC/rangeCoder/rangecod.h"
-#include <assert.h>
 
 typedef CGAL::Simple_cartesian<float> MyKernel;
 typedef MyKernel::Point_3 Point;
@@ -52,6 +68,14 @@ typedef MyKernelInt::Point_3 PointInt;
 typedef MyKernelInt::Vector_3 VectorInt;
 
 
+typedef CGAL::Polyhedron_3<MyKernel>	Polyhedron;
+typedef CGAL::Surface_mesh<Point>                             Triangle_mesh;
+typedef boost::graph_traits<Triangle_mesh>::vertex_descriptor vertex_descriptor;
+typedef CGAL::Mean_curvature_flow_skeletonization<Triangle_mesh> Skeletonization;
+typedef Skeletonization::Skeleton                             Skeleton;
+typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
+typedef Skeleton::edge_descriptor                             Skeleton_edge;
+
 // My face type has a vertex flag
 template <class Refs>
 class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
@@ -60,7 +84,7 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
     enum ProcessedFlag {NotProcessed, Processed};
 
   public:
-    MyFace(): flag(Unknown), processedFlag(NotProcessed) {}
+    MyFace(): flag(Unknown), processedFlag(NotProcessed), box_id(-1){}
 
 	inline void resetState()
 	{
@@ -130,12 +154,23 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 		residual = v;
 	}
 
+
+	inline void set_box_id(int id){
+		box_id = id;
+	}
+	inline int get_box_id(){
+		return box_id;
+	}
+
   private:
 	Flag flag;
 	ProcessedFlag processedFlag;
 
 	Point removedVertexPos;
 	VectorInt residual;
+
+    // contain the box of this edge belongs to
+    int box_id;
 };
 
 // My vertex type has a isConquered flag
@@ -211,7 +246,7 @@ class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 
   public:
         MyHalfedge(): flag(NotYetInQueue), flag2(Original),
-        processedFlag(NotProcessed) {}
+        processedFlag(NotProcessed){}
 
 	inline void resetState()
 	{
@@ -249,56 +284,56 @@ class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 	  return flag==InQueue2;
 	}
 
-        /* Processed flag */
+	/* Processed flag */
 
-        inline void resetProcessedFlag()
-        {
-          processedFlag = NotProcessed;
-        }
+	inline void resetProcessedFlag()
+	{
+	  processedFlag = NotProcessed;
+	}
 
-        inline void setProcessed()
-        {
-            processedFlag = Processed;
-        }
+	inline void setProcessed()
+	{
+		processedFlag = Processed;
+	}
 
-        inline bool isProcessed() const
-        {
-            return (processedFlag == Processed);
-        }
+	inline bool isProcessed() const
+	{
+		return (processedFlag == Processed);
+	}
 
-        /* Flag 2 */
+	/* Flag 2 */
 
-        inline void setAdded()
-        {
-          assert(flag2 == Original);
-          flag2=Added;
-        }
+	inline void setAdded()
+	{
+	  assert(flag2 == Original);
+	  flag2=Added;
+	}
 
-        inline void setNew()
-        {
-            assert(flag2 == Original);
-            flag2 = New;
-        }
+	inline void setNew()
+	{
+		assert(flag2 == Original);
+		flag2 = New;
+	}
 
-        inline bool isAdded() const
-        {
-          return flag2==Added;
-        }
+	inline bool isAdded() const
+	{
+	  return flag2==Added;
+	}
 
 	inline bool isOriginal() const
 	{
 	  return flag2==Original;
 	}
 
-        inline bool isNew() const
-        {
-          return flag2 == New;
-        }
+	inline bool isNew() const
+	{
+	  return flag2 == New;
+	}
 
   private:
 	Flag flag;
 	Flag2 flag2;
-        ProcessedFlag processedFlag;
+    ProcessedFlag processedFlag;
 
 };
 
@@ -327,170 +362,254 @@ enum Operation {Idle,
                 };
 
 
+class mbb{
+public:
+	float min[3];
+	float max[3];
+	mbb(){
+		for(int i=0;i<3;i++){
+			min[i] = DBL_MAX;
+			max[i] = -DBL_MAX;
+		}
+	}
+	mbb(Point min, Point max){
+		for(int i=0;i<3;i++){
+			this->min[i] = min[i];
+			this->max[i] = max[i];
+		}
+	}
+	mbb(std::vector<Point> &points){
+		for(Point p:points){
+			update(p);
+		}
+	}
+
+	void update(Point &p){
+		for(int i=0;i<3;i++){
+			if(min[i]>p[i]){
+				min[i] = p[i];
+			}
+			if(max[i]<p[i]){
+				max[i] = p[i];
+			}
+		}
+	}
+
+	friend std::ostream&
+	operator<<(std::ostream& os, const mbb &p){
+		for(int i=0;i<3;i++){
+			os<<p.min[i]<<" ";
+		}
+		os<<"-> ";
+		for(int i=0;i<3;i++){
+			os<<p.max[i]<<" ";
+		}
+		return os;
+	}
+
+
+};
+
+
 class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
 
   typedef CGAL::Polyhedron_3< MyKernel, MyItems > PolyhedronT;
 
   public:
-  	  MyMesh(  unsigned i_decompPercentage,
-               const int i_mode,
-               unsigned i_quantBits,
-               bool b_allowConcaveFaces,
-			   const char* data, long length);
+	MyMesh(  unsigned i_decompPercentage,
+		   const int i_mode,
+		   unsigned i_quantBits,
+		   bool b_allowConcaveFaces,
+		   const char* data, long length);
 
 	~MyMesh();
 
-        void stepOperation();
-        void batchOperation();
-        void completeOperation();
+	void stepOperation();
+	void batchOperation();
+	void completeOperation();
 
-        Vector computeNormal(Facet_const_handle f) const;
-        Vector computeVertexNormal(Halfedge_const_handle heh) const;
+	Vector computeNormal(Facet_const_handle f) const;
+	Vector computeVertexNormal(Halfedge_const_handle heh) const;
 
 	Point barycenter(Facet_const_handle f) const;
 
-        float getBBoxDiagonal() const;
-        Vector getBBoxCenter() const;
+	float getBBoxDiagonal() const;
+	Vector getBBoxCenter() const;
 
-    public:
-        // Protoptypes.
+	// General
+	void computeBoundingBox();
+	void determineQuantStep();
+	void quantizeVertexPositions();
+	PointInt getQuantizedPos(Point p) const;
+	Point getPos(PointInt p) const;
 
-        // General
-        void computeBoundingBox();
-        void determineQuantStep();
-        void quantizeVertexPositions();
-        PointInt getQuantizedPos(Point p) const;
-        Point getPos(PointInt p) const;
+	// Compression
+	void startNextCompresssionOp();
+	void beginDecimationConquest();
+	void beginInsertedEdgeCoding();
+	void decimationStep();
+	void RemovedVertexCodingStep();
+	void InsertedEdgeCodingStep();
+	Halfedge_handle vertexCut(Halfedge_handle startH);
+	void determineResiduals();
+	void encodeInsertedEdges(unsigned i_operationId);
+	void encodeRemovedVertices(unsigned i_operationId);
+	void lift();
 
-        // Compression
-        void startNextCompresssionOp();
-        void beginDecimationConquest();
-        void beginInsertedEdgeCoding();
-        void decimationStep();
-        void RemovedVertexCodingStep();
-        void InsertedEdgeCodingStep();
-        Halfedge_handle vertexCut(Halfedge_handle startH);
-        void determineResiduals();
-        void encodeInsertedEdges(unsigned i_operationId);
-        void encodeRemovedVertices(unsigned i_operationId);
-        void lift();
+	// Compression geometry and connectivity tests.
+	bool isRemovable(Vertex_const_handle v) const;
+	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
+	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
+	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
+	float removalError(Vertex_const_handle v,
+					   const std::vector<Vertex_const_handle> &polygon) const;
 
-        // Compression geometry and connectivity tests.
-        bool isRemovable(Vertex_const_handle v) const;
-        bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
-        bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
-        bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
-        float removalError(Vertex_const_handle v,
-                           const std::vector<Vertex_const_handle> &polygon) const;
-
-        // Decompression
-        void startNextDecompresssionOp();
-        void beginUndecimationConquest();
-        void beginInsertedEdgeDecoding();
-        void undecimationStep();
-        void InsertedEdgeDecodingStep();
-        void insertRemovedVertices();
-        void removeInsertedEdges();
-        void decodeGeometrySym(Face_handle fh);
-        void beginRemovedVertexCodingConquest();
-        void determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh);
+	// Decompression
+	void startNextDecompresssionOp();
+	void beginUndecimationConquest();
+	void beginInsertedEdgeDecoding();
+	void undecimationStep();
+	void InsertedEdgeDecodingStep();
+	void insertRemovedVertices();
+	void removeInsertedEdges();
+	void decodeGeometrySym(Face_handle fh);
+	void beginRemovedVertexCodingConquest();
+	void determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh);
 
 
-        // Utils
-        Vector computeNormal(Halfedge_const_handle heh_gate) const;
-        Vector computeNormal(const std::vector<Vertex_const_handle> & polygon) const;
-        Vector computeNormal(Point p[3]) const;
-        Point barycenter(Halfedge_handle heh_gate) const;
-        Point barycenter(const std::vector<Vertex_const_handle> &polygon) const;
-        unsigned vertexDegreeNotNew(Vertex_const_handle vh) const;
-        VectorInt avgLaplacianVect(Halfedge_handle heh_gate) const;
-        float triangleSurface(const Point p[]) const;
-        float edgeLen(Halfedge_const_handle heh) const;
-        float facePerimeter(const Face_handle fh) const;
-        float faceSurface(Halfedge_handle heh) const;
-        void pushHehInit();
+	// Utils
+	Vector computeNormal(Halfedge_const_handle heh_gate) const;
+	Vector computeNormal(const std::vector<Vertex_const_handle> & polygon) const;
+	Vector computeNormal(Point p[3]) const;
+	Point barycenter(Halfedge_handle heh_gate) const;
+	Point barycenter(const std::vector<Vertex_const_handle> &polygon) const;
+	unsigned vertexDegreeNotNew(Vertex_const_handle vh) const;
+	VectorInt avgLaplacianVect(Halfedge_handle heh_gate) const;
+	float triangleSurface(const Point p[]) const;
+	float edgeLen(Halfedge_const_handle heh) const;
+	float facePerimeter(const Face_handle fh) const;
+	float faceSurface(Halfedge_handle heh) const;
+	void pushHehInit();
 
-        // IOs
-        void writeCompressedData();
-        void readCompressedData();
-        void writeFloat(float f);
-        float readFloat();
-        void writeInt16(int16_t i);
-        int16_t readInt16();
-        void writeBaseMesh();
-        void readBaseMesh();
-        void writeMeshOff(const char psz_filePath[]) const;
-        void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const;
+	// IOs
+	void writeCompressedData();
+	void readCompressedData();
+	void writeFloat(float f);
+	float readFloat();
+	void writeInt16(int16_t i);
+	int16_t readInt16();
+	void writeBaseMesh();
+	void readBaseMesh();
+	void writeMeshOff(const char psz_filePath[]) const;
+	void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const;
 
-        //todo teng debug
-        void teng_test();
+	// Variables.
 
-        // Variables.
+	// Gate queues
+	std::queue<Halfedge_handle> gateQueue;
+	std::queue<Halfedge_handle> problematicGateQueue;
 
-        // Gate queues
-        std::queue<Halfedge_handle> gateQueue;
-        std::queue<Halfedge_handle> problematicGateQueue;
+	// Processing mode: 0 for compression and 1 for decompression.
+	int i_mode;
+	bool b_jobCompleted; // True if the job has been completed.
 
-        // Processing mode: 0 for compression and 1 for decompression.
-        int i_mode;
-        bool b_jobCompleted; // True if the job has been completed.
+	Operation operation;
+	unsigned i_curDecimationId;
+	unsigned i_nbDecimations;
+	unsigned i_curQuantizationId;
+	unsigned i_nbQuantizations;
+	unsigned i_curOperationId;
 
-        Operation operation;
-        unsigned i_curDecimationId;
-        unsigned i_nbDecimations;
-        unsigned i_curQuantizationId;
-        unsigned i_nbQuantizations;
-        unsigned i_curOperationId;
+	unsigned i_levelNotConvexId;
+	bool b_allowConvexity;
 
-        unsigned i_levelNotConvexId;
-        bool b_allowConvexity;
+	// The vertices of the edge that is the departure of the coding and decoding conquests.
+	Vertex_handle vh_departureConquest[2];
+	// Geometry symbol list.
+	std::deque<std::deque<VectorInt> > geometrySym;
+	std::deque<std::deque<unsigned> > adaptiveQuantSym;
 
-        // The vertices of the edge that is the departure of the coding and decoding conquests.
-        Vertex_handle vh_departureConquest[2];
-        // Geometry symbol list.
-        std::deque<std::deque<VectorInt> > geometrySym;
-        std::deque<std::deque<unsigned> > adaptiveQuantSym;
+	// Connectivity symbol list.
+	std::deque<std::deque<unsigned> > connectFaceSym;
+	std::deque<std::deque<unsigned> > connectEdgeSym;
 
-        // Connectivity symbol list.
-        std::deque<std::deque<unsigned> > connectFaceSym;
-        std::deque<std::deque<unsigned> > connectEdgeSym;
+	// Size used for the encoding.
+	size_t connectivitySize;
+	size_t geometrySize;
 
-        // Size used for the encoding.
-        size_t connectivitySize;
-        size_t geometrySize;
+	// Number of vertices removed during current conquest.
+	unsigned i_nbRemovedVertices;
 
-        // Number of vertices removed during current conquest.
-        unsigned i_nbRemovedVertices;
+	Point bbMin;
+	Point bbMax;
+	float f_bbVolume;
 
-        Point bbMin;
-        Point bbMax;
-        float f_bbVolume;
+	unsigned i_quantBits;
+	float f_quantStep;
+	float f_adaptQuantRescaling;
 
-        unsigned i_quantBits;
-        float f_quantStep;
-        float f_adaptQuantRescaling;
+	// Initial number of vertices and faces.
+	size_t i_nbVerticesInit;
+	size_t i_nbFacetsInit;
 
-        // Initial number of vertices and faces.
-        size_t i_nbVerticesInit;
-        size_t i_nbFacetsInit;
+	// The compressed data;
+	char *p_data;
+	size_t dataOffset; // the offset to read and write.
 
-        // The compressed data;
-        char *p_data;
-        size_t dataOffset; // the offset to read and write.
+	unsigned i_decompPercentage;
 
-        unsigned i_decompPercentage;
+	// Compression and decompression variables.
+	rangecoder rangeCoder;
 
-        // Compression and decompression variables.
-        rangecoder rangeCoder;
+	// Range coder data model.
+	qsmodel alphaBetaModel, quantModel, connectModel;
 
-        // Range coder data model.
-        qsmodel alphaBetaModel, quantModel, connectModel;
+	int alphaBetaMin;
 
-        int alphaBetaMin;
+	/*
+	 * for skeleton index
+	 * */
+	Skeleton *skeleton = NULL;
+	std::vector<mbb> mbbs;
+	// instead of using all the points
+	// in the skeleton, sample it to
+	// generate less mbbs
+	// todo replace it with a rule based
+	// policy
+	int skeleton_sample_rate = 100;
 
+public:
+	//todo teng debug
+	void teng_test();
+	void extract_skeleton();
+	inline void set_skeleton_sample_rate(int rate){
+		assert(rate>0&&rate<=100);
+		skeleton_sample_rate = rate;
+	}
+	// generate local mbbs with the skeleton extracted
+	void generate_mbbs();
 
+	inline std::vector<mbb>& get_mbbs(){
+		return mbbs;
+	}
+
+	inline void get_vertices(std::vector<Point> &points){
+		for(MyMesh::Vertex_iterator v = vertices_begin();
+				v != vertices_end(); ++v){
+			points.push_back(v->point());
+		}
+	}
 };
+
+// get the Euclid distance of two points
+inline float get_distance(const Point &p1, const Point &p2){
+	float dist = 0;
+	for(int i=0;i<3;i++){
+		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
+	}
+	return dist;
+}
 
 
 #endif

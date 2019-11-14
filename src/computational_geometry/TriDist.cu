@@ -54,6 +54,8 @@
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
 
+namespace hispeed{
+
 inline void __cudaSafeCall( cudaError err)
 {
 #ifdef CUDA_ERROR_CHECK
@@ -338,4 +340,6 @@ float SegDist_batch_gpu(const float *S, const float *T, int size1, int size2){
 
 
 	return min_dist;
+}
+
 }

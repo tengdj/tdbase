@@ -48,19 +48,19 @@ PPMC_OBJS := $(patsubst %.cpp,%.o,$(PPMC_SRCS))
 SPATIAL_SRCS := $(wildcard spatial/*.cpp)
 SPATIAL_OBJS := $(patsubst %.cpp,%.o,$(SPATIAL_SRCS))
 
-all: compress decompress triangle test skeleton
+all: compress decompress distance test skeleton
 
 compress: test/compress.o $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-decompress: test/decompress.o $(RC_OBJS) $(PPMC_OBJS) 
+decompress: test/decompress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 skeleton: test/skeleton.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
-
-
-triangle:  test/Triangle_Compute.o triangle/TriDist_cu.o triangle/TriDist.o $(PPMC_OBJS) $(RC_OBJS)
+	
+	
+distance: test/distance.o computational_geometry/TriDist_cu.o computational_geometry/TriDist.o $(PPMC_OBJS) $(RC_OBJS) $(SPATIAL_OBJS)
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) $(CGALFLAGS) -o ../build/$@
 	
 test: test/test.o

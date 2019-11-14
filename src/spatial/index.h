@@ -21,22 +21,13 @@ typedef struct range{
 
 
 class AlignedRTree{
-
 	mbb *rtree;
-
-	range get_range(mbb &, mbb &);
-
-
 public:
+	range get_range(mbb &, mbb &);
 	std::vector<long> get(mbb &q);
 
 };
 
-
-inline mbb get_mbb(MyMesh *mesh){
-	mbb ret(mesh->bbMin, mesh->bbMax);
-	return ret;
-}
 
 }
 #endif /* HISPEED_INDEX_H_ */

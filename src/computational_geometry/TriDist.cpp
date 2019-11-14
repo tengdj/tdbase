@@ -48,6 +48,9 @@
 
 #include "TriDist.h"
 #include <pthread.h>
+
+namespace hispeed{
+
 // useful functions
 
 // copy
@@ -724,4 +727,7 @@ float SegDist_batch(const float *S, const float *T, int size1, int size2, int nu
 	}
 
 	return sqrt(min);
+}
+
+
 }

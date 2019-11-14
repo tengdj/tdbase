@@ -12,45 +12,13 @@
 #include <thread>
 #include <boost/program_options.hpp>
 
-#include "../triangle/TriDist.h"
-#include "spatial.h"
-#include "../PPMC/mymesh.h"
-#include "../PPMC/configuration.h"
-#include "PPMC/ppmc.h"
+#include "../computational_geometry/TriDist.h"
+#include "../PPMC/ppmc.h"
+#include "../spatial/spatial.h"
 
 using namespace std;
+using namespace hispeed;
 namespace po = boost::program_options;
-
-MyMesh *get_mesh(string input_line){
-	int i_mode = COMPRESSION_MODE_ID; // compression mode
-	unsigned i_quantBit = 12;
-	unsigned i_decompPercentage = 100;
-	bool b_allowConcaveFaces = true;
-	// Init the random number generator.
-	srand(PPMC_RANDOM_CONSTANT);
-	MyMesh *compressed = new MyMesh(i_decompPercentage,
-				 i_mode, i_quantBit,
-				 b_allowConcaveFaces,
-				 input_line.c_str(), input_line.size());
-	compressed->completeOperation();
-	return compressed;
-}
-
-MyMesh *decompress(MyMesh *compressed, int compression_rate){
-	int i_mode = DECOMPRESSION_MODE_ID; // compression mode
-	unsigned i_quantBit = 12;
-	unsigned i_decompPercentage = compression_rate;
-	bool b_allowConcaveFaces = true;
-
-	// Init the random number generator.
-	srand(PPMC_RANDOM_CONSTANT);
-	MyMesh *decompressed = new MyMesh(i_decompPercentage,
-				 i_mode, i_quantBit,
-				 b_allowConcaveFaces,
-				 compressed->p_data, compressed->dataOffset);
-	decompressed->completeOperation();
-	return decompressed;
-}
 
 int get_segments(MyMesh *mesh, float *set){
 
@@ -83,7 +51,6 @@ int get_triangles(MyMesh *mesh, float *S){
 	float *cur_S = S;
 	int size = 0;
 	for(MyMesh::Face_iterator fit = mesh->facets_begin(); fit!=mesh->facets_end(); ++fit){
-
 		MyMesh::Halfedge_handle heh = fit->halfedge();
 		MyMesh::Halfedge_handle hIt = heh;
 		int i = 0;
@@ -210,17 +177,11 @@ int main(int argc, char **argv){
 		exit(0);
 	}
 
-	string input_line1, input_line2;
-	getline(std::cin, input_line1);
-	boost::replace_all(input_line1, "|", "\n");
-	getline(std::cin, input_line2);
-	boost::replace_all(input_line2, "|", "\n");
-
-	MyMesh *compressed_geom1 = get_mesh(input_line1);
-	MyMesh *compressed_geom2 = get_mesh(input_line2);
+	MyMesh *compressed_geom1 = hispeed::read_mesh();
+	MyMesh *compressed_geom2 = hispeed::read_mesh();
 	struct timeval start = get_cur_time();
-	MyMesh *geom1 = decompress(compressed_geom1, compression_rate);
-	MyMesh *geom2 = decompress(compressed_geom2, compression_rate);
+	MyMesh *geom1 = hispeed::decompress_mesh(compressed_geom1, compression_rate);
+	MyMesh *geom2 = hispeed::decompress_mesh(compressed_geom2, compression_rate);
 	SegmentDistance(geom1, geom2, use_gpu, thread_num);
 
 	delete geom1;
