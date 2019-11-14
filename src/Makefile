@@ -60,7 +60,7 @@ skeleton: test/skeleton.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 	
-distance: test/distance.o computational_geometry/TriDist_cu.o computational_geometry/TriDist.o $(PPMC_OBJS) $(RC_OBJS) $(SPATIAL_OBJS)
+distance: test/distance.o geometry/TriDist_cu.o geometry/TriDist.o $(PPMC_OBJS) $(RC_OBJS) $(SPATIAL_OBJS)
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) $(CGALFLAGS) -o ../build/$@
 	
 test: test/test.o

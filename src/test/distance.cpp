@@ -12,7 +12,7 @@
 #include <thread>
 #include <boost/program_options.hpp>
 
-#include "../computational_geometry/TriDist.h"
+#include "../geometry/TriDist.h"
 #include "../PPMC/ppmc.h"
 #include "../spatial/spatial.h"
 
