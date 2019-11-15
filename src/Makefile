@@ -41,12 +41,19 @@ RC_OBJS := $(patsubst %.c,%.o,$(RC_SRCS))
 
 %.o: %.c
 	$(CC) $(INCFLAGS) -c $? -o $@
-
+	
+	
+#PPMC source and object
 PPMC_SRCS := $(wildcard PPMC/*.cpp)
 PPMC_OBJS := $(patsubst %.cpp,%.o,$(PPMC_SRCS))
 
+#SPATIAL source and object
 SPATIAL_SRCS := $(wildcard spatial/*.cpp)
 SPATIAL_OBJS := $(patsubst %.cpp,%.o,$(SPATIAL_SRCS))
+
+#SPATIAL source and object
+GEOMETRY_SRCS := $(wildcard geometry/*.cpp)
+GEOMETRY_OBJS := $(patsubst %.cpp,%.o,$(GEOMETRY_SRCS))
 
 all: compress decompress distance test skeleton
 
