@@ -360,4 +360,10 @@ void MyMesh::generate_mbbs(){
 
 }
 
+void MyMesh::decode_lod(int lod, float *&decode_data){
+
+	;
+}
+
+
 

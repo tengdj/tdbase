@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <type_traits>
 using namespace std;
 
 float TriDist(float S[3][3], float T[3][3]){
@@ -14,6 +15,7 @@ float TriDist(float S[3][3], float T[3][3]){
 }
 
 int main(int argc, char **argv){
+
 
 	int *S = new int[9];
 	for(int i=0;i<9;i++){

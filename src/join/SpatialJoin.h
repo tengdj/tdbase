@@ -8,7 +8,7 @@
 #ifndef SPATIALJOIN_H_
 #define SPATIALJOIN_H_
 
-#include "tile.h"
+#include "../storage/tile.h"
 #include <queue>
 
 using namespace std;

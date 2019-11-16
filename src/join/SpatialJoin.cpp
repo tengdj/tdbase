@@ -6,7 +6,7 @@
  */
 
 
-#include "voxel.h"
+#include "SpatialJoin.h"
 using namespace std;
 
 namespace hispeed{

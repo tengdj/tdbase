@@ -1,10 +1,11 @@
 prefix=/usr/local
 
-CPPFLAGS	= -std=c++11 -g -O2
-INCFLAGS	= -I ./ 
-LIBS		= -lgeos -lspatialindex -lboost_program_options -lstdc++ -L/usr/local/cuda/lib64 -lgmp -lmpfr -lpthread -lcuda -lcudart
+CPPFLAGS	= -std=c++14 -g -O2
+INCFLAGS	= -I ./ -I /usr/local/cgal/include
+LIBS		= -L/usr/local/cgal/lib -L/usr/local/cuda/lib64 -L/usr/lib/x86_64-linux-gnu/ \
+-lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lspatialindex -lboost_program_options -lstdc++ 
 CGALFLAGS	= -lCGAL -Wl,-rpath
-NVCCFLAGS 	= -arch sm_30
+NVCCFLAGS 	= 
 
 ifdef DEBUG
     CPPFLAGS += -DDEBUG
@@ -72,7 +73,6 @@ distance: test/distance.o geometry/TriDist_cu.o geometry/TriDist.o $(PPMC_OBJS) 
 	
 test: test/test.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
-	
 
 	
 .PHONY: all clean

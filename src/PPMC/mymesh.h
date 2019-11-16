@@ -555,6 +555,9 @@ public:
 			points.push_back(v->point());
 		}
 	}
+
+	void decode_lod(int lod, float *&decode_data);
+
 };
 
 // get the Euclid distance of two points
