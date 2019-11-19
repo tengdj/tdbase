@@ -22,7 +22,8 @@ class aab{
 public:
 	float min[3];
 	float max[3];
-	uint weight = 0;
+	long weight = 0;
+	long id = 0;
 	aab(){
 		for(int i=0;i<3;i++){
 			min[i] = DBL_MAX;
@@ -34,7 +35,7 @@ public:
 			float max_x, float max_y, float max_z){
 		min[0] = min_x;
 		min[1] = min_y;
-		min[2] = min_y;
+		min[2] = min_z;
 		max[0] = max_x;
 		max[1] = max_y;
 		max[2] = max_z;
@@ -74,21 +75,24 @@ public:
 
 
 	bool intersect(aab *object){
-		return !(object->min[0] > max[0] || object->max[0] < min[0]
-		|| object->min[1] > max[1] || object->max[1] < min[1]
-		|| object->min[2] > max[2] || object->max[2] < min[2]);
+		return !(object->min[0] > max[0] || object->max[0] < min[0] ||
+				 object->min[1] > max[1] || object->max[1] < min[1] ||
+				 object->min[2] > max[2] || object->max[2] < min[2]);
 	}
 
 	friend std::ostream&
 	operator<<(std::ostream& os, const aab &p){
 		for(int i=0;i<3;i++){
-			os<<p.min[i]<<" ";
 		}
-		os<<"-> ";
-		for(int i=0;i<3;i++){
-			os<<p.max[i]<<" ";
-		}
-		os<<" | "<<p.weight;
+		os<<"(";
+		os<<p.min[0]<<",";
+		os<<p.min[1]<<",";
+		os<<p.min[2]<<")";
+		os<<" -> (";
+		os<<p.max[0]<<",";
+		os<<p.max[1]<<",";
+		os<<p.max[2]<<")";
+		os<<"\t"<<p.weight;
 		return os;
 	}
 

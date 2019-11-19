@@ -13,19 +13,31 @@ using namespace std;
 // main method
 int main(int argc, char** argv) {
 
-
 	std::vector<string> input_folders;
 	//input_folders.push_back("/home/teng/project/HiSPEED/build/nuclei");
 	//input_folders.push_back("/home/teng/project/HiSPEED/build/vessels");
 	input_folders.push_back(argv[1]);
+	std::vector<aab *> mbbs;
+	hispeed::get_mbbs(input_folders, mbbs, hispeed::get_num_threads());
 	std::vector<aab> tiles;
-	hispeed::partition_space(input_folders, tiles, 10, 100);
-	long sum = 0;
-	for(int i=0;i<tiles.size();i++){
-		cout<<i<<" "<<tiles[i]<<endl;
-		sum += tiles[i].weight;
+
+//	OctreeNode *octree = hispeed::build_ctree(mbbs, 100);
+//	octree->genTiles(tiles);
+//	delete octree;
+	int num_tiles = 100;
+	if(argc>2){
+		num_tiles = atoi(argv[2]);
 	}
-	cout<<tile_size*100<<" "<<sum<<endl;
+
+	SPNode *sp = hispeed::build_sort_partition(mbbs, num_tiles);
+	sp->genTiles(tiles);
+
+	hispeed::persist_tile(tiles, "tiles");
+	tiles.clear();
+	for(aab *b:mbbs){
+		delete b;
+	}
+	mbbs.clear();
 	return 0;
 }
 

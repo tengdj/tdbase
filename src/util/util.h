@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sstream>
 #include <vector>
+#include <thread>
 
 using namespace std;
 
@@ -72,6 +73,10 @@ inline void list_files(const char *path, std::vector<string> &f_list){
 		}
 		closedir (dir);
 	}
+}
+
+inline int get_num_threads(){
+	return std::thread::hardware_concurrency();
 }
 
 }

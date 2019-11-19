@@ -1,17 +1,16 @@
-#include "octree.h"
+#include "partition.h"
 
 using namespace std;
 
 namespace hispeed{
 
-// Global variables (used by QuadtreeNode)
-long tile_size = 1<<20;
 
-OctreeNode::OctreeNode(aab b, int _level) {
+OctreeNode::OctreeNode(aab b, int _level, long tsize) {
 	box = b;
 	level = _level;
 	isLeaf = true;
 	canBeSplit = true;
+	tile_size = tsize;
 }
 
 OctreeNode::~OctreeNode() {
@@ -51,37 +50,28 @@ bool OctreeNode::addObject(aab *object) {
 
 			// Split the node to 8 nodes equally centered with the middle point
 			// no objects are assigned to the children yet
-			children[0] = new OctreeNode(aab(low[0], low[1], low[2], mid[0], mid[1], mid[2]), level + 1);
-			children[1] = new OctreeNode(aab(mid[0], low[1], low[2], high[0], mid[1], mid[2]), level + 1);
-			children[2] = new OctreeNode(aab(low[0], mid[1], low[2], mid[0], high[1], mid[2]), level + 1);
-			children[3] = new OctreeNode(aab(mid[0], mid[1], low[2], high[0], high[1], mid[2]), level + 1);
-			children[4] = new OctreeNode(aab(low[0], low[1], mid[2], mid[0], mid[1], high[2]), level + 1);
-			children[5] = new OctreeNode(aab(mid[0], low[1], mid[2], high[0], mid[1], high[2]), level + 1);
-			children[6] = new OctreeNode(aab(low[0], mid[1], mid[2], mid[0], high[1], high[2]), level + 1);
-			children[7] = new OctreeNode(aab(mid[0], mid[1], mid[2], high[0], high[1], high[2]), level + 1);
+			children[0] = new OctreeNode(aab(low[0], low[1], low[2], mid[0], mid[1], mid[2]), level + 1, tile_size);
+			children[1] = new OctreeNode(aab(mid[0], low[1], low[2], high[0], mid[1], mid[2]), level + 1, tile_size);
+			children[2] = new OctreeNode(aab(low[0], mid[1], low[2], mid[0], high[1], mid[2]), level + 1, tile_size);
+			children[3] = new OctreeNode(aab(mid[0], mid[1], low[2], high[0], high[1], mid[2]), level + 1, tile_size);
+			children[4] = new OctreeNode(aab(low[0], low[1], mid[2], mid[0], mid[1], high[2]), level + 1, tile_size);
+			children[5] = new OctreeNode(aab(mid[0], low[1], mid[2], high[0], mid[1], high[2]), level + 1, tile_size);
+			children[6] = new OctreeNode(aab(low[0], mid[1], mid[2], mid[0], high[1], high[2]), level + 1, tile_size);
+			children[7] = new OctreeNode(aab(mid[0], mid[1], mid[2], high[0], high[1], high[2]), level + 1, tile_size);
 
 			// assign objects to children
 			int totalChildrenSize = 0;
-			int good = 0, bad = 0;
 			for(aab *b:objectList) {
-				int added = 0;
+				bool inserted = false;
 				for (int i = 0; i < 8; i++) {
 					if (children[i]->intersects(b)) {
 						children[i]->addObject(b);
 						totalChildrenSize += b->weight;
-						added++;
+						inserted = true;
 					}
 				}
-				if(added==0){
-					bad++;
-					//cerr<<"not belong to any space "<<*b<<endl;
-				}else{
-					good++;
-					//cerr<<added<<endl;
-				}
+				assert(inserted && "one object must be assigned to at least one child");
 			}
-			cerr<<good<<" "<<bad<<endl;
-
 
 			// split the node won't do any help thus we undo
 			// this round of split and wait longer
@@ -113,7 +103,6 @@ bool OctreeNode::addObject(aab *object) {
 void OctreeNode::genTiles(vector<aab> &tiles){
 	if(isLeaf){
 		if(objectList.size()>0){
-			cerr<<this->level<<endl;
 			tiles.push_back(box);
 		}
 	}else{
@@ -123,6 +112,20 @@ void OctreeNode::genTiles(vector<aab> &tiles){
 	}
 }
 
-
+OctreeNode *build_ctree(std::vector<aab*> &mbbs, int num_tiles){
+	// the main thread build the OCTree with the Minimum Boundary Box
+	// get from the data
+	aab root_node;
+	long total_size = 0;
+	for(aab *b:mbbs){
+		root_node.update(*b);
+		total_size += b->weight;
+	}
+	OctreeNode *octree = new OctreeNode(root_node, 0, total_size/num_tiles);
+	for(aab *b:mbbs){
+		octree->addObject(b);
+	}
+	return octree;
+}
 
 }
