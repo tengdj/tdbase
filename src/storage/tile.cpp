@@ -26,6 +26,17 @@ void Voxel_group::decode(int lod){
 
 	}
 
+	float *decoded_data;
+	mesh->decode_lod(lod, &decoded_data);
+
+	// set the data pointers to the
+	// related voxels
+	for(int i=0;i<voxels.size();i++){
+		int size = (int)*decoded_data;
+		voxels[i]->set_data(lod, decoded_data);
+		decoded_data += 1+size;
+	}
+
 }
 
 void Voxel_group::release_data(){

@@ -49,21 +49,29 @@ void write_polyhedron(Polyhedron *mesh, char *path){
 	myfile.close();
 }
 
-MyMesh *read_mesh(){
+MyMesh *get_mesh(string input_line){
 	unsigned i_decompPercentage = 100;
 	bool b_allowConcaveFaces = true;
+
+	// Init the random number generator.
+	srand(PPMC_RANDOM_CONSTANT);
+	return new MyMesh(100,
+				 COMPRESSION_MODE_ID, 12, true,
+				 input_line.c_str(), input_line.size());
+}
+
+
+MyMesh *read_mesh(){
 	string input_line;
 	getline(std::cin, input_line);
 	if(input_line.size()==0){
 		return NULL;
 	}
 	boost::replace_all(input_line, "|", "\n");
-	// Init the random number generator.
-	srand(PPMC_RANDOM_CONSTANT);
-	MyMesh *compressed = new MyMesh(i_decompPercentage,
-				 COMPRESSION_MODE_ID, 12,
-				 b_allowConcaveFaces,
-				 input_line.c_str(), input_line.size());
+	MyMesh *compressed = get_mesh(input_line);
+	if(compressed==NULL){
+		return NULL;
+	}
 	compressed->completeOperation();
 	return compressed;
 }

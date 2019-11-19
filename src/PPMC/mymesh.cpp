@@ -352,7 +352,7 @@ void MyMesh::generate_mbbs(){
 						min_dist = dist;
 					}
 				}
-				mbbs[min_index].update(p);
+				mbbs[min_index].update(p[0],p[1],p[2]);
 				hIt = hIt->next();
 			} while (hIt != heh);
 		}
@@ -360,9 +360,10 @@ void MyMesh::generate_mbbs(){
 
 }
 
-void MyMesh::decode_lod(int lod, float *&decode_data){
 
-	;
+// todo implement the decoding here
+void MyMesh::decode_lod(int lod, float **decode_data){
+	*decode_data = NULL;
 }
 
 

@@ -29,6 +29,8 @@ void write_polyhedron(Polyhedron *mesh, char *path);
 MyMesh *read_mesh();
 MyMesh *decompress_mesh(MyMesh *compressed, int lod);
 
+MyMesh *get_mesh(string input);
+
 }
 
 

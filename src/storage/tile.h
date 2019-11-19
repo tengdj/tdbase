@@ -23,7 +23,9 @@ class Voxel{
 	// the first value of each LOD represent the size of
 	// the data for this LOD
 	char *data[10];
-	int size = 0;
+	int size[10];
+
+	int total_size = 0;
 
 	// the voxel group current voxel belongs to
 	Voxel_group *group = NULL;
@@ -38,6 +40,7 @@ protected:
 			if(data[i]!=NULL){
 				delete data[i];
 				data[i] = NULL;
+				size[i] = 0;
 			}
 		}
 		size = 0;
@@ -52,8 +55,16 @@ public:
 		clear();
 	}
 
-	int get_size(){
-		return size;
+	int get_size(int lod){
+		return size[lod];
+	}
+	int get_total_size(){
+		return total_size;
+	}
+
+	void set_data(int lod, float *target_data){
+		size[lod] = (int)(*target_data);
+		data[lod] = target_data+1;
 	}
 
 	float *get_edges(int lod){
@@ -171,6 +182,9 @@ public:
 
 
 };
+
+
+
 
 
 }

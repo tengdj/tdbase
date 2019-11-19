@@ -8,26 +8,17 @@
 #include <stdio.h>
 #include <iostream>
 #include <type_traits>
+#include "util/util.h"
 using namespace std;
-
-float TriDist(float S[3][3], float T[3][3]){
-	return 0.0;
-}
 
 int main(int argc, char **argv){
 
-
-	int *S = new int[9];
-	for(int i=0;i<9;i++){
-		S[i]=i;
+	std::vector<string> paths;
+	hispeed::list_files(".", paths);
+	for(string s:paths){
+		cout<<s<<endl;
 	}
 
-	for(int i=0;i<3;i++){
-		int *curs = S+i*3;
-		for(int j=0;j<3;j++){
-			cout<<curs[j]<<endl;
-		}
-	}
 }
 
 

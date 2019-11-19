@@ -56,7 +56,11 @@ SPATIAL_OBJS := $(patsubst %.cpp,%.o,$(SPATIAL_SRCS))
 GEOMETRY_SRCS := $(wildcard geometry/*.cpp)
 GEOMETRY_OBJS := $(patsubst %.cpp,%.o,$(GEOMETRY_SRCS))
 
-all: compress decompress distance test skeleton
+#PARTITION source and object
+PARTITION_SRCS := $(wildcard partition/*.cpp)
+PARTITION_OBJS := $(patsubst %.cpp,%.o,$(PARTITION_SRCS))
+
+all: compress decompress distance test skeleton partition
 
 compress: test/compress.o $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -66,7 +70,9 @@ decompress: test/decompress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 
 skeleton: test/skeleton.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
-	
+
+partition: test/partitioner.o $(PARTITION_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 distance: test/distance.o geometry/TriDist_cu.o geometry/TriDist.o $(PPMC_OBJS) $(RC_OBJS) $(SPATIAL_OBJS)
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) $(CGALFLAGS) -o ../build/$@

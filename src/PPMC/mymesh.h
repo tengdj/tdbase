@@ -57,9 +57,9 @@
 #include "../PPMC/rangeCoder/rangecod.h"
 #include "../geometry/aab.h"
 
-// moved to aab.h
-//typedef CGAL::Simple_cartesian<float> MyKernel;
-//typedef MyKernel::Point_3 Point;
+// definition for the CGAL library
+typedef CGAL::Simple_cartesian<float> MyKernel;
+typedef MyKernel::Point_3 Point;
 typedef MyKernel::Vector_3 Vector;
 
 typedef CGAL::Simple_cartesian<double> MyKernelDouble;
@@ -371,7 +371,7 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
   typedef CGAL::Polyhedron_3< MyKernel, MyItems > PolyhedronT;
 
   public:
-	MyMesh(  unsigned i_decompPercentage,
+	MyMesh(unsigned i_decompPercentage,
 		   const int i_mode,
 		   unsigned i_quantBits,
 		   bool b_allowConcaveFaces,
@@ -556,7 +556,9 @@ public:
 		}
 	}
 
-	void decode_lod(int lod, float *&decode_data);
+	// decode to the target level of details
+	// data are saved in a newly allocated space stored start with decode_data
+	void decode_lod(int lod, float **decode_data);
 
 };
 
