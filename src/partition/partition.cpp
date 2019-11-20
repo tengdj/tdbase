@@ -116,7 +116,7 @@ void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
 				pthread_mutex_unlock(&lock);
 				local_input_lines.clear();
 			}
-			if(++index%100==0){
+			if(++index%1000==0){
 				cerr<<"processed "<<index<<" "<<input_lines.size()<<endl;
 			}
 			// wait if the queue length is too long
@@ -138,9 +138,12 @@ void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
 		cerr << "Main: completed thread id :" << i<<endl;
 	}
 }
-void persist_tile(std::vector<aab> &tiles, const char *space_path){
+void persist_tile(std::vector<aab> &tiles, const char *prefix){
 	for(int i=0;i<tiles.size();i++){
-		cout<<i<<"\t"<<tiles[i]<<endl;
+		Polyhedron *poly = make_cube(tiles[i]);
+		stringstream ss;
+		ss<<prefix<<i<<".off";
+		write_polyhedron(poly, ss.str().c_str());
 	}
 }
 

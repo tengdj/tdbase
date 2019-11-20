@@ -77,6 +77,8 @@ public:
 		}
 		children.clear();
 	}
+	bool load(const char *path);
+	bool persist(const char *path);
 	void genTiles(vector<aab> &tiles);
 	aab box;
 	std::vector<SPNode *> children;

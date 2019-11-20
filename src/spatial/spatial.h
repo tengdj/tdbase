@@ -24,7 +24,7 @@ namespace hispeed{
 
 Polyhedron *make_cube(aab box);
 
-void write_polyhedron(Polyhedron *mesh, char *path);
+void write_polyhedron(Polyhedron *mesh, const char *path);
 // some utility functions to operate mesh polyhedrons
 MyMesh *read_mesh();
 MyMesh *decompress_mesh(MyMesh *compressed, int lod);

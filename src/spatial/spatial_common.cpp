@@ -42,7 +42,7 @@ Polyhedron *make_cube(aab box) {
 }
 
 
-void write_polyhedron(Polyhedron *mesh, char *path){
+void write_polyhedron(Polyhedron *mesh, const char *path){
 	ofstream myfile;
 	myfile.open(path);
 	myfile << *mesh;

@@ -10,6 +10,9 @@
 
 #include "partition.h"
 
+#include<iostream>
+#include<fstream>
+using namespace std;
 
 namespace hispeed{
 
@@ -21,6 +24,68 @@ void SPNode::genTiles(vector<aab> &tiles){
 			c->genTiles(tiles);
 		}
 	}
+}
+
+bool SPNode::load(const char *path){
+	ifstream is(path, ios::out | ios::binary);
+	if(!is) {
+		cerr << "Cannot open file!" << endl;
+		return false;
+	}
+	long part_x, part_y, part_z;
+	is.read((char *)&part_x, sizeof(long));
+	is.read((char *)&part_y, sizeof(long));
+	is.read((char *)&part_z, sizeof(long));
+	for(int x=0;x<part_x;x++){
+		SPNode *cur_x = new SPNode();
+		for(int y=0;y<part_y;y++){
+			SPNode *cur_y = new SPNode();
+			for(int z=0;z<part_z;z++){
+				SPNode *cur_z = new SPNode();
+				is.read((char *)cur_z->box.min, sizeof(float)*3);
+				is.read((char *)cur_z->box.max, sizeof(float)*3);
+				cur_y->children.push_back(cur_z);
+			}
+			cur_x->children.push_back(cur_y);
+		}
+		children.push_back(cur_x);
+	}
+	is.close();
+	return true;
+};
+bool SPNode::persist(const char *path){
+	// only the root node can call the persist function;
+	long part_x = children.size();
+	if(part_x==0){
+		return false;
+	}
+	long part_y = children[0]->children.size();
+	if(part_y==0){
+		return false;
+	}
+	long part_z = children[0]->children[0]->children.size();
+	if(part_z==0){
+		return false;
+	}
+
+	ofstream os(path, ios::out | ios::binary);
+	if(!os) {
+		cerr << "Cannot open file!" << endl;
+		return false;
+	}
+	os.write((char *)&part_x, sizeof(long));
+	os.write((char *)&part_y, sizeof(long));
+	os.write((char *)&part_z, sizeof(long));
+	for(int x=0;x<part_x;x++){
+		for(int y=0;y<part_y;y++){
+			for(int z=0;z<part_z;z++){
+				os.write((char *)children[x]->children[y]->children[z]->box.min, sizeof(float)*3);
+				os.write((char *)children[x]->children[y]->children[z]->box.max, sizeof(float)*3);
+			}
+		}
+	}
+	os.close();
+	return true;
 }
 
 bool compareAAB_x(aab *a1, aab *a2){
