@@ -24,6 +24,12 @@ enum Worker_Type{
 	WT_CPU
 };
 
+enum Join_Type{
+	JT_intersect,
+	JT_distance,
+	JT_nearest
+};
+
 // size of the buffer is 1GB
 const static long VOXEL_BUFFER_SIZE = 1<<30;
 
@@ -32,6 +38,8 @@ class SpatialJoin{
 	// tiles with data for join
 	tile *tile1;
 	tile *tile2;
+
+	enum Join_Type type;
 	// cursor of the object in tile 1
 	// waiting for processing
 	long cursor;
@@ -43,25 +51,27 @@ class SpatialJoin{
 	 * are not decoded yet. The edges and surfaces are
 	 * decoded and cached. Then the computation across those
 	 * segments and triangles are organized as many N*N
-	 * computing units. Notice that padding may be needed to
+	 * computing units as possible. Notice that padding may be needed to
 	 * align the computing units. then space in buffer is claimed
 	 * to store the data of those computing units. the true computation
-	 * is done by the GPU, and results will be copied into the result_addr
+	 * is done by the GPU or CPU, and results will be copied into the result_addr
 	 * Corresponding to the buffer space claimed.
 	*/
 	float *result_addr;
-	char *buffer;
+	float *buffer;
 
 	// sign for completeness
 	bool complete = false;
 
 public:
-	void SpatialJoin(tile *t1, tile *t2){
+
+	void SpatialJoin(tile *t1, tile *t2, Join_Type type){
 		assert(t1!=NULL&&t2!=NULL);
 		tile1 = t1;
 		tile2 = t2;
-		buffer1 = new char[VOXEL_BUFFER_SIZE];
-		buffer2 = new char[VOXEL_BUFFER_SIZE];
+		buffer1 = new float[VOXEL_BUFFER_SIZE];
+		buffer2 = new float[VOXEL_BUFFER_SIZE];
+		this->type = type;
 	}
 	~SpatialJoin(){
 		if(buffer1){
@@ -72,6 +82,10 @@ public:
 		}
 	}
 
+	inline bool is_self_join(){
+		return tile1==tile2;
+	};
+
 	/*
 	 *
 	 * the main entry function to conduct next round of computation
@@ -81,7 +95,7 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
-	void advance();
+	void formalize_computing();
 
 	/*
 	 *
@@ -96,13 +110,17 @@ public:
 	// otherwise do it locally with CPU
 	float *register_computation(char *data, int num_cu);
 
-
-
 	/*
 	 * do the geometry computation in a batch with GPU
 	 *
 	 * */
 	void compute_gpu();
+
+	/*
+	 * do the geometry computation in a batch with CPU
+	 *
+	 * */
+	void compute_cpu();
 
 
 };

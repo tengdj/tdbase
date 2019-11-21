@@ -31,7 +31,6 @@
 #define INV_ALPHA 2
 #define INV_GAMMA 2
 
-
 using namespace std;
 
 #endif // CONFIGURATION_H

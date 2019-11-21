@@ -46,6 +46,8 @@ public:
 	int get_total_size();
 	void set_data(int lod, float *target_data);
 	float *get_data(int lod);
+
+	void print();
 };
 
 
@@ -63,6 +65,7 @@ class Voxel_group{
 public:
 
 	int id = -1;
+	aab box;
 	MyMesh *mesh = NULL;
 	char *mesh_data = NULL;
 	// offset of the mesh in .dt file
@@ -92,12 +95,14 @@ public:
 	bool persist(FILE *fs);
 	bool load(FILE *fs);
 
+	void print();
+
 };
 
 class Tile{
 	bool active = false;
 	int id = -1;
-	aab space;
+	aab box;
 	std::string meta_path;
 	std::string data_path;
 	std::vector<Voxel_group *> voxel_groups;
@@ -108,9 +113,10 @@ class Tile{
 	bool load();
 
 	void add_group(Voxel_group *group){
-		group->id = this->voxel_groups.size();
+		group->id = voxel_groups.size();
 		voxel_groups.push_back(group);
 		group->tile = this;
+		box.update(group->box);
 	}
 public:
 
@@ -121,12 +127,17 @@ public:
 	// tile->voxel_groups->voxels
 	Tile(std::string path);
 	~Tile();
-	void set_path(string path);
+	void set_prefix(string path);
 	bool is_active(){
 		return active;
 	}
+	void set_id(int id){
+		this->id = id;
+	}
 	void add_polyhedron(MyMesh *mesh, long offset);
 	bool persist();
+	// parse from the compressed data stored in a certain path
+	bool parse_raw();
 
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
@@ -134,6 +145,8 @@ public:
 	// release the space for mesh object and the triangles
 	// decoded in each voxel groups
 	bool release_mesh(int id);
+
+	void print();
 
 };
 

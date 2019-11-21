@@ -1,6 +1,8 @@
 .project
 .cproject
 .settings/
+*.dt
+*.mt
 *.o
 *.off
 build/

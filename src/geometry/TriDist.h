@@ -63,8 +63,9 @@ namespace hispeed{
 // be expected.
 
 float TriDist(float p[3], float q[3], const float s[3][3], const float t[3][3]);
-float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_threads);
-float SegDist_batch(const float *S1, const float *S2, int size1, int size2, int num_threads);
+float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int num_threads);
+float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
+float SegDist_batch(const float *S1, const float *S2, size_t size1, size_t size2, int num_threads);
 float SegDist_batch_gpu(const float *S, const float *T, int size1, int size2);
 
 }

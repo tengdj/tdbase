@@ -11,6 +11,9 @@ using namespace std;
 
 namespace hispeed{
 
+void SpatialJoin::formalize_computing(){
+	;
+}
 
 
 }

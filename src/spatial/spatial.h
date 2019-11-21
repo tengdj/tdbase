@@ -26,11 +26,11 @@ Polyhedron *make_cube(aab box);
 
 void write_polyhedron(Polyhedron *mesh, const char *path);
 // some utility functions to operate mesh polyhedrons
+extern MyMesh *get_mesh(string input, bool complete_compress = false);
 MyMesh *read_mesh();
 MyMesh *decompress_mesh(MyMesh *compressed, int lod);
-MyMesh *get_compressed_mesh(char *data, size_t length);
+extern MyMesh *compress_mesh(char *data, size_t length, bool complete_operation = false);
 
-MyMesh *get_mesh(string input);
 
 }
 

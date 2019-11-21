@@ -47,6 +47,10 @@ float *Voxel::get_data(int lod){
 	return data[lod];
 }
 
+void Voxel::print(){
+	cout<<"\t\t"<<box<<endl;
+}
+
 }
 
 

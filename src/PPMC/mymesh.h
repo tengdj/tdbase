@@ -56,6 +56,7 @@
 #include "../PPMC/rangeCoder/qsmodel.h"
 #include "../PPMC/rangeCoder/rangecod.h"
 #include "../geometry/aab.h"
+#include "configuration.h"
 
 // definition for the CGAL library
 typedef CGAL::Simple_cartesian<float> MyKernel;
@@ -369,8 +370,7 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
 
   typedef CGAL::Polyhedron_3< MyKernel, MyItems > PolyhedronT;
-
-  public:
+public:
 	MyMesh(unsigned i_decompPercentage,
 		   const int i_mode,
 		   unsigned i_quantBits,
@@ -534,6 +534,10 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	int skeleton_sample_rate = 100;
 
 public:
+
+	// maximum number of facets each voxel can hold
+    int voxel_size = 500;
+
 	// added for HISPEED
 	void extract_skeleton();
 	inline void set_skeleton_sample_rate(int rate){
@@ -557,7 +561,10 @@ public:
 
 	// decode to the target level of details
 	// data are saved in a newly allocated space stored start with decode_data
-	void decode_lod(int lod, float **decode_data);
+	float *decode_lod(uint lod);
+
+	// new a space and store the edges for this mesh to it
+	float *get_segments(size_t &size);
 
 };
 

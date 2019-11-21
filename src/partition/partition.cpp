@@ -56,7 +56,6 @@ void *get_mbbs_unit(void *arg){
 		}
 		// process the polyhedrons
 		for(string input_line:local_input_lines){
-			boost::replace_all(input_line, "|", "\n");
 			MyMesh *mesh = get_mesh(input_line);
 			if(mesh==NULL){
 				continue;

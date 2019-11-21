@@ -551,7 +551,7 @@ void *TriDist_unit(void *params_void){
 	return NULL;
 }
 
-float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_threads){
+float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int num_threads){
 	cout<<"starting "<<num_threads<<" threads"<<endl;
 
 	pthread_t threads[num_threads];
@@ -562,7 +562,7 @@ float TriDist_batch(const float *S, const float * T, int s1, int s2, int num_thr
 		if(start>=s1){
 			break;
 		}
-		params[i].s1 = min(start+each_thread, s1)-start;
+		params[i].s1 = std::min(start+each_thread, (int)s1)-start;
 		params[i].s2 = s2;
 		params[i].S = S+start*9;
 		params[i].T = T;
@@ -652,29 +652,30 @@ float SegDist(const float *seg1, const float *seg2, const float *A, const float 
 	return VdotV(Tmp,Tmp);
 }
 
-void *SegDist_unit(void *params_void){
-	struct TriDist_param *param = (struct TriDist_param *)params_void;
-	float *A = new float[param->s1*3];
-	float *B = new float[param->s2*3];
-	float *AdA = new float[param->s1];
-	float *BdB = new float[param->s2];
-	for(int i=0;i<param->s1;i++){
-		VmV(A+i*3, param->S+i*6+3, param->S+i*6);
+float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2){
+	float local_min = DBL_MAX;
+	float *A = new float[size1*3];
+	float *B = new float[size2*3];
+	float *AdA = new float[size1];
+	float *BdB = new float[size2];
+	for(int i=0;i<size1;i++){
+		VmV(A+i*3, data1+i*6+3, data1+i*6);
 		AdA[i] = VdotV(A+i*3, A+i*3);
 	}
-	for(int i=0;i<param->s2;i++){
-		VmV(B+i*3, param->T+i*6+3, param->T+i*6);
+	for(int i=0;i<size2;i++){
+		VmV(B+i*3, data2+i*6+3, data2+i*6);
 		BdB[i] = VdotV(B+i*3, B+i*3);
 	}
-	for(int i=0;i<param->s1;i++){
-		for(int j=0;j<param->s2;j++){
-			const float *cur_S = param->S+i*6;
-			const float *cur_T = param->T+j*6;
+
+	for(int i=0;i<size1;i++){
+		for(int j=0;j<size2;j++){
+			const float *cur_S = data1+i*6;
+			const float *cur_T = data2+j*6;
 			const float *cur_A = A+i*3;
 			const float *cur_B = B+j*3;
 			float dist = SegDist(cur_S, cur_T, cur_A, cur_B, AdA[i], BdB[j]);
-			if(dist < param->dist){
-				param->dist = dist;
+			if(dist < local_min){
+				local_min = dist;
 			}
 		}
 	}
@@ -682,11 +683,17 @@ void *SegDist_unit(void *params_void){
 	delete B;
 	delete AdA;
 	delete BdB;
+	return local_min;
+}
+
+void *SegDist_unit(void *params_void){
+	struct TriDist_param *param = (struct TriDist_param *)params_void;
+	param->dist = SegDist_single(param->S, param->T, param->s1, param->s2);
 	return NULL;
 }
 
 
-float SegDist_batch(const float *S, const float *T, int size1, int size2, int num_threads){
+float SegDist_batch(const float *S, const float *T, size_t size1, size_t size2, int num_threads){
 	cout<<"starting "<<num_threads<<" threads"<<endl;
 
 	pthread_t threads[num_threads];
@@ -697,7 +704,7 @@ float SegDist_batch(const float *S, const float *T, int size1, int size2, int nu
 		if(start>=size1){
 			break;
 		}
-		params[i].s1 = min(start+each_thread, size1)-start;
+		params[i].s1 = min(start+each_thread, (int)size1)-start;
 		params[i].s2 = size2;
 		params[i].S = S+start*6;
 		params[i].T = T;

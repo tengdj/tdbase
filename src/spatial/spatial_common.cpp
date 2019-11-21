@@ -41,7 +41,6 @@ Polyhedron *make_cube(aab box) {
     return P;
 }
 
-
 void write_polyhedron(Polyhedron *mesh, const char *path){
 	ofstream myfile;
 	myfile.open(path);
@@ -49,30 +48,27 @@ void write_polyhedron(Polyhedron *mesh, const char *path){
 	myfile.close();
 }
 
-MyMesh *get_mesh(string input_line){
-	unsigned i_decompPercentage = 100;
-	bool b_allowConcaveFaces = true;
-
+MyMesh *get_mesh(string input_line, bool complete_compress){
+	if(input_line.size()==0){
+		return NULL;
+	}
+	boost::replace_all(input_line, "|", "\n");
 	// Init the random number generator.
 	srand(PPMC_RANDOM_CONSTANT);
-	return new MyMesh(100,
+	MyMesh *mesh = new MyMesh(100,
 				 COMPRESSION_MODE_ID, 12, true,
 				 input_line.c_str(), input_line.size());
+	if(complete_compress){
+		mesh->completeOperation();
+	}
+	return mesh;
 }
 
 
 MyMesh *read_mesh(){
 	string input_line;
 	getline(std::cin, input_line);
-	if(input_line.size()==0){
-		return NULL;
-	}
-	boost::replace_all(input_line, "|", "\n");
-	MyMesh *compressed = get_mesh(input_line);
-	if(compressed==NULL){
-		return NULL;
-	}
-	return compressed;
+	return get_mesh(input_line);
 }
 
 
@@ -84,10 +80,13 @@ MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 	return decompressed;
 }
 
-MyMesh *get_compressed_mesh(char *data, size_t length){
+MyMesh *compress_mesh(char *data, size_t length, bool complete_operation){
 	MyMesh *mesh = new MyMesh(100,
 			DECOMPRESSION_MODE_ID, 12, true,
-			 data, length);
+			data, length);
+	if(complete_operation){
+		mesh->completeOperation();
+	}
 	return mesh;
 }
 

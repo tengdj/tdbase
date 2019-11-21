@@ -35,6 +35,7 @@ void Voxel_group::add_voxel(aab box){
 	v->id = voxels.size();
 	voxels.push_back(v);
 	v->group = this;
+	this->box.update(box);
 }
 
 bool Voxel_group::persist(FILE *fs){
@@ -50,17 +51,16 @@ bool Voxel_group::persist(FILE *fs){
 }
 
 bool Voxel_group::load(FILE *fs){
-	fread((void *)&offset, 1, sizeof(long), fs);
-	fread((void *)&data_size, 1, sizeof(long), fs);
+	fread((void *)&offset, sizeof(long), 1, fs);
+	fread((void *)&data_size, sizeof(long), 1, fs);
 	uint size = 0;
-	fread((void *)&size, 1, sizeof(uint), fs);
+	fread((void *)&size, sizeof(uint), 1, fs);
 	// load the voxels
 	for(uint i=0;i<size;i++){
-		Voxel *v = new Voxel();
-		v->id = i;
-		v->group = this;
-		fread((void *)v->box.min, 3, sizeof(float), fs);
-		fread((void *)v->box.max, 3, sizeof(float), fs);
+		aab tmpb;
+		fread((void *)tmpb.min, sizeof(float), 3, fs);
+		fread((void *)tmpb.max, sizeof(float), 3, fs);
+		add_voxel(tmpb);
 	}
 	return true;
 }
@@ -75,7 +75,7 @@ void Voxel_group::decode(int lod){
 	}
 	assert(mesh);
 	assert(decoded_data[lod] = NULL);
-	mesh->decode_lod(lod, &decoded_data[lod]);
+	decoded_data[lod] = mesh->decode_lod(lod);
 
 	// set the data pointers to the
 	// related voxels
@@ -102,6 +102,14 @@ void Voxel_group::release_data(){
 				decoded_data[i] = NULL;
 			}
 		}
+	}
+}
+
+
+void Voxel_group::print(){
+	cout<<"\tvoxel group "<<id<<endl;
+	for(Voxel *v:voxels){
+		v->print();
 	}
 }
 

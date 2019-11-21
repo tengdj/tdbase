@@ -262,6 +262,10 @@ Point MyMesh::getPos(PointInt p) const
  * */
 void MyMesh::extract_skeleton(){
 
+	if(size_of_facets()<this->voxel_size){
+		return;
+	}
+
 	if(skeleton == NULL){
 		skeleton = new Skeleton();
 	}
@@ -298,6 +302,13 @@ void MyMesh::extract_skeleton(){
 
 
 void MyMesh::generate_mbbs(){
+
+	if(size_of_facets()<this->voxel_size){
+		mbbs.clear();
+		mbbs.push_back(aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]));
+		return;
+	}
+
 	if(skeleton==NULL){
 		extract_skeleton();
 	}
@@ -349,10 +360,47 @@ void MyMesh::generate_mbbs(){
 
 }
 
+float * MyMesh::get_segments(size_t &size){
+	float *set = new float[6*size];
+	assert(set);
+	float *cur_S = set;
+	size = 0;
+	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
+		Point p1 = eit->vertex()->point();
+		Point p2 = eit->opposite()->vertex()->point();
+		if(p1==p2){
+			continue;
+		}
+		*cur_S = p1.x();
+		cur_S++;
+		*cur_S = p1.y();
+		cur_S++;
+		*cur_S = p1.z();
+		cur_S++;
+		*cur_S = p2.x();
+		cur_S++;
+		*cur_S = p2.y();
+		cur_S++;
+		*cur_S = p2.z();
+		cur_S++;
+		size++;
+	}
+	return set;
+}
+
 
 // todo implement the decoding here
-void MyMesh::decode_lod(int lod, float **decode_data){
-	*decode_data = NULL;
+ float *MyMesh::decode_lod(uint lod){
+	// can only be called in decompression mode
+	// process the data until lod is reached
+	assert(i_mode==DECOMPRESSION_MODE_ID);
+	if(!b_jobCompleted){
+		i_decompPercentage = lod;
+		completeOperation();
+	}
+	size_t size = size_of_halfedges()/2;
+	// new a space and store all edges into it
+	return get_segments(size);
 }
 
 

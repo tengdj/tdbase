@@ -20,33 +20,6 @@ using namespace std;
 using namespace hispeed;
 namespace po = boost::program_options;
 
-int get_segments(MyMesh *mesh, float *set){
-
-	float *cur_S = set;
-	size_t size = 0;
-	for(MyMesh::Edge_const_iterator eit = mesh->edges_begin(); eit!=mesh->edges_end(); ++eit){
-		Point p1 = eit->vertex()->point();
-		Point p2 = eit->opposite()->vertex()->point();
-		if(p1==p2){
-			continue;
-		}
-		*cur_S = p1.x();
-		cur_S++;
-		*cur_S = p1.y();
-		cur_S++;
-		*cur_S = p1.z();
-		cur_S++;
-		*cur_S = p2.x();
-		cur_S++;
-		*cur_S = p2.y();
-		cur_S++;
-		*cur_S = p2.z();
-		cur_S++;
-		size++;
-	}
-	return size;
-}
-
 int get_triangles(MyMesh *mesh, float *S){
 	float *cur_S = S;
 	int size = 0;
@@ -75,54 +48,47 @@ int get_triangles(MyMesh *mesh, float *S){
 
 
 
-void TriangleDistance(MyMesh *geom1, MyMesh *geom2, int thread_num){
-	long size1 = geom1->size_of_facets(), size2 = geom2->size_of_facets();
-
-	printf("%ld X %ld = %ld\n", size1, size2, size1*size2);
-	/*
-	 * param S: first triangle set size = s1*3*3*sizeof(float)
-	 * param T: second triangle set size = s2*3*3*sizeof(float)
-	 * param s1: number of triangles in set S
-	 * param s2: number of triangles in set T
-	 *
-	 * */
-	float *S = new float[9*size1];
-	float *T = new float[9*size2];
-
-
-	struct timeval start = get_cur_time();
-	size1 = get_triangles(geom1, S);
-	size2 = get_triangles(geom2, T);
-	printf("loading triangles takes %f milliseconds\n", get_time_elapsed(start));
-
-	start = get_cur_time();
-
-	float min_distance = TriDist_batch(S, T, size1, size2, thread_num);
-
-	printf("get distance take %f miliseconds\n",get_time_elapsed(start));
-	printf("min distance is: %f\n", min_distance);
-
-	delete S;
-	delete T;
-}
+//void TriangleDistance(MyMesh *geom1, MyMesh *geom2, int thread_num){
+//	size_t size1 = geom1->size_of_facets(), size2 = geom2->size_of_facets();
+//
+//	printf("%ld X %ld = %ld\n", size1, size2, size1*size2);
+//	/*
+//	 * param S: first triangle set size = s1*3*3*sizeof(float)
+//	 * param T: second triangle set size = s2*3*3*sizeof(float)
+//	 * param s1: number of triangles in set S
+//	 * param s2: number of triangles in set T
+//	 *
+//	 * */
+//	float *S = new float[9*size1];
+//	float *T = new float[9*size2];
+//
+//
+//	struct timeval start = get_cur_time();
+//	S = geom1->get_segments(size1);
+//	T = geom2->get_segments(size2);
+//	printf("loading triangles takes %f milliseconds\n", get_time_elapsed(start));
+//
+//	start = get_cur_time();
+//
+//	float min_distance = TriDist_batch(S, T, size1, size2, thread_num);
+//
+//	printf("get distance take %f miliseconds\n",get_time_elapsed(start));
+//	printf("min distance is: %f\n", min_distance);
+//
+//	delete S;
+//	delete T;
+//}
 
 
 
 void SegmentDistance(MyMesh *geom1, MyMesh *geom2, bool use_gpu, int thread_num){
-	long size1 = geom1->size_of_halfedges()/2, size2 = geom2->size_of_halfedges()/2;
-
-	/*
-	 * param S: first segment set size = s1*2*3*sizeof(float)
-	 * param T: second segment set size = s2*2*3*sizeof(float)
-	 * param s1: number of triangles in set S
-	 * param s2: number of triangles in set T
-	 * */
-	float *S = new float[6*size1];
-	float *T = new float[6*size2];
+	size_t size1 = geom1->size_of_halfedges()/2, size2 = geom2->size_of_halfedges()/2;
 
 	struct timeval start = get_cur_time();
-	size1 = get_segments(geom1, S);
-	size2 = get_segments(geom2, T);
+
+	float *S = geom1->get_segments(size1);
+	float *T = geom2->get_segments(size2);
+
 	printf("%ld X %ld = %ld \n", size1, size2, size1*size2);
 	printf("loading triangles takes %f milliseconds\n", get_time_elapsed(start));
 
@@ -143,7 +109,7 @@ void SegmentDistance(MyMesh *geom1, MyMesh *geom2, bool use_gpu, int thread_num)
 
 int main(int argc, char **argv){
 	int compression_rate = 100;
-	int thread_num = std::thread::hardware_concurrency();
+	int thread_num = get_num_threads();
 	bool use_gpu = false;
 
 	try {
@@ -168,9 +134,6 @@ int main(int argc, char **argv){
 		}
 		if(thread_num<0){
 			thread_num = 1;
-		}
-		if(thread_num>std::thread::hardware_concurrency()){
-			thread_num = std::thread::hardware_concurrency();
 		}
 	} catch(exception& e) {
 		cerr << "error: " << e.what() << "\n";

@@ -175,6 +175,13 @@ inline float SegDist_kernel(const float *S, const float *T,
 }
 
 
+//	float idf = (float)id;
+//	float AA[3]={1,1,1},BB[3]={1,1,1},
+//			SS[6]={2+idf,2+idf,2+idf,3+idf,3+idf,3+idf},
+//			TT[6]={0+idf,0+idf,0+idf,1+idf,1+idf,1+idf};
+//	float dd = SegDist_kernel(SS, TT, AA, BB);
+
+
 __global__
 void SegDist_cuda(const float *S, const float *T,
 				  const float *A, const float *B,
@@ -187,12 +194,6 @@ void SegDist_cuda(const float *S, const float *T,
 	const float *cur_A = A+x*3;
 	const float *cur_B = B+y*3;
 	float dd = SegDist_kernel(cur_S, cur_T, cur_A, cur_B);
-
-//	float idf = (float)id;
-//	float AA[3]={1,1,1},BB[3]={1,1,1},
-//			SS[6]={2+idf,2+idf,2+idf,3+idf,3+idf,3+idf},
-//			TT[6]={0+idf,0+idf,0+idf,1+idf,1+idf,1+idf};
-//	float dd = SegDist_kernel(SS, TT, AA, BB);
 
 	if(dist[id]>dd){
 		dist[id] = dd;
@@ -300,6 +301,127 @@ float SegDist_batch_gpu(const float *S, const float *T, int size1, int size2){
 	cout<<"preprocessing data takes "<<get_time_elapsed(start)<<" ms"<<endl;
 
 	start = get_cur_time();
+	const float *cur_S, *cur_T, *cur_A, *cur_B;
+	int times = 0;
+	for(int i=0;i<size1;i+=len_x){
+		for(int j=0;j<size2;j+=len_y){
+			times++;
+			cur_S = d_S+i*6;
+			cur_T = d_T+j*6;
+			cur_A = d_A+i*3;
+			cur_B = d_B+j*3;
+			int tsize1 = min(len_x, size1-i);
+			int tsize2 = min(len_y, size2-j);
+			SegDist_cuda<<<tsize1, tsize2>>>(cur_S, cur_T, cur_A, cur_B, d_dist);
+		}
+	}
+	cudaDeviceSynchronize();
+	double time_elapsed = get_time_elapsed(start);
+
+	cout<<"run "<<times<<" rounds in "<<time_elapsed<<" ms, each round takes "<<time_elapsed/times<<" ms "<<endl;
+
+	start = get_cur_time();
+	cudaMemcpy(dist, d_dist, len_x*len_y*sizeof(float), cudaMemcpyDeviceToHost);
+	for(int i=0;i<len_x*len_y;i++){
+		if(min_dist > dist[i]){
+			min_dist = dist[i];
+		}
+	}
+	min_dist = sqrt(min_dist);
+	cout<<"reduce minimum distance takes "<<get_time_elapsed(start)<<" ms"<<endl;
+
+	start = get_cur_time();
+	cudaFree(d_S);
+	cudaFree(d_T);
+	cudaFree(d_A);
+	cudaFree(d_B);
+	cudaFree(d_dist);
+	delete dist;
+	cout<<"clean spaces takes "<<get_time_elapsed(start)<<" ms"<<endl;
+
+
+	return min_dist;
+}
+
+
+// the computing capacity of the gpu
+float SegDist_gpu_fixed_batch(const float *S, const float *T, int batch_size, int batch_num, float *result){
+
+	struct timeval start = get_cur_time();
+	float *d_S, *d_T, *d_A, *d_B;
+	float *d_dist;
+
+	size_t size1 = batch_size*batch_num;
+	size_t size2 = batch_size*batch_num;
+
+	int len_x = min(max_len_x, size1);
+	int len_y = min(max_len_y, size2);
+	float min_dist = DBL_MAX;
+
+	// copy data into device
+	cudaMalloc(&d_S, size1*6*sizeof(float));
+	cudaMalloc(&d_T, size2*6*sizeof(float));
+	cudaMemcpy(d_S, S, size1*6*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(d_T, T, size2*6*sizeof(float), cudaMemcpyHostToDevice);
+
+	// some temporary space for computation
+	cudaMalloc(&d_A, size1*3*sizeof(float));
+	cudaMalloc(&d_B, size2*3*sizeof(float));
+
+	// compute the vectors of segments in S and T, save to A and B
+	for(int i=0;i<size1;){
+		float *cur_S = d_S+i*6;
+		float *cur_A = d_A+i*3;
+
+		int b_num;
+		int t_num;
+		if(size1>i+max_len_x*max_len_y){
+			b_num = max_len_x;
+			t_num = max_len_y;
+			i += max_len_x*max_len_y;
+		}else if(size1 < i+max_len_y){
+			b_num = 1;
+			t_num = size1-i;
+			i = size1;
+		}else{
+			b_num = (size1-i)/max_len_y;
+			t_num = max_len_y;
+			i += b_num*max_len_y;
+		}
+		get_vector_kernel<<<b_num, t_num>>>(cur_S, cur_A);
+	}
+	for(int i=0;i<size2;){
+		float *cur_T = d_T+i*6;
+		float *cur_B = d_B+i*3;
+
+		int b_num;
+		int t_num;
+		if(size2>i+max_len_x*max_len_y){
+			b_num = max_len_x;
+			t_num = max_len_y;
+			i += max_len_x*max_len_y;
+		}else if(size2 < i+max_len_y){
+			b_num = 1;
+			t_num = size2-i;
+			i = size2;
+		}else{
+			b_num = (size2-i)/max_len_y;
+			t_num = max_len_y;
+			i += b_num*max_len_y;
+		}
+		get_vector_kernel<<<b_num, t_num>>>(cur_T, cur_B);
+	}
+	cudaDeviceSynchronize();
+
+	// space for the distances got from gpu
+	cudaMalloc(&d_dist, len_x*len_y*sizeof(float));
+	float *dist = new float[len_x*len_y];
+	for(int i=0;i<len_x*len_y;i++){
+		dist[i] = DBL_MAX;
+	}
+	cudaMemcpy(d_dist, dist, len_x*len_y*sizeof(float), cudaMemcpyHostToDevice);
+	cout<<"preprocessing data takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
+
 	const float *cur_S, *cur_T, *cur_A, *cur_B;
 	int times = 0;
 	for(int i=0;i<size1;i+=len_x){
