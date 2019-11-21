@@ -38,7 +38,7 @@ inline int get_rand_number(int max_value){
 }
 
 inline bool get_rand_sample(int rate){
-	return rand()%100+1<=rate;
+	return rand()%100<rate;
 }
 
 inline bool is_dir(const char* path) {
@@ -73,6 +73,23 @@ inline void list_files(const char *path, std::vector<string> &f_list){
 		}
 		closedir (dir);
 	}
+}
+
+inline long file_size(const char *file){
+	struct stat stat_buf;
+	int rc = stat(file, &stat_buf);
+	return rc == 0 ? stat_buf.st_size : -1;
+}
+
+inline long file_size(std::vector<string> &f_list){
+	long size = 0;
+	for(string s:f_list){
+		long ls = file_size(s.c_str());
+		if(ls>0){
+			size += ls;
+		}
+	}
+	return size;
 }
 
 inline int get_num_threads(){

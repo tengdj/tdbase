@@ -72,7 +72,6 @@ MyMesh *read_mesh(){
 	if(compressed==NULL){
 		return NULL;
 	}
-	compressed->completeOperation();
 	return compressed;
 }
 
@@ -84,6 +83,14 @@ MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 	decompressed->completeOperation();
 	return decompressed;
 }
+
+MyMesh *get_compressed_mesh(char *data, size_t length){
+	MyMesh *mesh = new MyMesh(100,
+			DECOMPRESSION_MODE_ID, 12, true,
+			 data, length);
+	return mesh;
+}
+
 
 }
 

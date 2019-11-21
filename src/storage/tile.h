@@ -10,76 +10,42 @@
 #include <stdio.h>
 
 #include "../geometry/aab.h"
+#include "../PPMC/mymesh.h"
+#include "../PPMC/configuration.h"
+#include "../spatial/spatial.h"
+
+using namespace std;
 
 namespace hispeed{
 
+class Tile;
 class Voxel_group;
-class Voxel{
 
-	long id = 0;
+class Voxel{
+public:
+	int id = 0;
 	// boundary box of the voxel
 	aab box;
 	// the decoded edges, or triangles in different LODs
 	// the first value of each LOD represent the size of
 	// the data for this LOD
-	char *data[10];
+	float *data[10];
 	int size[10];
-
-	int total_size = 0;
 
 	// the voxel group current voxel belongs to
 	Voxel_group *group = NULL;
-	friend class voxel_group;
-protected:
-	// can only be called by the MyMysh class for cache evicting
+	// can only be called by the Voxel_group class for cache evicting
 	// the box and id will always exist for index looking up
 	// but the detailed edges and triangles can be released if
 	// memory is not big enough
-	void clear(){
-		for(int i=0;i<10;i++){
-			if(data[i]!=NULL){
-				delete data[i];
-				data[i] = NULL;
-				size[i] = 0;
-			}
-		}
-		size = 0;
-	}
-public:
-	Voxel(){
-		for(int i=0;i<10;i++){
-			data[i] = NULL;
-		}
-	};
-	~Voxel(){
-		clear();
-	}
+	void clear();
+	Voxel();
+	~Voxel();
 
-	int get_size(int lod){
-		return size[lod];
-	}
-	int get_total_size(){
-		return total_size;
-	}
-
-	void set_data(int lod, float *target_data){
-		size[lod] = (int)(*target_data);
-		data[lod] = target_data+1;
-	}
-
-	float *get_edges(int lod){
-		assert(lod>=0&&lod<10);
-		if(data[lod]==NULL){
-			group->decode(lod);
-		}
-		return (float *)data[lod];
-	}
-
-	float *get_triangles(int lod){
-		assert(lod>=0&&lod<10);
-		return (float *)data[lod];
-	}
-
+	int get_size(int lod);
+	int get_total_size();
+	void set_data(int lod, float *target_data);
+	float *get_data(int lod);
 };
 
 
@@ -94,41 +60,26 @@ public:
  *
  * */
 class Voxel_group{
-
-	// the file containing the compressed
-	// meshes
-	FILE* fs = NULL;
-	MyMesh *mesh = NULL;
-	// offset of the mesh in file
-	long offset;
-	// size of the mesh
-	long data_size;
-	std::vector<Voxel *> voxels;
-	long num_vexels;
-
 public:
 
-	long get_data_size(){
-		return data_size;
-	}
-	Voxel_group(FILE *fs, long offset, long data_length){
-		this->fs = fs;
-		this->offset = offset;
-		this->data_size = size;
-		num_vexels = 0;
-	}
+	int id = -1;
+	MyMesh *mesh = NULL;
+	char *mesh_data = NULL;
+	// offset of the mesh in .dt file
+	long offset = 0;
+	// size of the mesh in .dt file
+	long data_size = 0;
 
-	~Voxel_group(){
-		if(mesh!=NULL){
-			delete mesh;
-		}
-		for(Voxel *v:voxels){
-			if(v!=NULL){
-				delete v;
-			}
-		}
-		voxels.clear();
-	}
+	// buffer for the decoded data shared by the voxels
+	float *decoded_data[10];
+	std::vector<Voxel *> voxels;
+	// the tile containing this voxel group
+	Tile *tile = NULL;
+
+
+	Voxel_group();
+	~Voxel_group();
+	void add_voxel(aab box);
 
 	// release the data for all voxels
 	// this can be called when being evicted from cache
@@ -138,52 +89,55 @@ public:
 	// also load the data from disk when needed
 	void decode(int lod);
 
+	bool persist(FILE *fs);
+	bool load(FILE *fs);
+
 };
 
 class Tile{
 	bool active = false;
-	long id;
+	int id = -1;
 	aab space;
-	std::string file_path;
-	std::vector<Voxel_group *> voxels;
-	FILE* fs = NULL;
-public:
-
-	Tile(){
-		id = -1;
-	}
-
-	//load from file
-	Tile(std::string path){
-		if(load()){
-			active = true;
-		}
-	}
-
-
-	~Tile(){
-		for(voxel *v:voxels){
-			delete v;
-		}
-		if(fs!=NULL){
-			flose(fs);
-			fs = NULL;
-		}
-	}
+	std::string meta_path;
+	std::string data_path;
+	std::vector<Voxel_group *> voxel_groups;
+	FILE *dt_fs = NULL;
 
 	// load the space and AAB of objects in this tile
+	// can only be called by constructor
 	bool load();
-	// retrieve edges or triangles for certain voxel
-	// to memory space given by data
-	bool retrieve(int voxel_id, float *data);
 
-	// persist the content of the tile to disk file
+	void add_group(Voxel_group *group){
+		group->id = this->voxel_groups.size();
+		voxel_groups.push_back(group);
+		group->tile = this;
+	}
+public:
+
+	Tile(){}
+
+	// load meta data from file
+	// and construct the hierarchy structure
+	// tile->voxel_groups->voxels
+	Tile(std::string path);
+	~Tile();
+	void set_path(string path);
+	bool is_active(){
+		return active;
+	}
+	void add_polyhedron(MyMesh *mesh, long offset);
 	bool persist();
 
+	// retrieve the mesh of the voxel group with ID id on demand
+	void retrieve_mesh(int id);
+
+	// release the space for mesh object and the triangles
+	// decoded in each voxel groups
+	bool release_mesh(int id);
 
 };
 
-
+Tile *generate_tile();
 
 
 

@@ -177,15 +177,10 @@ int main(int argc, char **argv){
 		exit(0);
 	}
 
-	MyMesh *compressed_geom1 = hispeed::read_mesh();
-	MyMesh *compressed_geom2 = hispeed::read_mesh();
-	struct timeval start = get_cur_time();
-	MyMesh *geom1 = hispeed::decompress_mesh(compressed_geom1, compression_rate);
-	MyMesh *geom2 = hispeed::decompress_mesh(compressed_geom2, compression_rate);
+	MyMesh *geom1 = hispeed::read_mesh();
+	MyMesh *geom2 = hispeed::read_mesh();
 	SegmentDistance(geom1, geom2, use_gpu, thread_num);
 
 	delete geom1;
 	delete geom2;
-	delete compressed_geom1;
-	delete compressed_geom2;
 }

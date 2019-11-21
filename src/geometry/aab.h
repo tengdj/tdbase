@@ -22,8 +22,8 @@ class aab{
 public:
 	float min[3];
 	float max[3];
+	// weight of the box, useful for partitioning and balancing
 	long weight = 0;
-	long id = 0;
 	aab(){
 		for(int i=0;i<3;i++){
 			min[i] = DBL_MAX;

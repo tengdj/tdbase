@@ -13,11 +13,16 @@ using namespace std;
 
 int main(int argc, char **argv){
 
-	std::vector<string> paths;
-	hispeed::list_files(".", paths);
-	for(string s:paths){
-		cout<<s<<endl;
+
+	int count = 0;
+	for(int i =0;i<1000000;i++){
+		if(hispeed::get_rand_sample(atoi(argv[1]))){
+			count++;
+		}
 	}
+	cout<<count<<endl;
+
+
 
 }
 

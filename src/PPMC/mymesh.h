@@ -534,8 +534,7 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	int skeleton_sample_rate = 100;
 
 public:
-	//todo teng debug
-	void teng_test();
+	// added for HISPEED
 	void extract_skeleton();
 	inline void set_skeleton_sample_rate(int rate){
 		assert(rate>0&&rate<=100);

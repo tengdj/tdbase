@@ -1,4 +1,4 @@
-#include "partition.h"
+#include "index.h"
 
 using namespace std;
 

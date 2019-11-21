@@ -1,11 +1,11 @@
 prefix=/usr/local
 
-CPPFLAGS	= -std=c++14 -g -O2
+CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result
+NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I ./ -I /usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/local/cuda/lib64 -L/usr/lib/x86_64-linux-gnu/ \
 -lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lspatialindex -lboost_program_options -lstdc++ 
 CGALFLAGS	= -lCGAL -Wl,-rpath
-NVCCFLAGS 	= 
 
 ifdef DEBUG
     CPPFLAGS += -DDEBUG
@@ -34,7 +34,7 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 SRCS_CU := $(wildcard */*.cu)
 OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS))
 %_cu.o: %.cu
-	$(NVCC) $(INCFLAGS) $(CPPFLAGS) $(NVCCFLAGS) -c $? -o $@
+	$(NVCC) $(INCFLAGS) $(NVCCFLAGS) -c $? -o $@
 
 #compile additional range coder .c files
 RC_SRCS := $(wildcard PPMC/rangeCoder/*.c)
@@ -60,7 +60,15 @@ GEOMETRY_OBJS := $(patsubst %.cpp,%.o,$(GEOMETRY_SRCS))
 PARTITION_SRCS := $(wildcard partition/*.cpp)
 PARTITION_OBJS := $(patsubst %.cpp,%.o,$(PARTITION_SRCS))
 
-all: compress decompress distance test skeleton partition
+#INDEX source and object
+INDEX_SRCS := $(wildcard index/*.cpp)
+INDEX_OBJS := $(patsubst %.cpp,%.o,$(INDEX_SRCS))
+
+#STORAGE source and object
+STORAGE_SRCS := $(wildcard storage/*.cpp)
+STORAGE_OBJS := $(patsubst %.cpp,%.o,$(STORAGE_SRCS))
+
+all: compress decompress distance test skeleton partition getoff tile
 
 compress: test/compress.o $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -68,10 +76,16 @@ compress: test/compress.o $(RC_OBJS) $(PPMC_OBJS)
 decompress: test/decompress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
+getoff: test/getoff.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+
 skeleton: test/skeleton.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
-partition: test/partitioner.o $(PARTITION_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+partition: test/partitioner.o $(PARTITION_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+	
+tile: test/tiler.o $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 distance: test/distance.o geometry/TriDist_cu.o geometry/TriDist.o $(PPMC_OBJS) $(RC_OBJS) $(SPATIAL_OBJS)

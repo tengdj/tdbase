@@ -50,6 +50,10 @@ void *get_mbbs_unit(void *arg){
 			arg_val->input_lines->pop();
 		}
 		pthread_mutex_unlock(&lock);
+		if(local_input_lines.empty()){
+			usleep(10);
+			continue;
+		}
 		// process the polyhedrons
 		for(string input_line:local_input_lines){
 			boost::replace_all(input_line, "|", "\n");
@@ -72,13 +76,16 @@ void *get_mbbs_unit(void *arg){
 	pthread_mutex_unlock(&lock);
 }
 
-void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs, int num_threads){
+void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
+		const int num_threads, const int sample_rate){
 	bool complete = false;
 	// get file list
 	std::vector<string> files;
 	for(string f:input_folders){
 		hispeed::list_files(f.c_str(), files);
 	}
+	const long total_filesize = hispeed::file_size(files);
+	long processed_filesize = 0;
 
 	std::queue<string> input_lines;
 
@@ -99,12 +106,27 @@ void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
 
 	// the main thread read from files and store the lines
 	// in a buffer queue with a maximum length
-	int index = 0;
+	int read_lines = 0;
+	int processed_lines = 0;
 	vector<string> local_input_lines;
+	long next_report = 1;
+	srand(TENG_RANDOM_NUMBER);
 	for(string path:files){
 		std::ifstream is(path.c_str());
 		string input_line;
 		while(getline(is, input_line)){
+			read_lines++;
+			processed_filesize += input_line.size()+1;
+			if(processed_filesize*100/total_filesize==next_report){
+				cerr<<"read "<<read_lines<<" processed "<<processed_lines<<" objects\t("<<next_report<<"%)"<<endl;
+				next_report++;
+			}
+
+			// with a certain sample rate
+			if(!hispeed::get_rand_sample(sample_rate)){
+				continue;
+			}
+			processed_lines++;
 			// here we use a local buffer to avoid
 			// frequent lock request
 			local_input_lines.push_back(input_line);
@@ -115,9 +137,6 @@ void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
 				}
 				pthread_mutex_unlock(&lock);
 				local_input_lines.clear();
-			}
-			if(++index%1000==0){
-				cerr<<"processed "<<index<<" "<<input_lines.size()<<endl;
 			}
 			// wait if the queue length is too long
 			while(input_lines.size()>num_threads*LOCAL_QUEUE_SIZE){
@@ -147,9 +166,6 @@ void persist_tile(std::vector<aab> &tiles, const char *prefix){
 	}
 }
 
-void load_space(std::vector<aab> &tiles, const char *space_path){
-	;
-}
 void partition_data(std::vector<aab> &tiles, const char *output_folder){
 	;
 }

@@ -97,6 +97,10 @@ MyMesh::~MyMesh(){
 	if(p_data!=NULL){
 	   delete[] p_data;
 	}
+	mbbs.clear();
+	if(skeleton!=NULL){
+		delete skeleton;
+	}
 }
 
 /**
@@ -250,21 +254,6 @@ Point MyMesh::getPos(PointInt p) const
 
 ///////////////////////teng/////////////////////////////////
 
-
-void MyMesh::teng_test(){
-	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		Halfedge_handle heh = fit->halfedge();
-		Halfedge_handle hIt = heh;
-		do {
-			Vertex_handle vh = hIt->vertex();
-			Point p = vh->point();
-			cout<<p<<endl;
-			hIt = hIt->next();
-		} while (hIt != heh);
-		break;
-	}
-	cout<<size_of_facets()<<" "<<size_of_halfedges()/2<<" "<<size_of_vertices()<<endl;
-}
 
 /*
  *

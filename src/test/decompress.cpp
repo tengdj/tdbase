@@ -25,6 +25,7 @@ int main(int argc, char **argv){
 	std::cerr<<"start compressing"<<endl;
 	struct timeval starttime = get_cur_time();
 	MyMesh *compressed = read_mesh();
+	compressed->completeOperation();
 	cout<<compressed->dataOffset<<" "<<get_time_elapsed(starttime)<<endl;
 
 	std::cerr<<"start decompressing"<<endl;

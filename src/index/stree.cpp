@@ -8,7 +8,7 @@
  *
  */
 
-#include "partition.h"
+#include "index.h"
 
 #include<iostream>
 #include<fstream>

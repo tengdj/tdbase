@@ -17,11 +17,10 @@ using namespace CGAL;
 int main(int argc, char **argv){
 
 	MyMesh *mesh = read_mesh();
-	MyMesh *decompressed = decompress_mesh(mesh, 100);
-	decompressed->set_skeleton_sample_rate(20);
-	decompressed->generate_mbbs();
+	mesh->set_skeleton_sample_rate(20);
+	mesh->generate_mbbs();
 
-	std::vector<aab> skeleton_mbbs = decompressed->get_mbbs();
+	std::vector<aab> skeleton_mbbs = mesh->get_mbbs();
 
 	int index = 0;
 	char path[256];
@@ -34,7 +33,6 @@ int main(int argc, char **argv){
 	}
 
 	skeleton_mbbs.clear();
-	delete decompressed;
 	delete mesh;
 }
 
