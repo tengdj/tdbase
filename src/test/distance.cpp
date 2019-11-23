@@ -83,28 +83,28 @@ int get_triangles(MyMesh *mesh, float *S){
 
 void SegmentDistance(MyMesh *geom1, MyMesh *geom2, bool use_gpu, int thread_num){
 	size_t size1 = geom1->size_of_halfedges()/2, size2 = geom2->size_of_halfedges()/2;
-
-	struct timeval start = get_cur_time();
-
-	float *S = geom1->get_segments(size1);
-	float *T = geom2->get_segments(size2);
-
-	printf("%ld X %ld = %ld \n", size1, size2, size1*size2);
-	printf("loading triangles takes %f milliseconds\n", get_time_elapsed(start));
-
-	start = get_cur_time();
-	float min_distance = 0;
-	if(use_gpu){
-		min_distance = SegDist_batch_gpu(S, T, size1, size2);
-	}else{
-		min_distance = SegDist_batch(S, T, size1, size2, thread_num);
-	}
-
-	printf("get distance take %f miliseconds\n",get_time_elapsed(start));
-	printf("min distance is: %f\n", min_distance);
-
-	delete S;
-	delete T;
+//
+//	struct timeval start = get_cur_time();
+//
+//	float *S = geom1->get_segments();
+//	float *T = geom2->get_segments();
+//
+//	printf("%ld X %ld = %ld \n", size1, size2, size1*size2);
+//	printf("loading triangles takes %f milliseconds\n", get_time_elapsed(start));
+//
+//	start = get_cur_time();
+//	float min_distance = 0;
+//	if(use_gpu){
+//		min_distance = SegDist_batch_gpu(S, T, size1, size2);
+//	}else{
+//		min_distance = SegDist_batch(S, T, size1, size2, thread_num);
+//	}
+//
+//	printf("get distance take %f miliseconds\n",get_time_elapsed(start));
+//	printf("min distance is: %f\n", min_distance);
+//
+//	delete S;
+//	delete T;
 }
 
 int main(int argc, char **argv){

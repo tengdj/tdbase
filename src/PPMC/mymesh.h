@@ -521,51 +521,6 @@ public:
 
 	int alphaBetaMin;
 
-	/*
-	 * for skeleton index
-	 * */
-	Skeleton *skeleton = NULL;
-	std::vector<aab> mbbs;
-	// instead of using all the points
-	// in the skeleton, sample it to
-	// generate less mbbs
-	// todo replace it with a rule based
-	// policy
-	int skeleton_sample_rate = 100;
-
-public:
-
-	// maximum number of facets each voxel can hold
-    int voxel_size = 500;
-
-	// added for HISPEED
-	void extract_skeleton();
-	inline void set_skeleton_sample_rate(int rate){
-		assert(rate>0&&rate<=100);
-		skeleton_sample_rate = rate;
-	}
-	// generate local minimum boundary boxes
-	// with the skeleton extracted
-	void generate_mbbs();
-
-	inline std::vector<aab>& get_mbbs(){
-		return mbbs;
-	}
-
-	inline void get_vertices(std::vector<Point> &points){
-		for(MyMesh::Vertex_iterator v = vertices_begin();
-				v != vertices_end(); ++v){
-			points.push_back(v->point());
-		}
-	}
-
-	// decode to the target level of details
-	// data are saved in a newly allocated space stored start with decode_data
-	float *decode_lod(uint lod);
-
-	// new a space and store the edges for this mesh to it
-	float *get_segments(size_t &size);
-
 };
 
 // get the Euclid distance of two points

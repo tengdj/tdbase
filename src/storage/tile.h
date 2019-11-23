@@ -18,35 +18,18 @@ using namespace std;
 
 namespace hispeed{
 
-class Tile;
-class Voxel_group;
-
+/*
+ *
+ * each voxel contains the minimum boundary box
+ * of a set of edges or triangles.
+ *
+ * */
 class Voxel{
 public:
-	int id = 0;
 	// boundary box of the voxel
 	aab box;
-	// the decoded edges, or triangles in different LODs
-	// the first value of each LOD represent the size of
-	// the data for this LOD
-	float *data[10];
-	int size[10];
-
-	// the voxel group current voxel belongs to
-	Voxel_group *group = NULL;
-	// can only be called by the Voxel_group class for cache evicting
-	// the box and id will always exist for index looking up
-	// but the detailed edges and triangles can be released if
-	// memory is not big enough
-	void clear();
-	Voxel();
-	~Voxel();
-
-	int get_size(int lod);
-	int get_total_size();
-	void set_data(int lod, float *target_data);
-	float *get_data(int lod);
-
+	float *data = NULL;
+	int size = 0;
 	void print();
 };
 
@@ -61,93 +44,93 @@ public:
  * a global cache.
  *
  * */
-class Voxel_group{
-public:
-
-	int id = -1;
-	aab box;
-	MyMesh *mesh = NULL;
-	char *mesh_data = NULL;
-	// offset of the mesh in .dt file
-	long offset = 0;
-	// size of the mesh in .dt file
-	long data_size = 0;
-
-	// buffer for the decoded data shared by the voxels
-	float *decoded_data[10];
-	std::vector<Voxel *> voxels;
+class HiMesh:public MyMesh{
 	// the tile containing this voxel group
-	Tile *tile = NULL;
+	std::vector<Voxel *> voxels;
+public:
+	HiMesh(const char *, long length);
+	// added for HISPEED
+	Skeleton *extract_skeleton();
+	// generate local minimum boundary boxes
+	// with the skeleton extracted
+	vector<aab> generate_mbbs(int voxel_size);
 
+	inline void get_vertices(std::vector<Point> &points){
+		for(MyMesh::Vertex_iterator v = vertices_begin();
+				v != vertices_end(); ++v){
+			points.push_back(v->point());
+		}
+	}
 
-	Voxel_group();
-	~Voxel_group();
-	void add_voxel(aab box);
+	int get_segment_num(){
+		return size_of_halfedges()/2;
+	}
+	float *get_segments();
+	void advance_to(int lod);
+};
 
-	// release the data for all voxels
-	// this can be called when being evicted from cache
-	void release_data();
-
-	// decode the mesh to level of lod
-	// also load the data from disk when needed
-	void decode(int lod);
-
-	bool persist(FILE *fs);
-	bool load(FILE *fs);
-
-	void print();
-
+/*
+ * a wrapper for describing a mesh.
+ * for some cases we may not need to truly
+ * parse the mesh out from disk, but use the boundary box
+ * is good enough.
+ * */
+class HiMesh_Wrapper{
+public:
+	int id = -1;
+	HiMesh *mesh = NULL;
+	aab box;
+	// used for retrieving compressed data from disk
+	long offset = 0;
+	long data_size = 0;
+	~HiMesh_Wrapper(){
+		if(mesh){
+			delete mesh;
+		}
+	}
 };
 
 class Tile{
-	bool active = false;
-	int id = -1;
 	aab box;
-	std::string meta_path;
-	std::string data_path;
-	std::vector<Voxel_group *> voxel_groups;
+	std::string prefix;
 	FILE *dt_fs = NULL;
 
-	// load the space and AAB of objects in this tile
-	// can only be called by constructor
+	std::vector<HiMesh_Wrapper *> objects;
+
 	bool load();
-
-	void add_group(Voxel_group *group){
-		group->id = voxel_groups.size();
-		voxel_groups.push_back(group);
-		group->tile = this;
-		box.update(group->box);
-	}
-public:
-
-	Tile(){}
-
-	// load meta data from file
-	// and construct the hierarchy structure
-	// tile->voxel_groups->voxels
-	Tile(std::string path);
-	~Tile();
-	void set_prefix(string path);
-	bool is_active(){
-		return active;
-	}
-	void set_id(int id){
-		this->id = id;
-	}
-	void add_polyhedron(MyMesh *mesh, long offset);
 	bool persist();
-	// parse from the compressed data stored in a certain path
 	bool parse_raw();
-
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
+public:
 
-	// release the space for mesh object and the triangles
-	// decoded in each voxel groups
-	bool release_mesh(int id);
+	Tile(std::string path);
+	~Tile();
 
 	void print();
-
+	std::string get_meta_path(){
+		return prefix+".mt";
+	}
+	std::string get_data_path(){
+		return prefix+".dt";
+	}
+	HiMesh *get_mesh(int id, int lod){
+		assert(id>=0&&id<objects.size());
+		assert(lod>=0&&lod<=100);
+		if(objects[id]->mesh==NULL){
+			retrieve_mesh(id);
+		}
+		assert(objects[id]->mesh);
+		objects[id]->mesh->advance_to(lod);
+		return objects[id]->mesh;
+	}
+	HiMesh_Wrapper *get_mesh_wrapper(int id){
+		assert(id>=0&&id<objects.size());
+		return objects[id];
+	}
+	int num_objects(){
+		return objects.size();
+	}
 };
 
 Tile *generate_tile();

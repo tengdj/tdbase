@@ -29,7 +29,7 @@ void write_polyhedron(Polyhedron *mesh, const char *path);
 extern MyMesh *get_mesh(string input, bool complete_compress = false);
 MyMesh *read_mesh();
 MyMesh *decompress_mesh(MyMesh *compressed, int lod);
-extern MyMesh *compress_mesh(char *data, size_t length, bool complete_operation = false);
+extern MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation = false);
 
 
 }

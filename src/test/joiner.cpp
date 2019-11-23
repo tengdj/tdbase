@@ -14,53 +14,56 @@ using namespace std;
 using namespace hispeed;
 
 int main(int argc, char **argv){
-//	Tile *tile = new Tile("test");
-//	SpatialJoin * joiner = new SpatialJoin(tile, tile, JT_nearest);
-//	joiner->formalize_computing();
+
+	int lod = 100;
+	if(argc>1){
+		lod = atoi(argv[1]);
+	}
 
 	struct timeval start = get_cur_time();
+	Tile *tile = new Tile("test");
+	printf("loading tile meta takes %f milliseconds\n", get_time_elapsed(start, true));
+	for(int i=0;i<tile->num_objects();i++){
+		tile->get_mesh(i, lod);
+	}
+	printf("decompressing takes %f milliseconds\n", get_time_elapsed(start, true));
 
-	MyMesh *geom1 = hispeed::read_mesh();
-	MyMesh *geom2 = hispeed::read_mesh();
+	HiMesh *geom1 = tile->get_mesh(0, lod);
+	HiMesh *geom2 = tile->get_mesh(1, lod);
 
-	printf("parsing geometry takes %f milliseconds\n", get_time_elapsed(start, true));
-	size_t size1 = geom1->size_of_halfedges()/2;
-	size_t size2 = geom2->size_of_halfedges()/2;
-	float *data1 = geom1->get_segments(size1);
-	float *data2 = geom2->get_segments(size2);
+	size_t size1 = geom1->get_segment_num();
+	size_t size2 = geom2->get_segment_num();
+	float *data1 = geom1->get_segments();
+	float *data2 = geom2->get_segments();
 	printf("%ld X %ld = %ld \n", size1, size2, size1*size2);
 	printf("loading segments takes %f milliseconds\n", get_time_elapsed(start, true));
 
-	int *num2 = new int[400];
-	int totalnum = 0;
-	for(int i=0;i<400;i++){
-		num2[i] = hispeed::get_rand_number(4)+1;
-		totalnum += num2[i];
+	int totalnum = 1000;
+	if(argc>1){
+		totalnum = atoi(argv[1]);
 	}
-	delete num2;
-	float *wdata1 = new float[6*400*totalnum];
-	float *wdata2 = new float[6*400*totalnum];
-	float *cur1 = wdata1;
-	float *cur2 = wdata2;
+	int voxel_size = 400;
+
+	float *wdata1 = new float[6*voxel_size*totalnum];
+	float *wdata2 = new float[6*voxel_size*totalnum];
 	for(int i=0;i<totalnum;i++){
-		memcpy((char *)cur1, (char *)data1, 400*6*sizeof(float));
-		memcpy((char *)cur2, (char *)data2, 400*6*sizeof(float));
-		cur1 += 400*6;
-		cur2 += 400*6;
+		memcpy((char *)(wdata1+i*6*voxel_size), (char *)data1, voxel_size*6*sizeof(float));
+		memcpy((char *)(wdata2+i*6*voxel_size), (char *)data2, voxel_size*6*sizeof(float));
 	}
 	printf("copy data takes %f milliseconds\n", get_time_elapsed(start, true));
-	float min_distance;
+	float *distances = new float[totalnum];
 	for(int i=0;i<totalnum;i++){
-		min_distance = SegDist_single(wdata1+400*6*i, wdata2+400*6*i, 400, 400);
-		//cout<<i<<endl;
+		distances[i] = SegDist_single(wdata1+voxel_size*6*i, wdata2+voxel_size*6*i, voxel_size, voxel_size);
 	}
-	printf("get distance take %f miliseconds\n",get_time_elapsed(start));
-	printf("min distance is: %f\n", min_distance);
+	printf("get distance %f with CPU take %f miliseconds\n",std::sqrt(distances[0]),get_time_elapsed(start, true));
 
-	delete geom1;
-	delete geom2;
+	hispeed::SegDist_gpu_fixed_batch(wdata1, wdata2, voxel_size, totalnum, distances);
+	printf("get distance %f with GPU take %f miliseconds\n",std::sqrt(distances[0]),get_time_elapsed(start, true));
+
+	delete tile;
 	delete data1;
 	delete data2;
 	delete wdata1;
 	delete wdata2;
+	delete distances;
 }

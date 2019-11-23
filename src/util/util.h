@@ -97,6 +97,11 @@ inline long file_size(std::vector<string> &f_list){
 	return size;
 }
 
+inline bool file_exist(const char *path) {
+  struct stat buffer;
+  return (stat(path, &buffer) == 0);
+}
+
 inline int get_num_threads(){
 	return std::thread::hardware_concurrency();
 }

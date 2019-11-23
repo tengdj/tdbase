@@ -609,7 +609,9 @@ float SegDist(const float *seg1, const float *seg2, const float *A, const float 
 	A_dot_T = VdotV(A,Tmp);
 	B_dot_T = VdotV(B,Tmp);
 
-	assert(A_dot_A!=0&&B_dot_B!=0);
+	if(A_dot_A==0||B_dot_B==0){
+		return DBL_MAX;
+	}
 
 	// t parameterizes ray P,A
 	// u parameterizes ray Q,B

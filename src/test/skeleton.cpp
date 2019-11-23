@@ -17,10 +17,7 @@ using namespace CGAL;
 int main(int argc, char **argv){
 
 	MyMesh *mesh = read_mesh();
-	mesh->set_skeleton_sample_rate(20);
-	mesh->generate_mbbs();
-
-	std::vector<aab> skeleton_mbbs = mesh->get_mbbs();
+	std::vector<aab> skeleton_mbbs = mesh->generate_mbbs();
 
 	int index = 0;
 	char path[256];

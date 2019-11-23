@@ -80,7 +80,7 @@ MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 	return decompressed;
 }
 
-MyMesh *compress_mesh(char *data, size_t length, bool complete_operation){
+MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation){
 	MyMesh *mesh = new MyMesh(100,
 			DECOMPRESSION_MODE_ID, 12, true,
 			data, length);
