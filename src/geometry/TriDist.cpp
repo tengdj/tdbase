@@ -46,101 +46,18 @@
 // segments and TriDist() for finding closest points on a pair of triangles
 //--------------------------------------------------------------------------
 
-#include "TriDist.h"
+#include "geometry.h"
 #include <pthread.h>
 
 namespace hispeed{
 
-// useful functions
 
-// copy
-inline
-void
-VcV(float Vr[3], const float V[3])
-{
-  Vr[0] = V[0];  Vr[1] = V[1];  Vr[2] = V[2];
-}
-
-// minus
-inline
-void
-VmV(float Vr[3], const float V1[3], const float V2[3])
-{
-  Vr[0] = V1[0] - V2[0];
-  Vr[1] = V1[1] - V2[1];
-  Vr[2] = V1[2] - V2[2];
-}
-
-// plus
-inline
-void
-VpV(float Vr[3], const float V1[3], const float V2[3])
-{
-  Vr[0] = V1[0] + V2[0];
-  Vr[1] = V1[1] + V2[1];
-  Vr[2] = V1[2] + V2[2];
-}
-
-// plus after product
-inline
-void
-VpVxS(float Vr[3], const float V1[3], const float V2[3], float s)
-{
-  Vr[0] = V1[0] + V2[0] * s;
-  Vr[1] = V1[1] + V2[1] * s;
-  Vr[2] = V1[2] + V2[2] * s;
-}
-
-inline
-void
-VcrossV(float Vr[3], const float V1[3], const float V2[3])
-{
-  Vr[0] = V1[1]*V2[2] - V1[2]*V2[1];
-  Vr[1] = V1[2]*V2[0] - V1[0]*V2[2];
-  Vr[2] = V1[0]*V2[1] - V1[1]*V2[0];
-}
-
-// dot product
-inline
-float
-VdotV(const float V1[3], const float V2[3])
-{
-  return (V1[0]*V2[0] + V1[1]*V2[1] + V1[2]*V2[2]);
-}
-
-// Euclid distance
-inline
-float
-VdistV2(const float V1[3], const float V2[3])
-{
-  return ( (V1[0]-V2[0]) * (V1[0]-V2[0]) +
-	   (V1[1]-V2[1]) * (V1[1]-V2[1]) +
-	   (V1[2]-V2[2]) * (V1[2]-V2[2]));
-}
-
-
-// multiple each value in V with constant s
-inline
-void
-VxS(float Vr[3], const float V[3], float s)
-{
-  Vr[0] = V[0] * s;
-  Vr[1] = V[1] * s;
-  Vr[2] = V[2] * s;
-}
-
-//--------------------------------------------------------------------------
-// SegPoints()
-//
-// Returns closest points between an segment pair.
-// Implemented from an algorithm described in
-//
-// Vladimir J. Lumelsky,
-// On fast computation of distance between line segments.
-// In Information Processing Letters, no. 21, pages 55-61, 1985.
-//--------------------------------------------------------------------------
-
-void
+/*
+ *
+ * get the closest points between segments
+ *
+ * */
+inline void
 SegPoints(float VEC[3],
 	  float X[3], float Y[3],             // closest points
 	  const float P[3], const float A[3], // seg 1 origin, vector
@@ -252,8 +169,14 @@ SegPoints(float VEC[3],
   }
 }
 
-
-float TriDist_seg(const float *S, const float *T, bool &shown_disjoint, bool &closest_find){
+/*
+ * check the segments of a triangle to see if the closest
+ * points can be found on a segment pair, which covers
+ * almost all cases
+ * */
+inline float
+TriDist_seg(const float *S, const float *T,
+		bool &shown_disjoint, bool &closest_find){
 
 	// closest points
 	float P[3];
@@ -321,7 +244,12 @@ float TriDist_seg(const float *S, const float *T, bool &shown_disjoint, bool &cl
 	return mindd;
 }
 
-float
+/*
+ * any other cases for triangle distance calculation besides the
+ * closest points reside on segments
+ *
+ * */
+inline float
 TriDist_other(const float *S, const float *T, bool &shown_disjoint)
 {
 
@@ -472,15 +400,11 @@ TriDist_other(const float *S, const float *T, bool &shown_disjoint)
 // be expected.
 //--------------------------------------------------------------------------
 
-long teng[4];
-float
-TriDist(const float *S, const float *T)
+float TriDist(const float *S, const float *T)
 {
-
 	bool shown_disjoint = false;
 	bool closest_find = false;
 	float mindd_seg = TriDist_seg(S, T, shown_disjoint, closest_find);
-	return mindd_seg;
 	if(closest_find){// the closest points are one segments, simply return
 		return mindd_seg;
 	}else{
@@ -514,34 +438,13 @@ TriDist(const float *S, const float *T)
 	}
 }
 
-/*
- * param dist: head address of space for distances, size = s1*s2*sizeof(float)
- * param P: closest points in S
- * param Q: closest points in T
- * param S: first triangle set size = s1*3*3*sizeof(float)
- * param T: second triangle set size = s2*3*3*sizeof(float)
- * param s1: number of triangles in set S
- * param s2: number of triangles in set T
- *
- * */
-
-struct TriDist_param{
-	const float *S;
-	const float * T;
-	int s1;
-	int s2;
-	int num_threads;
-	int id;
-	float dist;
-};
-
 void *TriDist_unit(void *params_void){
-	struct TriDist_param *param = (struct TriDist_param *)params_void;
-	//cout<<"thread "<<param->id<<" is started"<<endl;
-	for(int i=0;i<param->s1;i++){
-		for(int j=0;j<param->s2;j++){
-			const float *cur_S = param->S+i*9;
-			const float *cur_T = param->T+j*9;
+	struct dist_param *param = (struct dist_param *)params_void;
+	cout<<"thread "<<param->id<<" is started"<<endl;
+	for(int i=0;i<param->size1;i++){
+		for(int j=0;j<param->size2;j++){
+			const float *cur_S = param->data1+i*9;
+			const float *cur_T = param->data2+j*9;
 			float dist = TriDist(cur_S, cur_T);
 			if(dist < param->dist){
 				param->dist = dist;
@@ -551,21 +454,25 @@ void *TriDist_unit(void *params_void){
 	return NULL;
 }
 
+/*
+ * compute the minimum distance among triangles stored in set S and set T
+ * with multiple threads
+ * */
 float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int num_threads){
 	cout<<"starting "<<num_threads<<" threads"<<endl;
 
 	pthread_t threads[num_threads];
-	struct TriDist_param params[num_threads];
+	struct dist_param params[num_threads];
 	int each_thread = s1/num_threads;
 	for(int i=0;i<num_threads;i++){
 		int start = each_thread*i;
 		if(start>=s1){
 			break;
 		}
-		params[i].s1 = std::min(start+each_thread, (int)s1)-start;
-		params[i].s2 = s2;
-		params[i].S = S+start*9;
-		params[i].T = T;
+		params[i].size1 = std::min(start+each_thread, (int)s1)-start;
+		params[i].size2 = s2;
+		params[i].data1 = S+start*9;
+		params[i].data2 = T;
 		params[i].id = i+1;
 		params[i].dist = DBL_MAX;
 
@@ -593,150 +500,5 @@ float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int n
 
 	return min;
 }
-
-inline
-float SegDist(const float *seg1, const float *seg2, const float *A, const float *B, float A_dot_A, float B_dot_B){
-
-	float X[3], Y[3];
-
-	const float *P = seg1;
-	const float *Q = seg2;
-
-	float Tmp[3], A_dot_B, A_dot_T, B_dot_T;
-
-	VmV(Tmp,Q,P);
-	A_dot_B = VdotV(A,B);
-	A_dot_T = VdotV(A,Tmp);
-	B_dot_T = VdotV(B,Tmp);
-
-	if(A_dot_A==0||B_dot_B==0){
-		return DBL_MAX;
-	}
-
-	// t parameterizes ray P,A
-	// u parameterizes ray Q,B
-	float t,u;
-
-	// compute t for the closest point on ray P,A to
-	// ray Q,B
-
-	float denom = A_dot_A*B_dot_B - A_dot_B*A_dot_B;
-	if(denom == 0){
-		t = 0;
-	}else{
-		t = (A_dot_T*B_dot_B - B_dot_T*A_dot_B) / denom;
-	}
-
-	// find u for point on ray Q,B closest to point at t
-	u = (t*A_dot_B - B_dot_T)/B_dot_B;
-
-	// if u is on segment Q,B, t and u correspond to
-	// closest points, otherwise, recompute and
-	// clamp t
-	if (u <= 0) {
-		VcV(Y, Q);
-		t = A_dot_T / A_dot_A;
-	} else if (u >= 1) {
-		VpV(Y, Q, B);
-		t = (A_dot_B + A_dot_T) / A_dot_A;
-	} else { // on segment
-		VpVxS(Y, Q, B, u);
-	}
-
-	if (t <= 0) {
-		VcV(X, P);
-	} else if (t >= 1) {
-		VpV(X, P, A);
-	} else { // 0<=t<=1
-		VpVxS(X, P, A, t);
-	}
-	VmV(Tmp,X,Y);
-	return VdotV(Tmp,Tmp);
-}
-
-float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2){
-	float local_min = DBL_MAX;
-	float *A = new float[size1*3];
-	float *B = new float[size2*3];
-	float *AdA = new float[size1];
-	float *BdB = new float[size2];
-	for(int i=0;i<size1;i++){
-		VmV(A+i*3, data1+i*6+3, data1+i*6);
-		AdA[i] = VdotV(A+i*3, A+i*3);
-	}
-	for(int i=0;i<size2;i++){
-		VmV(B+i*3, data2+i*6+3, data2+i*6);
-		BdB[i] = VdotV(B+i*3, B+i*3);
-	}
-
-	for(int i=0;i<size1;i++){
-		for(int j=0;j<size2;j++){
-			const float *cur_S = data1+i*6;
-			const float *cur_T = data2+j*6;
-			const float *cur_A = A+i*3;
-			const float *cur_B = B+j*3;
-			float dist = SegDist(cur_S, cur_T, cur_A, cur_B, AdA[i], BdB[j]);
-			if(dist < local_min){
-				local_min = dist;
-			}
-		}
-	}
-	delete A;
-	delete B;
-	delete AdA;
-	delete BdB;
-	return local_min;
-}
-
-void *SegDist_unit(void *params_void){
-	struct TriDist_param *param = (struct TriDist_param *)params_void;
-	param->dist = SegDist_single(param->S, param->T, param->s1, param->s2);
-	return NULL;
-}
-
-
-float SegDist_batch(const float *S, const float *T, size_t size1, size_t size2, int num_threads){
-	cout<<"starting "<<num_threads<<" threads"<<endl;
-
-	pthread_t threads[num_threads];
-	struct TriDist_param params[num_threads];
-	int each_thread = size1/num_threads;
-	for(int i=0;i<num_threads;i++){
-		int start = each_thread*i;
-		if(start>=size1){
-			break;
-		}
-		params[i].s1 = min(start+each_thread, (int)size1)-start;
-		params[i].s2 = size2;
-		params[i].S = S+start*6;
-		params[i].T = T;
-		params[i].id = i+1;
-		params[i].dist = DBL_MAX;
-
-		int rc = pthread_create(&threads[i], NULL, SegDist_unit, (void *)&params[i]);
-		if (rc) {
-			cout << "Error:unable to create thread," << rc << endl;
-			exit(-1);
-		}
-	}
-
-
-	float min = DBL_MAX;
-	for(int i = 0; i < num_threads; i++){
-		void *status;
-		int rc = pthread_join(threads[i], &status);
-		if (rc) {
-			cout << "Error:unable to join," << rc << endl;
-			exit(-1);
-		}
-		if(params[i].dist < min){
-			min = params[i].dist;
-		}
-		//cerr << "Main: completed thread id :" << i <<endl;
-	}
-
-	return sqrt(min);
-}
-
 
 }

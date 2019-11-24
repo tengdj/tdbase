@@ -68,7 +68,7 @@ INDEX_OBJS := $(patsubst %.cpp,%.o,$(INDEX_SRCS))
 STORAGE_SRCS := $(wildcard storage/*.cpp)
 STORAGE_OBJS := $(patsubst %.cpp,%.o,$(STORAGE_SRCS))
 
-all: compress decompress distance test skeleton partition getoff join
+all: compress decompress test partition getoff join
 
 compress: test/compress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -79,17 +79,11 @@ decompress: test/decompress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 getoff: test/getoff.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
-skeleton: test/skeleton.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
-	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
-
 partition: test/partitioner.o $(PARTITION_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-join: test/joiner.o geometry/TriDist.o geometry/TriDist_cu.o $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+join: test/joiner.o geometry/SegDist.o geometry/SegDist_cu.o $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
-	
-distance: test/distance.o geometry/TriDist_cu.o geometry/TriDist.o $(PPMC_OBJS) $(RC_OBJS) $(SPATIAL_OBJS)
-	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) $(CGALFLAGS) -o ../build/$@
 	
 test: test/test.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@

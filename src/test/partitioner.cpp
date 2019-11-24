@@ -15,7 +15,7 @@ using namespace std;
 int main(int argc, char** argv) {
 	std::vector<aab> tiles;
 
-//	// parse mbb
+	// parse mbb
 	std::vector<string> input_folders;
 	input_folders.push_back(argv[1]);
 

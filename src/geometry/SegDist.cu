@@ -46,8 +46,7 @@
 // segments and TriDist() for finding closest points on a pair of triangles
 //--------------------------------------------------------------------------
 
-#include "TriDist.h"
-#include <pthread.h>
+#include "geometry.h"
 
 #define CUDA_ERROR_CHECK
 
@@ -73,7 +72,7 @@ inline void __cudaSafeCall( cudaError err)
 // copy
 __device__
 inline void
-VcV(float Vr[3], const float V[3])
+VcV_d(float Vr[3], const float V[3])
 {
   Vr[0] = V[0];  Vr[1] = V[1];  Vr[2] = V[2];
 }
@@ -81,7 +80,7 @@ VcV(float Vr[3], const float V[3])
 // minus
 __device__
 inline void
-VmV(float Vr[3], const float V1[3], const float V2[3])
+VmV_d(float Vr[3], const float V1[3], const float V2[3])
 {
   Vr[0] = V1[0] - V2[0];
   Vr[1] = V1[1] - V2[1];
@@ -91,7 +90,7 @@ VmV(float Vr[3], const float V1[3], const float V2[3])
 // plus
 __device__
 inline void
-VpV(float Vr[3], const float V1[3], const float V2[3])
+VpV_d(float Vr[3], const float V1[3], const float V2[3])
 {
   Vr[0] = V1[0] + V2[0];
   Vr[1] = V1[1] + V2[1];
@@ -101,7 +100,7 @@ VpV(float Vr[3], const float V1[3], const float V2[3])
 // plus after product
 __device__
 inline void
-VpVxS(float Vr[3], const float V1[3], const float V2[3], float s)
+VpVxS_d(float Vr[3], const float V1[3], const float V2[3], float s)
 {
   Vr[0] = V1[0] + V2[0] * s;
   Vr[1] = V1[1] + V2[1] * s;
@@ -111,7 +110,7 @@ VpVxS(float Vr[3], const float V1[3], const float V2[3], float s)
 // dot product
 __device__
 inline float
-VdotV(const float V1[3], const float V2[3])
+VdotV_d(const float V1[3], const float V2[3])
 {
   return (V1[0]*V2[0] + V1[1]*V2[1] + V1[2]*V2[2]);
 }
@@ -123,15 +122,15 @@ inline float SegDist_kernel(const float *S, const float *T,
 
 	float t = 0.0, u = 0.0, dist = 0.0, t1 = 0.0;
 	float ST[3]; // temporary vector S->T
-	VmV(ST,T,S);
-	float A_dot_A = VdotV(A,A);
-	float B_dot_B = VdotV(B,B);
+	VmV_d(ST,T,S);
+	float A_dot_A = VdotV_d(A,A);
+	float B_dot_B = VdotV_d(B,B);
 	if(A_dot_A==0||B_dot_B==0){
 		return DBL_MAX;
 	}
-	float A_dot_B = VdotV(A,B);
-	float A_dot_ST = VdotV(A,ST);
-	float B_dot_ST = VdotV(B,ST);
+	float A_dot_B = VdotV_d(A,B);
+	float A_dot_ST = VdotV_d(A,ST);
+	float B_dot_ST = VdotV_d(B,ST);
 
 	// t parameterizes ray P,A
 	// u parameterizes ray Q,B
@@ -260,133 +259,10 @@ __global__
 void get_vector_kernel(float *S, float *A){
 	int id = blockIdx.x*blockDim.x+threadIdx.x;
 	float *cur_A = A+id*3;
-	VmV(cur_A, S+id*6+3, S+id*6);
+	VmV_d(cur_A, S+id*6+3, S+id*6);
 }
 
-
-// the computing capacity of the gpu
-int max_len_x = 200;
-int max_len_y = 512;
-
-float SegDist_batch_gpu(const float *S, const float *T, int size1, int size2){
-
-	struct timeval start = get_cur_time();
-	float *d_S, *d_T, *d_A, *d_B;
-	float *d_dist;
-
-	int len_x = min(max_len_x, size1);
-	int len_y = min(max_len_y, size2);
-	float min_dist = DBL_MAX;
-
-	// copy data into device
-	cudaMalloc(&d_S, size1*6*sizeof(float));
-	cudaMalloc(&d_T, size2*6*sizeof(float));
-	cudaMemcpy(d_S, S, size1*6*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_T, T, size2*6*sizeof(float), cudaMemcpyHostToDevice);
-
-	// some temporary space for computation
-	cudaMalloc(&d_A, size1*3*sizeof(float));
-	cudaMalloc(&d_B, size2*3*sizeof(float));
-
-	// compute the vectors of segments in S and T, save to A and B
-	for(int i=0;i<size1;){
-		float *cur_S = d_S+i*6;
-		float *cur_A = d_A+i*3;
-
-		int b_num;
-		int t_num;
-		if(size1>i+max_len_x*max_len_y){
-			b_num = max_len_x;
-			t_num = max_len_y;
-			i += max_len_x*max_len_y;
-		}else if(size1 < i+max_len_y){
-			b_num = 1;
-			t_num = size1-i;
-			i = size1;
-		}else{
-			b_num = (size1-i)/max_len_y;
-			t_num = max_len_y;
-			i += b_num*max_len_y;
-		}
-		get_vector_kernel<<<b_num, t_num>>>(cur_S, cur_A);
-	}
-	for(int i=0;i<size2;){
-		float *cur_T = d_T+i*6;
-		float *cur_B = d_B+i*3;
-
-		int b_num;
-		int t_num;
-		if(size2>i+max_len_x*max_len_y){
-			b_num = max_len_x;
-			t_num = max_len_y;
-			i += max_len_x*max_len_y;
-		}else if(size2 < i+max_len_y){
-			b_num = 1;
-			t_num = size2-i;
-			i = size2;
-		}else{
-			b_num = (size2-i)/max_len_y;
-			t_num = max_len_y;
-			i += b_num*max_len_y;
-		}
-		get_vector_kernel<<<b_num, t_num>>>(cur_T, cur_B);
-	}
-	cudaDeviceSynchronize();
-
-	// space for the distances got from gpu
-	cudaMalloc(&d_dist, len_x*len_y*sizeof(float));
-	float *dist = new float[len_x*len_y];
-	for(int i=0;i<len_x*len_y;i++){
-		dist[i] = DBL_MAX;
-	}
-	cudaMemcpy(d_dist, dist, len_x*len_y*sizeof(float), cudaMemcpyHostToDevice);
-	cout<<"preprocessing data takes "<<get_time_elapsed(start)<<" ms"<<endl;
-
-	start = get_cur_time();
-	const float *cur_S, *cur_T, *cur_A, *cur_B;
-	int times = 0;
-	for(int i=0;i<size1;i+=len_x){
-		for(int j=0;j<size2;j+=len_y){
-			times++;
-			cur_S = d_S+i*6;
-			cur_T = d_T+j*6;
-			cur_A = d_A+i*3;
-			cur_B = d_B+j*3;
-			int tsize1 = min(len_x, size1-i);
-			int tsize2 = min(len_y, size2-j);
-			SegDist_cuda<<<tsize1, tsize2>>>(cur_S, cur_T, cur_A, cur_B, d_dist);
-		}
-	}
-	cudaDeviceSynchronize();
-	double time_elapsed = get_time_elapsed(start);
-
-	cout<<"run "<<times<<" rounds in "<<time_elapsed<<" ms, each round takes "<<time_elapsed/times<<" ms "<<endl;
-
-	start = get_cur_time();
-	cudaMemcpy(dist, d_dist, len_x*len_y*sizeof(float), cudaMemcpyDeviceToHost);
-	for(int i=0;i<len_x*len_y;i++){
-		if(min_dist > dist[i]){
-			min_dist = dist[i];
-		}
-	}
-	min_dist = sqrt(min_dist);
-	cout<<"reduce minimum distance takes "<<get_time_elapsed(start)<<" ms"<<endl;
-
-	start = get_cur_time();
-	cudaFree(d_S);
-	cudaFree(d_T);
-	cudaFree(d_A);
-	cudaFree(d_B);
-	cudaFree(d_dist);
-	delete dist;
-	cout<<"clean spaces takes "<<get_time_elapsed(start)<<" ms"<<endl;
-
-
-	return min_dist;
-}
-
-
-void SegDist_gpu_fixed_batch(const float *S, const float *T, int batch_size, int batch_num, float *result){
+void SegDist_batch_gpu(const float *S, const float *T, int batch_size, int batch_num, float *result){
 
 	struct timeval start = get_cur_time();
 	float *d_S, *d_T, *d_A, *d_B, *d_dist;

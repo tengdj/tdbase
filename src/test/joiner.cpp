@@ -9,7 +9,7 @@
 
 
 #include "../storage/tile.h"
-#include "../geometry/TriDist.h"
+#include "../geometry/geometry.h"
 using namespace std;
 using namespace hispeed;
 
@@ -20,6 +20,10 @@ int main(int argc, char **argv){
 		lod = atoi(argv[1]);
 	}
 
+	int totalnum = 10000;
+	if(argc>2){
+		totalnum = atoi(argv[2]);
+	}
 	struct timeval start = get_cur_time();
 	Tile *tile = new Tile("test");
 	printf("loading tile meta takes %f milliseconds\n", get_time_elapsed(start, true));
@@ -38,11 +42,9 @@ int main(int argc, char **argv){
 	printf("%ld X %ld = %ld \n", size1, size2, size1*size2);
 	printf("loading segments takes %f milliseconds\n", get_time_elapsed(start, true));
 
-	int totalnum = 1000;
-	if(argc>1){
-		totalnum = atoi(argv[1]);
-	}
-	int voxel_size = 400;
+	size_t voxel_size = 400;
+	voxel_size = std::min(voxel_size, size1);
+	voxel_size = std::min(voxel_size, size2);
 
 	float *wdata1 = new float[6*voxel_size*totalnum];
 	float *wdata2 = new float[6*voxel_size*totalnum];
@@ -57,7 +59,7 @@ int main(int argc, char **argv){
 	}
 	printf("get distance %f with CPU take %f miliseconds\n",std::sqrt(distances[0]),get_time_elapsed(start, true));
 
-	hispeed::SegDist_gpu_fixed_batch(wdata1, wdata2, voxel_size, totalnum, distances);
+	hispeed::SegDist_batch_gpu(wdata1, wdata2, voxel_size, totalnum, distances);
 	printf("get distance %f with GPU take %f miliseconds\n",std::sqrt(distances[0]),get_time_elapsed(start, true));
 
 	delete tile;
