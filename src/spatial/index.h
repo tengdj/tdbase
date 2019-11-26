@@ -15,12 +15,6 @@
 
 namespace hispeed{
 
-typedef struct range{
-	float low;
-	float high;
-} range;
-
-
 class AlignedRTree{
 	aab *rtree;
 public:

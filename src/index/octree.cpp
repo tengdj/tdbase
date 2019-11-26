@@ -6,7 +6,8 @@ namespace hispeed{
 
 
 OctreeNode::OctreeNode(aab b, int _level, long tsize) {
-	box = b;
+	node_voxel.box = b;
+	node_voxel.size = 0;
 	level = _level;
 	isLeaf = true;
 	canBeSplit = true;
@@ -23,14 +24,14 @@ OctreeNode::~OctreeNode() {
 }
 
 /* Check if the node MBB intersects with the object MBB */
-bool OctreeNode::intersects(aab *object) {
-	return box.intersect(object);
+bool OctreeNode::intersects(Voxel *object) {
+	return node_voxel.box.intersect(&object->box);
 }
 
-bool OctreeNode::addObject(aab *object) {
-	box.weight += object->weight;
+bool OctreeNode::addObject(Voxel *object) {
+	node_voxel.size += object->size;
 	// newly added node
-	if(box.weight == object->weight){
+	if(node_voxel.size == object->size){
 		// newly added node must be a leaf
 		assert(isLeaf);
 		objectList.push_back(object);
@@ -39,11 +40,11 @@ bool OctreeNode::addObject(aab *object) {
 	if (isLeaf) {
 		objectList.push_back(object);
 		/* Temporary variables */
-		if (box.weight > tile_size && canBeSplit) {
+		if (node_voxel.size > tile_size && canBeSplit) {
 			/* Update the center */
 			float mid[3];
-			float *low = box.min;
-			float *high = box.max;
+			float *low = node_voxel.box.min;
+			float *high = node_voxel.box.max;
 			for (int i = 0; i < 3; i++) {
 				mid[i] = (low[i] + high[i]) / 2;
 			}
@@ -61,12 +62,12 @@ bool OctreeNode::addObject(aab *object) {
 
 			// assign objects to children
 			int totalChildrenSize = 0;
-			for(aab *b:objectList) {
+			for(Voxel *v:objectList) {
 				bool inserted = false;
 				for (int i = 0; i < 8; i++) {
-					if (children[i]->intersects(b)) {
-						children[i]->addObject(b);
-						totalChildrenSize += b->weight;
+					if (children[i]->intersects(v)) {
+						children[i]->addObject(v);
+						totalChildrenSize += v->size;
 						inserted = true;
 					}
 				}
@@ -75,7 +76,7 @@ bool OctreeNode::addObject(aab *object) {
 
 			// split the node won't do any help thus we undo
 			// this round of split and wait longer
-			if (totalChildrenSize >= 8 * (box.weight - 1)) {
+			if (totalChildrenSize >= 8 * (node_voxel.size - 1)) {
 				isLeaf = true;
 				canBeSplit = false;
 				for (int i = 0; i < 8; i++) {
@@ -86,7 +87,7 @@ bool OctreeNode::addObject(aab *object) {
 				objectList.clear();
 				isLeaf = false;
 			}
-		} else if (box.weight > 1.5 * tile_size) {
+		} else if (node_voxel.size > 1.5 * tile_size) {
 			canBeSplit = true;
 		}
 
@@ -103,7 +104,7 @@ bool OctreeNode::addObject(aab *object) {
 void OctreeNode::genTiles(vector<aab> &tiles){
 	if(isLeaf){
 		if(objectList.size()>0){
-			tiles.push_back(box);
+			tiles.push_back(node_voxel.box);
 		}
 	}else{
 		for(OctreeNode *n:children){
@@ -112,18 +113,18 @@ void OctreeNode::genTiles(vector<aab> &tiles){
 	}
 }
 
-OctreeNode *build_ctree(std::vector<aab*> &mbbs, int num_tiles){
+OctreeNode *build_ctree(std::vector<Voxel*> &voxels, int num_tiles){
 	// the main thread build the OCTree with the Minimum Boundary Box
 	// get from the data
 	aab root_node;
 	long total_size = 0;
-	for(aab *b:mbbs){
-		root_node.update(*b);
-		total_size += b->weight;
+	for(Voxel *v:voxels){
+		root_node.update(v->box);
+		total_size += v->size;
 	}
 	OctreeNode *octree = new OctreeNode(root_node, 0, total_size/num_tiles);
-	for(aab *b:mbbs){
-		octree->addObject(b);
+	for(Voxel *v:voxels){
+		octree->addObject(v);
 	}
 	return octree;
 }

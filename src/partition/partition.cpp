@@ -23,7 +23,7 @@ const int LOCAL_QUEUE_SIZE=10;
 struct unit_args{
 	int id;
 	std::queue<string> *input_lines;
-	std::vector<aab *> *mbbs;
+	std::vector<Voxel *> *voxels;
 	bool *complete;
 };
 pthread_mutex_t lock;
@@ -36,7 +36,7 @@ void *get_mbbs_unit(void *arg){
 	pthread_mutex_unlock(&lock);
 
 	vector<string> local_input_lines;
-	vector<aab*> local_objects;
+	vector<Voxel*> local_voxels;
 	int local_processed = 0;
 	while(!(*arg_val->complete)||!arg_val->input_lines->empty()){
 		// fetch a certain number of lines
@@ -60,22 +60,23 @@ void *get_mbbs_unit(void *arg){
 			if(mesh==NULL){
 				continue;
 			}
-			aab *box = new aab(mesh->bbMin[0], mesh->bbMin[1], mesh->bbMin[2],
+			Voxel *voxel = new Voxel();
+			voxel->box = aab(mesh->bbMin[0], mesh->bbMin[1], mesh->bbMin[2],
 					mesh->bbMax[0], mesh->bbMax[1], mesh->bbMax[2]);
-			box->weight = mesh->size_of_facets();
-			local_objects.push_back(box);
+			voxel->size = mesh->size_of_facets();
+			local_voxels.push_back(voxel);
 			delete mesh;
 		}
 		local_input_lines.clear();
 	}
 
 	pthread_mutex_lock(&lock);
-	arg_val->mbbs->insert(arg_val->mbbs->end(), local_objects.begin(), local_objects.end());
-	local_objects.clear();
+	arg_val->voxels->insert(arg_val->voxels->end(), local_voxels.begin(), local_voxels.end());
+	local_voxels.clear();
 	pthread_mutex_unlock(&lock);
 }
 
-void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
+void get_voxels(std::vector<std::string> &input_folders, std::vector<Voxel *> &voxels,
 		const int num_threads, const int sample_rate){
 	bool complete = false;
 	// get file list
@@ -94,7 +95,7 @@ void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
 	for(int i=0;i<num_threads;i++){
 		arg[i].id = i;
 		arg[i].input_lines = &input_lines;
-		arg[i].mbbs = &mbbs;
+		arg[i].voxels = &voxels;
 		arg[i].complete = &complete;
 		int rc = pthread_create(&threads[i], NULL, get_mbbs_unit, (void *)&arg[i]);
 		if (rc) {
@@ -116,11 +117,6 @@ void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
 		while(getline(is, input_line)){
 			read_lines++;
 			processed_filesize += input_line.size()+1;
-			if(processed_filesize*100/total_filesize==next_report){
-				cerr<<"read "<<read_lines<<" processed "<<processed_lines<<" objects\t("<<next_report<<"%)"<<endl;
-				next_report++;
-			}
-
 			// with a certain sample rate
 			if(!hispeed::get_rand_sample(sample_rate)){
 				continue;
@@ -140,6 +136,10 @@ void get_mbbs(std::vector<std::string> &input_folders, std::vector<aab *> &mbbs,
 			// wait if the queue length is too long
 			while(input_lines.size()>num_threads*LOCAL_QUEUE_SIZE){
 				usleep(10);
+			}
+			if(processed_filesize*100/total_filesize==next_report){
+				cerr<<"read "<<read_lines<<" processed "<<processed_lines<<" objects\t("<<next_report<<"%)"<<endl;
+				next_report += 2;
 			}
 		}
 	}

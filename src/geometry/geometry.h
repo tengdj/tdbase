@@ -104,6 +104,6 @@ float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int n
 
 float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
 float SegDist_batch(const float *S1, const float *S2, size_t size1, size_t size2, int num_threads);
-void SegDist_batch_gpu(const float *S, const float *T, int batch_size, int batch_num, float *result);
+void SegDist_batch_gpu(const float *data, const long *offset_size, float *result, const int batch_num);
 }
 #endif

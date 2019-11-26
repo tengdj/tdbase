@@ -68,6 +68,10 @@ INDEX_OBJS := $(patsubst %.cpp,%.o,$(INDEX_SRCS))
 STORAGE_SRCS := $(wildcard storage/*.cpp)
 STORAGE_OBJS := $(patsubst %.cpp,%.o,$(STORAGE_SRCS))
 
+#JOIN source and object
+JOIN_SRCS := $(wildcard join/*.cpp)
+JOIN_OBJS := $(patsubst %.cpp,%.o,$(JOIN_SRCS))
+
 all: compress decompress test partition getoff join
 
 compress: test/compress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
@@ -82,7 +86,7 @@ getoff: test/getoff.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 partition: test/partitioner.o $(PARTITION_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-join: test/joiner.o geometry/SegDist.o geometry/SegDist_cu.o $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+join: test/joiner.o geometry/SegDist.o geometry/SegDist_cu.o $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 test: test/test.o

@@ -4,7 +4,8 @@
  *  Created on: Nov 14, 2019
  *      Author: teng
  *
- *  define of Axis-Aligned Box
+ *  define of Axis-Aligned Box, which is a basic unit
+ *  for describing objects
  */
 
 #ifndef HISPEED_AAB_H_
@@ -14,16 +15,35 @@
 #include <iostream>
 #include <vector>
 #include <float.h>
+#include <math.h>
 using namespace std;
 
 namespace hispeed{
+
+typedef struct range{
+public:
+	float closest = 0;
+	float farthest = 0;
+	bool operator>(range &d){
+		return closest>d.farthest;
+	}
+	bool operator<(range &d){
+		return farthest<d.closest;
+	}
+	bool operator==(range &d){
+		return !(closest>d.farthest||farthest<d.closest);
+	}
+	friend std::ostream&
+		operator<<(std::ostream& os, const range &d){
+		os<<d.closest<<"->"<<d.farthest;
+		return os;
+	}
+}range;
 
 class aab{
 public:
 	float min[3];
 	float max[3];
-	// weight of the box, useful for partitioning and balancing
-	long weight = 0;
 	aab(){
 		for(int i=0;i<3;i++){
 			min[i] = DBL_MAX;
@@ -79,6 +99,16 @@ public:
 				 object->min[1] > max[1] || object->max[1] < min[1] ||
 				 object->min[2] > max[2] || object->max[2] < min[2]);
 	}
+	bool contains(aab *object){
+		for(int i=0;i<3;i++){
+			if(object->min[i]<min[i]){
+				return false;
+			}
+			if(object->max[i]>max[i]){
+				return false;
+			}
+		}
+	}
 
 	friend std::ostream&
 	operator<<(std::ostream& os, const aab &p){
@@ -92,13 +122,51 @@ public:
 		os<<p.max[0]<<",";
 		os<<p.max[1]<<",";
 		os<<p.max[2]<<")";
-		os<<"\t"<<p.weight;
 		return os;
+	}
+	float diagonal_length(){
+		float dl = 0;
+		for(int i=0;i<3;i++){
+			dl += (max[i]-min[i])*(max[i]-min[i]);
+		}
+		return dl;
+	}
+
+	// get the possible minimum and maximum distance of
+	// two aabs
+	range distance(const aab b){
+		range ret;
+		bool contained = false;
+		for(int i=0;i<3;i++){
+			if(min[i]>b.max[i]){
+				ret.closest += (min[i]-b.max[i])*(min[i]-b.max[i]);
+			}else if(b.min[i]>max[i]){
+				ret.closest += (b.min[i]-max[i])*(b.min[i]-max[i]);
+			} // else intersect in this dimension
+		}
+		aab tmp = b;
+		tmp.update(*this);
+		ret.farthest = tmp.diagonal_length();
+		ret.closest = sqrt(ret.closest);
+		ret.farthest = sqrt(ret.farthest);
+		return ret;
 	}
 
 
 };
 
+/*
+ * each voxel contains the minimum boundary box
+ * of a set of edges or triangles. It is an extension of
+ * AAB with additional elements
+ * */
+class Voxel{
+public:
+	// boundary box of the voxel
+	aab box;
+	float *data = NULL;
+	int size = 0;
+};
 
 }
 

@@ -13,6 +13,10 @@ using namespace std;
 
 // main method
 int main(int argc, char** argv) {
+	if(argc<2){
+		cerr<<"usage: parition path/to/folder [num_threads] [sample_rate]"<<endl;
+		exit(0);
+	}
 	std::vector<aab> tiles;
 
 	// parse mbb
@@ -29,26 +33,33 @@ int main(int argc, char** argv) {
 		sample_rate = atoi(argv[3]);
 	}
 
-	std::vector<aab *> mbbs;
-	hispeed::get_mbbs(input_folders, mbbs, hispeed::get_num_threads(), sample_rate);
+	struct timeval start = get_cur_time();
 
 	SPNode *sp = NULL;
-	if(true){
-		sp = hispeed::build_sort_partition(mbbs, num_tiles);
-		sp->persist("tmp.off");
+	const char *partition_path = "tmp.part";
+	if(!hispeed::file_exist(partition_path)){
+		std::vector<Voxel *> voxels;
+		hispeed::get_voxels(input_folders, voxels,
+				hispeed::get_num_threads(), sample_rate);
+		cout<<"getting voxels of objects takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
+		sp = hispeed::build_sort_partition(voxels, num_tiles);
+		cout<<"generating partitions takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
+		for(Voxel *v:voxels){
+			delete v;
+		}
+		voxels.clear();
+		sp->persist(partition_path);
+		cout<<"persist partitions takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
 	}else{
 		sp = new SPNode();
-		sp->load("tmp.off");
+		sp->load(partition_path);
+		cout<<"loading partitions takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
 	}
 	sp->genTiles(tiles);
 	hispeed::persist_tile(tiles, "tiles_");
 	tiles.clear();
-	for(aab *b:mbbs){
-		delete b;
-	}
-	mbbs.clear();
-	delete sp;
 
+	delete sp;
 	return 0;
 }
 

@@ -117,30 +117,32 @@ std::vector<aab> HiMesh::generate_mbbs(int voxel_size){
 	return mbbs;
 }
 
-
-float *HiMesh::get_segments(){
-
+void HiMesh::get_segments(float *segments){
 	size_t size = size_of_halfedges()/2;
-	float *segments = new float[6*size];
-	float *cur_S = segments;
-	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
-		Point p1 = eit->vertex()->point();
-		Point p2 = eit->opposite()->vertex()->point();
-		assert(p1!=p2);
-		*cur_S = p1.x();
-		cur_S++;
-		*cur_S = p1.y();
-		cur_S++;
-		*cur_S = p1.z();
-		cur_S++;
-		*cur_S = p2.x();
-		cur_S++;
-		*cur_S = p2.y();
-		cur_S++;
-		*cur_S = p2.z();
-		cur_S++;
+	if(segment_buffer==NULL){
+		segment_buffer = new float[size*6*sizeof(float)];
+		float *cur_S = segment_buffer;
+		for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
+			Point p1 = eit->vertex()->point();
+			Point p2 = eit->opposite()->vertex()->point();
+			assert(p1!=p2);
+			*cur_S = p1.x();
+			cur_S++;
+			*cur_S = p1.y();
+			cur_S++;
+			*cur_S = p1.z();
+			cur_S++;
+			*cur_S = p2.x();
+			cur_S++;
+			*cur_S = p2.y();
+			cur_S++;
+			*cur_S = p2.z();
+			cur_S++;
+		}
 	}
-	return segments;
+	if(segments){
+		memcpy((void *)segments, (void *)segment_buffer, size*6*sizeof(float));
+	}
 }
 
 void HiMesh::advance_to(int lod){
@@ -150,6 +152,12 @@ void HiMesh::advance_to(int lod){
 	i_decompPercentage = lod;
 	b_jobCompleted = false;
 	completeOperation();
+	// clean the buffer of segments if already assigned
+	if(segment_buffer){
+		delete segment_buffer;
+		segment_buffer = NULL;
+	}
+	get_segments();
 }
 
 HiMesh::HiMesh(const char* data, long length):

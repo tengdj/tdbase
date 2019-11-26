@@ -18,21 +18,6 @@ using namespace std;
 
 namespace hispeed{
 
-/*
- *
- * each voxel contains the minimum boundary box
- * of a set of edges or triangles.
- *
- * */
-class Voxel{
-public:
-	// boundary box of the voxel
-	aab box;
-	float *data = NULL;
-	int size = 0;
-	void print();
-};
-
 
 /*
  *
@@ -47,8 +32,15 @@ public:
 class HiMesh:public MyMesh{
 	// the tile containing this voxel group
 	std::vector<Voxel *> voxels;
+	float *segment_buffer = NULL;
 public:
 	HiMesh(const char *, long length);
+	~HiMesh(){
+		if(segment_buffer){
+			delete segment_buffer;
+			voxels.clear();
+		}
+	}
 	// added for HISPEED
 	Skeleton *extract_skeleton();
 	// generate local minimum boundary boxes
@@ -65,7 +57,7 @@ public:
 	int get_segment_num(){
 		return size_of_halfedges()/2;
 	}
-	float *get_segments();
+	void get_segments(float *segments=NULL);
 	void advance_to(int lod);
 };
 
@@ -102,10 +94,6 @@ class Tile{
 	bool parse_raw();
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
-public:
-
-	Tile(std::string path);
-	~Tile();
 
 	void print();
 	std::string get_meta_path(){
@@ -114,6 +102,11 @@ public:
 	std::string get_data_path(){
 		return prefix+".dt";
 	}
+public:
+
+	Tile(std::string path);
+	~Tile();
+
 	HiMesh *get_mesh(int id, int lod){
 		assert(id>=0&&id<objects.size());
 		assert(lod>=0&&lod<=100);
@@ -127,6 +120,10 @@ public:
 	HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
 		return objects[id];
+	}
+	aab get_mbb(int id){
+		assert(id>=0&&id<objects.size());
+		return objects[id]->box;
 	}
 	int num_objects(){
 		return objects.size();

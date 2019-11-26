@@ -9,6 +9,7 @@
 #define SPATIALJOIN_H_
 
 #include "../storage/tile.h"
+#include "../geometry/geometry.h"
 #include <queue>
 
 using namespace std;
@@ -36,13 +37,13 @@ const static long VOXEL_BUFFER_SIZE = 1<<30;
 class SpatialJoin{
 
 	// tiles with data for join
-	tile *tile1;
-	tile *tile2;
+	Tile *tile1;
+	Tile *tile2;
 
-	enum Join_Type type;
+	enum Join_Type type = JT_nearest;
 	// cursor of the object in tile 1
 	// waiting for processing
-	long cursor;
+	long cursor = 0;
 	/*
 	 * all computations will be aligned into computation units
 	 * of N*N. For instance, after checking the index, the
@@ -57,28 +58,22 @@ class SpatialJoin{
 	 * is done by the GPU or CPU, and results will be copied into the result_addr
 	 * Corresponding to the buffer space claimed.
 	*/
-	float *result_addr;
-	float *buffer;
+	float *result_addr = NULL;
+	float *buffer = NULL;
 
 	// sign for completeness
 	bool complete = false;
 
 public:
 
-	void SpatialJoin(tile *t1, tile *t2, Join_Type type){
+	SpatialJoin(Tile *t1, Tile *t2){
 		assert(t1!=NULL&&t2!=NULL);
 		tile1 = t1;
 		tile2 = t2;
-		buffer1 = new float[VOXEL_BUFFER_SIZE];
-		buffer2 = new float[VOXEL_BUFFER_SIZE];
-		this->type = type;
 	}
 	~SpatialJoin(){
-		if(buffer1){
-			delete buffer1;
-		}
-		if(buffer2){
-			delete buffer2;
+		if(buffer){
+			delete buffer;
 		}
 	}
 
