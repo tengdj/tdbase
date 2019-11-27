@@ -204,67 +204,89 @@ inline float SegDist_kernel(const float *S, const float *T,
 //			TT[6]={0+idf,0+idf,0+idf,1+idf,1+idf,1+idf};
 //	float dd = SegDist_kernel(SS, TT, AA, BB);
 
+//
+//__global__
+//void SegDist_cuda(const float *data, const long *offset_size,
+//				  	  const float *vec, float *dist){
+//	// computing which segment in set1 of voxel with
+//	// which batch
+//	int batch_id = blockIdx.x;
+//	// which segment in the batch
+//	int segment_id = threadIdx.x;
+//	long offset = offset_size[batch_id*3];
+//	long size1 = offset_size[batch_id*3+1];
+//	// the segment_size is the maximum size of the set 1
+//	// thus some may does not have an segment
+//	if(segment_id>=size1){
+//		return;
+//	}
+//	long size2 = offset_size[batch_id*3+2];
+//
+//	// update the pointers for current thread
+//	const float *cur_S = data+6*(offset+segment_id);
+//	const float *cur_T = data+6*(offset+size1);
+//	const float *cur_A = vec+3*(offset+segment_id);
+//	const float *cur_B = vec+3*(offset+size1);
+//
+//	float min_dist = DBL_MAX;
+//	// go over all the segments in set2
+//	for(int i = 0;i<size2;i++){
+//		float dd = SegDist_kernel(cur_S, cur_T, cur_A, cur_B);
+//		if(min_dist>dd){
+//			min_dist = dd;
+//		}
+//		cur_T += 6;
+//		cur_B += 3;
+//	}
+//
+//	// initialize the minimum distance
+//	if(segment_id == 0){
+//		dist[voxel_id] = min_dist;
+//	}
+//
+//	// update the minimum distance
+//	for(int i=1;i<size1;i++){
+//		if(i==segment_id){
+//			if(dist[voxel_id]>min_dist){
+//				dist[voxel_id] = min_dist;
+//			}
+//		}
+//	}
+//}
 
 __global__
-void SegDist_cuda(const float *S, const float *T,
-				  const float *A, const float *B,
-				  float *dist){
-	int x = blockIdx.x;
-	int y = threadIdx.x;
-	int id = x*blockDim.x+y;
-	const float *cur_S = S+x*6;
-	const float *cur_T = T+y*6;
-	const float *cur_A = A+x*3;
-	const float *cur_B = B+y*3;
-	float dd = SegDist_kernel(cur_S, cur_T, cur_A, cur_B);
-
-	if(dist[id]>dd){
-		dist[id] = dd;
+void SegDist_cuda(const float *data, const uint *offset_size,
+				  const float *vec, float *dist, int batch_num){
+	// which batch
+	int batch_id = blockIdx.x*blockDim.x+threadIdx.x;
+	if(batch_id>=batch_num){
+		return;
 	}
-}
-
-
-__global__
-void SegDist_cuda_new(const float *data, const long *offset_size,
-				  	  const float *vec, float *dist){
-	// computing which segment in set1 of voxel with
-	// voxel_id
-	int voxel_id = blockIdx.x;
-	int segment_id = threadIdx.x;
-	long offset = offset_size[voxel_id*3];
-	long size1 = offset_size[voxel_id*3+1];
-	long size2 = offset_size[voxel_id*3+2];
-
+	uint offset1 = offset_size[batch_id*4];
+	uint size1 = offset_size[batch_id*4+1];
+	uint offset2 = offset_size[batch_id*4+2];
+	uint size2 = offset_size[batch_id*4+3];
 	// update the pointers for current thread
-	const float *cur_S = data+6*(offset+segment_id);
-	const float *cur_T = data+6*(offset+size1);
-	const float *cur_A = vec+3*(offset+segment_id);
-	const float *cur_B = vec+3*(offset+size1);
+	const float *cur_S = data+6*offset1;
+	const float *cur_A = vec+3*offset1;
 
 	float min_dist = DBL_MAX;
-	// go over all the segments in set2
-	for(int i = 0;i<size2;i++){
-		float dd = SegDist_kernel(cur_S, cur_T, cur_A, cur_B);
-		if(min_dist>dd){
-			min_dist = dd;
-		}
-		cur_T += 6;
-		cur_B += 3;
-	}
-
-	// initialize the minimum distance
-	if(segment_id == 0){
-		dist[voxel_id] = min_dist;
-	}
-
-	// update the minimum distance
-	for(int i=1;i<size1;i++){
-		if(i==segment_id){
-			if(dist[voxel_id]>min_dist){
-				dist[voxel_id] = min_dist;
+	// go over all the segment pairs
+	for(int i=0;i<size1;i++){
+		const float *cur_T = data+6*offset2;
+		const float *cur_B = vec+3*offset2;
+		for(int j=0;j<size2;j++){
+			float dd = SegDist_kernel(cur_S, cur_T, cur_A, cur_B);
+			if(min_dist>dd){
+				min_dist = dd;
 			}
+			cur_T += 6;
+			cur_B += 3;
 		}
+		cur_S += 6;
+		cur_A += 3;
 	}
+	dist[batch_id] = min_dist;
 }
 
 __global__
@@ -282,79 +304,96 @@ void get_max(float *d, float *max_d, int batch)
 }
 
 __global__
-void get_vector_kernel(float *data, float *vec){
-	int id = threadIdx.x;
-	VmV_d(vec+id*3, data+id*6+3, data+id*6);
+void get_vector_kernel(float *data, float *vec, int segment_num){
+	int id = blockIdx.x*blockDim.x+threadIdx.x;
+	if(id<segment_num){
+		VmV_d(vec+id*3, data+id*6+3, data+id*6);
+	}
+}
+//
+//if(false){
+//	int cur_iter = 0;
+//	do{
+//		if(cur_iter%num_per_iter==0||(cur_iter+num_per_iter)>=batch_num){
+//			int step = ((cur_iter+num_per_iter)>=batch_num)?(cur_iter+num_per_iter-batch_num):num_per_iter;
+//			long cur_offset = offset_size[cur_iter*3];
+//			float *cur_data = d_data+cur_offset*6;
+//			float *cur_vec = d_vec+cur_offset*3;
+//			long *cur_os = d_os+cur_iter*3;
+//			float *cur_dist = d_dist+cur_iter;
+//			//SegDist_cuda<<<step, batch_size>>>(cur_data, cur_os, cur_vec, cur_dist);
+//			check_execution();
+//		}
+//		cur_iter++;
+//	}while(cur_iter<batch_num);
+//}else{
+//	SegDist_cuda<<<batch_num/1024+1, 1024>>>(d_data, d_os, d_vec, d_dist, batch_num);
+//	check_execution();
+//}
+
+char *d_cuda = NULL;
+// by default 1GB
+size_t cuda_mem_size = (1<<30)/3*2;
+void init_cuda(){
+	if(d_cuda==NULL){
+		struct timeval start = get_cur_time();
+		CUDA_SAFE_CALL(cudaMalloc(&d_cuda, cuda_mem_size));
+		report_time("allocating space in GPU", start);
+	}
+}
+
+void clean_cuda(){
+	if(d_cuda){
+		struct timeval start = get_cur_time();
+		CUDA_SAFE_CALL(cudaFree(d_cuda));
+		report_time("clean space in GPU", start);
+		d_cuda = NULL;
+	}
 }
 
 /*
- * data: contains the data of the objects, pact set1 and set2 together.
+ * data: contains the segments of the meshes mentioned in this join.
  * offset_size:  contains the offset in the data for each batch, and the sizes of two data sets
  * result: for the returned results for each batch
  * batch_num: number of computed batches
  *
  * */
-void SegDist_batch_gpu(const float *data, const long *offset_size, float *result, const int batch_num){
 
-	size_t segment_num = 0;
-	// we use the maximum size of elements
-	// in set 1 as one computing dimension
-	long batch_size = LONG_MIN;
-	for(int i=0;i<batch_num;i++){
-		segment_num += offset_size[3*i+1];
-		segment_num += offset_size[3*i+2];
-		if(batch_size<offset_size[3*i+1]){
-			batch_size = offset_size[3*i+1];
-		}
-	}
+void SegDist_batch_gpu(const float *data, const uint *offset_size, float *result, const uint batch_num, const uint segment_num){
+
+	// initialize cuda memory if not done yet
+	init_cuda();
+
 	struct timeval start = get_cur_time();
-	float *d_data, *d_vec, *d_dist;
-	long *d_os;
-
+	// allocate memory in GPU
+	char *cur_d_cuda = d_cuda;
 	// segment data in device
-	CUDA_SAFE_CALL(cudaMalloc(&d_data, segment_num*6*sizeof(float)));
-	// space for the offset and size information in GPU
-	CUDA_SAFE_CALL(cudaMalloc(&d_os, 3*batch_num*sizeof(long)));
-	// space for the results in GPU
-	CUDA_SAFE_CALL(cudaMalloc(&d_dist, batch_num*sizeof(float)));
+	float *d_data = (float *)(cur_d_cuda);
+	cur_d_cuda += 6*sizeof(float)*segment_num;
 	// some temporary space for computation
-	CUDA_SAFE_CALL(cudaMalloc(&d_vec, segment_num*3*sizeof(float)));
-	report_time("allocating space in GPU", start);
+	float *d_vec = (float *)(cur_d_cuda);
+	cur_d_cuda += 3*sizeof(float)*segment_num;
+	// space for the results in GPU
+	float *d_dist = (float *)(cur_d_cuda);
+	cur_d_cuda += sizeof(float)*batch_num;
+	// space for the offset and size information in GPU
+	uint *d_os = (uint *)(cur_d_cuda);
 
 	CUDA_SAFE_CALL(cudaMemcpy(d_data, data, segment_num*6*sizeof(float), cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, batch_num*3*sizeof(long), cudaMemcpyHostToDevice));
-	report_time("copying data to GPU", start);
-	cudaError_t err = cudaGetLastError();
-	if (err != cudaSuccess) printf("Error: %s\n", cudaGetErrorString(err));
+	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, batch_num*4*sizeof(uint), cudaMemcpyHostToDevice));
+	//report_time("copying data to GPU", start);
+
 	// compute the vectors of segments in data, save to d_vec
-	get_vector_kernel<<<1,segment_num>>>(d_data, d_vec);
+	get_vector_kernel<<<segment_num/1024+1,1024>>>(d_data, d_vec, segment_num);
 	check_execution();
-	int num_per_iter = 400;
-	int cur_iter = 0;
-	do{
-		cur_iter++;
-		if(cur_iter%num_per_iter==0||cur_iter==batch_num){
-			int step = (cur_iter==batch_num)?(cur_iter%num_per_iter):num_per_iter;
-			long cur_offset = offset_size[(cur_iter-step)*3];
-			float *cur_data = d_data+cur_offset*6;
-			float *cur_vec = d_vec+cur_offset*3;
-			long *cur_os = d_os+(cur_iter-step)*3;
-			float *cur_dist = d_dist+(cur_iter-step);
-			SegDist_cuda_new<<<step, batch_size>>>(cur_data, cur_os, cur_vec, cur_dist);
-			check_execution();
-		}
-		break;
-	}while(cur_iter<batch_num);
 	// compute the distance in parallel
+	SegDist_cuda<<<batch_num/1024+1, 1024>>>(d_data, d_os, d_vec, d_dist, batch_num);
+	check_execution();
 	cudaDeviceSynchronize();
-	report_time("distances computations", start);
+	//report_time("distances computations", start);
 
 	CUDA_SAFE_CALL(cudaMemcpy(result, d_dist, batch_num*sizeof(float), cudaMemcpyDeviceToHost));
-	CUDA_SAFE_CALL(cudaFree(d_data));
-	CUDA_SAFE_CALL(cudaFree(d_vec));
-	CUDA_SAFE_CALL(cudaFree(d_os));
-	CUDA_SAFE_CALL(cudaFree(d_dist));
-	report_time("copy data out and clean", start);
+	//report_time("copy data out", start);
 
 }
 

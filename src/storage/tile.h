@@ -57,7 +57,7 @@ public:
 	int get_segment_num(){
 		return size_of_halfedges()/2;
 	}
-	void get_segments(float *segments=NULL);
+	size_t get_segments(float *segments=NULL);
 	void advance_to(int lod);
 };
 
@@ -80,6 +80,12 @@ public:
 			delete mesh;
 		}
 	}
+	void writeMeshOff(){
+		stringstream ss;
+		ss<<id<<".off";
+		mesh->writeMeshOff(ss.str().c_str());
+	}
+
 };
 
 class Tile{

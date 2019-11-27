@@ -7,24 +7,27 @@
 
 
 #include "SpatialJoin.h"
+#include <map>
 using namespace std;
 
 namespace hispeed{
 
+typedef struct candidate_info_{
+	HiMesh_Wrapper *mesh_wrapper;
+	range distance;
+}candidate_info;
+
 void SpatialJoin::formalize_computing(){
+	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<vector<HiMesh_Wrapper *>> candidates;
-	vector<vector<range>> candidate_dist;
-
-	struct timeval start = get_cur_time();
-	int candidate_size = 0;
+	vector<std::pair<int, vector<candidate_info>>> candidates;
+	int pair_num = 0;
 	for(int i=0;i<tile1->num_objects();i++){
-		vector<HiMesh_Wrapper *> geom_list;
-		vector<range> range_list;
-
+		vector<candidate_info> candidate_list;
 		aab b1 = tile1->get_mbb(i);
 		for(int j=0;j<tile2->num_objects();j++){
+			// avoid self comparing
 			if(tile1==tile2&&i==j){
 				continue;
 			}
@@ -32,82 +35,153 @@ void SpatialJoin::formalize_computing(){
 			range d = b1.distance(wrapper->box);
 			// now update the list
 			bool keep = true;
-			int list_size = range_list.size();
+			int list_size = candidate_list.size();
 			for(int i=0;i<list_size;){
 				// should not keep since there is a closer one
-				if(d>range_list[i]){
+				if(d>candidate_list[i].distance){
 					keep = false;
 					break;
 				// one in the list cannot be the closest because of this one
-				}else if(d<range_list[i]){
-					range_list.erase(range_list.begin()+i);
-					geom_list.erase(geom_list.begin()+i);
+				}else if(d<candidate_list[i].distance){
+					candidate_list.erase(candidate_list.begin()+i);
 					list_size--;
 				}else{
 					i++;
 				}
 			}
 			if(keep){
-				range_list.push_back(d);
-				geom_list.push_back(wrapper);
+				candidate_info ci;
+				ci.distance = d;
+				ci.mesh_wrapper = wrapper;
+				candidate_list.push_back(ci);
 			}
 		}
-		candidate_size += geom_list.size();
+		pair_num += candidate_list.size();
 		// save the candidate list
-		candidates.push_back(geom_list);
-		candidate_dist.push_back(range_list);
+		candidates.push_back(std::pair<int, vector<candidate_info>>(i, candidate_list));
 	}
-	fprintf(stderr, "%d polyhedron has %d candidates takes %f ms\n",
-			tile1->num_objects(), candidate_size, get_time_elapsed(start, true));
+	report_time("comparing mbbs", start);
 
-	int lod = 20;
-	// retrieve the meshes first
-	long total_segments = 0;
-	for(int i=0;i<tile1->num_objects();i++){
-		HiMesh *mesh1 = tile1->get_mesh(i, lod);
-		for(int j=0;j<candidates[i].size();j++){
-			HiMesh *mesh2 = tile2->get_mesh(candidates[i][j]->id, lod);
-			total_segments += mesh1->get_segment_num();
-			total_segments += mesh2->get_segment_num();
+	// now we start to get the distances with progressive level of details
+	for(int lod=0;lod<=100;lod+=50){
+		printf("\n%ld polyhedron has %d candidates\n", candidates.size(), pair_num);
+		// retrieve the necessary meshes
+		map<HiMesh *, std::pair<uint, uint>> mesh_map;
+		uint segment_num = 0;
+		for(std::pair<int, vector<candidate_info>> c:candidates){
+			HiMesh *mesh1 = tile1->get_mesh(c.first, lod);
+			if(mesh_map.find(mesh1)==mesh_map.end()){
+				std::pair<uint, uint> p;
+				p.first = segment_num;
+				p.second = mesh1->get_segment_num();
+				segment_num += p.second;
+				mesh_map[mesh1] = p;
+			}
+			for(candidate_info info:c.second){
+				HiMesh *mesh2 = tile2->get_mesh(info.mesh_wrapper->id, lod);
+				if(mesh_map.find(mesh2)==mesh_map.end()){
+					std::pair<uint, uint> p;
+					p.first = segment_num;
+					p.second = mesh2->get_segment_num();
+					segment_num += p.second;
+					mesh_map[mesh2] = p;
+				}
+			}
 		}
-	}
-	report_time("getting meshes", start);
+		printf("decoded %ld meshes with %d segments for lod %d\n", mesh_map.size(), segment_num, lod);
+		report_time("getting meshes", start);
 
-	// organize the data for computing
-	float *data = new float[6*total_segments];
-	long *offset_size = new long[3*candidate_size];
-	float *distances = new float[candidate_size];
-	memset(distances, 0, candidate_size*sizeof(float));
-	long offset = 0;
-	int index = 0;
-	for(int i=0;i<tile1->num_objects();i++){
-		HiMesh *mesh1 = tile1->get_mesh(i, lod);
-		for(int j=0;j<candidates[i].size();j++){
-			HiMesh *mesh2 = tile2->get_mesh(candidates[i][j]->id, lod);
-			offset_size[3*index] = offset;
-			mesh1->get_segments(&data[offset]);
-			offset_size[3*index+1] = mesh1->get_segment_num();
-			offset += offset_size[3*index+1];
-			mesh2->get_segments(&data[offset]);
-			offset_size[3*index+2] = mesh2->get_segment_num();
-			offset += offset_size[3*index+2];
-			index++;
+		// now we allocate the space and store the data in
+		// a buffer
+		float *data = new float[6*segment_num];
+		for (map<HiMesh *, std::pair<uint, uint>>::iterator it=mesh_map.begin();
+				it!=mesh_map.end(); ++it){
+			assert(it->second.second==it->first->get_segments(data+it->second.first*6));
+		}
+		// organize the data for computing
+		uint *offset_size = new uint[4*pair_num];
+		float *distances = new float[pair_num];
+		int index = 0;
+		for(std::pair<int, vector<candidate_info>> c:candidates){
+			HiMesh *mesh1 = tile1->get_mesh(c.first, lod);
+			for(candidate_info info:c.second){
+				HiMesh *mesh2 = tile2->get_mesh(info.mesh_wrapper->id, lod);
+				assert(mesh1!=mesh2);
+				offset_size[4*index] = mesh_map[mesh1].first;
+				offset_size[4*index+1] = mesh_map[mesh1].second;
+				offset_size[4*index+2] = mesh_map[mesh2].first;
+				offset_size[4*index+3] = mesh_map[mesh2].second;
+				index++;
+			}
+		}
+		assert(index==pair_num);
+		report_time("organizing data", start);
+
+		hispeed::SegDist_batch_gpu(data, offset_size, distances, pair_num, segment_num);
+		report_time("get distance with GPU", start);
+
+		// now update the distance range with the new distances
+		index = 0;
+		pair_num = 0;
+		int candidate_list_size = candidates.size();
+		for(int i=0;i<candidate_list_size;){
+			for(int j=0;j<candidates[i].second.size();j++){
+//				assert(candidates[i].second[j].distance.farthest>=distances[index]&&
+//					   candidates[i].second[j].distance.closest<=distances[index]);
+				// now we have a precise distance
+				if(lod==100){
+					candidates[i].second[j].distance.closest = distances[index];
+					candidates[i].second[j].distance.farthest = distances[index];
+				}else{
+					candidates[i].second[j].distance.farthest =
+								std::min(candidates[i].second[j].distance.farthest,distances[index]);
+				}
+				index++;
+			}
+
+			int candidate_num = candidates[i].second.size();
+			for(int j = 0;j<candidate_num;){
+				bool keep = true;
+				for(int jj=j+1;jj<candidate_num;){
+					// should not keep since there is a closer one
+					if(candidates[i].second[j].distance>candidates[i].second[jj].distance){
+						keep = false;
+						break;
+					// one in the list cannot be the closest because of this one
+					}else if(candidates[i].second[j].distance<candidates[i].second[jj].distance){
+						candidate_num--;
+						candidates[i].second.erase(candidates[i].second.begin()+jj);
+					}else{
+						jj++;
+					}
+				}
+				if(!keep){
+					candidate_num--;
+					candidates[i].second.erase(candidates[i].second.begin()+j);
+				}else{
+					j++;
+				}
+			}
+			// find the nearest
+			if(candidates[i].second.size()==1){
+				candidates.erase(candidates.begin()+i);
+				candidate_list_size--;
+			}else{
+				pair_num += candidates[i].second.size();
+				i++;
+			}
+		}
+		report_time("update distance range", start);
+		delete data;
+		delete offset_size;
+		delete distances;
+		mesh_map.clear();
+		if(pair_num==0){
+			break;
 		}
 	}
-	assert(index==candidate_size);
-	report_time("organizing data", start);
-	hispeed::SegDist_batch_gpu(data, offset_size, distances, candidate_size);
-	report_time("get distance with GPU", start);
-	index = 0;
-	for(int i=0;i<tile1->num_objects();i++){
-		for(int j=0;j<candidates[i].size();j++){
-			cout<<candidate_dist[i][j]<<" "<<distances[index++]<<endl;
-		}
-		break;
-	}
-	delete data;
-	delete offset_size;
-	delete distances;
+
+
 }
 
 

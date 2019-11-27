@@ -64,6 +64,7 @@ class SpatialJoin{
 	// sign for completeness
 	bool complete = false;
 
+	float *d_data = NULL;
 public:
 
 	SpatialJoin(Tile *t1, Tile *t2){

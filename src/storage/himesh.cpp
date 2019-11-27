@@ -117,11 +117,12 @@ std::vector<aab> HiMesh::generate_mbbs(int voxel_size){
 	return mbbs;
 }
 
-void HiMesh::get_segments(float *segments){
+size_t HiMesh::get_segments(float *segments){
 	size_t size = size_of_halfedges()/2;
 	if(segment_buffer==NULL){
 		segment_buffer = new float[size*6*sizeof(float)];
 		float *cur_S = segment_buffer;
+		int inserted = 0;
 		for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
 			Point p1 = eit->vertex()->point();
 			Point p2 = eit->opposite()->vertex()->point();
@@ -138,11 +139,14 @@ void HiMesh::get_segments(float *segments){
 			cur_S++;
 			*cur_S = p2.z();
 			cur_S++;
+			inserted++;
 		}
+		assert(inserted==size);
 	}
-	if(segments){
+	if(segments!=NULL){
 		memcpy((void *)segments, (void *)segment_buffer, size*6*sizeof(float));
 	}
+	return size;
 }
 
 void HiMesh::advance_to(int lod){

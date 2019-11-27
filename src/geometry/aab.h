@@ -133,22 +133,20 @@ public:
 	}
 
 	// get the possible minimum and maximum distance of
-	// two aabs
+	// objects with their aabs
 	range distance(const aab b){
 		range ret;
-		bool contained = false;
 		for(int i=0;i<3;i++){
 			if(min[i]>b.max[i]){
 				ret.closest += (min[i]-b.max[i])*(min[i]-b.max[i]);
 			}else if(b.min[i]>max[i]){
 				ret.closest += (b.min[i]-max[i])*(b.min[i]-max[i]);
-			} // else intersect in this dimension
+			}
+			// else intersect in this dimension
 		}
 		aab tmp = b;
 		tmp.update(*this);
 		ret.farthest = tmp.diagonal_length();
-		ret.closest = sqrt(ret.closest);
-		ret.farthest = sqrt(ret.farthest);
 		return ret;
 	}
 

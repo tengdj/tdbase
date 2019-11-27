@@ -37,7 +37,7 @@ inline double get_time_elapsed(struct timeval &t1, bool update_start = false){
 }
 
 inline void report_time(const char *task, struct timeval &start, bool update_start = true){
-	cerr<<task<<" takes "<<get_time_elapsed(start, update_start)<<endl;
+	cerr<<task<<" takes "<<get_time_elapsed(start, update_start)<<" ms"<<endl;
 }
 
 
