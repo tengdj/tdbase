@@ -24,11 +24,11 @@ OctreeNode::~OctreeNode() {
 }
 
 /* Check if the node MBB intersects with the object MBB */
-bool OctreeNode::intersects(Voxel *object) {
+bool OctreeNode::intersects(weighted_aab *object) {
 	return node_voxel.box.intersect(&object->box);
 }
 
-bool OctreeNode::addObject(Voxel *object) {
+bool OctreeNode::addObject(weighted_aab *object) {
 	node_voxel.size += object->size;
 	// newly added node
 	if(node_voxel.size == object->size){
@@ -62,7 +62,7 @@ bool OctreeNode::addObject(Voxel *object) {
 
 			// assign objects to children
 			int totalChildrenSize = 0;
-			for(Voxel *v:objectList) {
+			for(weighted_aab *v:objectList) {
 				bool inserted = false;
 				for (int i = 0; i < 8; i++) {
 					if (children[i]->intersects(v)) {
@@ -113,17 +113,17 @@ void OctreeNode::genTiles(vector<aab> &tiles){
 	}
 }
 
-OctreeNode *build_ctree(std::vector<Voxel*> &voxels, int num_tiles){
+OctreeNode *build_ctree(std::vector<weighted_aab*> &voxels, int num_tiles){
 	// the main thread build the OCTree with the Minimum Boundary Box
 	// get from the data
 	aab root_node;
 	long total_size = 0;
-	for(Voxel *v:voxels){
+	for(weighted_aab *v:voxels){
 		root_node.update(v->box);
 		total_size += v->size;
 	}
 	OctreeNode *octree = new OctreeNode(root_node, 0, total_size/num_tiles);
-	for(Voxel *v:voxels){
+	for(weighted_aab *v:voxels){
 		octree->addObject(v);
 	}
 	return octree;

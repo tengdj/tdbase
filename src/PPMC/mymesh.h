@@ -79,6 +79,9 @@ typedef Skeletonization::Skeleton                             Skeleton;
 typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
 typedef Skeleton::edge_descriptor                             Skeleton_edge;
 
+typedef CGAL::Delaunay_triangulation_3<MyKernel, CGAL::Fast_location> Delaunay;
+
+
 using namespace hispeed;
 
 // My face type has a vertex flag

@@ -110,6 +110,18 @@ public:
 		}
 	}
 
+	bool contains(float *point){
+		for(int i=0;i<3;i++){
+			if(point[i]<min[i]){
+				return false;
+			}
+			if(point[i]>max[i]){
+				return false;
+			}
+		}
+		return true;
+	}
+
 	friend std::ostream&
 	operator<<(std::ostream& os, const aab &p){
 		for(int i=0;i<3;i++){
@@ -142,28 +154,19 @@ public:
 			}else if(b.min[i]>max[i]){
 				ret.closest += (b.min[i]-max[i])*(b.min[i]-max[i]);
 			}
+			float tmp = (b.max[i]+b.min[i]-max[i]-min[i])/2;
+			ret.farthest += tmp*tmp;
 			// else intersect in this dimension
 		}
-		aab tmp = b;
-		tmp.update(*this);
-		ret.farthest = tmp.diagonal_length();
 		return ret;
 	}
-
-
 };
 
-/*
- * each voxel contains the minimum boundary box
- * of a set of edges or triangles. It is an extension of
- * AAB with additional elements
- * */
-class Voxel{
+
+class weighted_aab{
 public:
-	// boundary box of the voxel
 	aab box;
-	float *data = NULL;
-	int size = 0;
+	uint size;
 };
 
 }

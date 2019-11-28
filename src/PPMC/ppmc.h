@@ -33,8 +33,6 @@
 
 #define BAR "|"
 #define TAB "\t"
-#define PPMC_RANDOM_CONSTANT 315
-
 
 using namespace std;
 using namespace CGAL;

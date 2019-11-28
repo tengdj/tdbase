@@ -21,7 +21,7 @@
 #include <sys/time.h>
 #include <queue>
 
-#include "../PPMC/ppmc.h"
+#include "../storage/tile.h"
 #include "../util/util.h"
 #include "../spatial/spatial.h"
 
@@ -40,15 +40,25 @@ pthread_mutex_t output_lock;
 bool stop = false;
 
 std::ofstream *os;
-inline void flush_mesh_buffer(vector<MyMesh *> &mesh_buffer){
+inline void flush_mesh_buffer(vector<HiMesh *> &mesh_buffer, vector<vector<Voxel *>> &voxels){
+	assert(mesh_buffer.size()==voxels.size());
 	pthread_mutex_lock(&output_lock);
-	for(MyMesh *mesh:mesh_buffer){
-		os->write((char *)&mesh->dataOffset, sizeof(size_t));
-		os->write(mesh->p_data, mesh->dataOffset);
-		delete mesh;
+	for(int i=0;i<mesh_buffer.size();i++){
+		os->write((char *)&mesh_buffer[i]->dataOffset, sizeof(size_t));
+		os->write(mesh_buffer[i]->p_data, mesh_buffer[i]->dataOffset);
+		size_t size = voxels[i].size();
+		os->write((char *)&size, sizeof(size_t));
+		for(Voxel *v:voxels[i]){
+			os->write((char *)v->box.min, 3*sizeof(float));
+			os->write((char *)v->box.max, 3*sizeof(float));
+			delete v;
+		}
+		voxels[i].clear();
+		delete mesh_buffer[i];
 	}
 	pthread_mutex_unlock(&output_lock);
 	mesh_buffer.clear();
+	voxels.clear();
 }
 
 void *compress(void *args){
@@ -59,23 +69,29 @@ void *compress(void *args){
 
 	// output binary file for the compressed data
 	int offset = 0;
-	vector<MyMesh *> mesh_buffer;
+	vector<HiMesh *> mesh_buffer;
+	vector<vector<Voxel *>> voxels;
 
 	while (!stop||is_working[id]) {
 		if(!is_working[id]){
 			usleep(10);
 			continue;
 		}
-		mesh_buffer.push_back(hispeed::get_mesh(processing_line[id], true));
+		MyMesh *mesh = hispeed::get_mesh(processing_line[id], true);
+		HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+		himesh->advance_to(100);
+		voxels.push_back(himesh->generate_voxels(500));
+		delete mesh;
+		mesh_buffer.push_back(himesh);
 		// if the buffer is full, write the compressed data into binary file
 		if(mesh_buffer.size()>=QUEUE_SIZE){
-			flush_mesh_buffer(mesh_buffer);
+			flush_mesh_buffer(mesh_buffer, voxels);
 		}
 		processing_line[id].clear();
 		is_working[id] = false;
 	} // end of while
 	// writing last chunk
-	flush_mesh_buffer(mesh_buffer);
+	flush_mesh_buffer(mesh_buffer, voxels);
 
 	pthread_exit(NULL);
 	return NULL;
@@ -91,6 +107,9 @@ int main(int argc, char** argv) {
 	const char *output_path = argv[2];
 	cerr<<"processing "<<input_path<<" into "<<output_path<<endl;
 	int num_threads = hispeed::get_num_threads();
+	if(argc>3){
+		num_threads = atoi(argv[3]);
+	}
 	assert(num_threads>0 && num_threads<MAX_THREAD_NUM);
 	pthread_t threads[num_threads];
 	int id[num_threads];

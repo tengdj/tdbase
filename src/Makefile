@@ -74,7 +74,7 @@ JOIN_OBJS := $(patsubst %.cpp,%.o,$(JOIN_SRCS))
 
 all: compress decompress test partition getoff join
 
-compress: test/compress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
+compress: test/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 decompress: test/decompress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 

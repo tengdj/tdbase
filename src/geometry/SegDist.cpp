@@ -115,30 +115,32 @@ float SegDist_single(const float *data1, const float *data2,
 
 void *SegDist_unit(void *params_void){
 	struct dist_param *param = (struct dist_param *)params_void;
-	param->dist = SegDist_single(param->data1, param->data2, param->size1, param->size2);
+	for(int i=0;i<param->batch_num;i++){
+		param->dist[i] = SegDist_single(param->data+param->offset_size[4*i]*6,
+									    param->data+param->offset_size[4*i+2]*6,
+									    param->offset_size[4*i+1],
+									    param->offset_size[4*i+3]);
+	}
 	return NULL;
 }
 
 // compute the minimum distance of segment pairs with multiple threads
-float SegDist_batch(const float *S, const float *T, float *result,
-		size_t size1, size_t size2, int num_threads){
+void SegDist_batch(const float *data, const uint *offset_size, float *result,
+				   const uint batch_num, const int num_threads){
 	cout<<"starting "<<num_threads<<" threads"<<endl;
-
 	pthread_t threads[num_threads];
 	struct dist_param params[num_threads];
-	int each_thread = size1/num_threads;
+	int each_thread = batch_num/num_threads;
 	for(int i=0;i<num_threads;i++){
 		int start = each_thread*i;
-		if(start>=size1){
+		if(start>=batch_num){
 			break;
 		}
-		params[i].size1 = min(start+each_thread, (int)size1)-start;
-		params[i].size2 = size2;
-		params[i].data1 = S+start*6;
-		params[i].data2 = T;
+		params[i].batch_num = min(each_thread, (int)batch_num-start);
+		params[i].offset_size = offset_size+start*4;
+		params[i].data = data;
 		params[i].id = i+1;
-		params[i].dist = DBL_MAX;
-
+		params[i].dist = result+start;
 		int rc = pthread_create(&threads[i], NULL, SegDist_unit, (void *)&params[i]);
 		if (rc) {
 			cout << "Error:unable to create thread," << rc << endl;
@@ -146,7 +148,6 @@ float SegDist_batch(const float *S, const float *T, float *result,
 		}
 	}
 
-	float min = DBL_MAX;
 	for(int i = 0; i < num_threads; i++){
 		void *status;
 		int rc = pthread_join(threads[i], &status);
@@ -154,12 +155,7 @@ float SegDist_batch(const float *S, const float *T, float *result,
 			cout << "Error:unable to join," << rc << endl;
 			exit(-1);
 		}
-		if(params[i].dist < min){
-			min = params[i].dist;
-		}
 	}
-
-	return sqrt(min);
 }
 
 }

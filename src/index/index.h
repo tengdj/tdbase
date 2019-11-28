@@ -24,30 +24,31 @@
 using namespace std;
 namespace hispeed{
 
+
 /*
  * OCTree
  * */
 class OctreeNode {
-	Voxel node_voxel;
+	weighted_aab node_voxel;
 public:
 	long tile_size;
 	int level;
 	bool isLeaf;
 	bool canBeSplit;
 	OctreeNode* children[8];
-	vector<Voxel*> objectList;
+	vector<weighted_aab*> objectList;
 
 	OctreeNode(aab b, int level, long tsize);
 	~OctreeNode();
-	bool addObject(Voxel *object);
-	bool intersects(Voxel *object);
+	bool addObject(weighted_aab *object);
+	bool intersects(weighted_aab *object);
 	void genTiles(vector<aab> &tiles);
 };
-OctreeNode *build_ctree(std::vector<Voxel*> &mbbs, int num_tiles);
+OctreeNode *build_ctree(std::vector<weighted_aab*> &mbbs, int num_tiles);
 
 // sorting tree
 class SPNode{
-	Voxel node_voxel;
+	weighted_aab node_voxel;
 	std::vector<SPNode *> children;
 	SPNode *parent;
 public:
@@ -66,7 +67,7 @@ public:
 		children.push_back(child);
 		child->parent = this;
 	}
-	void add_object(Voxel *obj){
+	void add_object(weighted_aab *obj){
 		node_voxel.size += obj->size;
 		node_voxel.box.update(obj->box);
 	}
@@ -76,7 +77,7 @@ public:
 
 };
 
-SPNode *build_sort_partition(std::vector<Voxel*> &mbbs, int num_tiles);
+SPNode *build_sort_partition(std::vector<weighted_aab*> &mbbs, int num_tiles);
 
 
 }

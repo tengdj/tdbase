@@ -21,19 +21,18 @@ namespace hispeed{
 // load meta data from file
 // and construct the hierarchy structure
 // tile->mesh->voxels->triangle/edges
-Tile::Tile(std::string prefix){
-	this->prefix = prefix;
-	if(!hispeed::file_exist(get_data_path().c_str())){
-		cerr<<get_data_path()<<" does not exist"<<endl;
+Tile::Tile(std::string path){
+	if(!hispeed::file_exist(path.c_str())){
+		cerr<<path<<" does not exist"<<endl;
 		exit(-1);
 	}
-	if(!hispeed::file_exist(get_meta_path().c_str())){
-		parse_raw();
-		persist();
-	}else{
-		load();
+	dt_fs = fopen(path.c_str(), "r");
+	if(!dt_fs){
+		cerr<<path<<" can not be opened"<<endl;
+		exit(-1);
 	}
-	dt_fs = fopen(get_data_path().c_str(), "r");
+	load();
+	cout<<objects.size()<<" polyhedra in this tile"<<endl;
 }
 
 Tile::~Tile(){
@@ -46,106 +45,37 @@ Tile::~Tile(){
 	}
 }
 
-
-
-// parse the meta data from the compressed mesh data
-bool Tile::parse_raw(){
-	string data_path = get_data_path();
-	cerr<<"parsing from "<<data_path<<endl;
-	FILE* fs = fopen(data_path.c_str(), "r");
-	if(fs==NULL){
-		cerr<<"failed to open file "<<data_path<<endl;
-		return false;
-	}
-	long fsize = hispeed::file_size(data_path.c_str());
-	// must be empty
-	assert(objects.size()==0);
+// parse the metadata
+bool Tile::load(){
+	assert(dt_fs);
 	size_t dsize = 0;
-	char *buf = new char[3*1024*1024];
-	aab tmp;
 	long offset = 0;
-	int next_report = 0;
-	int num_objects = 0;
 	int index = 0;
-	while(fread((void *)&dsize, sizeof(size_t), 1, fs)>0){
-		assert(dsize<3*1024*1024);
-		// read data
-		assert(dsize==fread((void *)buf, sizeof(char), dsize, fs));
-		// decompress the data and add it to the Tile
-		MyMesh *mesh = hispeed::decompress_mesh(buf, dsize, true);
-		assert(dsize == mesh->dataOffset);
+	fseek(dt_fs, 0, SEEK_SET);
+	while(fread((void *)&dsize, sizeof(size_t), 1, dt_fs)>0){
+		fseek(dt_fs, dsize, SEEK_CUR);
 		HiMesh_Wrapper *w = new HiMesh_Wrapper();
 		offset += sizeof(size_t);
 		w->offset = offset;
 		w->data_size = dsize;
 		w->id = index++;
-		w->box = aab(mesh->bbMin[0], mesh->bbMin[1], mesh->bbMin[2],
-					 mesh->bbMax[0], mesh->bbMax[1], mesh->bbMax[2]);
-		objects.push_back(w);
-		delete mesh;
-		// update the offset for next
-		offset += dsize;
-		num_objects++;
-		if(offset*100/fsize==next_report){
-			cerr<<"processed "<<num_objects<<" objects\t("<<next_report<<"%)"<<endl;
-			next_report++;
+		// read the voxel group
+		fread((void *)&dsize, sizeof(size_t), 1, dt_fs);
+		for(int i=0;i<dsize;i++){
+			aab box;
+			fread((void *)box.min, sizeof(float), 3, dt_fs);
+			fread((void *)box.max, sizeof(float), 3, dt_fs);
+			Voxel *v = new Voxel();
+			v->box = box;
+			w->voxels.push_back(v);
+			w->box.update(box);
 		}
+		objects.push_back(w);
+		// update the offset for next
+		offset += w->data_size+sizeof(size_t)+6*sizeof(float)*dsize;
 	}
 	return true;
 }
-
-/*
- * persist the meta data of the tile
- * to disk.
- *
- * */
-bool Tile::persist(){
-
-	FILE* fs = fopen(get_meta_path().c_str(), "wb+");
-	if(fs==NULL){
-		cerr<<"failed to open file "<<get_meta_path()<<endl;
-		return false;
-	}
-	size_t size = objects.size();
-	fwrite(&size, sizeof(size_t), 1, fs);
-	for(HiMesh_Wrapper *w:objects){
-		fwrite((void *)w->box.min, sizeof(float), 3, fs);
-		fwrite((void *)w->box.max, sizeof(float), 3, fs);
-		fwrite((void *)&w->offset, sizeof(long), 1, fs);
-		fwrite((void *)&w->data_size, sizeof(long), 1, fs);
-	}
-	fclose(fs);
-	return true;
-}
-
-/*
- * load the persisted information from disk
- * to construct the tile. The load function only load the description
- * info of each mesh. the compressed data will be loaded separately
- * from another file during query.
- * */
-bool Tile::load(){
-	string meta_path = get_meta_path();
-	FILE* fs = fopen(meta_path.c_str(), "r");
-	if(fs==NULL){
-		cerr<<"failed to open file "<<meta_path<<endl;
-		return false;
-	}
-	size_t size = 0;
-	fread((void *)&size, sizeof(size_t), 1, fs);
-	for(int i=0;i<size;i++){
-		HiMesh_Wrapper *h = new HiMesh_Wrapper();
-		h->id = i;
-		fread((void *)h->box.min, sizeof(float), 3, fs);
-		fread((void *)h->box.max, sizeof(float), 3, fs);
-		fread((void *)&h->offset, sizeof(long), 1, fs);
-		fread((void *)&h->data_size, sizeof(long), 1, fs);
-		objects.push_back(h);
-	}
-	fclose(fs);
-	return true;
-}
-
 
 // retrieve the mesh of the voxel group with ID id on demand
 void Tile::retrieve_mesh(int id){

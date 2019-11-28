@@ -91,19 +91,17 @@ VxS(float Vr[3], const float V[3], float s)
 
 struct dist_param{
 	int id;
-	const float *data1;
-	const float *data2;
-	const float *result;
-	int size1;
-	int size2;
-	float dist;
+	const float *data;
+	const uint *offset_size;
+	float *dist;
+	uint batch_num;
 };
 
 float TriDist(const float *S, const float *T);
-float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int num_threads);
+void TriDist_batch(const float *data, const uint *offset_size, float *result, const uint batch_num, const int num_threads);
 
 float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
-float SegDist_batch(const float *S1, const float *S2, size_t size1, size_t size2, int num_threads);
+void SegDist_batch(const float *data, const uint *offset_size, float *result, const uint batch_num, const int num_threads);
 
 extern char *d_cuda;
 extern size_t cuda_mem_size;

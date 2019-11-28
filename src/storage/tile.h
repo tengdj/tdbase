@@ -9,10 +9,7 @@
 #define HISPEED_TILE_H_
 #include <stdio.h>
 
-#include "../geometry/aab.h"
-#include "../PPMC/mymesh.h"
-#include "../PPMC/configuration.h"
-#include "../spatial/spatial.h"
+#include "himesh.h"
 
 using namespace std;
 
@@ -20,94 +17,30 @@ namespace hispeed{
 
 
 /*
- *
- * each voxel group is mapped to an independent polyhedron
- * it contains a list of voxels, and initially being assigned
- * with the ABB of the voxel, for indexing. The true surfaces
- * and edges for different levels of details will be decoded and
- * released on-demand. The spaces taken by them is managed by
- * a global cache.
- *
+ * each voxel contains the minimum boundary box
+ * of a set of edges or triangles. It is an extension of
+ * AAB with additional elements
  * */
-class HiMesh:public MyMesh{
-	// the tile containing this voxel group
-	std::vector<Voxel *> voxels;
-	float *segment_buffer = NULL;
+class Voxel{
 public:
-	HiMesh(const char *, long length);
-	~HiMesh(){
-		if(segment_buffer){
-			delete segment_buffer;
-			voxels.clear();
-		}
-	}
-	// added for HISPEED
-	Skeleton *extract_skeleton();
-	// generate local minimum boundary boxes
-	// with the skeleton extracted
-	vector<aab> generate_mbbs(int voxel_size);
-
-	inline void get_vertices(std::vector<Point> &points){
-		for(MyMesh::Vertex_iterator v = vertices_begin();
-				v != vertices_end(); ++v){
-			points.push_back(v->point());
-		}
-	}
-
-	int get_segment_num(){
-		return size_of_halfedges()/2;
-	}
-	size_t get_segments(float *segments=NULL);
-	void advance_to(int lod);
-};
-
-/*
- * a wrapper for describing a mesh.
- * for some cases we may not need to truly
- * parse the mesh out from disk, but use the boundary box
- * is good enough.
- * */
-class HiMesh_Wrapper{
-public:
-	int id = -1;
-	HiMesh *mesh = NULL;
+	// point which the segments close wiht
+	float core[3];
+	// boundary box of the voxel
 	aab box;
-	// used for retrieving compressed data from disk
-	long offset = 0;
-	long data_size = 0;
-	~HiMesh_Wrapper(){
-		if(mesh){
-			delete mesh;
-		}
-	}
-	void writeMeshOff(){
-		stringstream ss;
-		ss<<id<<".off";
-		mesh->writeMeshOff(ss.str().c_str());
-	}
-
+	// the pointer points to the segment data in this voxel
+	float *data = NULL;
+	int size = 0;
+	HiMesh *mesh;
 };
 
 class Tile{
 	aab box;
-	std::string prefix;
 	FILE *dt_fs = NULL;
-
 	std::vector<HiMesh_Wrapper *> objects;
-
 	bool load();
-	bool persist();
-	bool parse_raw();
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
-
 	void print();
-	std::string get_meta_path(){
-		return prefix+".mt";
-	}
-	std::string get_data_path(){
-		return prefix+".dt";
-	}
 public:
 
 	Tile(std::string path);

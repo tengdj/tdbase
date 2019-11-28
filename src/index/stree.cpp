@@ -90,17 +90,17 @@ bool SPNode::persist(const char *path){
 	return true;
 }
 
-bool compareAAB_x(Voxel *a1, Voxel *a2){
+bool compareAAB_x(weighted_aab *a1, weighted_aab *a2){
 	return a1->box.min[0]<a2->box.min[0];
 }
-bool compareAAB_y(Voxel *a1, Voxel *a2){
+bool compareAAB_y(weighted_aab *a1, weighted_aab *a2){
 	return a1->box.min[1]<a2->box.min[1];
 }
-bool compareAAB_z(Voxel *a1, Voxel *a2){
+bool compareAAB_z(weighted_aab *a1, weighted_aab *a2){
 	return a1->box.min[2]<a2->box.min[2];
 }
 
-SPNode *build_sort_partition(std::vector<Voxel*> &voxels, int num_tiles){
+SPNode *build_sort_partition(std::vector<weighted_aab*> &voxels, int num_tiles){
 	// create the root node
 	SPNode *root = new SPNode();
 
@@ -120,7 +120,7 @@ SPNode *build_sort_partition(std::vector<Voxel*> &voxels, int num_tiles){
 		SPNode *cur_x = new SPNode();
 
 		// process the slide cut in X dimension
-		std::vector<Voxel *> tmp_x;
+		std::vector<weighted_aab *> tmp_x;
 		for(int t=x;t<x+length_x;t++){
 			tmp_x.push_back(voxels[t]);
 		}
@@ -130,7 +130,7 @@ SPNode *build_sort_partition(std::vector<Voxel*> &voxels, int num_tiles){
 			long length_y = std::min(length_x, y+step_y) - y;
 			SPNode *cur_y = new SPNode();
 			// process the slice cut in y dimension
-			std::vector<Voxel *> tmp_y;
+			std::vector<weighted_aab *> tmp_y;
 			for(int t=y;t<y+length_y;t++){
 				tmp_y.push_back(tmp_x[t]);
 			}

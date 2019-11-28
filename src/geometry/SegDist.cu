@@ -256,7 +256,7 @@ inline float SegDist_kernel(const float *S, const float *T,
 
 __global__
 void SegDist_cuda(const float *data, const uint *offset_size,
-				  const float *vec, float *dist, int batch_num){
+				  const float *vec, float *dist, uint batch_num){
 	// which batch
 	int batch_id = blockIdx.x*blockDim.x+threadIdx.x;
 	if(batch_id>=batch_num){
@@ -358,7 +358,6 @@ void clean_cuda(){
  * batch_num: number of computed batches
  *
  * */
-
 void SegDist_batch_gpu(const float *data, const uint *offset_size, float *result, const uint batch_num, const uint segment_num){
 
 	// initialize cuda memory if not done yet

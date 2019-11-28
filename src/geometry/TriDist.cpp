@@ -438,44 +438,55 @@ float TriDist(const float *S, const float *T)
 	}
 }
 
+float TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2){
+
+	float local_min = DBL_MAX;
+	for(int i=0;i<size1;i++){
+		for(int j=0;j<size2;j++){
+			// get distance of current triangle pair
+			// each triangle contains three points
+			float dist = TriDist(data1+i*9, data2+j*9);
+			if(dist < local_min){
+				local_min = dist;
+			}
+		}
+	}
+	return local_min;
+}
+
 void *TriDist_unit(void *params_void){
 	struct dist_param *param = (struct dist_param *)params_void;
 	cout<<"thread "<<param->id<<" is started"<<endl;
-	for(int i=0;i<param->size1;i++){
-		for(int j=0;j<param->size2;j++){
-			const float *cur_S = param->data1+i*9;
-			const float *cur_T = param->data2+j*9;
-			float dist = TriDist(cur_S, cur_T);
-			if(dist < param->dist){
-				param->dist = dist;
-			}
-		}
+	for(int i=0;i<param->batch_num;i++){
+		param->dist[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
+										param->data+param->offset_size[4*i+2]*9,
+										param->offset_size[4*i+1],
+										param->offset_size[4*i+3]);
 	}
 	return NULL;
 }
 
 /*
- * compute the minimum distance among triangles stored in set S and set T
+ * compute the minimum distance among triangles
  * with multiple threads
  * */
-float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int num_threads){
+void TriDist_batch(const float *data, const uint *offset_size, float *result,
+		const uint batch_num, const int num_threads){
 	cout<<"starting "<<num_threads<<" threads"<<endl;
 
 	pthread_t threads[num_threads];
 	struct dist_param params[num_threads];
-	int each_thread = s1/num_threads;
+	int each_thread = batch_num/num_threads;
 	for(int i=0;i<num_threads;i++){
 		int start = each_thread*i;
 		if(start>=s1){
 			break;
 		}
-		params[i].size1 = std::min(start+each_thread, (int)s1)-start;
-		params[i].size2 = s2;
-		params[i].data1 = S+start*9;
-		params[i].data2 = T;
+		params[i].batch_num = std::min(each_thread, (int)batch_num-start);
+		params[i].offset_size = offset_size+start*4;
+		params[i].data = data;
 		params[i].id = i+1;
-		params[i].dist = DBL_MAX;
-
+		params[i].dist = result+start;
 		int rc = pthread_create(&threads[i], NULL, TriDist_unit, (void *)&params[i]);
 		if (rc) {
 			cout << "Error:unable to create thread," << rc << endl;
@@ -483,8 +494,6 @@ float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int n
 		}
 	}
 
-
-	float min = DBL_MAX;
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
 		int rc = pthread_join(threads[i], &status);
@@ -492,13 +501,7 @@ float TriDist_batch(const float *S, const float * T, size_t s1, size_t s2, int n
 			cout << "Error:unable to join," << rc << endl;
 			exit(-1);
 		}
-		if(params[i].dist < min){
-			min = params[i].dist;
-		}
-		//cerr << "Main: completed thread id :" << i <<endl;
 	}
-
-	return min;
 }
 
 }

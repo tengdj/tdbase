@@ -18,7 +18,9 @@ namespace hispeed{
  *
  * */
 Skeleton *HiMesh::extract_skeleton(){
-
+	assert(i_decompPercentage==100&&this->b_jobCompleted &&
+			"the skeleton can only be extracted on the fully decompressed polyhedron");
+	struct timeval start = get_cur_time();
 	Skeleton *skeleton  = new Skeleton();
 	std::stringstream os;
 	os << *this;
@@ -37,6 +39,7 @@ Skeleton *HiMesh::extract_skeleton(){
 		mcs.split_faces();
 		// 3. Fix degenerate vertices.
 		mcs.detect_degeneracies();
+
 		// Perform the above three steps in one iteration.
 		mcs.contract();
 		// Iteratively apply step 1 to 3 until convergence.
@@ -51,103 +54,123 @@ Skeleton *HiMesh::extract_skeleton(){
 	return skeleton;
 }
 
+vector<Point> HiMesh::get_skeleton_points(){
+	vector<Point> ret;
+	Skeleton *skeleton = extract_skeleton();
+	if(!skeleton){
+		return ret;
+	}
+	BOOST_FOREACH(Skeleton_vertex v, boost::vertices(*skeleton)){
+		auto p = (*skeleton)[v].point;
+		ret.push_back(Point(p.x(),p.y(),p.z()));
+	}
+	delete skeleton;
+	return ret;
+}
+
 /*
  * get the skeleton of the polyhedron, and then group the triangles
  * or edges around the points of the skeleton, and generate a list
  * of axis aligned boxes for those sets
  * */
-std::vector<aab> HiMesh::generate_mbbs(int voxel_size){
-	std::vector<aab> mbbs;
-	if(size_of_facets()<voxel_size){
-		mbbs.push_back(aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]));
-		return mbbs;
+vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
+	vector<Voxel *> voxels;
+	if(size_of_edges()<voxel_size*3){
+		Voxel *v = new Voxel();
+		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
+		v->size = size_of_edges();
+		voxels.push_back(v);
+		return voxels;
 	}
-	std::vector<Point> skeleton_points;
-	Skeleton *skeleton = extract_skeleton();
-	assert(skeleton!=NULL);
+	// this step takes 99 percent of the computation load
+	std::vector<Point> skeleton_points = get_skeleton_points();
 
-	int num_points = 0;
-	BOOST_FOREACH(Skeleton_vertex v, boost::vertices(*skeleton)){
-		num_points++;
-	}
-	// sample the points of the skeleton
+	// sample the points of the skeleton with the calculated sample rate
+	int num_points = skeleton_points.size();
 	int skeleton_sample_rate =
-			((size_of_facets()/voxel_size)*100)/num_points;
-
-
-	// get the points in the skeleton
-	// each mbb contains the same number of facets or edges
-	BOOST_FOREACH(Skeleton_vertex v, boost::vertices(*skeleton)){
+			((size_of_edges()/voxel_size)*100)/num_points;
+	for(int i=0;i<num_points;){
 		if(!hispeed::get_rand_sample(skeleton_sample_rate)){
-			continue;
+			skeleton_points.erase(skeleton_points.begin()+i);
+			num_points--;
+		}else{
+			Voxel *v = new Voxel();
+			v->core[0] = skeleton_points[i][0];
+			v->core[1] = skeleton_points[i][1];
+			v->core[2] = skeleton_points[i][2];
+			voxels.push_back(v);
+			i++;
 		}
-		auto p = (*skeleton)[v].point;
-		skeleton_points.push_back(Point(p.x(),p.y(),p.z()));
-		mbbs.push_back(aab());
 	}
 
-	// reset the box_id of all facets
-	for(Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		fit->set_box_id(-1);
+	if(voxels.size()==0){
+		Voxel *v = new Voxel();
+		voxels.push_back(v);
+	}
+	// return one single box if less than 2 points are sampled
+	if(voxels.size()==1){
+		voxels[0]->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
+		voxels[0]->size = size_of_edges();
+		return voxels;
 	}
 
-	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		if(fit->get_box_id()==-1){
-			Halfedge_handle heh = fit->halfedge();
-			Halfedge_handle hIt = heh;
-			do {
-				Vertex_handle vh = hIt->vertex();
-				Point p = vh->point();
-				// update the corresponding mbb
-				int min_index = 0;
-				float min_dist = DBL_MAX;
-				for(int i=0;i<skeleton_points.size();i++){
-					float dist = get_distance(p,skeleton_points[i]);
-					if(dist<min_dist){
-						min_index = i;
-						min_dist = dist;
-					}
-				}
-				mbbs[min_index].update(p[0],p[1],p[2]);
-				hIt = hIt->next();
-			} while (hIt != heh);
+	//building the voronoi graph
+	Delaunay voronoi(skeleton_points.begin(), skeleton_points.end());
+
+	// here we use a map to retrieve index from points
+	map<Point, int> point_map;
+	for(int i=0;i<skeleton_points.size();i++){
+		point_map[skeleton_points[i]] = i;
+	}
+	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
+		Point p1 = eit->vertex()->point();
+		Point p2 = eit->opposite()->vertex()->point();
+		Point np = voronoi.nearest_vertex(p1)->point();
+		voxels[point_map[np]]->box.update(p1[0],p1[1],p1[2]);
+		voxels[point_map[np]]->box.update(p2[0],p2[1],p2[2]);
+		voxels[point_map[np]]->size++;
+	}
+
+	// erase the one without any data in it
+	int vs=voxels.size();
+	for(int i=0;i<vs;){
+		if(voxels[i]->size==0){
+			voxels.erase(voxels.begin()+i);
+			vs--;
+		}else{
+			i++;
 		}
 	}
 	skeleton_points.clear();
-	return mbbs;
+	return voxels;
 }
 
-size_t HiMesh::get_segments(float *segments){
-	size_t size = size_of_halfedges()/2;
-	if(segment_buffer==NULL){
-		segment_buffer = new float[size*6*sizeof(float)];
-		float *cur_S = segment_buffer;
-		int inserted = 0;
-		for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
-			Point p1 = eit->vertex()->point();
-			Point p2 = eit->opposite()->vertex()->point();
-			assert(p1!=p2);
-			*cur_S = p1.x();
-			cur_S++;
-			*cur_S = p1.y();
-			cur_S++;
-			*cur_S = p1.z();
-			cur_S++;
-			*cur_S = p2.x();
-			cur_S++;
-			*cur_S = p2.y();
-			cur_S++;
-			*cur_S = p2.z();
-			cur_S++;
-			inserted++;
-		}
-		assert(inserted==size);
+size_t HiMesh::fill_segments(float *segments){
+	assert(segments);
+	size_t size = size_of_edges();
+	float *cur_S = segments;
+	int inserted = 0;
+	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
+		Point p1 = eit->vertex()->point();
+		Point p2 = eit->opposite()->vertex()->point();
+		*cur_S = p1.x();
+		cur_S++;
+		*cur_S = p1.y();
+		cur_S++;
+		*cur_S = p1.z();
+		cur_S++;
+		*cur_S = p2.x();
+		cur_S++;
+		*cur_S = p2.y();
+		cur_S++;
+		*cur_S = p2.z()+0.1*(p1==p2); // pad one a little bit if the edge is a point
+		cur_S++;
+		inserted++;
 	}
-	if(segments!=NULL){
-		memcpy((void *)segments, (void *)segment_buffer, size*6*sizeof(float));
-	}
+	assert(inserted==size);
 	return size;
 }
+
 
 void HiMesh::advance_to(int lod){
 	if(i_decompPercentage>=lod){
@@ -161,11 +184,78 @@ void HiMesh::advance_to(int lod){
 		delete segment_buffer;
 		segment_buffer = NULL;
 	}
-	get_segments();
+}
+
+// the function to generate the segments and
+// assign each segment to the proper voxel
+void HiMesh::fill_voxel(vector<Voxel *> &voxels){
+	assert(voxels.size()>0);
+	if(segment_buffer){
+		delete segment_buffer;
+	}
+	segment_buffer = new float[size_of_edges()*6];
+	if(voxels.size()==1){
+		fill_segments(segment_buffer);
+		voxels[0]->size = size_of_edges();
+		voxels[0]->data = segment_buffer;
+		return;
+	}
+	float *tmp_segment_buffer = new float[size_of_edges()*6];
+	int *groups = new int[size_of_edges()];
+	fill_segments(tmp_segment_buffer);
+	for(Voxel *v:voxels){
+		v->size = 0;
+	}
+	// now reorganize the data with the voxel information given
+	for(int i=0;i<size_of_edges();i++){
+		float *p1 = tmp_segment_buffer+i*6;
+		float *p2 = tmp_segment_buffer+i*6+3;
+		groups[i] = -1;
+		// todo replace with a tree index
+		for(int j=0;j<voxels.size();j++){
+			if(voxels[j]->box.contains(p1)
+					&&voxels[j]->box.contains(p2)){
+				groups[i] = j;
+				voxels[j]->size++;
+				break;
+			}
+		}
+		if(groups[i]==-1){
+			cout<<p1[0]<<" "<<p1[1]<<" "<<p1[2]<<endl;
+			cout<<p2[0]<<" "<<p2[1]<<" "<<p2[2]<<endl;
+		}
+		assert(groups[i]!=-1);
+	}
+	int offset = 0;
+	for(Voxel *v:voxels){
+		v->data = segment_buffer+offset;
+		offset += 6*(v->size);
+	}
+	for(int i=0;i<size_of_edges();i++){
+		float *p1 = tmp_segment_buffer+i*6;
+		float *p2 = tmp_segment_buffer+i*6+3;
+
+		cout<<"teng"<<endl;
+		cout<<i<<endl;
+		cout<<groups[i]<<endl;
+		cout<<voxels[groups[i]]->size<<endl;
+		cout<<endl;
+
+		memcpy((void *)voxels[groups[i]]->data, (void*)(tmp_segment_buffer+i*6), 6*sizeof(float));
+		voxels[groups[i]]->data += 6;
+	}
+	// reset pointer
+	for(Voxel *v:voxels){
+		v->data -= 6*(v->size);
+	}
+
+	delete groups;
+	delete tmp_segment_buffer;
 }
 
 HiMesh::HiMesh(const char* data, long length):
 		MyMesh(0, DECOMPRESSION_MODE_ID, 12, true, data, length){
 }
+
 
 }

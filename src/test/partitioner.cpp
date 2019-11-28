@@ -38,13 +38,13 @@ int main(int argc, char** argv) {
 	SPNode *sp = NULL;
 	const char *partition_path = "tmp.part";
 	if(!hispeed::file_exist(partition_path)){
-		std::vector<Voxel *> voxels;
+		std::vector<weighted_aab *> voxels;
 		hispeed::get_voxels(input_folders, voxels,
 				hispeed::get_num_threads(), sample_rate);
 		cout<<"getting voxels of objects takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
 		sp = hispeed::build_sort_partition(voxels, num_tiles);
 		cout<<"generating partitions takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
-		for(Voxel *v:voxels){
+		for(weighted_aab *v:voxels){
 			delete v;
 		}
 		voxels.clear();

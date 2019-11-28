@@ -22,17 +22,23 @@ void SpatialJoin::formalize_computing(){
 
 	// filtering with MBBs to get the candidate list
 	vector<std::pair<int, vector<candidate_info>>> candidates;
+	// number of pairs of polyhedron (segment sets) need be checked
 	int pair_num = 0;
 	for(int i=0;i<tile1->num_objects();i++){
 		vector<candidate_info> candidate_list;
-		aab b1 = tile1->get_mbb(i);
+		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
 		for(int j=0;j<tile2->num_objects();j++){
 			// avoid self comparing
 			if(tile1==tile2&&i==j){
 				continue;
 			}
-			HiMesh_Wrapper *wrapper = tile2->get_mesh_wrapper(j);
-			range d = b1.distance(wrapper->box);
+			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(j);
+
+			// todo
+			// here instead of generating one distance
+			// we compare all the voxels in both mesh i in tile1
+			// and mesh j in tile2 to get candidate pairs
+			range d = wrapper1->box.distance(wrapper2->box);
 			// now update the list
 			bool keep = true;
 			int list_size = candidate_list.size();
@@ -52,7 +58,7 @@ void SpatialJoin::formalize_computing(){
 			if(keep){
 				candidate_info ci;
 				ci.distance = d;
-				ci.mesh_wrapper = wrapper;
+				ci.mesh_wrapper = wrapper2;
 				candidate_list.push_back(ci);
 			}
 		}
@@ -64,6 +70,7 @@ void SpatialJoin::formalize_computing(){
 
 	// now we start to get the distances with progressive level of details
 	for(int lod=0;lod<=100;lod+=50){
+		struct timeval iter_start = get_cur_time();
 		printf("\n%ld polyhedron has %d candidates\n", candidates.size(), pair_num);
 		// retrieve the necessary meshes
 		map<HiMesh *, std::pair<uint, uint>> mesh_map;
@@ -73,7 +80,7 @@ void SpatialJoin::formalize_computing(){
 			if(mesh_map.find(mesh1)==mesh_map.end()){
 				std::pair<uint, uint> p;
 				p.first = segment_num;
-				p.second = mesh1->get_segment_num();
+				p.second = mesh1->size_of_edges();
 				segment_num += p.second;
 				mesh_map[mesh1] = p;
 			}
@@ -82,7 +89,7 @@ void SpatialJoin::formalize_computing(){
 				if(mesh_map.find(mesh2)==mesh_map.end()){
 					std::pair<uint, uint> p;
 					p.first = segment_num;
-					p.second = mesh2->get_segment_num();
+					p.second = mesh2->size_of_edges();
 					segment_num += p.second;
 					mesh_map[mesh2] = p;
 				}
@@ -91,12 +98,11 @@ void SpatialJoin::formalize_computing(){
 		printf("decoded %ld meshes with %d segments for lod %d\n", mesh_map.size(), segment_num, lod);
 		report_time("getting meshes", start);
 
-		// now we allocate the space and store the data in
-		// a buffer
+		// now we allocate the space and store the data in a buffer
 		float *data = new float[6*segment_num];
 		for (map<HiMesh *, std::pair<uint, uint>>::iterator it=mesh_map.begin();
 				it!=mesh_map.end(); ++it){
-			assert(it->second.second==it->first->get_segments(data+it->second.first*6));
+			//assert(it->second.second==it->first->get_segments(data+it->second.first*6));
 		}
 		// organize the data for computing
 		uint *offset_size = new uint[4*pair_num];
@@ -116,9 +122,13 @@ void SpatialJoin::formalize_computing(){
 		}
 		assert(index==pair_num);
 		report_time("organizing data", start);
-
-		hispeed::SegDist_batch_gpu(data, offset_size, distances, pair_num, segment_num);
-		report_time("get distance with GPU", start);
+		if(false){
+			hispeed::SegDist_batch_gpu(data, offset_size, distances, pair_num, segment_num);
+			report_time("get distance with GPU", start);
+		}else{
+			hispeed::SegDist_batch(data, offset_size, distances, pair_num, hispeed::get_num_threads());
+			report_time("get distance with CPU", start);
+		}
 
 		// now update the distance range with the new distances
 		index = 0;
@@ -176,9 +186,11 @@ void SpatialJoin::formalize_computing(){
 		delete offset_size;
 		delete distances;
 		mesh_map.clear();
+		report_time("current iteration", iter_start, false);
 		if(pair_num==0){
 			break;
 		}
+
 	}
 
 

@@ -37,7 +37,15 @@ inline double get_time_elapsed(struct timeval &t1, bool update_start = false){
 }
 
 inline void report_time(const char *task, struct timeval &start, bool update_start = true){
-	cerr<<task<<" takes "<<get_time_elapsed(start, update_start)<<" ms"<<endl;
+	double mstime = get_time_elapsed(start, update_start);
+	cerr<<task<<" takes ";
+	if(mstime>10000){
+		cout<<mstime/1000<<" s"<<endl;
+	}else{
+		cout<<mstime<<" ms"<<endl;
+
+	}
+
 }
 
 

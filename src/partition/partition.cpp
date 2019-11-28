@@ -23,7 +23,7 @@ const int LOCAL_QUEUE_SIZE=10;
 struct unit_args{
 	int id;
 	std::queue<string> *input_lines;
-	std::vector<Voxel *> *voxels;
+	std::vector<weighted_aab *> *voxels;
 	bool *complete;
 };
 pthread_mutex_t lock;
@@ -36,7 +36,7 @@ void *get_mbbs_unit(void *arg){
 	pthread_mutex_unlock(&lock);
 
 	vector<string> local_input_lines;
-	vector<Voxel*> local_voxels;
+	vector<weighted_aab*> local_voxels;
 	int local_processed = 0;
 	while(!(*arg_val->complete)||!arg_val->input_lines->empty()){
 		// fetch a certain number of lines
@@ -60,10 +60,10 @@ void *get_mbbs_unit(void *arg){
 			if(mesh==NULL){
 				continue;
 			}
-			Voxel *voxel = new Voxel();
+			weighted_aab *voxel = new weighted_aab();
 			voxel->box = aab(mesh->bbMin[0], mesh->bbMin[1], mesh->bbMin[2],
 					mesh->bbMax[0], mesh->bbMax[1], mesh->bbMax[2]);
-			voxel->size = mesh->size_of_facets();
+			voxel->size = mesh->size_of_halfedges()/2;
 			local_voxels.push_back(voxel);
 			delete mesh;
 		}
@@ -76,7 +76,7 @@ void *get_mbbs_unit(void *arg){
 	pthread_mutex_unlock(&lock);
 }
 
-void get_voxels(std::vector<std::string> &input_folders, std::vector<Voxel *> &voxels,
+void get_voxels(std::vector<std::string> &input_folders, std::vector<weighted_aab *> &voxels,
 		const int num_threads, const int sample_rate){
 	bool complete = false;
 	// get file list

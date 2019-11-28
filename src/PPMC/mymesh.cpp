@@ -46,10 +46,11 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
        p_data[i] = 0;
     }
 
+
     // Initialize the range coder structure.
     rangeCoder.p_data = p_data;
     rangeCoder.p_dataOffset = &dataOffset;
-
+	srand(PPMC_RANDOM_CONSTANT);
     if (i_mode == COMPRESSION_MODE_ID) {
 	    std::istringstream is;
 	    is.str(data);

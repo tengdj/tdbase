@@ -54,7 +54,6 @@ MyMesh *get_mesh(string input_line, bool complete_compress){
 	}
 	boost::replace_all(input_line, "|", "\n");
 	// Init the random number generator.
-	srand(PPMC_RANDOM_CONSTANT);
 	MyMesh *mesh = new MyMesh(100,
 				 COMPRESSION_MODE_ID, 12, true,
 				 input_line.c_str(), input_line.size());
