@@ -42,6 +42,7 @@ Tile::~Tile(){
 	// close the data file pointer
 	if(dt_fs!=NULL){
 		fclose(dt_fs);
+		dt_fs = NULL;
 	}
 }
 
@@ -59,20 +60,20 @@ bool Tile::load(){
 		w->offset = offset;
 		w->data_size = dsize;
 		w->id = index++;
-		// read the voxel group
+		// read the voxels into the wrapper
 		fread((void *)&dsize, sizeof(size_t), 1, dt_fs);
 		for(int i=0;i<dsize;i++){
-			aab box;
-			fread((void *)box.min, sizeof(float), 3, dt_fs);
-			fread((void *)box.max, sizeof(float), 3, dt_fs);
 			Voxel *v = new Voxel();
-			v->box = box;
+			fread((void *)v->box.min, sizeof(float), 3, dt_fs);
+			fread((void *)v->box.max, sizeof(float), 3, dt_fs);
+			fread((void *)v->core, sizeof(float), 3, dt_fs);
 			w->voxels.push_back(v);
-			w->box.update(box);
+			w->box.update(v->box);
 		}
 		objects.push_back(w);
+		box.update(w->box);
 		// update the offset for next
-		offset += w->data_size+sizeof(size_t)+6*sizeof(float)*dsize;
+		offset += w->data_size+sizeof(size_t)+9*sizeof(float)*dsize;
 	}
 	return true;
 }

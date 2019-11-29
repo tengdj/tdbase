@@ -51,6 +51,7 @@ inline void flush_mesh_buffer(vector<HiMesh *> &mesh_buffer, vector<vector<Voxel
 		for(Voxel *v:voxels[i]){
 			os->write((char *)v->box.min, 3*sizeof(float));
 			os->write((char *)v->box.max, 3*sizeof(float));
+			os->write((char *)v->core, 3*sizeof(float));
 			delete v;
 		}
 		voxels[i].clear();

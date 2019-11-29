@@ -15,7 +15,27 @@
 
 namespace hispeed{
 
-class Voxel;
+/*
+ * each voxel contains the minimum boundary box
+ * of a set of edges or triangles. It is an extension of
+ * AAB with additional elements
+ * */
+class Voxel{
+public:
+	~Voxel(){
+		size = 0;
+		data = NULL;
+	}
+	// point which the segments close wiht
+	float core[3];
+	// boundary box of the voxel
+	aab box;
+	// the pointer points to the segment data in this voxel
+	float *data = NULL;
+	int size = 0;
+};
+
+
 /*
  *
  * each voxel group is mapped to an independent polyhedron
@@ -33,8 +53,12 @@ class HiMesh:public MyMesh{
 public:
 	HiMesh(const char *, long length);
 	~HiMesh(){
+		release_buffer();
+	}
+	void release_buffer(){
 		if(segment_buffer){
 			delete segment_buffer;
+			segment_buffer = NULL;
 		}
 	}
 	// added for HISPEED
@@ -66,6 +90,7 @@ public:
 class HiMesh_Wrapper{
 public:
 	vector<Voxel *> voxels;
+	bool filled = false;
 	int id = -1;
 	HiMesh *mesh = NULL;
 	aab box;
@@ -73,6 +98,10 @@ public:
 	long offset = 0;
 	long data_size = 0;
 	~HiMesh_Wrapper(){
+		for(Voxel *v:voxels){
+			delete v;
+		}
+		voxels.clear();
 		if(mesh){
 			delete mesh;
 		}
@@ -88,6 +117,16 @@ public:
 		assert(mesh);
 		mesh->advance_to(lod);
 		mesh->fill_voxel(voxels);
+	}
+
+	void reset(){
+		for(Voxel *v:voxels){
+			v->data = NULL;
+			v->size = 0;
+		}
+		if(mesh){
+			mesh->release_buffer();
+		}
 	}
 
 };

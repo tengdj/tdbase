@@ -207,25 +207,28 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels){
 		v->size = 0;
 	}
 	// now reorganize the data with the voxel information given
+	// assign each segment to a proper group
+	// we tried voronoi graph, but for some reason it's
+	// even slower than the brute force method
 	for(int i=0;i<size_of_edges();i++){
 		float *p1 = tmp_segment_buffer+i*6;
-		float *p2 = tmp_segment_buffer+i*6+3;
-		groups[i] = -1;
-		// todo replace with a tree index
+		float min_dist = DBL_MAX;
+		int gid = -1;
 		for(int j=0;j<voxels.size();j++){
-			if(voxels[j]->box.contains(p1)
-					&&voxels[j]->box.contains(p2)){
-				groups[i] = j;
-				voxels[j]->size++;
-				break;
+			float cur_dist = 0;
+			for(int t=0;t<3;t++){
+				cur_dist += (voxels[j]->core[t]-p1[t])*(voxels[j]->core[t]-p1[t]);
+			}
+			if(cur_dist<min_dist){
+				gid = j;
+				min_dist = cur_dist;
 			}
 		}
-		if(groups[i]==-1){
-			cout<<p1[0]<<" "<<p1[1]<<" "<<p1[2]<<endl;
-			cout<<p2[0]<<" "<<p2[1]<<" "<<p2[2]<<endl;
-		}
-		assert(groups[i]!=-1);
+		groups[i] = gid;
+		voxels[gid]->size++;
 	}
+
+	// copy the data to the proper position in the segment_buffer
 	int offset = 0;
 	for(Voxel *v:voxels){
 		v->data = segment_buffer+offset;
@@ -234,21 +237,14 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels){
 	for(int i=0;i<size_of_edges();i++){
 		float *p1 = tmp_segment_buffer+i*6;
 		float *p2 = tmp_segment_buffer+i*6+3;
-
-		cout<<"teng"<<endl;
-		cout<<i<<endl;
-		cout<<groups[i]<<endl;
-		cout<<voxels[groups[i]]->size<<endl;
-		cout<<endl;
-
 		memcpy((void *)voxels[groups[i]]->data, (void*)(tmp_segment_buffer+i*6), 6*sizeof(float));
 		voxels[groups[i]]->data += 6;
 	}
+
 	// reset pointer
 	for(Voxel *v:voxels){
 		v->data -= 6*(v->size);
 	}
-
 	delete groups;
 	delete tmp_segment_buffer;
 }

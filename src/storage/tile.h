@@ -15,24 +15,6 @@ using namespace std;
 
 namespace hispeed{
 
-
-/*
- * each voxel contains the minimum boundary box
- * of a set of edges or triangles. It is an extension of
- * AAB with additional elements
- * */
-class Voxel{
-public:
-	// point which the segments close wiht
-	float core[3];
-	// boundary box of the voxel
-	aab box;
-	// the pointer points to the segment data in this voxel
-	float *data = NULL;
-	int size = 0;
-	HiMesh *mesh;
-};
-
 class Tile{
 	aab box;
 	FILE *dt_fs = NULL;
