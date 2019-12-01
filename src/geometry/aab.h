@@ -38,6 +38,10 @@ public:
 		os<<d.closest<<"->"<<d.farthest;
 		return os;
 	}
+	void update(range &r){
+		closest = max(closest, r.closest);
+		farthest = min(farthest, r.farthest);
+	}
 }range;
 
 class aab{

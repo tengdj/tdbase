@@ -80,7 +80,7 @@ inline int get_pair_num(vector<std::pair<HiMesh_Wrapper *, vector<candidate_info
 }
 
 
-void SpatialJoin::formalize_computing(){
+void SpatialJoin::formalize_computing(bool with_gpu, int num_threads){
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
@@ -111,6 +111,7 @@ void SpatialJoin::formalize_computing(){
 						if(update_voxel_pair_list(ci.voxel_pairs, tmpd) &&
 						   update_candidate_list(candidate_list, tmpd)){
 							ci.voxel_pairs.push_back(std::make_tuple(v1, v2, tmpd));
+							ci.distance.update(tmpd);
 						}
 					}
 				}
@@ -214,11 +215,11 @@ void SpatialJoin::formalize_computing(){
 		}
 		assert(index==pair_num);
 		report_time("organizing data", start);
-		if(true){
+		if(with_gpu){
 			hispeed::SegDist_batch_gpu(data, offset_size, distances, pair_num, segment_num);
 			report_time("get distance with GPU", start);
 		}else{
-			hispeed::SegDist_batch(data, offset_size, distances, pair_num, hispeed::get_num_threads());
+			hispeed::SegDist_batch(data, offset_size, distances, pair_num, num_threads);
 			report_time("get distance with CPU", start);
 		}
 

@@ -9,7 +9,7 @@
 #define HISPEED_TILE_H_
 #include <stdio.h>
 
-#include "himesh.h"
+#include "../spatial/himesh.h"
 
 using namespace std;
 
@@ -29,6 +29,7 @@ public:
 	~Tile();
 
 	HiMesh *get_mesh(int id, int lod){
+		struct timeval start = get_cur_time();
 		assert(id>=0&&id<objects.size());
 		assert(lod>=0&&lod<=100);
 		if(objects[id]->mesh==NULL){
@@ -36,6 +37,7 @@ public:
 		}
 		assert(objects[id]->mesh);
 		objects[id]->mesh->advance_to(lod);
+		//report_time("decoding mesh", start);
 		return objects[id]->mesh;
 	}
 	HiMesh_Wrapper *get_mesh_wrapper(int id){

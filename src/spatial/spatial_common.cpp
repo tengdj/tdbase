@@ -89,6 +89,15 @@ MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation){
 	return mesh;
 }
 
+Polyhedron *read_polyhedron(){
+	string input = read_polyhedron_str();
+	stringstream ss;
+	ss<<input;
+	Polyhedron *poly = new Polyhedron();
+	ss>>*poly;
+	return poly;
+}
+
 
 }
 

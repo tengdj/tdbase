@@ -101,17 +101,20 @@ void *compress(void *args){
 
 int main(int argc, char** argv) {
 	if(argc<2){
-		cerr<<"usage: compress input_path output_path"<<endl;
+		cerr<<"usage: compress input_path output_path [maximum_line]"<<endl;
 		exit(0);
 	}
 	const char *input_path = argv[1];
 	const char *output_path = argv[2];
 	cerr<<"processing "<<input_path<<" into "<<output_path<<endl;
 	int num_threads = hispeed::get_num_threads();
-	if(argc>3){
-		num_threads = atoi(argv[3]);
+	if(argc>4){
+		num_threads = atoi(argv[4]);
 	}
-	assert(num_threads>0 && num_threads<MAX_THREAD_NUM);
+	long maximum_lines = LONG_MAX;
+	if(argc>3){
+		maximum_lines = atoi(argv[3]);
+	}
 	pthread_t threads[num_threads];
 	int id[num_threads];
 	for(int i=0;i<num_threads;i++){
@@ -161,6 +164,9 @@ int main(int argc, char** argv) {
 		if(processed_size*100/total_filesize==next_report){
 			cerr<<"processed "<<num_objects<<" objects\t("<<next_report<<"%)"<<endl;
 			next_report++;
+		}
+		if(num_objects==maximum_lines){
+			break;
 		}
 	}
 	stop = true;

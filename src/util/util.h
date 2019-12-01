@@ -40,12 +40,10 @@ inline void report_time(const char *task, struct timeval &start, bool update_sta
 	double mstime = get_time_elapsed(start, update_start);
 	cerr<<task<<" takes ";
 	if(mstime>10000){
-		cout<<mstime/1000<<" s"<<endl;
+		cerr<<mstime/1000<<" s"<<endl;
 	}else{
-		cout<<mstime<<" ms"<<endl;
-
+		cerr<<mstime<<" ms"<<endl;
 	}
-
 }
 
 
@@ -116,6 +114,12 @@ inline bool file_exist(const char *path) {
 
 inline int get_num_threads(){
 	return std::thread::hardware_concurrency();
+}
+
+inline string read_line(){
+	string input_line;
+	getline(std::cin, input_line);
+	return input_line;
 }
 
 }

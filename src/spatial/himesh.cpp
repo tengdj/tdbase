@@ -7,7 +7,7 @@
 
 
 
-#include "tile.h"
+#include "himesh.h"
 
 
 namespace hispeed{
@@ -186,6 +186,8 @@ void HiMesh::advance_to(int lod){
 	}
 }
 
+
+
 // the function to generate the segments and
 // assign each segment to the proper voxel
 void HiMesh::fill_voxel(vector<Voxel *> &voxels){
@@ -252,6 +254,32 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels){
 HiMesh::HiMesh(const char* data, long length):
 		MyMesh(0, DECOMPRESSION_MODE_ID, 12, true, data, length){
 }
+
+list<Segment> HiMesh::get_segments(){
+	list<Segment> segments;
+	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
+		Point p1 = eit->vertex()->point();
+		Point p2 = eit->opposite()->vertex()->point();
+		if(p1!=p2){
+			segments.push_back(Segment(p1, p2));
+		}
+	}
+	return segments;
+}
+
+SegTree *HiMesh::get_aabb_tree(){
+	list<Segment> segments = get_segments();
+	SegTree *tree = new SegTree(segments.begin(), segments.end());
+	//tree->accelerate_distance_queries();
+	return tree;
+}
+
+TriangleTree *get_aabb_tree(Polyhedron *p){
+	TriangleTree *tree = new TriangleTree(faces(*p).first, faces(*p).second, *p);
+	tree->accelerate_distance_queries();
+	return tree;
+}
+
 
 
 }

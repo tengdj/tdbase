@@ -8,10 +8,31 @@
 #ifndef HIMESH_H_
 #define HIMESH_H_
 
+#include <CGAL/AABB_tree.h>
+#include <CGAL/AABB_traits.h>
+#include <CGAL/AABB_segment_primitive.h>
+#include <CGAL/AABB_face_graph_triangle_primitive.h>
+
 #include "../geometry/aab.h"
 #include "../PPMC/mymesh.h"
 #include "../PPMC/configuration.h"
 #include "../spatial/spatial.h"
+
+
+
+//CGAL::Polyhedron_3< MyKernel, MyItems > Polyhedron;
+
+typedef MyKernel::FT FT;
+typedef MyKernel::Segment_3 Segment;
+
+typedef std::list<Segment>::iterator SegIterator;
+typedef CGAL::AABB_segment_primitive<MyKernel, SegIterator> SegPrimitive;
+typedef CGAL::AABB_traits<MyKernel, SegPrimitive> SegTraits;
+typedef CGAL::AABB_tree<SegTraits> SegTree;
+
+typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> TrianglePrimitive;
+typedef CGAL::AABB_traits<MyKernel, TrianglePrimitive> TriangleTraits;
+typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 
 namespace hispeed{
 
@@ -67,6 +88,8 @@ public:
 	vector<Voxel *> generate_voxels(int voxel_size);
 	size_t fill_segments(float *segments);
 	void fill_voxel(vector<Voxel *> &voxels);
+	list<Segment> get_segments();
+	SegTree *get_aabb_tree();
 
 	inline void get_vertices(std::vector<Point> &points){
 		for(MyMesh::Vertex_iterator v = vertices_begin();
@@ -131,9 +154,10 @@ public:
 
 };
 
+TriangleTree *get_aabb_tree(Polyhedron *p);
+
+
+
 }
-
-
-
 
 #endif /* HIMESH_H_ */

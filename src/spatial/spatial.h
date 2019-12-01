@@ -31,6 +31,20 @@ MyMesh *read_mesh();
 MyMesh *decompress_mesh(MyMesh *compressed, int lod);
 extern MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation = false);
 
+inline string read_polyhedron_str(){
+	string input_line = read_line();
+	boost::replace_all(input_line, "|", "\n");
+	return input_line;
+}
+Polyhedron *read_polyhedron();
+
+inline float distance(Point p1, Point p2){
+	float dist = 0;
+	for(int i=0;i<3;i++){
+		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
+	}
+	return dist;
+}
 
 }
 
