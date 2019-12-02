@@ -53,10 +53,6 @@ public:
 	}
 };
 
-Tile *generate_tile();
-
-
-
 }
 
 

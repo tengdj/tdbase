@@ -21,8 +21,9 @@ int main(int argc, char **argv){
 	Tile *tile2 = new Tile("vessel.dt");
 	report_time("load tiles", start);
 	if(true){
-		SpatialJoin *joiner = new SpatialJoin(tile1, tile2);
-		joiner->formalize_computing(true, 1);
+		SpatialJoin *joiner = new SpatialJoin(tile1, tile1);
+		//joiner->nearest_neighbor(true, 1);
+		joiner->intersect(false);
 		report_time("total join", start);
 		delete joiner;
 	}

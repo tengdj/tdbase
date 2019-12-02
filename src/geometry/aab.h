@@ -98,10 +98,10 @@ public:
 	}
 
 
-	bool intersect(aab *object){
-		return !(object->min[0] > max[0] || object->max[0] < min[0] ||
-				 object->min[1] > max[1] || object->max[1] < min[1] ||
-				 object->min[2] > max[2] || object->max[2] < min[2]);
+	bool intersect(aab &object){
+		return !(object.min[0] > max[0] || object.max[0] < min[0] ||
+				 object.min[1] > max[1] || object.max[1] < min[1] ||
+				 object.min[2] > max[2] || object.max[2] < min[2]);
 	}
 	bool contains(aab *object){
 		for(int i=0;i<3;i++){

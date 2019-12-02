@@ -114,7 +114,7 @@ float SegDist_single(const float *data1, const float *data2,
 }
 
 void *SegDist_unit(void *params_void){
-	struct dist_param *param = (struct dist_param *)params_void;
+	struct geometry_param *param = (struct geometry_param *)params_void;
 	for(int i=0;i<param->batch_num;i++){
 		param->dist[i] = SegDist_single(param->data+param->offset_size[4*i]*6,
 									    param->data+param->offset_size[4*i+2]*6,
@@ -129,7 +129,7 @@ void SegDist_batch(const float *data, const uint *offset_size, float *result,
 				   const uint batch_num, const int num_threads){
 	cout<<"starting "<<num_threads<<" threads"<<endl;
 	pthread_t threads[num_threads];
-	struct dist_param params[num_threads];
+	struct geometry_param params[num_threads];
 	int each_thread = batch_num/num_threads;
 	for(int i=0;i<num_threads;i++){
 		int start = each_thread*i;

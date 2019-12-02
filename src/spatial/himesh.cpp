@@ -171,6 +171,33 @@ size_t HiMesh::fill_segments(float *segments){
 	return size;
 }
 
+size_t HiMesh::fill_triangles(float *triangles){
+	assert(triangles);
+	size_t size = size_of_facets();
+	float *cur_S = triangles;
+	int inserted = 0;
+	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		Point p1 = f->halfedge()->vertex()->point();
+		Point p2 = f->halfedge()->next()->vertex()->point();
+		Point p3 = f->halfedge()->next()->next()->vertex()->point();
+		for(int i=0;i<3;i++){
+			*cur_S = p1[i];
+			cur_S++;
+		}
+		for(int i=0;i<3;i++){
+			*cur_S = p2[i]-p1[i];
+			cur_S++;
+		}
+		for(int i=0;i<3;i++){
+			*cur_S = p3[i]-p1[i];
+			cur_S++;
+		}
+		inserted++;
+	}
+	assert(inserted==size);
+	return size;
+}
+
 
 void HiMesh::advance_to(int lod){
 	if(i_decompPercentage>=lod){
@@ -180,31 +207,40 @@ void HiMesh::advance_to(int lod){
 	b_jobCompleted = false;
 	completeOperation();
 	// clean the buffer of segments if already assigned
-	if(segment_buffer){
-		delete segment_buffer;
-		segment_buffer = NULL;
-	}
+	release_buffer();
 }
 
 
 
-// the function to generate the segments and
-// assign each segment to the proper voxel
-void HiMesh::fill_voxel(vector<Voxel *> &voxels){
+// the function to generate the segments(0) or triangle(1) and
+// assign each segment(0) or triangle(1) to the proper voxel
+void HiMesh::fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle){
 	assert(voxels.size()>0);
-	if(segment_buffer){
-		delete segment_buffer;
-	}
-	segment_buffer = new float[size_of_edges()*6];
+	release_buffer();
+	size_t num_of_data = seg_or_triangle==0?size_of_edges():size_of_facets();
+	int size_of_datum = seg_or_triangle==0?6:9;
+	data_buffer = new float[num_of_data*size_of_datum];
+
+	// for the case only one voxel exist
 	if(voxels.size()==1){
-		fill_segments(segment_buffer);
-		voxels[0]->size = size_of_edges();
-		voxels[0]->data = segment_buffer;
+		if(seg_or_triangle==0){
+			fill_segments(data_buffer);
+		}else{
+			fill_triangles(data_buffer);
+		}
+		voxels[0]->size = num_of_data;
+		voxels[0]->data = data_buffer;
 		return;
 	}
-	float *tmp_segment_buffer = new float[size_of_edges()*6];
-	int *groups = new int[size_of_edges()];
-	fill_segments(tmp_segment_buffer);
+
+	// get the raw data
+	float *tmp_buffer = new float[num_of_data*size_of_datum];
+	int *groups = new int[num_of_data];
+	if(seg_or_triangle==0){
+		fill_segments(tmp_buffer);
+	}else{
+		fill_triangles(tmp_buffer);
+	}
 	for(Voxel *v:voxels){
 		v->size = 0;
 	}
@@ -212,8 +248,10 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels){
 	// assign each segment to a proper group
 	// we tried voronoi graph, but for some reason it's
 	// even slower than the brute force method
-	for(int i=0;i<size_of_edges();i++){
-		float *p1 = tmp_segment_buffer+i*6;
+	for(int i=0;i<num_of_data;i++){
+		// for both segment and triangle, we assign it with only the first
+		// point
+		float *p1 = tmp_buffer+i*size_of_datum;
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<voxels.size();j++){
@@ -233,22 +271,20 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels){
 	// copy the data to the proper position in the segment_buffer
 	int offset = 0;
 	for(Voxel *v:voxels){
-		v->data = segment_buffer+offset;
-		offset += 6*(v->size);
+		v->data = data_buffer+offset;
+		offset += size_of_datum*(v->size);
 	}
-	for(int i=0;i<size_of_edges();i++){
-		float *p1 = tmp_segment_buffer+i*6;
-		float *p2 = tmp_segment_buffer+i*6+3;
-		memcpy((void *)voxels[groups[i]]->data, (void*)(tmp_segment_buffer+i*6), 6*sizeof(float));
-		voxels[groups[i]]->data += 6;
+	for(int i=0;i<num_of_data;i++){
+		memcpy((void *)voxels[groups[i]]->data, (void*)(tmp_buffer+i*size_of_datum), size_of_datum*sizeof(float));
+		voxels[groups[i]]->data += size_of_datum;
 	}
 
 	// reset pointer
 	for(Voxel *v:voxels){
-		v->data -= 6*(v->size);
+		v->data -= size_of_datum*(v->size);
 	}
 	delete groups;
-	delete tmp_segment_buffer;
+	delete tmp_buffer;
 }
 
 HiMesh::HiMesh(const char* data, long length):

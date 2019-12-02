@@ -70,16 +70,16 @@ public:
 class HiMesh:public MyMesh{
 
 	// the buffer for filling segments to voxels
-	float *segment_buffer = NULL;
+	float *data_buffer = NULL;
 public:
 	HiMesh(const char *, long length);
 	~HiMesh(){
 		release_buffer();
 	}
 	void release_buffer(){
-		if(segment_buffer){
-			delete segment_buffer;
-			segment_buffer = NULL;
+		if(data_buffer){
+			delete data_buffer;
+			data_buffer = NULL;
 		}
 	}
 	// added for HISPEED
@@ -87,7 +87,9 @@ public:
 	vector<Point> get_skeleton_points();
 	vector<Voxel *> generate_voxels(int voxel_size);
 	size_t fill_segments(float *segments);
-	void fill_voxel(vector<Voxel *> &voxels);
+	size_t fill_triangles(float *triangles);
+
+	void fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle);
 	list<Segment> get_segments();
 	SegTree *get_aabb_tree();
 
@@ -136,10 +138,11 @@ public:
 		mesh->writeMeshOff(ss.str().c_str());
 	}
 	// fill the segments into voxels
-	void fill_voxels(int lod){
+	// seg_tri: 0 for segments, 1 for triangle
+	void fill_voxels(int lod, int seg_tri){
 		assert(mesh);
 		mesh->advance_to(lod);
-		mesh->fill_voxel(voxels);
+		mesh->fill_voxel(voxels, seg_tri);
 	}
 
 	void reset(){

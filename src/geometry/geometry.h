@@ -89,11 +89,12 @@ VxS(float Vr[3], const float V[3], float s)
   Vr[2] = V[2] * s;
 }
 
-struct dist_param{
+struct geometry_param{
 	int id;
 	const float *data;
 	const uint *offset_size;
 	float *dist;
+	bool *intersect;
 	uint batch_num;
 };
 
@@ -108,5 +109,11 @@ extern size_t cuda_mem_size;
 void SegDist_batch_gpu(const float *data, const uint *offset_size, float *result, const uint batch_num, const uint segment_num);
 void init_cuda();
 void clean_cuda();
+
+
+bool TriInt(const float *data1, const float *data2);
+bool TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2);
+void TriInt_batch(const float *data, const uint *offset_size, bool *result, const uint batch_num, const int num_threads);
+
 }
 #endif

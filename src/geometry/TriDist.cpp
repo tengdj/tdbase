@@ -455,7 +455,7 @@ float TriDist_single(const float *data1, const float *data2, size_t size1, size_
 }
 
 void *TriDist_unit(void *params_void){
-	struct dist_param *param = (struct dist_param *)params_void;
+	struct geometry_param *param = (struct dist_param *)params_void;
 	cout<<"thread "<<param->id<<" is started"<<endl;
 	for(int i=0;i<param->batch_num;i++){
 		param->dist[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
@@ -475,7 +475,7 @@ void TriDist_batch(const float *data, const uint *offset_size, float *result,
 	cout<<"starting "<<num_threads<<" threads"<<endl;
 
 	pthread_t threads[num_threads];
-	struct dist_param params[num_threads];
+	struct geometry_param params[num_threads];
 	int each_thread = batch_num/num_threads;
 	for(int i=0;i<num_threads;i++){
 		int start = each_thread*i;

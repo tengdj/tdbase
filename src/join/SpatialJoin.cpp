@@ -79,8 +79,14 @@ inline int get_pair_num(vector<std::pair<HiMesh_Wrapper *, vector<candidate_info
 	return pair_num;
 }
 
-
-void SpatialJoin::formalize_computing(bool with_gpu, int num_threads){
+/*
+ * the main function for getting the nearest neighbor
+ *
+ * */
+void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
+	if(num_threads==0){
+		num_threads = hispeed::get_num_threads();
+	}
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
@@ -165,11 +171,11 @@ void SpatialJoin::formalize_computing(bool with_gpu, int num_threads){
 					// not filled yet
 					if(v1->data==NULL){
 						tile1->get_mesh(wrapper1->id, lod);
-						wrapper1->fill_voxels(lod);
+						wrapper1->fill_voxels(lod, 0);
 					}
 					if(v2->data==NULL){
 						tile2->get_mesh(wrapper2->id, lod);
-						wrapper2->fill_voxels(lod);
+						wrapper2->fill_voxels(lod, 0);
 					}
 
 					// update the voxel map
@@ -270,6 +276,184 @@ void SpatialJoin::formalize_computing(bool with_gpu, int num_threads){
 		if(pair_num==0){
 			break;
 		}
+	}
+}
+
+/*
+ * the main function for detect the intersection
+ * relationship among polyhedra in the tile
+ *
+ * */
+void SpatialJoin::intersect(bool with_gpu, int num_threads){
+	if(num_threads==0){
+		num_threads = hispeed::get_num_threads();
+	}
+	struct timeval start = get_cur_time();
+
+	// filtering with MBBs to get the candidate list
+	vector<std::pair<HiMesh_Wrapper *, vector<candidate_info>>> candidates;
+	for(int i=0;i<tile1->num_objects();i++){
+		vector<candidate_info> candidate_list;
+		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
+		for(int j=0;j<tile2->num_objects();j++){
+			// avoid self comparing
+			if(tile1==tile2&&i==j){
+				continue;
+			}
+			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(j);
+			if(wrapper1->box.intersect(wrapper2->box)){
+				candidate_info ci;
+				ci.mesh_wrapper = wrapper2;
+				for(Voxel *v1:wrapper1->voxels){
+					for(Voxel *v2:wrapper2->voxels){
+						if(v1->box.intersect(v2->box)){
+							range r;
+							r.closest = 0;// a candidate not sure
+							ci.voxel_pairs.push_back(std::make_tuple(v1, v2, r));
+						}
+					}
+				}
+				// some voxel pairs need be further evaluated
+				if(ci.voxel_pairs.size()>0){
+					candidate_list.push_back(ci);
+				}
+			}
+		}
+		// save the candidate list
+		candidates.push_back(std::pair<HiMesh_Wrapper *, vector<candidate_info>>(wrapper1, candidate_list));
+	}
+	report_time("comparing mbbs", start);
+
+	// now we start to ensure the intersection with progressive level of details
+	for(int lod=0;lod<=100;lod+=50){
+		if(true){
+			int candidate_list_size = candidates.size();
+			for(int i=0;i<candidate_list_size;){
+				// at least one intersected object is found
+				bool intersected = false;
+				for(candidate_info info:candidates[i].second){
+					for(std::tuple<Voxel *, Voxel*, range> vp:info.voxel_pairs){
+						if(get<2>(vp).closest==1){
+							intersected = true;
+							break;
+						}
+					}
+					if(intersected){
+						break;
+					}
+				}
+				if(intersected){
+					for(candidate_info info:candidates[i].second){
+						info.voxel_pairs.clear();
+					}
+					candidates[i].second.clear();
+					candidates.erase(candidates.begin()+i);
+					candidate_list_size--;
+				}else{
+					i++;
+				}
+			}
+		}
+
+		int pair_num = get_pair_num(candidates);
+		if(pair_num==0){
+			break;
+		}
+		struct timeval iter_start = get_cur_time();
+		printf("\n%ld polyhedron has %d candidates\n", candidates.size(), pair_num);
+		// retrieve the necessary meshes
+		map<Voxel *, std::pair<uint, uint>> voxel_map;
+		uint triangle_num = 0;
+		for(std::pair<HiMesh_Wrapper *, vector<candidate_info>> c:candidates){
+			HiMesh_Wrapper *wrapper1 = c.first;
+			for(candidate_info info:c.second){
+				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
+				for(std::tuple<Voxel *, Voxel *, range> vp:info.voxel_pairs){
+					Voxel *v1 = get<0>(vp);
+					Voxel *v2 = get<1>(vp);
+					// not filled yet
+					if(v1->data==NULL){
+						tile1->get_mesh(wrapper1->id, lod);
+						wrapper1->fill_voxels(lod, 1);
+					}
+					if(v2->data==NULL){
+						tile2->get_mesh(wrapper2->id, lod);
+						wrapper2->fill_voxels(lod, 1);
+					}
+
+					// update the voxel map
+					for(int i=0;i<2;i++){
+						Voxel *tv = i==0?v1:v2;
+						if(voxel_map.find(tv)==voxel_map.end()){
+							std::pair<uint, uint> p;
+							p.first = triangle_num;
+							p.second = tv->size;
+							triangle_num += tv->size;
+							voxel_map[tv] = p;
+						}
+					}
+				}// end for voxel_pairs
+			}// end for candidate_info list
+		}// end for candidates
+		printf("decoded %ld voxels with %d segments for lod %d\n", voxel_map.size(), triangle_num, lod);
+		report_time("getting data for voxels", start);
+
+		// now we allocate the space and store the data in a buffer
+		float *data = new float[9*triangle_num];
+		for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin();
+				it!=voxel_map.end(); ++it){
+			memcpy(data+it->second.first*9, it->first->data, it->first->size*9*sizeof(float));
+		}
+		// organize the data for computing
+		uint *offset_size = new uint[4*pair_num];
+		bool *intersect_status = new bool[pair_num];
+		int index = 0;
+		for(std::pair<HiMesh_Wrapper *, vector<candidate_info>> c:candidates){
+			for(candidate_info info:c.second){
+				for(std::tuple<Voxel *, Voxel*, range> vp:info.voxel_pairs){
+					Voxel *v1 = get<0>(vp);
+					Voxel *v2 = get<1>(vp);
+					assert(v1!=v2);
+					offset_size[4*index] = voxel_map[v1].first;
+					offset_size[4*index+1] = voxel_map[v1].second;
+					offset_size[4*index+2] = voxel_map[v2].first;
+					offset_size[4*index+3] = voxel_map[v2].second;
+					index++;
+				}
+			}
+		}
+		assert(index==pair_num);
+		report_time("organizing data", start);
+
+		hispeed::TriInt_batch(data, offset_size, intersect_status, pair_num, num_threads);
+		report_time("get distance with CPU", start);
+
+		// now update the intersection status
+		index = 0;
+		for(int i=0;i<candidates.size();i++){
+			for(int j=0;j<candidates[i].second.size();j++){
+				for(int t=0;t<candidates[i].second[j].voxel_pairs.size();t++){
+					// update the status
+					get<2>(candidates[i].second[j].voxel_pairs[t]).closest = intersect_status[index];
+					index++;
+				}
+			}
+		}
+		report_time("update intersection status", start);
+
+		// reset the voxels
+		for(int i=0;i<candidates.size();i++){
+			candidates[i].first->reset();
+			for(int j=0;j<candidates[i].second.size();j++){
+				candidates[i].second[j].mesh_wrapper->reset();
+			}
+		}
+
+		delete data;
+		delete offset_size;
+		delete intersect_status;
+		voxel_map.clear();
+		report_time("current iteration", iter_start, false);
 	}
 }
 

@@ -91,7 +91,9 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
-	void formalize_computing(bool with_gpu, int num_threads);
+	void nearest_neighbor(bool with_gpu, int num_threads=0);
+	void intersect(bool with_gpu, int num_threads=0);
+
 
 	/*
 	 *

@@ -25,7 +25,7 @@ OctreeNode::~OctreeNode() {
 
 /* Check if the node MBB intersects with the object MBB */
 bool OctreeNode::intersects(weighted_aab *object) {
-	return node_voxel.box.intersect(&object->box);
+	return node_voxel.box.intersect(object->box);
 }
 
 bool OctreeNode::addObject(weighted_aab *object) {
