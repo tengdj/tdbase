@@ -79,6 +79,14 @@ public:
 
 SPNode *build_sort_partition(std::vector<weighted_aab*> &mbbs, int num_tiles);
 
+class AlignedRTree{
+	aab *rtree;
+public:
+	range get_range(aab &, aab &);
+	std::vector<long> get(aab &q);
+
+};
+
 
 }
 #endif /* HISPEED_INDEX_H_ */
