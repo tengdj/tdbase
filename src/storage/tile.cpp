@@ -101,5 +101,18 @@ OctreeNode *Tile::build_octree(int leaf_size){
 	return octree;
 }
 
+HiMesh *Tile::get_mesh(int id, int lod){
+	struct timeval start = get_cur_time();
+	assert(id>=0&&id<objects.size());
+	assert(lod>=0&&lod<=100);
+	if(objects[id]->mesh==NULL){
+		retrieve_mesh(id);
+	}
+	assert(objects[id]->mesh);
+	objects[id]->mesh->advance_to(lod);
+	//report_time("decoding mesh", start);
+	return objects[id]->mesh;
+}
+
 }
 

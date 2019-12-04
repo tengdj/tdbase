@@ -18,28 +18,17 @@ namespace hispeed{
 
 class Tile{
 	aab box;
+	std::vector<HiMesh_Wrapper *> objects;
 	FILE *dt_fs = NULL;
 	bool load();
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
 public:
-	std::vector<HiMesh_Wrapper *> objects;
 
 	Tile(std::string path);
 	~Tile();
 
-	HiMesh *get_mesh(int id, int lod){
-		struct timeval start = get_cur_time();
-		assert(id>=0&&id<objects.size());
-		assert(lod>=0&&lod<=100);
-		if(objects[id]->mesh==NULL){
-			retrieve_mesh(id);
-		}
-		assert(objects[id]->mesh);
-		objects[id]->mesh->advance_to(lod);
-		//report_time("decoding mesh", start);
-		return objects[id]->mesh;
-	}
+	HiMesh *get_mesh(int id, int lod);
 	HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
 		return objects[id];
