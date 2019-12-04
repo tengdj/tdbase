@@ -10,6 +10,7 @@
 #include <stdio.h>
 
 #include "../spatial/himesh.h"
+#include "../index/index.h"
 
 using namespace std;
 
@@ -18,12 +19,11 @@ namespace hispeed{
 class Tile{
 	aab box;
 	FILE *dt_fs = NULL;
-	std::vector<HiMesh_Wrapper *> objects;
 	bool load();
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
-	void print();
 public:
+	std::vector<HiMesh_Wrapper *> objects;
 
 	Tile(std::string path);
 	~Tile();
@@ -46,11 +46,15 @@ public:
 	}
 	aab get_mbb(int id){
 		assert(id>=0&&id<objects.size());
-		return objects[id]->box;
+		return objects[id]->box.box;
 	}
 	int num_objects(){
 		return objects.size();
 	}
+
+	OctreeNode *build_octree(int num_tiles);
+
+
 };
 
 }

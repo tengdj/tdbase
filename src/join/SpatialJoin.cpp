@@ -18,7 +18,7 @@ typedef struct candidate_info_{
 	HiMesh_Wrapper *mesh_wrapper;
 	range distance;
 	vector<std::tuple<Voxel*, Voxel *, range>> voxel_pairs;
-}candidate_info;
+}distance_candiate;
 
 inline bool update_voxel_pair_list(vector<std::tuple<Voxel*, Voxel *, range>> &voxel_pairs, range &d){
 	int voxel_pair_size = voxel_pairs.size();
@@ -37,7 +37,7 @@ inline bool update_voxel_pair_list(vector<std::tuple<Voxel*, Voxel *, range>> &v
 	return true;
 }
 
-inline bool update_candidate_list(vector<candidate_info> &candidate_list, range &d){
+inline bool update_candidate_list(vector<distance_candiate> &candidate_list, range &d){
 	int list_size = candidate_list.size();
 	for(int i=0;i<list_size;){
 		if(d>candidate_list[i].distance){
@@ -69,10 +69,10 @@ inline bool update_candidate_list(vector<candidate_info> &candidate_list, range 
 	return true;
 }
 
-inline int get_pair_num(vector<std::pair<HiMesh_Wrapper *, vector<candidate_info>>> &candidates){
+inline int get_pair_num(vector<std::pair<HiMesh_Wrapper *, vector<distance_candiate>>> &candidates){
 	int pair_num = 0;
-	for(std::pair<HiMesh_Wrapper *, vector<candidate_info>> p:candidates){
-		for(candidate_info c:p.second){
+	for(std::pair<HiMesh_Wrapper *, vector<distance_candiate>> p:candidates){
+		for(distance_candiate c:p.second){
 			pair_num += c.voxel_pairs.size();
 		}
 	}
@@ -90,9 +90,9 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<std::pair<HiMesh_Wrapper *, vector<candidate_info>>> candidates;
+	vector<std::pair<HiMesh_Wrapper *, vector<distance_candiate>>> candidates;
 	for(int i=0;i<tile1->num_objects();i++){
-		vector<candidate_info> candidate_list;
+		vector<distance_candiate> candidate_list;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
 		for(int j=0;j<tile2->num_objects();j++){
 			// avoid self comparing
@@ -107,7 +107,7 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 			// the candidate list in a fine grained
 			range d = wrapper1->box.distance(wrapper2->box);
 			if(update_candidate_list(candidate_list, d)){
-				candidate_info ci;
+				distance_candiate ci;
 				ci.distance = d;
 				ci.mesh_wrapper = wrapper2;
 				for(Voxel *v1:wrapper1->voxels){
@@ -128,7 +128,7 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 			}
 		}
 		// save the candidate list
-		candidates.push_back(std::pair<HiMesh_Wrapper *, vector<candidate_info>>(wrapper1, candidate_list));
+		candidates.push_back(std::pair<HiMesh_Wrapper *, vector<distance_candiate>>(wrapper1, candidate_list));
 	}
 	report_time("comparing mbbs", start);
 
@@ -140,7 +140,7 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 				// find the nearest, report and remove
 				// this entry from the candidate list
 				if(candidates[i].second.size()==1){
-					for(candidate_info info:candidates[i].second){
+					for(distance_candiate info:candidates[i].second){
 						info.voxel_pairs.clear();
 					}
 					candidates[i].second.clear();
@@ -161,19 +161,20 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 		// retrieve the necessary meshes
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		uint segment_num = 0;
-		for(std::pair<HiMesh_Wrapper *, vector<candidate_info>> c:candidates){
+		for(std::pair<HiMesh_Wrapper *, vector<distance_candiate>> c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info info:c.second){
+			for(distance_candiate info:c.second){
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(std::tuple<Voxel *, Voxel *, range> vp:info.voxel_pairs){
 					Voxel *v1 = get<0>(vp);
 					Voxel *v2 = get<1>(vp);
+					assert(v1&&v2);
 					// not filled yet
-					if(v1->data==NULL){
+					if(v1->data.find(lod)==v1->data.end()){
 						tile1->get_mesh(wrapper1->id, lod);
 						wrapper1->fill_voxels(lod, 0);
 					}
-					if(v2->data==NULL){
+					if(v2->data.find(lod)==v2->data.end()){
 						tile2->get_mesh(wrapper2->id, lod);
 						wrapper2->fill_voxels(lod, 0);
 					}
@@ -184,29 +185,34 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 						if(voxel_map.find(tv)==voxel_map.end()){
 							std::pair<uint, uint> p;
 							p.first = segment_num;
-							p.second = tv->size;
-							segment_num += tv->size;
+							p.second = tv->size[lod];
+							segment_num += tv->size[lod];
 							voxel_map[tv] = p;
 						}
 					}
 				}// end for voxel_pairs
-			}// end for candidate_info list
+			}// end for distance_candiate list
 		}// end for candidates
 		printf("decoded %ld voxels with %d segments for lod %d\n", voxel_map.size(), segment_num, lod);
 		report_time("getting data for voxels", start);
+		if(segment_num==0){
+			cout<<"no segments is filled in this round"<<endl;
+			voxel_map.clear();
+			continue;
+		}
 
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[6*segment_num];
 		for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin();
 				it!=voxel_map.end(); ++it){
-			memcpy(data+it->second.first*6, it->first->data, it->first->size*6*sizeof(float));
+			memcpy(data+it->second.first*6, it->first->data[lod], it->first->size[lod]*6*sizeof(float));
 		}
 		// organize the data for computing
 		uint *offset_size = new uint[4*pair_num];
 		float *distances = new float[pair_num];
 		int index = 0;
-		for(std::pair<HiMesh_Wrapper *, vector<candidate_info>> c:candidates){
-			for(candidate_info info:c.second){
+		for(std::pair<HiMesh_Wrapper *, vector<distance_candiate>> c:candidates){
+			for(distance_candiate info:c.second){
 				for(std::tuple<Voxel *, Voxel*, range> vp:info.voxel_pairs){
 					Voxel *v1 = get<0>(vp);
 					Voxel *v2 = get<1>(vp);
@@ -236,8 +242,8 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 			for(int j=0;j<candidates[i].second.size();j++){
 				for(int t=0;t<candidates[i].second[j].voxel_pairs.size();t++){
 					// update the distance
-					if(get<0>(candidates[i].second[j].voxel_pairs[t])->size>0&&
-					   get<1>(candidates[i].second[j].voxel_pairs[t])->size>0){
+					if(get<0>(candidates[i].second[j].voxel_pairs[t])->size[lod]>0&&
+					   get<1>(candidates[i].second[j].voxel_pairs[t])->size[lod]>0){
 						range dist = get<2>(candidates[i].second[j].voxel_pairs[t]);
 						if(lod==100){
 							// now we have a precise distance
@@ -280,6 +286,27 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 }
 
 /*
+ *
+ * for doing intersecting
+ *
+ * */
+
+typedef struct intersect_info_{
+	HiMesh_Wrapper *mesh_wrapper;
+	vector<std::tuple<Voxel*, Voxel *, bool>> voxel_pairs;
+}intersect_candiate;
+
+inline int get_pair_num(vector<std::pair<HiMesh_Wrapper *, vector<intersect_candiate>>> &candidates){
+	int pair_num = 0;
+	for(std::pair<HiMesh_Wrapper *, vector<intersect_candiate>> p:candidates){
+		for(intersect_candiate c:p.second){
+			pair_num += c.voxel_pairs.size();
+		}
+	}
+	return pair_num;
+}
+
+/*
  * the main function for detect the intersection
  * relationship among polyhedra in the tile
  *
@@ -291,9 +318,9 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<std::pair<HiMesh_Wrapper *, vector<candidate_info>>> candidates;
+	vector<std::pair<HiMesh_Wrapper *, vector<intersect_candiate>>> candidates;
 	for(int i=0;i<tile1->num_objects();i++){
-		vector<candidate_info> candidate_list;
+		vector<intersect_candiate> candidate_list;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
 		for(int j=0;j<tile2->num_objects();j++){
 			// avoid self comparing
@@ -302,14 +329,13 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 			}
 			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(j);
 			if(wrapper1->box.intersect(wrapper2->box)){
-				candidate_info ci;
+				intersect_candiate ci;
 				ci.mesh_wrapper = wrapper2;
 				for(Voxel *v1:wrapper1->voxels){
 					for(Voxel *v2:wrapper2->voxels){
 						if(v1->box.intersect(v2->box)){
-							range r;
-							r.closest = 0;// a candidate not sure
-							ci.voxel_pairs.push_back(std::make_tuple(v1, v2, r));
+							// a candidate not sure
+							ci.voxel_pairs.push_back(std::make_tuple(v1, v2, false));
 						}
 					}
 				}
@@ -320,7 +346,7 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 			}
 		}
 		// save the candidate list
-		candidates.push_back(std::pair<HiMesh_Wrapper *, vector<candidate_info>>(wrapper1, candidate_list));
+		candidates.push_back(std::pair<HiMesh_Wrapper *, vector<intersect_candiate>>(wrapper1, candidate_list));
 	}
 	report_time("comparing mbbs", start);
 
@@ -330,9 +356,10 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 		for(int i=0;i<candidate_list_size;){
 			// at least one intersected object is found
 			bool intersected = false;
-			for(candidate_info info:candidates[i].second){
-				for(std::tuple<Voxel *, Voxel*, range> vp:info.voxel_pairs){
-					if(get<2>(vp).closest==1){
+			for(intersect_candiate info:candidates[i].second){
+				for(std::tuple<Voxel *, Voxel*, bool> vp:info.voxel_pairs){
+					// if any voxel pair is ensured to be intersected
+					if(get<2>(vp)){
 						intersected = true;
 						break;
 					}
@@ -342,7 +369,7 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 				}
 			}
 			if(intersected||candidates[i].second.size()==0){
-				for(candidate_info info:candidates[i].second){
+				for(intersect_candiate info:candidates[i].second){
 					info.voxel_pairs.clear();
 				}
 				candidates[i].second.clear();
@@ -362,19 +389,19 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 		// retrieve the necessary meshes
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		uint triangle_num = 0;
-		for(std::pair<HiMesh_Wrapper *, vector<candidate_info>> c:candidates){
+		for(std::pair<HiMesh_Wrapper *, vector<intersect_candiate>> c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info info:c.second){
+			for(intersect_candiate info:c.second){
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
-				for(std::tuple<Voxel *, Voxel *, range> vp:info.voxel_pairs){
+				for(std::tuple<Voxel *, Voxel *, bool> vp:info.voxel_pairs){
 					Voxel *v1 = get<0>(vp);
 					Voxel *v2 = get<1>(vp);
 					// not filled yet
-					if(v1->data==NULL){
+					if(v1->data.find(lod)==v1->data.end()){
 						tile1->get_mesh(wrapper1->id, lod);
 						wrapper1->fill_voxels(lod, 1);
 					}
-					if(v2->data==NULL){
+					if(v2->data.find(lod)==v2->data.end()){
 						tile2->get_mesh(wrapper2->id, lod);
 						wrapper2->fill_voxels(lod, 1);
 					}
@@ -385,13 +412,13 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 						if(voxel_map.find(tv)==voxel_map.end()){
 							std::pair<uint, uint> p;
 							p.first = triangle_num;
-							p.second = tv->size;
-							triangle_num += tv->size;
+							p.second = tv->size[lod];
+							triangle_num += tv->size[lod];
 							voxel_map[tv] = p;
 						}
 					}
 				}// end for voxel_pairs
-			}// end for candidate_info list
+			}// end for distance_candiate list
 		}// end for candidates
 		printf("decoded %ld voxels with %d segments for lod %d\n", voxel_map.size(), triangle_num, lod);
 		report_time("getting data for voxels", start);
@@ -400,15 +427,17 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 		float *data = new float[9*triangle_num];
 		for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin();
 				it!=voxel_map.end(); ++it){
-			memcpy(data+it->second.first*9, it->first->data, it->first->size*9*sizeof(float));
+			if(it->first->size[lod]>0){
+				memcpy(data+it->second.first*9, it->first->data[lod], it->first->size[lod]*9*sizeof(float));
+			}
 		}
 		// organize the data for computing
 		uint *offset_size = new uint[4*pair_num];
 		bool *intersect_status = new bool[pair_num];
 		int index = 0;
-		for(std::pair<HiMesh_Wrapper *, vector<candidate_info>> c:candidates){
-			for(candidate_info info:c.second){
-				for(std::tuple<Voxel *, Voxel*, range> vp:info.voxel_pairs){
+		for(std::pair<HiMesh_Wrapper *, vector<intersect_candiate>> c:candidates){
+			for(intersect_candiate info:c.second){
+				for(std::tuple<Voxel *, Voxel*, bool> vp:info.voxel_pairs){
 					Voxel *v1 = get<0>(vp);
 					Voxel *v2 = get<1>(vp);
 					assert(v1!=v2);
@@ -432,7 +461,7 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 			for(int j=0;j<candidates[i].second.size();j++){
 				for(int t=0;t<candidates[i].second[j].voxel_pairs.size();t++){
 					// update the status
-					get<2>(candidates[i].second[j].voxel_pairs[t]).closest = intersect_status[index];
+					get<2>(candidates[i].second[j].voxel_pairs[t]) |= intersect_status[index];
 					index++;
 				}
 			}

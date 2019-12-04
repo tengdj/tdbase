@@ -32,7 +32,7 @@ Tile::Tile(std::string path){
 		exit(-1);
 	}
 	load();
-	cout<<objects.size()<<" polyhedra in this tile"<<endl;
+	cout<<"loaded "<<objects.size()<<" polyhedra in tile "<<path<<endl;
 }
 
 Tile::~Tile(){
@@ -60,6 +60,7 @@ bool Tile::load(){
 		w->offset = offset;
 		w->data_size = dsize;
 		w->id = index++;
+		w->box.id = w->id;
 		// read the voxels into the wrapper
 		fread((void *)&dsize, sizeof(size_t), 1, dt_fs);
 		for(int i=0;i<dsize;i++){
@@ -68,10 +69,10 @@ bool Tile::load(){
 			fread((void *)v->box.max, sizeof(float), 3, dt_fs);
 			fread((void *)v->core, sizeof(float), 3, dt_fs);
 			w->voxels.push_back(v);
-			w->box.update(v->box);
+			w->box.box.update(v->box);
 		}
 		objects.push_back(w);
-		box.update(w->box);
+		box.update(w->box.box);
 		// update the offset for next
 		offset += w->data_size+sizeof(size_t)+9*sizeof(float)*dsize;
 	}
@@ -92,13 +93,12 @@ void Tile::retrieve_mesh(int id){
 	delete mesh_data;
 }
 
-
-void Tile::print(){
-	int index = 0;
+OctreeNode *Tile::build_octree(int leaf_size){
+	OctreeNode *octree = new OctreeNode(box, 0, leaf_size);
 	for(HiMesh_Wrapper *w:objects){
-		cout<<index++<<"\t"<<w->box<<endl;
+		octree->addObject(&w->box);
 	}
-	cout<<endl;
+	return octree;
 }
 
 }

@@ -45,16 +45,25 @@ namespace hispeed{
 class Voxel{
 public:
 	~Voxel(){
-		size = 0;
-		data = NULL;
+		reset();
 	}
 	// point which the segments close wiht
 	float core[3];
 	// boundary box of the voxel
 	aab box;
-	// the pointer points to the segment data in this voxel
-	float *data = NULL;
-	int size = 0;
+	// the pointer and size of the segment/triangle data in this voxel
+	map<int, float *> data;
+	map<int, int> size;
+	void reset(){
+		for(map<int, float *>::iterator it=data.begin();it!=data.end();it++){
+			if(it->second!=NULL){
+				delete it->second;
+				it->second = NULL;
+			}
+		}
+		data.clear();
+		size.clear();
+	}
 };
 
 
@@ -69,26 +78,20 @@ public:
  *
  * */
 class HiMesh:public MyMesh{
-
-	// the buffer for filling segments to voxels
-	float *data_buffer = NULL;
+	// the buffer for filling segments/triangles to voxels
+	map<int, float *> segment_buffer;
+	map<int, float *> triangle_buffer;
+	size_t fill_segments(float *segments);
+	size_t fill_triangles(float *triangles);
 public:
 	HiMesh(const char *, long length);
 	~HiMesh(){
 		release_buffer();
 	}
-	void release_buffer(){
-		if(data_buffer){
-			delete data_buffer;
-			data_buffer = NULL;
-		}
-	}
-	// added for HISPEED
+	void release_buffer();
 	Skeleton *extract_skeleton();
 	vector<Point> get_skeleton_points();
 	vector<Voxel *> generate_voxels(int voxel_size);
-	size_t fill_segments(float *segments);
-	size_t fill_triangles(float *triangles);
 
 	void fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle);
 	list<Segment> get_segments();
@@ -119,7 +122,7 @@ public:
 	bool filled = false;
 	int id = -1;
 	HiMesh *mesh = NULL;
-	aab box;
+	weighted_aab box;
 	// used for retrieving compressed data from disk
 	long offset = 0;
 	long data_size = 0;
@@ -148,13 +151,10 @@ public:
 
 	void reset(){
 		for(Voxel *v:voxels){
-			v->data = NULL;
-			v->size = 0;
-		}
-		if(mesh){
-			mesh->release_buffer();
+			v->reset();
 		}
 	}
+
 
 };
 

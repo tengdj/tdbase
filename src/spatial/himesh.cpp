@@ -12,6 +12,25 @@
 
 namespace hispeed{
 
+void HiMesh::release_buffer(){
+	for(map<int, float *>::iterator it=segment_buffer.begin();
+			it!=segment_buffer.end();it++){
+		if(it->second!=NULL){
+			delete it->second;
+			it->second=NULL;
+		}
+	}
+	segment_buffer.clear();
+	for(map<int, float *>::iterator it=triangle_buffer.begin();
+			it!=triangle_buffer.end();it++){
+		if(it->second!=NULL){
+			delete it->second;
+			it->second=NULL;
+		}
+	}
+	triangle_buffer.clear();
+}
+
 /*
  *
  * extract the skeleton of current polyhedron
@@ -75,10 +94,11 @@ vector<Point> HiMesh::get_skeleton_points(){
  * */
 vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	vector<Voxel *> voxels;
+	int lod = i_decompPercentage;
 	if(size_of_edges()<voxel_size*3){
 		Voxel *v = new Voxel();
 		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
-		v->size = size_of_edges();
+		v->size[lod] = size_of_edges();
 		voxels.push_back(v);
 		return voxels;
 	}
@@ -98,6 +118,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 			v->core[0] = skeleton_points[i][0];
 			v->core[1] = skeleton_points[i][1];
 			v->core[2] = skeleton_points[i][2];
+			v->size[lod] = 0;
 			voxels.push_back(v);
 			i++;
 		}
@@ -110,7 +131,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	// return one single box if less than 2 points are sampled
 	if(voxels.size()==1){
 		voxels[0]->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
-		voxels[0]->size = size_of_edges();
+		voxels[0]->size[lod] = size_of_edges();
 		return voxels;
 	}
 
@@ -129,13 +150,13 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		}
 		voxels[gid]->box.update(p1[0],p1[1],p1[2]);
 		voxels[gid]->box.update(p2[0],p2[1],p2[2]);
-		voxels[gid]->size++;
+		voxels[gid]->size[lod]++;
 	}
 
 	// erase the one without any data in it
 	int vs=voxels.size();
 	for(int i=0;i<vs;){
-		if(voxels[i]->size==0){
+		if(voxels[i]->size[lod]==0){
 			voxels.erase(voxels.begin()+i);
 			vs--;
 		}else{
@@ -218,41 +239,57 @@ void HiMesh::advance_to(int lod){
 void HiMesh::fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle){
 	assert(voxels.size()>0);
 	release_buffer();
-	size_t num_of_data = seg_or_triangle==0?size_of_edges():size_of_facets();
-	int size_of_datum = seg_or_triangle==0?6:9;
-	data_buffer = new float[num_of_data*size_of_datum];
-
-	// for the case only one voxel exist
-	if(voxels.size()==1){
-		if(seg_or_triangle==0){
-			fill_segments(data_buffer);
+	size_t num_of_data = 0;
+	int  size_of_datum = 0;
+	float *data_buffer = NULL;
+	int lod = i_decompPercentage;
+	if(seg_or_triangle==0){
+		num_of_data = size_of_edges();
+		size_of_datum = 6;
+		if(segment_buffer.find(lod)!=segment_buffer.end()){
+			data_buffer = segment_buffer[lod];
 		}else{
-			fill_triangles(data_buffer);
+			data_buffer = new float[num_of_data*size_of_datum];
+			fill_segments(data_buffer);
+			segment_buffer[lod] = data_buffer;
 		}
-		voxels[0]->size = num_of_data;
-		voxels[0]->data = data_buffer;
+	}else{
+		num_of_data = size_of_facets();
+		size_of_datum = 9;
+		if(triangle_buffer.find(lod)!=triangle_buffer.end()){
+			data_buffer = triangle_buffer[lod];
+		}else{
+			data_buffer = new float[num_of_data*size_of_datum];
+			fill_triangles(data_buffer);
+			segment_buffer[lod] = data_buffer;
+		}
+	}
+
+	// for the special case only one voxel exist
+	if(voxels.size()==1){
+		voxels[0]->size[lod] = num_of_data;
+		voxels[0]->data[lod] = new float[num_of_data*size_of_datum];
+		memcpy(voxels[0]->data[lod],
+			   data_buffer,
+			   num_of_data*size_of_datum*sizeof(float));
 		return;
 	}
 
-	// get the raw data
-	float *tmp_buffer = new float[num_of_data*size_of_datum];
-	int *groups = new int[num_of_data];
-	if(seg_or_triangle==0){
-		fill_segments(tmp_buffer);
-	}else{
-		fill_triangles(tmp_buffer);
-	}
-	for(Voxel *v:voxels){
-		v->size = 0;
-	}
 	// now reorganize the data with the voxel information given
 	// assign each segment to a proper group
 	// we tried voronoi graph, but for some reason it's
 	// even slower than the brute force method
+	int *groups = new int[num_of_data];
+	int *group_count = new int[voxels.size()];
+	for(int i=0;i<voxels.size();i++){
+		voxels[i]->size[lod] = 0;
+		voxels[i]->data[lod] = NULL;
+		group_count[i];
+	}
 	for(int i=0;i<num_of_data;i++){
 		// for both segment and triangle, we assign it with only the first
 		// point
-		float *p1 = tmp_buffer+i*size_of_datum;
+		float *p1 = data_buffer+i*size_of_datum;
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<voxels.size();j++){
@@ -263,26 +300,26 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle){
 			}
 		}
 		groups[i] = gid;
-		voxels[gid]->size++;
+		group_count[gid]++;
+	}
+
+	for(int i=0;i<voxels.size();i++){
+		if(group_count[i]>0){
+			voxels[i]->data[lod] = new float[group_count[i]*size_of_datum];
+		}
 	}
 
 	// copy the data to the proper position in the segment_buffer
-	int offset = 0;
-	for(Voxel *v:voxels){
-		v->data = data_buffer+offset;
-		offset += size_of_datum*(v->size);
-	}
 	for(int i=0;i<num_of_data;i++){
-		memcpy((void *)voxels[groups[i]]->data, (void*)(tmp_buffer+i*size_of_datum), size_of_datum*sizeof(float));
-		voxels[groups[i]]->data += size_of_datum;
+		Voxel *v = voxels[groups[i]];
+		memcpy((void *)(v->data[lod]+v->size[lod]*size_of_datum),
+			   (void *)(data_buffer+i*size_of_datum),
+			   size_of_datum*sizeof(float));
+		v->size[lod]++;
 	}
 
-	// reset pointer
-	for(Voxel *v:voxels){
-		v->data -= size_of_datum*(v->size);
-	}
 	delete groups;
-	delete tmp_buffer;
+	delete group_count;
 }
 
 HiMesh::HiMesh(const char* data, long length):

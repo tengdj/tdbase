@@ -5,25 +5,73 @@
  *      Author: teng
  */
 
-
+#include <boost/program_options.hpp>
+#include <vector>
 
 #include "../join/SpatialJoin.h"
 #include "../storage/tile.h"
 #include "../spatial/himesh.h"
-#include <vector>
+#include "../index/index.h"
+
 using namespace std;
 using namespace hispeed;
+namespace po = boost::program_options;
 
 int main(int argc, char **argv){
 	struct timeval start = get_cur_time();
 
-	Tile *tile1 = new Tile("nuclei_tmp.dt");
-	Tile *tile2 = new Tile("vessel.dt");
+	string tile1_path("nuclei_tmp.dt");
+	string tile2_path("nuclei_tmp.dt");
+	bool use_gpu = false;
+	bool intersect = false;
+	int num_threads = hispeed::get_num_threads();
+
+	po::options_description desc("joiner usage");
+	desc.add_options()
+		("help,h", "produce help message")
+		("gpu,g", "compute with GPU")
+		("intersect,i", "do intersection instead of join")
+		("tile1", po::value<string>(&tile1_path), "path to tile 1")
+		("tile2", po::value<string>(&tile2_path), "path to tile 2")
+		("threads,n", po::value<int>(&num_threads), "number of threads")
+		;
+	po::variables_map vm;
+	po::store(po::parse_command_line(argc, argv, desc), vm);
+	if (vm.count("help")) {
+		cout << desc << "\n";
+		return 0;
+	}
+	po::notify(vm);
+
+	if(vm.count("gpu")){
+		use_gpu = true;
+	}
+	if(vm.count("intersect")){
+		intersect = true;
+	}
+
+	Tile *tile1 = new Tile(tile1_path.c_str());
+	Tile *tile2 = tile1;
+	if(vm.count("tile2")&&tile1_path!=tile2_path){
+		tile2 = new Tile(tile2_path.c_str());
+	}
 	report_time("load tiles", start);
+
+	OctreeNode *tree = tile2->build_octree(2000);
+	report_time("build octree", start);
+
+
+
+	return 0;
+
+
 	if(true){
-		SpatialJoin *joiner = new SpatialJoin(tile1, tile1);
-		joiner->nearest_neighbor(false, 8);
-		//joiner->intersect(false);
+		SpatialJoin *joiner = new SpatialJoin(tile1, tile2);
+		if(intersect){
+			joiner->intersect(use_gpu, num_threads);
+		}else{
+			joiner->nearest_neighbor(use_gpu, num_threads);
+		}
 		report_time("total join", start);
 		delete joiner;
 	}
@@ -72,10 +120,8 @@ int main(int argc, char **argv){
 		report_time("getting min", start);
 	}
 
-
-//	report_time("building aabb tree", start);
-//	cout<<(float)CGAL::to_double(tree->squared_distance(Point(0, 0, 0)))<<endl;
-
 	delete tile1;
-	delete tile2;
+	if(tile2!=tile1){
+		delete tile2;
+	}
 }

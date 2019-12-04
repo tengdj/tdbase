@@ -113,16 +113,14 @@ void OctreeNode::genTiles(vector<aab> &tiles){
 	}
 }
 
-OctreeNode *build_ctree(std::vector<weighted_aab*> &voxels, int num_tiles){
+OctreeNode *build_octree(std::vector<weighted_aab*> &voxels, int leaf_size){
 	// the main thread build the OCTree with the Minimum Boundary Box
 	// get from the data
 	aab root_node;
-	long total_size = 0;
 	for(weighted_aab *v:voxels){
 		root_node.update(v->box);
-		total_size += v->size;
 	}
-	OctreeNode *octree = new OctreeNode(root_node, 0, total_size/num_tiles);
+	OctreeNode *octree = new OctreeNode(root_node, 0, leaf_size);
 	for(weighted_aab *v:voxels){
 		octree->addObject(v);
 	}

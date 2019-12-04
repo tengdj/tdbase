@@ -44,7 +44,7 @@ public:
 	bool intersects(weighted_aab *object);
 	void genTiles(vector<aab> &tiles);
 };
-OctreeNode *build_ctree(std::vector<weighted_aab*> &mbbs, int num_tiles);
+OctreeNode *build_octree(std::vector<weighted_aab*> &mbbs, int num_tiles);
 
 // sorting tree
 class SPNode{
