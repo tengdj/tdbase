@@ -48,6 +48,12 @@ void write_polyhedron(Polyhedron *mesh, const char *path){
 	myfile.close();
 }
 
+void write_polyhedron(Polyhedron *mesh, int id){
+	char path[256];
+	sprintf(path, "%d.off", id);
+	write_polyhedron(mesh, path);
+}
+
 MyMesh *get_mesh(string input_line, bool complete_compress){
 	if(input_line.size()==0){
 		return NULL;

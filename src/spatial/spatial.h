@@ -25,11 +25,16 @@ namespace hispeed{
 Polyhedron *make_cube(aab box);
 
 void write_polyhedron(Polyhedron *mesh, const char *path);
+void write_polyhedron(Polyhedron *mesh, int id);
 // some utility functions to operate mesh polyhedrons
 extern MyMesh *get_mesh(string input, bool complete_compress = false);
 MyMesh *read_mesh();
 MyMesh *decompress_mesh(MyMesh *compressed, int lod);
 extern MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation = false);
+
+inline void replace_bar(string &input){
+	boost::replace_all(input, "|", "\n");
+}
 
 inline string read_polyhedron_str(){
 	string input_line = read_line();

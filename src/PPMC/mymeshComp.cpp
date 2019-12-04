@@ -46,7 +46,9 @@ void MyMesh::beginDecimationConquest()
         fit->resetState();
 
   // Select the first gate to begin the decimation.
-  size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
+  // teng: we always start from the middle
+  // size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
+  size_t i_heInitId = size_of_halfedges()/2;
   Halfedge_iterator hitInit = halfedges_begin();
   for (unsigned i = 0; i < i_heInitId; ++i)
       ++hitInit;

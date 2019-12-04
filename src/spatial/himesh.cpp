@@ -38,7 +38,7 @@ Skeleton *HiMesh::extract_skeleton(){
 		mcs.collapse_edges();
 		mcs.split_faces();
 		// 3. Fix degenerate vertices.
-		mcs.detect_degeneracies();
+		//mcs.detect_degeneracies();
 
 		// Perform the above three steps in one iteration.
 		mcs.contract();
@@ -114,21 +114,22 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		return voxels;
 	}
 
-	//building the voronoi graph
-	Delaunay voronoi(skeleton_points.begin(), skeleton_points.end());
-
-	// here we use a map to retrieve index from points
-	map<Point, int> point_map;
-	for(int i=0;i<skeleton_points.size();i++){
-		point_map[skeleton_points[i]] = i;
-	}
 	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
 		Point p1 = eit->vertex()->point();
 		Point p2 = eit->opposite()->vertex()->point();
-		Point np = voronoi.nearest_vertex(p1)->point();
-		voxels[point_map[np]]->box.update(p1[0],p1[1],p1[2]);
-		voxels[point_map[np]]->box.update(p2[0],p2[1],p2[2]);
-		voxels[point_map[np]]->size++;
+
+		float min_dist = DBL_MAX;
+		int gid = -1;
+		for(int j=0;j<skeleton_points.size();j++){
+			float cur_dist = distance(skeleton_points[j], p1);
+			if(cur_dist<min_dist){
+				gid = j;
+				min_dist = cur_dist;
+			}
+		}
+		voxels[gid]->box.update(p1[0],p1[1],p1[2]);
+		voxels[gid]->box.update(p2[0],p2[1],p2[2]);
+		voxels[gid]->size++;
 	}
 
 	// erase the one without any data in it
@@ -255,10 +256,7 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle){
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<voxels.size();j++){
-			float cur_dist = 0;
-			for(int t=0;t<3;t++){
-				cur_dist += (voxels[j]->core[t]-p1[t])*(voxels[j]->core[t]-p1[t]);
-			}
+			float cur_dist = distance(voxels[j]->core, p1);
 			if(cur_dist<min_dist){
 				gid = j;
 				min_dist = cur_dist;

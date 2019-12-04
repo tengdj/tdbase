@@ -35,7 +35,6 @@ int main(int argc, char **argv){
 		int lod = 10*i;
 		starttime = get_cur_time();
 
-		srand(PPMC_RANDOM_CONSTANT);
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
 		sprintf(path,"lod%d.off", lod);
 		decompressed->writeMeshOff(path);

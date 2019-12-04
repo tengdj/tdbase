@@ -326,32 +326,30 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 
 	// now we start to ensure the intersection with progressive level of details
 	for(int lod=0;lod<=100;lod+=50){
-		if(true){
-			int candidate_list_size = candidates.size();
-			for(int i=0;i<candidate_list_size;){
-				// at least one intersected object is found
-				bool intersected = false;
-				for(candidate_info info:candidates[i].second){
-					for(std::tuple<Voxel *, Voxel*, range> vp:info.voxel_pairs){
-						if(get<2>(vp).closest==1){
-							intersected = true;
-							break;
-						}
-					}
-					if(intersected){
+		int candidate_list_size = candidates.size();
+		for(int i=0;i<candidate_list_size;){
+			// at least one intersected object is found
+			bool intersected = false;
+			for(candidate_info info:candidates[i].second){
+				for(std::tuple<Voxel *, Voxel*, range> vp:info.voxel_pairs){
+					if(get<2>(vp).closest==1){
+						intersected = true;
 						break;
 					}
 				}
 				if(intersected){
-					for(candidate_info info:candidates[i].second){
-						info.voxel_pairs.clear();
-					}
-					candidates[i].second.clear();
-					candidates.erase(candidates.begin()+i);
-					candidate_list_size--;
-				}else{
-					i++;
+					break;
 				}
+			}
+			if(intersected||candidates[i].second.size()==0){
+				for(candidate_info info:candidates[i].second){
+					info.voxel_pairs.clear();
+				}
+				candidates[i].second.clear();
+				candidates.erase(candidates.begin()+i);
+				candidate_list_size--;
+			}else{
+				i++;
 			}
 		}
 

@@ -98,6 +98,16 @@ struct geometry_param{
 	uint batch_num;
 };
 
+
+inline float distance(const float *p1, const float *p2){
+	float cur_dist = 0;
+	for(int t=0;t<3;t++){
+		cur_dist += (p1[t]-p2[t])*(p1[t]-p2[t]);
+	}
+	return cur_dist;
+}
+
+
 float TriDist(const float *S, const float *T);
 void TriDist_batch(const float *data, const uint *offset_size, float *result, const uint batch_num, const int num_threads);
 

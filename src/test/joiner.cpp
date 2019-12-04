@@ -17,13 +17,13 @@ using namespace hispeed;
 int main(int argc, char **argv){
 	struct timeval start = get_cur_time();
 
-	Tile *tile1 = new Tile("nuclei.dt");
+	Tile *tile1 = new Tile("nuclei_tmp.dt");
 	Tile *tile2 = new Tile("vessel.dt");
 	report_time("load tiles", start);
 	if(true){
 		SpatialJoin *joiner = new SpatialJoin(tile1, tile1);
-		//joiner->nearest_neighbor(true, 1);
-		joiner->intersect(false);
+		joiner->nearest_neighbor(false, 8);
+		//joiner->intersect(false);
 		report_time("total join", start);
 		delete joiner;
 	}

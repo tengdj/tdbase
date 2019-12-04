@@ -57,6 +57,11 @@ inline bool get_rand_sample(int rate){
 	return rand()%100<rate;
 }
 
+inline bool get_rand_sample(float possibility){
+	assert(possibility<=1&&possibility>=0);
+	return (rand()*1.0)/RAND_MAX<possibility;
+}
+
 inline bool is_dir(const char* path) {
     struct stat buf;
     stat(path, &buf);

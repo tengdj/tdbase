@@ -14,6 +14,7 @@
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 
 #include "../geometry/aab.h"
+#include "../geometry/geometry.h"
 #include "../PPMC/mymesh.h"
 #include "../PPMC/configuration.h"
 #include "../spatial/spatial.h"
@@ -158,7 +159,6 @@ public:
 };
 
 TriangleTree *get_aabb_tree(Polyhedron *p);
-
 
 
 }

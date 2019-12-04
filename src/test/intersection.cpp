@@ -13,7 +13,6 @@ using namespace std;
 int main(int argc, char **argv)
 {
 	struct timeval start = get_cur_time();
-	srand(start.tv_sec);
 	float PS[9];
 	float QS[9];
 	int sum = 0;

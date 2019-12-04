@@ -16,6 +16,7 @@
 #include <vector>
 #include <float.h>
 #include <math.h>
+#include <immintrin.h>
 using namespace std;
 
 namespace hispeed{
@@ -150,7 +151,7 @@ public:
 
 	// get the possible minimum and maximum distance of
 	// objects with their aabs
-	range distance(const aab b){
+	range distance(const aab &b){
 		range ret;
 		for(int i=0;i<3;i++){
 			if(min[i]>b.max[i]){
@@ -160,7 +161,6 @@ public:
 			}
 			float tmp = (b.max[i]+b.min[i]-max[i]-min[i])/2;
 			ret.farthest += tmp*tmp;
-			// else intersect in this dimension
 		}
 		return ret;
 	}
@@ -172,6 +172,7 @@ public:
 	aab box;
 	uint size;
 };
+
 
 }
 

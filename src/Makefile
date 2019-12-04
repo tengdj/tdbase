@@ -72,7 +72,7 @@ STORAGE_OBJS := $(patsubst %.cpp,%.o,$(STORAGE_SRCS))
 JOIN_SRCS := $(wildcard join/*.cpp)
 JOIN_OBJS := $(patsubst %.cpp,%.o,$(JOIN_SRCS))
 
-all: compress decompress test partition getoff join
+all: compress decompress partition getoff join inter generator
 
 compress: test/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -90,6 +90,9 @@ join: test/joiner.o geometry/TriInt.o geometry/SegDist.o geometry/SegDist_cu.o $
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 inter: test/intersection.o geometry/TriInt.o 
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+
+generator: test/data_generator.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 test: test/test.o

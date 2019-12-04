@@ -110,7 +110,6 @@ void get_voxels(std::vector<std::string> &input_folders, std::vector<weighted_aa
 	int processed_lines = 0;
 	vector<string> local_input_lines;
 	long next_report = 1;
-	srand(TENG_RANDOM_NUMBER);
 	for(string path:files){
 		std::ifstream is(path.c_str());
 		string input_line;
