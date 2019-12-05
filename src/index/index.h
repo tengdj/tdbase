@@ -37,12 +37,17 @@ public:
 	bool canBeSplit;
 	OctreeNode* children[8];
 	vector<weighted_aab*> objectList;
-
+	bool isroot(){
+		return level==0;
+	}
 	OctreeNode(aab b, int level, long tsize);
 	~OctreeNode();
 	bool addObject(weighted_aab *object);
 	bool intersects(weighted_aab *object);
 	void genTiles(vector<aab> &tiles);
+	void query_distance(weighted_aab *box, vector<pair<int, range>> &results, float min_farthest=DBL_MAX);
+	void query_intersect(weighted_aab *box, vector<int> &results);
+
 };
 OctreeNode *build_octree(std::vector<weighted_aab*> &mbbs, int num_tiles);
 

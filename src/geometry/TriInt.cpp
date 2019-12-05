@@ -316,7 +316,6 @@ void *TriInt_unit(void *params_void){
 
 // compute the minimum distance of segment pairs with multiple threads
 void TriInt_batch(const float *data, const uint *offset_size, bool *result, const uint batch_num, const int num_threads){
-	cout<<"starting "<<num_threads<<" threads"<<endl;
 	pthread_t threads[num_threads];
 	struct geometry_param params[num_threads];
 	int each_thread = batch_num/num_threads;

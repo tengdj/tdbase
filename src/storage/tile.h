@@ -17,15 +17,19 @@ using namespace std;
 namespace hispeed{
 
 class Tile{
+	size_t capacity = LONG_MAX;
 	aab box;
 	std::vector<HiMesh_Wrapper *> objects;
 	FILE *dt_fs = NULL;
-	bool load();
+	bool load(string path);
+	bool persist(string path);
+	bool parse_raw();
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
 public:
 
-	Tile(std::string path);
+
+	Tile(std::string path, size_t capacity);
 	~Tile();
 
 	HiMesh *get_mesh(int id, int lod);
@@ -39,6 +43,9 @@ public:
 	}
 	int num_objects(){
 		return objects.size();
+	}
+	void set_capacity(size_t max_num_objects){
+		capacity = max_num_objects;
 	}
 
 	OctreeNode *build_octree(int num_tiles);

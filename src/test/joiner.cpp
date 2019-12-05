@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "../join/SpatialJoin.h"
-#include "../storage/tile.h"
 #include "../spatial/himesh.h"
 #include "../index/index.h"
 
@@ -25,6 +24,7 @@ int main(int argc, char **argv){
 	bool use_gpu = false;
 	bool intersect = false;
 	int num_threads = hispeed::get_num_threads();
+	size_t max_objects = LONG_MAX;
 
 	po::options_description desc("joiner usage");
 	desc.add_options()
@@ -34,6 +34,7 @@ int main(int argc, char **argv){
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
+		("max_objects,m", po::value<size_t>(&max_objects), "max number of objects in a tile")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -50,20 +51,13 @@ int main(int argc, char **argv){
 		intersect = true;
 	}
 
-	Tile *tile1 = new Tile(tile1_path.c_str());
+	Tile *tile1 = new Tile(tile1_path.c_str(), max_objects);
 	Tile *tile2 = tile1;
 	if(vm.count("tile2")&&tile1_path!=tile2_path){
-		tile2 = new Tile(tile2_path.c_str());
+		tile2 = new Tile(tile2_path.c_str(), max_objects);
 	}
+	assert(tile1&&tile2);
 	report_time("load tiles", start);
-
-	OctreeNode *tree = tile2->build_octree(2000);
-	report_time("build octree", start);
-
-
-
-	return 0;
-
 
 	if(true){
 		SpatialJoin *joiner = new SpatialJoin(tile1, tile2);

@@ -171,7 +171,7 @@ class weighted_aab{
 public:
 	int id;
 	aab box;
-	uint size;
+	uint size = 1;
 	inline bool intersect(weighted_aab &b){
 		return box.intersect(b.box);
 	}

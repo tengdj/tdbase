@@ -124,8 +124,8 @@ public:
 	HiMesh *mesh = NULL;
 	weighted_aab box;
 	// used for retrieving compressed data from disk
-	long offset = 0;
-	long data_size = 0;
+	size_t offset = 0;
+	size_t data_size = 0;
 	~HiMesh_Wrapper(){
 		for(Voxel *v:voxels){
 			delete v;
