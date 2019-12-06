@@ -34,6 +34,7 @@ int main(int argc, char **argv){
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
+		("gpu_memory", po::value<size_t>(&cuda_mem_size), "memory allocated in gpu")
 		("max_objects,m", po::value<size_t>(&max_objects), "max number of objects in a tile")
 		;
 	po::variables_map vm;
@@ -45,6 +46,7 @@ int main(int argc, char **argv){
 	po::notify(vm);
 
 	if(vm.count("gpu")){
+		hispeed::init_cuda();
 		use_gpu = true;
 	}
 	if(vm.count("intersect")){

@@ -151,7 +151,7 @@ public:
 
 	// get the possible minimum and maximum distance of
 	// objects with their aabs
-	range distance(const aab &b){
+	range distances(const aab &b){
 		range ret;
 		for(int i=0;i<3;i++){
 			if(min[i]>b.max[i]){
@@ -161,6 +161,23 @@ public:
 			}
 			float tmp = (b.max[i]+b.min[i]-max[i]-min[i])/2;
 			ret.farthest += tmp*tmp;
+		}
+		return ret;
+	}
+
+	range distance(const aab &b){
+		range ret;
+		float tmp1 = 0;
+		float tmp2 = 0;
+		for(int i=0;i<3;i++){
+			tmp1 = min[i]-b.max[i];
+			tmp2 = max[i]-b.min[i];
+			ret.farthest += (tmp1+tmp2)*(tmp1+tmp2)/4;
+			if(tmp2<0){
+				ret.closest += tmp2*tmp2;
+			}else if(tmp1>0){
+				ret.closest += tmp1*tmp1;
+			}
 		}
 		return ret;
 	}

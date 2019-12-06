@@ -228,22 +228,20 @@ void HiMesh::advance_to(int lod){
 	i_decompPercentage = lod;
 	b_jobCompleted = false;
 	completeOperation();
-	// clean the buffer of segments if already assigned
-	release_buffer();
 }
 
 
 
 // the function to generate the segments(0) or triangle(1) and
 // assign each segment(0) or triangle(1) to the proper voxel
-void HiMesh::fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle){
+void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle){
 	assert(voxels.size()>0);
 	release_buffer();
 	size_t num_of_data = 0;
 	int  size_of_datum = 0;
 	float *data_buffer = NULL;
 	int lod = i_decompPercentage;
-	if(seg_or_triangle==0){
+	if(seg_or_triangle==DT_Segment){
 		num_of_data = size_of_edges();
 		size_of_datum = 6;
 		if(segment_buffer.find(lod)!=segment_buffer.end()){

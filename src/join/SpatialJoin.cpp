@@ -97,6 +97,9 @@ inline size_t get_pair_num(vector<candidate_entry> &candidates){
 	return pair_num;
 }
 
+bool compare_pair(pair<int, range> a1, pair<int, range> a2){
+	return a1.first<a2.first;
+}
 /*
  * the main function for getting the nearest neighbor
  *
@@ -109,25 +112,30 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 
 	// filtering with MBBs to get the candidate list
 	vector<candidate_entry> candidates;
+	OctreeNode *tree = tile2->build_octree(400);
+	vector<pair<int, range>> candidate_ids;
 	for(int i=0;i<tile1->num_objects();i++){
 		vector<candidate_info> candidate_list;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
-		for(int j=0;j<tile2->num_objects();j++){
-			// avoid self comparing
-			if(tile1==tile2&&i==j){
+		tree->query_distance(&(wrapper1->box), candidate_ids);
+		if(candidate_ids.empty()){
+			continue;
+		}
+		std::sort(candidate_ids.begin(), candidate_ids.end(), compare_pair);
+		int former = -1;
+		for(pair<int, range> &p:candidate_ids){
+			if(p.first==former){
+				// duplicate
 				continue;
 			}
-			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(j);
+			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(p.first);
 			// we firstly use the distance between the mbbs
 			// of those two objects as a filter to see if this one is
 			// a suitable candidate, and then we further go
 			// through the voxels in two objects to shrink
 			// the candidate list in a fine grained
-			range d = wrapper1->box.distance(wrapper2->box);
-			if(update_candidate_list(candidate_list, d)){
+			if(update_candidate_list(candidate_list, p.second)){
 				candidate_info ci;
-				ci.distance = d;
-				ci.mesh_wrapper = wrapper2;
 				for(Voxel *v1:wrapper1->voxels){
 					for(Voxel *v2:wrapper2->voxels){
 						range tmpd = v1->box.distance(v2->box);
@@ -141,12 +149,16 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 				}
 				// some voxel pairs need be further evaluated
 				if(ci.voxel_pairs.size()>0){
+					ci.distance = p.second;
+					ci.mesh_wrapper = wrapper2;
 					candidate_list.push_back(ci);
 				}
 			}
+			former = p.first;
 		}
 		// save the candidate list
 		candidates.push_back(candidate_entry(wrapper1, candidate_list));
+		candidate_ids.clear();
 	}
 	report_time("comparing mbbs", start);
 
@@ -174,11 +186,11 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						tile1->get_mesh(wrapper1->id, lod);
-						wrapper1->fill_voxels(lod, 0);
+						wrapper1->fill_voxels(lod, DT_Segment);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->get_mesh(wrapper2->id, lod);
-						wrapper2->fill_voxels(lod, 0);
+						wrapper2->fill_voxels(lod, DT_Segment);
 					}
 
 					// update the voxel map
@@ -391,11 +403,11 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						tile1->get_mesh(wrapper1->id, lod);
-						wrapper1->fill_voxels(lod, 1);
+						wrapper1->fill_voxels(lod, DT_Triangle);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->get_mesh(wrapper2->id, lod);
-						wrapper2->fill_voxels(lod, 1);
+						wrapper2->fill_voxels(lod, DT_Triangle);
 					}
 
 					// update the voxel map

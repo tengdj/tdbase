@@ -66,6 +66,10 @@ public:
 	}
 };
 
+enum data_type{
+	DT_Segment = 0,
+	DT_Triangle
+};
 
 /*
  *
@@ -93,7 +97,7 @@ public:
 	vector<Point> get_skeleton_points();
 	vector<Voxel *> generate_voxels(int voxel_size);
 
-	void fill_voxel(vector<Voxel *> &voxels, int seg_or_triangle);
+	void fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
 	list<Segment> get_segments();
 	SegTree *get_aabb_tree();
 
@@ -109,6 +113,7 @@ public:
 	}
 	void advance_to(int lod);
 };
+
 
 /*
  * a wrapper for describing a mesh.
@@ -143,7 +148,7 @@ public:
 	}
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle
-	void fill_voxels(int lod, int seg_tri){
+	void fill_voxels(int lod, enum data_type seg_tri){
 		assert(mesh);
 		mesh->advance_to(lod);
 		mesh->fill_voxel(voxels, seg_tri);
