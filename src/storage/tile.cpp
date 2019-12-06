@@ -149,7 +149,7 @@ void Tile::retrieve_mesh(int id){
 	delete mesh_data;
 }
 
-OctreeNode *Tile::build_octree(int leaf_size){
+OctreeNode *Tile::build_octree(size_t leaf_size){
 	OctreeNode *octree = new OctreeNode(box, 0, leaf_size);
 	for(HiMesh_Wrapper *w:objects){
 		octree->addObject(&w->box);

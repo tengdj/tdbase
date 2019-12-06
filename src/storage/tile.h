@@ -48,7 +48,7 @@ public:
 		capacity = max_num_objects;
 	}
 
-	OctreeNode *build_octree(int num_tiles);
+	OctreeNode *build_octree(size_t num_tiles);
 
 
 };

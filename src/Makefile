@@ -4,7 +4,7 @@ CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result
 NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I ./ -I /usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/local/cuda/lib64 -L/usr/lib/x86_64-linux-gnu/ \
--lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lspatialindex -lboost_program_options -lstdc++ 
+-lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lboost_program_options -lstdc++ 
 CGALFLAGS	= -lCGAL -Wl,-rpath
 
 ifdef DEBUG
@@ -74,7 +74,7 @@ JOIN_OBJS := $(patsubst %.cpp,%.o,$(JOIN_SRCS))
 
 all: compress decompress partition getoff join inter generator
 
-compress: test/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
+compress: test/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 decompress: test/decompress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
@@ -92,7 +92,7 @@ join: test/joiner.o geometry/TriInt.o geometry/SegDist.o geometry/SegDist_cu.o $
 inter: test/intersection.o geometry/TriInt.o 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
-generator: test/data_generator.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
+generator: test/data_generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 test: test/test.o

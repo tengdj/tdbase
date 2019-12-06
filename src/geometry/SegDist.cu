@@ -333,7 +333,7 @@ void get_vector_kernel(float *data, float *vec, int segment_num){
 
 char *d_cuda = NULL;
 // by default 1GB
-size_t cuda_mem_size = (1<<30)/3*2;
+size_t cuda_mem_size = (1<<30)/3*4;
 void init_cuda(){
 	if(d_cuda==NULL){
 		struct timeval start = get_cur_time();
