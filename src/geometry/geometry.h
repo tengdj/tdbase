@@ -5,8 +5,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <float.h>
-
+#include "./mygpu.h"
 #include "../util/util.h"
+#include "pthread.h"
 using namespace std;
 
 namespace hispeed{
@@ -89,14 +90,16 @@ VxS(float Vr[3], const float V[3], float s)
   Vr[2] = V[2] * s;
 }
 
-struct geometry_param{
+typedef struct geometry_param_{
 	int id;
 	const float *data;
+	// the offset and size of the computing pairs
 	const uint *offset_size;
-	float *dist;
+	float *distances;
 	bool *intersect;
-	uint batch_num;
-};
+	uint pair_num;
+	uint data_size;
+}geometry_param;
 
 
 inline float distance(const float *p1, const float *p2){
@@ -108,22 +111,74 @@ inline float distance(const float *p1, const float *p2){
 }
 
 
-float TriDist(const float *S, const float *T);
-void TriDist_batch(const float *data, const uint *offset_size, float *result, const uint batch_num, const int num_threads);
-
 float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
-void SegDist_batch(const float *data, const uint *offset_size, float *result, const uint batch_num, const int num_threads);
-
-extern char *d_cuda;
-extern size_t cuda_mem_size;
-void SegDist_batch_gpu(const float *data, const uint *offset_size, float *result, const uint batch_num, const uint segment_num);
-void init_cuda();
-void clean_cuda();
-
+void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
+					   float *result, const uint batch_num, const uint segment_num);
 
 bool TriInt(const float *data1, const float *data2);
 bool TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2);
-void TriInt_batch(const float *data, const uint *offset_size, bool *result, const uint batch_num, const int num_threads);
+
+class geometry_computer{
+	pthread_mutex_t gpu_lock;
+	pthread_mutex_t cpu_lock;
+	int max_thread_num = hispeed::get_num_threads();
+	bool cpu_busy = false;
+	bool gpu_busy = false;
+	void request_cpu(){
+		pthread_mutex_lock(&cpu_lock);
+		assert(!cpu_busy);
+		cpu_busy = true;
+	}
+	void release_cpu(){
+		assert(cpu_busy);
+		cpu_busy = false;
+		pthread_mutex_unlock(&cpu_lock);
+	}
+	gpu_info *request_gpu(){
+		for(gpu_info *info:gpus){
+			if(!info->busy){
+				pthread_mutex_lock(&info->lock);
+				assert(!info->busy);
+				info->busy = true;
+				return info;
+			}
+		}
+		return NULL;
+	}
+	void release_gpu(gpu_info *info){
+		assert(info->busy);
+		pthread_mutex_unlock(&info->lock);
+		info->busy = false;
+	}
+
+	char *d_cuda = NULL;
+	vector<gpu_info *> gpus;
+
+public:
+	~geometry_computer(){
+		for(gpu_info *info:gpus){
+			clean_gpu(info);
+			delete info;
+		}
+	}
+
+	bool init_gpus(){
+		gpus = get_gpus();
+		for(gpu_info *info:gpus){
+			init_gpu(info);
+		}
+		return true;
+	}
+	void get_distance_gpu(geometry_param &param);
+	void get_distance_cpu(geometry_param &param);
+	void get_distance(geometry_param &param);
+
+	void get_intersect(geometry_param &param);
+	void set_thread_num(uint num){
+		max_thread_num = num;
+	}
+};
+
 
 }
 #endif

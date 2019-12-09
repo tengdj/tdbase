@@ -31,8 +31,8 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 	$(CXX) $(INCFLAGS) $(CPPFLAGS) -c $? -o $@
 
 #compile all the cu files
-SRCS_CU := $(wildcard */*.cu)
-OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS))
+SRCS_CU := $(wildcard geometry/*.cu)
+OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS_CU))
 %_cu.o: %.cu
 	$(NVCC) $(INCFLAGS) $(NVCCFLAGS) -c $? -o $@
 
@@ -86,7 +86,7 @@ getoff: test/getoff.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 partition: test/partitioner.o $(PARTITION_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-join: test/joiner.o geometry/TriInt.o geometry/SegDist.o geometry/SegDist_cu.o $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+join: test/joiner.o $(GEOMETRY_OBJS) $(OBJS_CU) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 inter: test/intersection.o geometry/TriInt.o 

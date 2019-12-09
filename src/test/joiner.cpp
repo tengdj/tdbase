@@ -34,7 +34,6 @@ int main(int argc, char **argv){
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
-		("gpu_memory", po::value<size_t>(&cuda_mem_size), "memory allocated in gpu")
 		("max_objects,m", po::value<size_t>(&max_objects), "max number of objects in a tile")
 		;
 	po::variables_map vm;
@@ -45,12 +44,17 @@ int main(int argc, char **argv){
 	}
 	po::notify(vm);
 
+	geometry_computer *gc = new geometry_computer();
 	if(vm.count("gpu")){
-		hispeed::init_cuda();
+		initialize();
+		gc->init_gpus();
 		use_gpu = true;
 	}
 	if(vm.count("intersect")){
 		intersect = true;
+	}
+	if(vm.count("threads")&&num_threads>0){
+		gc->set_thread_num(num_threads);
 	}
 
 	Tile *tile1 = new Tile(tile1_path.c_str(), max_objects);
@@ -61,63 +65,20 @@ int main(int argc, char **argv){
 	assert(tile1&&tile2);
 	report_time("load tiles", start);
 
-	if(true){
-		SpatialJoin *joiner = new SpatialJoin(tile1, tile2);
-		if(intersect){
-			joiner->intersect(use_gpu, num_threads);
-		}else{
-			joiner->nearest_neighbor(use_gpu, num_threads);
-		}
-		report_time("total join", start);
-		delete joiner;
+	SpatialJoin *joiner = new SpatialJoin(tile1, tile2, gc);
+	if(intersect){
+		joiner->intersect(use_gpu);
+	}else{
+		joiner->nearest_neighbor(use_gpu);
 	}
-
-	if(false){
-		HiMesh *mesh = tile2->get_mesh(0,100);
-		HiMesh *mesh2 = tile2->get_mesh(1,100);
-		report_time("get meshs", start);
-		SegTree *tree = mesh->get_aabb_tree();
-		report_time("get aabb tree", start);
-		std::vector<Point> points;
-		mesh2->get_vertices(points);
-		float mindist = DBL_MAX;
-		for(Point p:points){
-			float dist = (float)CGAL::to_double(tree->squared_distance(p));
-			if(dist<mindist){
-				mindist = dist;
-			}
-		}
-		cout<<sqrt(mindist)<<endl;
-		report_time("getting min", start);
-	}
-
-	if(false){
-		TriangleTree *tree1 = get_aabb_tree(hispeed::read_polyhedron());
-		TriangleTree *tree2 = get_aabb_tree(hispeed::read_polyhedron());
-		report_time("get aabb tree", start);
-		for(int i=0;i<tile1->num_objects();i++){
-			float mindist1 = DBL_MAX;
-			float mindist2 = DBL_MAX;
-			HiMesh *mesh = tile1->get_mesh(i,100);
-			std::vector<Point> points;
-			mesh->get_vertices(points);
-			for(Point p:points){
-				float dist = (float)CGAL::to_double(tree1->squared_distance(p));
-				if(dist<mindist1){
-					mindist1 = dist;
-				}
-				dist = (float)CGAL::to_double(tree2->squared_distance(p));
-				if(dist<mindist2){
-					mindist2 = dist;
-				}
-			}
-			points.clear();
-		}
-		report_time("getting min", start);
-	}
+	report_time("total join", start);
 
 	delete tile1;
 	if(tile2!=tile1){
 		delete tile2;
 	}
+	delete joiner;
+	delete gc;
+	report_time("cleaning", start);
+
 }

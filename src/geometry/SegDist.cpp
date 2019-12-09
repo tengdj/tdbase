@@ -113,51 +113,6 @@ float SegDist_single(const float *data1, const float *data2,
 	return local_min;
 }
 
-void *SegDist_unit(void *params_void){
-	struct geometry_param *param = (struct geometry_param *)params_void;
-	for(int i=0;i<param->batch_num;i++){
-		param->dist[i] = SegDist_single(param->data+param->offset_size[4*i]*6,
-									    param->data+param->offset_size[4*i+2]*6,
-									    param->offset_size[4*i+1],
-									    param->offset_size[4*i+3]);
-	}
-	return NULL;
-}
-
-// compute the minimum distance of segment pairs with multiple threads
-void SegDist_batch(const float *data, const uint *offset_size, float *result,
-				   const uint batch_num, const int num_threads){
-	cout<<"starting "<<num_threads<<" threads"<<endl;
-	pthread_t threads[num_threads];
-	struct geometry_param params[num_threads];
-	int each_thread = batch_num/num_threads;
-	for(int i=0;i<num_threads;i++){
-		int start = each_thread*i;
-		if(start>=batch_num){
-			break;
-		}
-		params[i].batch_num = min(each_thread, (int)batch_num-start);
-		params[i].offset_size = offset_size+start*4;
-		params[i].data = data;
-		params[i].id = i+1;
-		params[i].dist = result+start;
-		int rc = pthread_create(&threads[i], NULL, SegDist_unit, (void *)&params[i]);
-		if (rc) {
-			cout << "Error:unable to create thread," << rc << endl;
-			exit(-1);
-		}
-	}
-
-	for(int i = 0; i < num_threads; i++){
-		void *status;
-		int rc = pthread_join(threads[i], &status);
-		if (rc) {
-			cout << "Error:unable to join," << rc << endl;
-			exit(-1);
-		}
-	}
-}
-
 }
 
 

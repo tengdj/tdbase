@@ -298,56 +298,6 @@ bool TriInt_single(const float *data1, const float *data2, size_t size1, size_t 
 	}
 	return false;
 }
-
-void TriInt_batch(){
-	;
-}
-
-void *TriInt_unit(void *params_void){
-	struct geometry_param *param = (struct geometry_param *)params_void;
-	for(int i=0;i<param->batch_num;i++){
-		param->intersect[i] = TriInt_single(param->data+param->offset_size[4*i]*9,
-									    param->data+param->offset_size[4*i+2]*9,
-									    param->offset_size[4*i+1],
-									    param->offset_size[4*i+3]);
-	}
-	return NULL;
-}
-
-// compute the minimum distance of segment pairs with multiple threads
-void TriInt_batch(const float *data, const uint *offset_size, bool *result, const uint batch_num, const int num_threads){
-	pthread_t threads[num_threads];
-	struct geometry_param params[num_threads];
-	int each_thread = batch_num/num_threads;
-	for(int i=0;i<num_threads;i++){
-		int start = each_thread*i;
-		if(start>=batch_num){
-			break;
-		}
-		params[i].batch_num = min(each_thread, (int)batch_num-start);
-		params[i].offset_size = offset_size+start*4;
-		params[i].data = data;
-		params[i].id = i+1;
-		params[i].intersect = result+start;
-		int rc = pthread_create(&threads[i], NULL, TriInt_unit, (void *)&params[i]);
-		if (rc) {
-			cout << "Error:unable to create thread," << rc << endl;
-			exit(-1);
-		}
-	}
-
-	for(int i = 0; i < num_threads; i++){
-		void *status;
-		int rc = pthread_join(threads[i], &status);
-		if (rc) {
-			cout << "Error:unable to join," << rc << endl;
-			exit(-1);
-		}
-	}
-}
-
-
-
 }
 
 

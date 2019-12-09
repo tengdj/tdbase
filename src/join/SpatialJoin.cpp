@@ -104,10 +104,7 @@ bool compare_pair(pair<int, range> a1, pair<int, range> a2){
  * the main function for getting the nearest neighbor
  *
  * */
-void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
-	if(num_threads==0){
-		num_threads = hispeed::get_num_threads();
-	}
+void SpatialJoin::nearest_neighbor(bool with_gpu){
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
@@ -239,11 +236,17 @@ void SpatialJoin::nearest_neighbor(bool with_gpu, int num_threads){
 		}
 		assert(index==pair_num);
 		report_time("organizing data", start);
+		geometry_param gp;
+		gp.data = data;
+		gp.pair_num = pair_num;
+		gp.offset_size = offset_size;
+		gp.distances = distances;
+		gp.data_size = segment_num;
 		if(with_gpu){
-			hispeed::SegDist_batch_gpu(data, offset_size, distances, pair_num, segment_num);
+			computer->get_distance_gpu(gp);
 			report_time("get distance with GPU", start);
 		}else{
-			hispeed::SegDist_batch(data, offset_size, distances, pair_num, num_threads);
+			computer->get_distance_cpu(gp);
 			report_time("get distance with CPU", start);
 		}
 
@@ -333,10 +336,7 @@ inline void update_candidate_list_intersect(vector<candidate_entry> &candidates)
  * relationship among polyhedra in the tile
  *
  * */
-void SpatialJoin::intersect(bool with_gpu, int num_threads){
-	if(num_threads==0){
-		num_threads = hispeed::get_num_threads();
-	}
+void SpatialJoin::intersect(bool with_gpu){
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
@@ -452,8 +452,12 @@ void SpatialJoin::intersect(bool with_gpu, int num_threads){
 		}
 		assert(index==pair_num);
 		report_time("organizing data", start);
-
-		hispeed::TriInt_batch(data, offset_size, intersect_status, pair_num, num_threads);
+		geometry_param gp;
+		gp.data = data;
+		gp.pair_num = pair_num;
+		gp.offset_size = offset_size;
+		gp.intersect = intersect_status;
+		computer->get_intersect(gp);
 		report_time("computing with CPU", start);
 
 		// now update the intersection status and update the all candidate list

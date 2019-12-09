@@ -40,6 +40,8 @@ class SpatialJoin{
 	Tile *tile1;
 	Tile *tile2;
 
+	geometry_computer *computer = NULL;
+
 	enum Join_Type type = JT_nearest;
 	// cursor of the object in tile 1
 	// waiting for processing
@@ -67,10 +69,11 @@ class SpatialJoin{
 	float *d_data = NULL;
 public:
 
-	SpatialJoin(Tile *t1, Tile *t2){
-		assert(t1!=NULL&&t2!=NULL);
+	SpatialJoin(Tile *t1, Tile *t2, geometry_computer *c){
+		assert(t1!=NULL&&t2!=NULL&&c);
 		tile1 = t1;
 		tile2 = t2;
+		computer = c;
 	}
 	~SpatialJoin(){
 		if(buffer){
@@ -91,8 +94,8 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
-	void nearest_neighbor(bool with_gpu, int num_threads=0);
-	void intersect(bool with_gpu, int num_threads=0);
+	void nearest_neighbor(bool with_gpu);
+	void intersect(bool with_gpu);
 
 
 	/*
