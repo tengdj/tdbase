@@ -131,6 +131,10 @@ public:
 	// used for retrieving compressed data from disk
 	size_t offset = 0;
 	size_t data_size = 0;
+	pthread_mutex_t lock;
+	HiMesh_Wrapper(){
+		pthread_mutex_init(&lock, NULL);
+	}
 	~HiMesh_Wrapper(){
 		for(Voxel *v:voxels){
 			delete v;
@@ -148,11 +152,7 @@ public:
 	}
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle
-	void fill_voxels(int lod, enum data_type seg_tri){
-		assert(mesh);
-		mesh->advance_to(lod);
-		mesh->fill_voxel(voxels, seg_tri);
-	}
+	void fill_voxels(enum data_type seg_tri);
 
 	void reset(){
 		for(Voxel *v:voxels){

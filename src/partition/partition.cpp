@@ -31,9 +31,7 @@ pthread_mutex_t lock;
 void *get_mbbs_unit(void *arg){
 	struct unit_args *arg_val = (struct unit_args *)arg;
 
-	pthread_mutex_lock(&lock);
-	cerr<<"thread "<<arg_val->id<<" is started"<<endl;
-	pthread_mutex_unlock(&lock);
+	log("thread %d is started", arg_val->id);
 
 	vector<string> local_input_lines;
 	vector<weighted_aab*> local_voxels;
@@ -97,11 +95,7 @@ void get_voxels(std::vector<std::string> &input_folders, std::vector<weighted_aa
 		arg[i].input_lines = &input_lines;
 		arg[i].voxels = &voxels;
 		arg[i].complete = &complete;
-		int rc = pthread_create(&threads[i], NULL, get_mbbs_unit, (void *)&arg[i]);
-		if (rc) {
-			cout << "Error:unable to create thread," << rc << endl;
-			exit(-1);
-		}
+		pthread_create(&threads[i], NULL, get_mbbs_unit, (void *)&arg[i]);
 	}
 
 	// the main thread read from files and store the lines
@@ -137,22 +131,16 @@ void get_voxels(std::vector<std::string> &input_folders, std::vector<weighted_aa
 				usleep(10);
 			}
 			if(processed_filesize*100/total_filesize==next_report){
-				cerr<<"read "<<read_lines<<" processed "<<processed_lines<<" objects\t("<<next_report<<"%)"<<endl;
+				log("read %d processed %d objects\t(%ld\%)", read_lines, processed_lines, next_report);
 				next_report += 2;
 			}
 		}
 	}
 	complete = true;
 	// wait for threads to stop
-	cerr<<"waiting for workers to stop"<<endl;
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
-		int rc = pthread_join(threads[i], &status);
-		if (rc) {
-			cerr << "Error:unable to join, " << rc << endl;
-			exit(-1);
-		}
-		cerr << "Main: completed thread id :" << i<<endl;
+		pthread_join(threads[i], &status);
 	}
 }
 void persist_tile(std::vector<aab> &tiles, const char *prefix){

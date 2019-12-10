@@ -21,7 +21,6 @@ int main(int argc, char **argv){
 
 	string tile1_path("nuclei_tmp.dt");
 	string tile2_path("nuclei_tmp.dt");
-	bool use_gpu = false;
 	bool intersect = false;
 	int num_threads = hispeed::get_num_threads();
 	size_t max_objects = LONG_MAX;
@@ -48,7 +47,6 @@ int main(int argc, char **argv){
 	if(vm.count("gpu")){
 		initialize();
 		gc->init_gpus();
-		use_gpu = true;
 	}
 	if(vm.count("intersect")){
 		intersect = true;
@@ -63,15 +61,19 @@ int main(int argc, char **argv){
 		tile2 = new Tile(tile2_path.c_str(), max_objects);
 	}
 	assert(tile1&&tile2);
-	report_time("load tiles", start);
+	logt("load tiles", start);
 
-	SpatialJoin *joiner = new SpatialJoin(tile1, tile2, gc);
+	SpatialJoin *joiner = new SpatialJoin(gc);
 	if(intersect){
-		joiner->intersect(use_gpu);
+		joiner->intersect(tile1, tile2);
 	}else{
-		joiner->nearest_neighbor(use_gpu);
+		vector<pair<Tile *, Tile *>> tile_pairs;
+		for(int i=0;i<8;i++){
+			tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
+		}
+		joiner->nearest_neighbor_batch(tile_pairs, 8);
 	}
-	report_time("total join", start);
+	logt("join", start);
 
 	delete tile1;
 	if(tile2!=tile1){
@@ -79,6 +81,6 @@ int main(int argc, char **argv){
 	}
 	delete joiner;
 	delete gc;
-	report_time("cleaning", start);
+	logt("cleaning", start);
 
 }

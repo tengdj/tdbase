@@ -2,6 +2,7 @@
 #define TENG_UTIL_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -12,13 +13,16 @@
 #include <vector>
 #include <thread>
 #include <iostream>
+#include <stdarg.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
 
 using namespace std;
 
 namespace hispeed{
 
 #define TENG_RANDOM_NUMBER 0315
-
 inline struct timeval get_cur_time(){
 	struct timeval t1;
 	gettimeofday(&t1, NULL);
@@ -37,17 +41,38 @@ inline double get_time_elapsed(struct timeval &t1, bool update_start = false){
 	return elapsedTime;
 }
 
-inline void report_time(const char *task, struct timeval &start, bool update_start = true){
-	double mstime = get_time_elapsed(start, update_start);
-	cerr<<task<<" takes ";
+static pthread_mutex_t print_lock;
+inline void logt(const char *format, struct timeval &start, ...){
+	pthread_mutex_lock(&print_lock);
+	va_list args;
+	va_start(args, start);
+	char sprint_buf[200];
+	int n = vsprintf(sprint_buf, format, args);
+	va_end(args);
+	fprintf(stderr,"thread %ld:\t%s",syscall(__NR_gettid),sprint_buf);
+
+	double mstime = get_time_elapsed(start, true);
+	cerr<<" takes ";
 	if(mstime>10000){
 		cerr<<mstime/1000<<" s"<<endl;
 	}else{
 		cerr<<mstime<<" ms"<<endl;
 	}
+	fflush(stderr);
+	pthread_mutex_unlock(&print_lock);
 }
 
-
+inline void log(const char *format, ...){
+	pthread_mutex_lock(&print_lock);
+	va_list args;
+	va_start(args, format);
+	char sprint_buf[200];
+	int n = vsprintf(sprint_buf, format, args);
+	va_end(args);
+	fprintf(stderr,"thread %ld:\t%s\n",syscall(__NR_gettid),sprint_buf);
+	fflush(stderr);
+	pthread_mutex_unlock(&print_lock);
+}
 
 inline int get_rand_number(int max_value){
 	return rand()%max_value+1;

@@ -22,24 +22,21 @@ int main(int argc, char **argv){
 	}
 	assert(start_lod>=0&&start_lod<=10);
 	// Init the random number generator.
-	std::cerr<<"start compressing"<<endl;
+	log("start compressing");
 	struct timeval starttime = get_cur_time();
 	MyMesh *compressed = read_mesh();
 	compressed->completeOperation();
-	cout<<compressed->dataOffset<<" "<<get_time_elapsed(starttime)<<endl;
+	logt("compress", starttime);
+	log("start decompressing");
 
-	std::cerr<<"start decompressing"<<endl;
 	char path[256];
-
 	for(int i=start_lod;i<=end_lod;i++){
 		int lod = 10*i;
-		starttime = get_cur_time();
-
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
 		sprintf(path,"lod%d.off", lod);
 		decompressed->writeMeshOff(path);
 		delete decompressed;
-		cout<<decompressed->dataOffset<<" "<<get_time_elapsed(starttime)<<endl;
+		logt("decompress %d", starttime, lod);
 	}
 
 	delete compressed;

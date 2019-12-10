@@ -65,7 +65,7 @@ inline void flush_mesh_buffer(vector<HiMesh *> &mesh_buffer, vector<vector<Voxel
 void *compress(void *args){
 	int id = *(int *)args;
 	pthread_mutex_lock(&output_lock);
-	cout<<"thread "<<id<<" is started"<<endl;
+	log("thread %d is started", id);
 	pthread_mutex_unlock(&output_lock);
 
 	// output binary file for the compressed data
@@ -131,11 +131,7 @@ int main(int argc, char** argv) {
 	assert(total_filesize>0);
 
 	for(int i=0;i<num_threads;i++){
-		int rc = pthread_create(&threads[i], NULL, compress, (void *)&id[i]);
-		if (rc) {
-			cout << "Error:unable to create thread," << rc << endl;
-			exit(-1);
-		}
+		pthread_create(&threads[i], NULL, compress, (void *)&id[i]);
 	}
 	struct timeval start_time = get_cur_time();
 	std::string input_line;
@@ -162,8 +158,7 @@ int main(int argc, char** argv) {
 		processed_size += input_line.size()+1;
 		num_objects++;
 		if(processed_size*100/total_filesize==next_report){
-			cerr<<"processed "<<num_objects<<" objects\t("<<next_report<<"%)"<<endl;
-			next_report++;
+			log("processed %d objects\t(%d\%)", num_objects, next_report++);
 		}
 		if(num_objects==maximum_lines){
 			break;
@@ -173,26 +168,17 @@ int main(int argc, char** argv) {
 
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
-		int rc = pthread_join(threads[i], &status);
-		if (rc) {
-			cout << "Error:unable to join," << rc << endl;
-			exit(-1);
-		}
-		cerr << "Main: completed thread id :" << i ;
-		cerr << "  exiting with status :" << status << endl;
+		pthread_join(threads[i], &status);
 	}
 
 	os->flush();
 	os->close();
 	is.close();
 
+	logt("processed %d objects", start_time, num_objects);
+	log("total size of compressed data is %ld", hispeed::file_size(output_path));
 
-    std::cerr <<"processed "<<num_objects<<" objects in "<<get_time_elapsed(start_time)/1000<<" seconds"<<endl;
-	std::cerr <<"total size of compressed data is "<< hispeed::file_size(output_path) << std::endl; // the total size
-
-	cerr << "Main: program exiting." << endl;
 	pthread_exit(NULL);
-
 	return true;
 }
 

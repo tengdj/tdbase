@@ -22,14 +22,15 @@ namespace hispeed{
 // and construct the hierarchy structure
 // tile->mesh->voxels->triangle/edges
 Tile::Tile(std::string path, size_t capacity){
+	struct timeval start = get_cur_time();
 	this->capacity = capacity;
 	if(!hispeed::file_exist(path.c_str())){
-		cerr<<path<<" does not exist"<<endl;
+		log("%s does not exist", path.c_str());
 		exit(-1);
 	}
 	dt_fs = fopen(path.c_str(), "r");
 	if(!dt_fs){
-		cerr<<path<<" can not be opened"<<endl;
+		log("%s can not be opened", path.c_str());
 		exit(-1);
 	}
 	string meta_path = path;
@@ -40,7 +41,8 @@ Tile::Tile(std::string path, size_t capacity){
 	}else{
 		load(meta_path);
 	}
-	cout<<"loaded "<<objects.size()<<" polyhedra in tile "<<path<<endl;
+	pthread_mutex_init(&lock, NULL);
+	logt("loaded %ld polyhedra in tile %s", start, objects.size(), path.c_str());
 }
 
 Tile::~Tile(){
@@ -139,14 +141,15 @@ bool Tile::parse_raw(){
 void Tile::retrieve_mesh(int id){
 	assert(id>=0&&id<objects.size());
 	HiMesh_Wrapper *wrapper = objects[id];
-	assert(wrapper->mesh==NULL);
-	char *mesh_data = new char[wrapper->data_size];
-	assert(dt_fs);
-	fseek(dt_fs, wrapper->offset, SEEK_SET);
-	assert(wrapper->data_size==
-			fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs));
-	wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size);
-	delete mesh_data;
+	if(wrapper->mesh==NULL){
+		char *mesh_data = new char[wrapper->data_size];
+		assert(dt_fs);
+		fseek(dt_fs, wrapper->offset, SEEK_SET);
+		assert(wrapper->data_size==
+				fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs));
+		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size);
+		delete mesh_data;
+	}
 }
 
 OctreeNode *Tile::build_octree(size_t leaf_size){
@@ -157,17 +160,15 @@ OctreeNode *Tile::build_octree(size_t leaf_size){
 	return octree;
 }
 
-HiMesh *Tile::get_mesh(int id, int lod){
-	struct timeval start = get_cur_time();
+void Tile::decode_to(int id, int lod){
 	assert(id>=0&&id<objects.size());
-	assert(lod>=0&&lod<=100);
+	pthread_mutex_lock(&lock);
 	if(objects[id]->mesh==NULL){
 		retrieve_mesh(id);
 	}
 	assert(objects[id]->mesh);
 	objects[id]->mesh->advance_to(lod);
-	//report_time("decoding mesh", start);
-	return objects[id]->mesh;
+	pthread_mutex_unlock(&lock);
 }
 
 }

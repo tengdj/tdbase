@@ -21,6 +21,48 @@ void *SegDist_unit(void *params_void){
 	}
 	return NULL;
 }
+void geometry_computer::request_cpu(){
+	pthread_mutex_lock(&cpu_lock);
+	assert(!cpu_busy);
+	cpu_busy = true;
+}
+void geometry_computer::release_cpu(){
+	assert(cpu_busy);
+	cpu_busy = false;
+	pthread_mutex_unlock(&cpu_lock);
+}
+gpu_info *geometry_computer::request_gpu(){
+	for(gpu_info *info:gpus){
+		if(!info->busy){
+			pthread_mutex_lock(&info->lock);
+			assert(!info->busy);
+			info->busy = true;
+			return info;
+		}
+	}
+	return NULL;
+}
+void geometry_computer::release_gpu(gpu_info *info){
+	assert(info->busy);
+	pthread_mutex_unlock(&info->lock);
+	info->busy = false;
+}
+
+geometry_computer::~geometry_computer(){
+	for(gpu_info *info:gpus){
+		clean_gpu(info);
+		delete info;
+	}
+}
+
+bool geometry_computer::init_gpus(){
+	gpus = get_gpus();
+	for(gpu_info *info:gpus){
+		init_gpu(info);
+	}
+	return true;
+}
+
 void geometry_computer::get_distance_cpu(geometry_param &cc){
 	request_cpu();
 	pthread_t threads[max_thread_num];
@@ -37,13 +79,9 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].data = cc.data;
 		params[i].id = i+1;
 		params[i].distances = cc.distances+start;
-		int rc = pthread_create(&threads[i], NULL, SegDist_unit, (void *)&params[i]);
-		if (rc) {
-			cout << "Error:unable to create thread," << rc << endl;
-			exit(-1);
-		}
+		pthread_create(&threads[i], NULL, SegDist_unit, (void *)&params[i]);
 	}
-	cerr<<max_thread_num<<" threads started"<<endl;
+	log("%d threads started to get distance", max_thread_num);
 	for(int i = 0; i < max_thread_num; i++){
 		void *status;
 		pthread_join(threads[i], &status);
@@ -54,10 +92,11 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 void geometry_computer::get_distance_gpu(geometry_param &cc){
 	gpu_info *gpu = request_gpu();
 	if(gpu){
+		log("GPU %d started to get distance", gpu->device_id);
 		hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
 		release_gpu(gpu);
 	}else{
-		cerr<<"all gpus are busy"<<endl;
+		log("all gpus are busy");
 	}
 }
 
@@ -66,6 +105,7 @@ void geometry_computer::get_distance(geometry_param &cc){
 	// GPU has a higher priority
 	gpu_info *gpu = request_gpu();
 	if(gpu){
+		log("GPU %d started to get distance", gpu->device_id);
 		hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
 		release_gpu(gpu);
 	}else{
@@ -109,8 +149,6 @@ void geometry_computer::get_intersect(geometry_param &cc){
 	}
 	release_cpu();
 }
-
-
 
 }
 

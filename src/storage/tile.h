@@ -11,12 +11,14 @@
 
 #include "../spatial/himesh.h"
 #include "../index/index.h"
+#include <pthread.h>
 
 using namespace std;
 
 namespace hispeed{
 
 class Tile{
+	pthread_mutex_t lock;
 	size_t capacity = LONG_MAX;
 	aab box;
 	std::vector<HiMesh_Wrapper *> objects;
@@ -27,12 +29,10 @@ class Tile{
 	// retrieve the mesh of the voxel group with ID id on demand
 	void retrieve_mesh(int id);
 public:
-
-
 	Tile(std::string path, size_t capacity);
 	~Tile();
 
-	HiMesh *get_mesh(int id, int lod);
+	void decode_to(int id, int lod);
 	HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
 		return objects[id];

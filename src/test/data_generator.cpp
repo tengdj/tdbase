@@ -255,7 +255,7 @@ void *generate_unit(void *arg){
 		pthread_mutex_lock(&mylock);
 		tuple<float, float, float> job = jobs.front();
 		jobs.pop();
-		cout<<jobs.size()<<" jobs left"<<endl;
+		log("%ld jobs left", jobs.size());
 		pthread_mutex_unlock(&mylock);
 		size_t offset = 0;
 		float base[3] = {get<0>(job),get<1>(job),get<2>(job)};
@@ -302,7 +302,7 @@ int main(int argc, char **argv){
 
 	struct timeval start = get_cur_time();
 	load_prototype(nuclei_pt.c_str(), vessel_pt.c_str(), shrink, num_nuclei_per_vessel);
-	report_time("load prototype files", start);
+	logt("load prototype files", start);
 	os = new std::ofstream(output_path.c_str(), std::ios::out | std::ios::binary);
 
 	// generate some job for worker to process
@@ -320,26 +320,15 @@ int main(int argc, char **argv){
 
 	pthread_t threads[num_threads];
 	for(int i=0;i<num_threads;i++){
-		int rc = pthread_create(&threads[i], NULL, generate_unit, NULL);
-		if (rc) {
-			cout << "Error:unable to create thread," << rc << endl;
-			exit(-1);
-		}
+		pthread_create(&threads[i], NULL, generate_unit, NULL);
 	}
 
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
-		int rc = pthread_join(threads[i], &status);
-		if (rc) {
-			cout << "Error:unable to join," << rc << endl;
-			exit(-1);
-		}
-		cerr << "Main: completed thread id :" << i ;
-		cerr << "  exiting with status :" << status << endl;
+		pthread_join(threads[i], &status);
 	}
 	os->close();
-	cout<<global_generated<<" nucleis are generated for "<<x_dim*y_dim*z_dim<<" vessels"<<endl;
-	report_time("generating data", start);
+	logt("%ld nucleis are generated for %d vessels", start, global_generated, x_dim*y_dim*z_dim);
 	delete os;
 }
 

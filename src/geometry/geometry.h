@@ -124,51 +124,18 @@ class geometry_computer{
 	int max_thread_num = hispeed::get_num_threads();
 	bool cpu_busy = false;
 	bool gpu_busy = false;
-	void request_cpu(){
-		pthread_mutex_lock(&cpu_lock);
-		assert(!cpu_busy);
-		cpu_busy = true;
-	}
-	void release_cpu(){
-		assert(cpu_busy);
-		cpu_busy = false;
-		pthread_mutex_unlock(&cpu_lock);
-	}
-	gpu_info *request_gpu(){
-		for(gpu_info *info:gpus){
-			if(!info->busy){
-				pthread_mutex_lock(&info->lock);
-				assert(!info->busy);
-				info->busy = true;
-				return info;
-			}
-		}
-		return NULL;
-	}
-	void release_gpu(gpu_info *info){
-		assert(info->busy);
-		pthread_mutex_unlock(&info->lock);
-		info->busy = false;
-	}
+	void request_cpu();
+	void release_cpu();
+	gpu_info *request_gpu();
+	void release_gpu(gpu_info *info);
 
 	char *d_cuda = NULL;
 	vector<gpu_info *> gpus;
 
 public:
-	~geometry_computer(){
-		for(gpu_info *info:gpus){
-			clean_gpu(info);
-			delete info;
-		}
-	}
+	~geometry_computer();
 
-	bool init_gpus(){
-		gpus = get_gpus();
-		for(gpu_info *info:gpus){
-			init_gpu(info);
-		}
-		return true;
-	}
+	bool init_gpus();
 	void get_distance_gpu(geometry_param &param);
 	void get_distance_cpu(geometry_param &param);
 	void get_distance(geometry_param &param);

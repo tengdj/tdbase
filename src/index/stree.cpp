@@ -29,7 +29,7 @@ void SPNode::genTiles(vector<aab> &tiles){
 bool SPNode::load(const char *path){
 	ifstream is(path, ios::out | ios::binary);
 	if(!is) {
-		cerr << "Cannot open file!" << endl;
+		log("Cannot open file!");
 		return false;
 	}
 	long part_x, part_y, part_z;
@@ -71,7 +71,7 @@ bool SPNode::persist(const char *path){
 
 	ofstream os(path, ios::out | ios::binary);
 	if(!os) {
-		cerr << "Cannot open file!" << endl;
+		log("Cannot open file!");
 		return false;
 	}
 	os.write((char *)&part_x, sizeof(long));
@@ -108,8 +108,6 @@ SPNode *build_sort_partition(std::vector<weighted_aab*> &voxels, int num_tiles){
 	long part_x = std::max((int)std::pow(num_tiles, 1.0/3),1);
 	long part_y = part_x;
 	long part_z = std::max((int)((num_tiles/part_x)/part_y),1);
-	fprintf(stderr,"partitioning space into %ld * %ld * %ld = %ld tiles\n",
-			part_x, part_y, part_z, part_x*part_y*part_z);
 
 	// sort the mbbs in X dimension
 	std::sort(voxels.begin(), voxels.end(), compareAAB_x);

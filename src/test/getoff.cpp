@@ -12,11 +12,10 @@ using namespace hispeed;
 int main(int argc, char **argv){
 
 	if(argc<2){
-		cout<<"usage: getoff path/to/output"<<endl;
+		log("usage: getoff path/to/output");
 		return 0;
 	}
 	MyMesh *mesh = hispeed::read_mesh();
 	mesh->writeMeshOff(argv[1]);
-	cout<<*mesh<<endl;
 	delete mesh;
 }

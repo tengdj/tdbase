@@ -104,7 +104,7 @@ bool compare_pair(pair<int, range> a1, pair<int, range> a2){
  * the main function for getting the nearest neighbor
  *
  * */
-void SpatialJoin::nearest_neighbor(bool with_gpu){
+void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
@@ -157,7 +157,7 @@ void SpatialJoin::nearest_neighbor(bool with_gpu){
 		candidates.push_back(candidate_entry(wrapper1, candidate_list));
 		candidate_ids.clear();
 	}
-	report_time("comparing mbbs", start);
+	logt("comparing mbbs", start);
 
 	// now we start to get the distances with progressive level of details
 	for(int lod=0;lod<=100;lod+=50){
@@ -166,7 +166,7 @@ void SpatialJoin::nearest_neighbor(bool with_gpu){
 			break;
 		}
 		struct timeval iter_start = get_cur_time();
-		printf("\n%ld polyhedron has %d candidates\n", candidates.size(), pair_num);
+		log("%ld polyhedron has %d candidates", candidates.size(), pair_num);
 		// retrieve the necessary meshes
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		uint segment_num = 0;
@@ -182,12 +182,13 @@ void SpatialJoin::nearest_neighbor(bool with_gpu){
 					assert(vp.v1&&vp.v2);
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
-						tile1->get_mesh(wrapper1->id, lod);
-						wrapper1->fill_voxels(lod, DT_Segment);
+						// ensure the msh is extracted
+						tile1->decode_to(wrapper1->id, lod);
+						wrapper1->fill_voxels(DT_Segment);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
-						tile2->get_mesh(wrapper2->id, lod);
-						wrapper2->fill_voxels(lod, DT_Segment);
+						tile2->decode_to(wrapper2->id, lod);
+						wrapper2->fill_voxels(DT_Segment);
 					}
 
 					// update the voxel map
@@ -204,10 +205,10 @@ void SpatialJoin::nearest_neighbor(bool with_gpu){
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
-		printf("decoded %ld voxels with %d segments for lod %d\n", voxel_map.size(), segment_num, lod);
-		report_time("getting data for voxels", start);
+		logt("decoded %ld voxels with %d segments for lod %d",
+				start, voxel_map.size(), segment_num, lod);
 		if(segment_num==0){
-			cout<<"no segments is filled in this round"<<endl;
+			log("no segments is filled in this round");
 			voxel_map.clear();
 			continue;
 		}
@@ -235,20 +236,15 @@ void SpatialJoin::nearest_neighbor(bool with_gpu){
 			}
 		}
 		assert(index==pair_num);
-		report_time("organizing data", start);
+		logt("organizing data", start);
 		geometry_param gp;
 		gp.data = data;
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
 		gp.distances = distances;
 		gp.data_size = segment_num;
-		if(with_gpu){
-			computer->get_distance_gpu(gp);
-			report_time("get distance with GPU", start);
-		}else{
-			computer->get_distance_cpu(gp);
-			report_time("get distance with CPU", start);
-		}
+		computer->get_distance(gp);
+		logt("get distance", start);
 
 		// now update the distance range with the new distances
 		index = 0;
@@ -278,21 +274,21 @@ void SpatialJoin::nearest_neighbor(bool with_gpu){
 			}
 			tmp_distances.clear();
 		}
-		report_time("update candidate list", start);
+		logt("update candidate list", start);
 
 		// reset the voxels
-		for(int i=0;i<candidates.size();i++){
-			candidates[i].first->reset();
-			for(int j=0;j<candidates[i].second.size();j++){
-				candidates[i].second[j].mesh_wrapper->reset();
-			}
-		}
+//		for(int i=0;i<candidates.size();i++){
+//			candidates[i].first->reset();
+//			for(int j=0;j<candidates[i].second.size();j++){
+//				candidates[i].second[j].mesh_wrapper->reset();
+//			}
+//		}
 
 		delete data;
 		delete offset_size;
 		delete distances;
 		voxel_map.clear();
-		report_time("current iteration", iter_start, false);
+		logt("current iteration", iter_start);
 		pair_num = get_pair_num(candidates);
 		if(pair_num==0){
 			break;
@@ -336,7 +332,7 @@ inline void update_candidate_list_intersect(vector<candidate_entry> &candidates)
  * relationship among polyhedra in the tile
  *
  * */
-void SpatialJoin::intersect(bool with_gpu){
+void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 	struct timeval start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
@@ -378,20 +374,19 @@ void SpatialJoin::intersect(bool with_gpu){
 		// save the candidate list
 		candidates.push_back(candidate_entry(wrapper1, candidate_list));
 	}
-	report_time("comparing mbbs", start);
+	logt("comparing mbbs", start);
 	// evaluate the candidate list, report and remove the results confirmed
 	update_candidate_list_intersect(candidates);
-	report_time("update candidate list", start);
+	logt("update candidate list", start);
 
 	// now we start to ensure the intersection with progressive level of details
 	for(int lod=0;lod<=100;lod+=50){
-		cerr<<endl;
 		struct timeval iter_start = start;
 		size_t pair_num = get_pair_num(candidates);
 		if(pair_num==0){
 			break;
 		}
-		printf("%ld polyhedron has %ld candidates\n", candidates.size(), pair_num);
+		log("%ld polyhedron has %ld candidates", candidates.size(), pair_num);
 		// retrieve the necessary meshes
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		size_t triangle_num = 0;
@@ -402,12 +397,12 @@ void SpatialJoin::intersect(bool with_gpu){
 				for(voxel_pair vp:info.voxel_pairs){
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
-						tile1->get_mesh(wrapper1->id, lod);
-						wrapper1->fill_voxels(lod, DT_Triangle);
+						tile1->decode_to(wrapper1->id, lod);
+						wrapper1->fill_voxels(DT_Triangle);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
-						tile2->get_mesh(wrapper2->id, lod);
-						wrapper2->fill_voxels(lod, DT_Triangle);
+						tile2->decode_to(wrapper2->id, lod);
+						wrapper2->fill_voxels(DT_Triangle);
 					}
 
 					// update the voxel map
@@ -424,8 +419,7 @@ void SpatialJoin::intersect(bool with_gpu){
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
-		printf("decoded %ld voxels with %ld triangles for lod %d\n", voxel_map.size(), triangle_num, lod);
-		report_time("getting data for voxels", start);
+		logt("decoded %ld voxels with %ld triangles for lod %d", start, voxel_map.size(), triangle_num, lod);
 
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[9*triangle_num];
@@ -451,14 +445,14 @@ void SpatialJoin::intersect(bool with_gpu){
 			}
 		}
 		assert(index==pair_num);
-		report_time("organizing data", start);
+		logt("organizing data", start);
 		geometry_param gp;
 		gp.data = data;
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
 		gp.intersect = intersect_status;
 		computer->get_intersect(gp);
-		report_time("computing with CPU", start);
+		logt("checking intersection", start);
 
 		// now update the intersection status and update the all candidate list
 		// report results if necessary
@@ -472,18 +466,62 @@ void SpatialJoin::intersect(bool with_gpu){
 			}
 		}
 		update_candidate_list_intersect(candidates);
-		report_time("update candidate list", start);
+		logt("update candidate list", start);
 
 		delete data;
 		delete offset_size;
 		delete intersect_status;
 		voxel_map.clear();
 
-		report_time("current iteration", iter_start, false);
-		if(lod==100){
-			cerr<<endl;
-		}
+		logt("current iteration", iter_start);
 	}
+}
+
+
+class nn_param{
+public:
+	pthread_mutex_t lock;
+	queue<pair<Tile *, Tile *>> tile_queue;
+	SpatialJoin *joiner;
+	nn_param(){
+		pthread_mutex_init (&lock, NULL);
+		joiner = NULL;
+	}
+};
+
+void *nearest_neighbor_single(void *param){
+	struct nn_param *nnparam = (struct nn_param *)param;
+	while(!nnparam->tile_queue.empty()){
+		pthread_mutex_lock(&nnparam->lock);
+		if(nnparam->tile_queue.empty()){
+			pthread_mutex_unlock(&nnparam->lock);
+			break;
+		}
+		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
+		nnparam->tile_queue.pop();
+		pthread_mutex_unlock(&nnparam->lock);
+		nnparam->joiner->nearest_neighbor(p.first, p.second);
+	}
+	return NULL;
+}
+
+void SpatialJoin::nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads){
+	struct nn_param param;
+	for(pair<Tile *, Tile *> &p:tile_pairs){
+		param.tile_queue.push(p);
+	}
+	param.joiner = this;
+	pthread_t threads[num_threads];
+	for(int i=0;i<num_threads;i++){
+		pthread_create(&threads[i], NULL, nearest_neighbor_single, (void *)&param);
+	}
+	for(int i = 0; i < num_threads; i++){
+		void *status;
+		pthread_join(threads[i], &status);
+	}
+}
+void SpatialJoin::intersect_batch(vector<pair<Tile *, Tile *>> tile_pairs, int num_threads){
+	;
 }
 
 

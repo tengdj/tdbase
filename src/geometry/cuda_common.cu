@@ -39,13 +39,13 @@ void print_gpus(){
 	for (int i = 0; i < num_gpus; i++) {
 		cudaDeviceProp prop;
 		cudaGetDeviceProperties(&prop, i);
-		printf("Device Number: %d\n", i);
-		printf("  Device name: %s\n", prop.name);
-		printf("  Memory Clock Rate (KHz): %d\n", prop.memoryClockRate);
-		printf("  Memory Bus Width (bits): %d\n", prop.memoryBusWidth);
-		printf("  Peak Memory Bandwidth (GB/s): %f\n",
+		log("Device Number: %d", i);
+		log("  Device name: %s", prop.name);
+		log("  Memory Clock Rate (KHz): %d", prop.memoryClockRate);
+		log("  Memory Bus Width (bits): %d", prop.memoryBusWidth);
+		log("  Peak Memory Bandwidth (GB/s): %f",
 				2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
-		printf("  Memory size (MB): %ld\n\n", prop.totalGlobalMem/1024/1024);
+		log("  Memory size (MB): %ld\n", prop.totalGlobalMem/1024/1024);
 	}
 }
 
@@ -57,17 +57,14 @@ void init_gpu(gpu_info *gpu){
 		CUDA_SAFE_CALL(cudaSetDevice(gpu->device_id));
 		CUDA_SAFE_CALL(cudaMalloc((void **)&gpu->d_data, gpu->mem_size*1024*1024));
 		assert(gpu->d_data);
-		cerr<<gpu->mem_size<<" MB memory size is allocated for GPU "<<gpu->device_id<<endl;
-		report_time("allocating space in GPU", start);
+		logt("%ld MB memory size is allocated for GPU %d", start, gpu->mem_size, gpu->device_id);
 	}
 }
 
 void clean_gpu(gpu_info *gpu){
 	if(gpu->d_data){
-		struct timeval start = get_cur_time();
 		cudaSetDevice(gpu->device_id);
 		CUDA_SAFE_CALL(cudaFree(gpu->d_data));
-		report_time("clean space in GPU", start);
 		gpu->d_data = NULL;
 	}
 }

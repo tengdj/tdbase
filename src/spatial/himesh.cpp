@@ -46,7 +46,7 @@ Skeleton *HiMesh::extract_skeleton(){
 	Triangle_mesh tmesh;
 	os >> tmesh;
 	if (!CGAL::is_triangle_mesh(tmesh)){
-		std::cerr << "Input geometry is not triangulated." << std::endl;
+		log("Input geometry is not triangulated.");
 		exit(-1);
 	}
 	try{
@@ -67,7 +67,7 @@ Skeleton *HiMesh::extract_skeleton(){
 		// get the correspondent surface points
 		mcs.convert_to_skeleton(*skeleton);
 	}catch(std::exception &exc){
-		std::cerr<<exc.what()<<std::endl;
+		log(exc.what());
 		exit(-1);
 	}
 	return skeleton;
@@ -241,6 +241,10 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 	int  size_of_datum = 0;
 	float *data_buffer = NULL;
 	int lod = i_decompPercentage;
+	// already filled
+	if(voxels[0]->data.find(lod)!=voxels[0]->data.end()){
+		return;
+	}
 	if(seg_or_triangle==DT_Segment){
 		num_of_data = size_of_edges();
 		size_of_datum = 6;
@@ -349,6 +353,12 @@ TriangleTree *get_aabb_tree(Polyhedron *p){
 	return tree;
 }
 
+void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
+	assert(mesh);
+	pthread_mutex_lock(&lock);
+	mesh->fill_voxel(voxels, seg_tri);
+	pthread_mutex_unlock(&lock);
+}
 
 
 }

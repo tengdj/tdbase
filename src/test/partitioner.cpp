@@ -14,7 +14,7 @@ using namespace std;
 // main method
 int main(int argc, char** argv) {
 	if(argc<2){
-		cerr<<"usage: parition path/to/folder [num_threads] [sample_rate]"<<endl;
+		log("usage: parition path/to/folder [num_threads] [sample_rate]");
 		exit(0);
 	}
 	std::vector<aab> tiles;
@@ -41,19 +41,19 @@ int main(int argc, char** argv) {
 		std::vector<weighted_aab *> voxels;
 		hispeed::get_voxels(input_folders, voxels,
 				hispeed::get_num_threads(), sample_rate);
-		cout<<"getting voxels of objects takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
+		logt("getting voxels of objects", start);
 		sp = hispeed::build_sort_partition(voxels, num_tiles);
-		cout<<"generating partitions takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
+		logt("generating partitions", start);
 		for(weighted_aab *v:voxels){
 			delete v;
 		}
 		voxels.clear();
 		sp->persist(partition_path);
-		cout<<"persist partitions takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
+		logt("persist partitions", start);
 	}else{
 		sp = new SPNode();
 		sp->load(partition_path);
-		cout<<"loading partitions takes "<<get_time_elapsed(start, true)<<" ms"<<endl;
+		logt("loading partitions", start);
 	}
 	sp->genTiles(tiles);
 	hispeed::persist_tile(tiles, "tiles_");

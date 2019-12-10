@@ -76,7 +76,7 @@ VdotV_d(const float V1[3], const float V2[3])
 inline void check_execution(){
 	cudaError_t err = cudaGetLastError();
 	if (err != cudaSuccess){
-		printf("Error: %s\n", cudaGetErrorString(err));
+		log(cudaGetErrorString(err));
 	}
 }
 
