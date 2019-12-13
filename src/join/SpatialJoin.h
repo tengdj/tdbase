@@ -75,7 +75,7 @@ public:
 	void intersect(Tile *tile1, Tile *tile2);
 
 	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads);
-	void intersect_batch(vector<pair<Tile *, Tile *>> tile_pairs, int num_threads);
+	void intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads);
 
 	/*
 	 *

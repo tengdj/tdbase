@@ -41,7 +41,7 @@ Tile::Tile(std::string path, size_t capacity){
 	}else{
 		load(meta_path);
 	}
-	pthread_mutex_init(&lock, NULL);
+	pthread_mutex_init(&read_lock, NULL);
 	logt("loaded %ld polyhedra in tile %s", start, objects.size(), path.c_str());
 }
 
@@ -141,13 +141,22 @@ bool Tile::parse_raw(){
 void Tile::retrieve_mesh(int id){
 	assert(id>=0&&id<objects.size());
 	HiMesh_Wrapper *wrapper = objects[id];
+	char *mesh_data = NULL;
+	pthread_mutex_lock(&read_lock);
 	if(wrapper->mesh==NULL){
-		char *mesh_data = new char[wrapper->data_size];
+		mesh_data = new char[wrapper->data_size];
 		assert(dt_fs);
 		fseek(dt_fs, wrapper->offset, SEEK_SET);
 		assert(wrapper->data_size==
 				fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs));
+	}
+	pthread_mutex_unlock(&read_lock);
+	pthread_mutex_lock(&wrapper->lock);
+	if(wrapper->mesh==NULL){
 		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size);
+	}
+	pthread_mutex_unlock(&wrapper->lock);
+	if(mesh_data){
 		delete mesh_data;
 	}
 }
@@ -162,13 +171,8 @@ OctreeNode *Tile::build_octree(size_t leaf_size){
 
 void Tile::decode_to(int id, int lod){
 	assert(id>=0&&id<objects.size());
-	pthread_mutex_lock(&lock);
-	if(objects[id]->mesh==NULL){
-		retrieve_mesh(id);
-	}
-	assert(objects[id]->mesh);
-	objects[id]->mesh->advance_to(lod);
-	pthread_mutex_unlock(&lock);
+	retrieve_mesh(id);
+	objects[id]->advance_to(lod);
 }
 
 }

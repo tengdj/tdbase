@@ -150,14 +150,22 @@ public:
 		ss<<id<<".off";
 		mesh->writeMeshOff(ss.str().c_str());
 	}
+	void advance_to(int lod){
+		assert(mesh);
+		pthread_mutex_lock(&lock);
+		mesh->advance_to(lod);
+		pthread_mutex_unlock(&lock);
+	}
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle
 	void fill_voxels(enum data_type seg_tri);
 
 	void reset(){
+		pthread_mutex_lock(&lock);
 		for(Voxel *v:voxels){
 			v->reset();
 		}
+		pthread_mutex_unlock(&lock);
 	}
 
 

@@ -31,9 +31,9 @@ void geometry_computer::release_cpu(){
 	cpu_busy = false;
 	pthread_mutex_unlock(&cpu_lock);
 }
-gpu_info *geometry_computer::request_gpu(){
+gpu_info *geometry_computer::request_gpu(int min_size){
 	for(gpu_info *info:gpus){
-		if(!info->busy){
+		if(!info->busy&&info->mem_size>min_size+1){
 			pthread_mutex_lock(&info->lock);
 			assert(!info->busy);
 			info->busy = true;
@@ -90,7 +90,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 }
 
 void geometry_computer::get_distance_gpu(geometry_param &cc){
-	gpu_info *gpu = request_gpu();
+	gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024);
 	if(gpu){
 		log("GPU %d started to get distance", gpu->device_id);
 		hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
@@ -100,10 +100,12 @@ void geometry_computer::get_distance_gpu(geometry_param &cc){
 	}
 }
 
-// choose the computing resource by system
 void geometry_computer::get_distance(geometry_param &cc){
+
+	// todo: break the job into units and compute separately
+	// otherwise one thread will block GPU or cpu for too long
 	// GPU has a higher priority
-	gpu_info *gpu = request_gpu();
+	gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024);
 	if(gpu){
 		log("GPU %d started to get distance", gpu->device_id);
 		hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
@@ -123,6 +125,7 @@ void *TriInt_unit(void *params_void){
 	}
 	return NULL;
 }
+
 void geometry_computer::get_intersect(geometry_param &cc){
 	request_cpu();
 
@@ -142,7 +145,7 @@ void geometry_computer::get_intersect(geometry_param &cc){
 		params[i].intersect = cc.intersect+start;
 		pthread_create(&threads[i], NULL, TriInt_unit, (void *)&params[i]);
 	}
-	cerr<<max_thread_num<<" threads started"<<endl;
+	log("%d threads started", max_thread_num);
 	for(int i = 0; i < max_thread_num; i++){
 		void *status;
 		pthread_join(threads[i], &status);

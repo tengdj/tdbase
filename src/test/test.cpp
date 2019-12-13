@@ -15,6 +15,7 @@ int main(int argc, char **argv){
 	struct timeval t = get_cur_time();
 	int i = 10;
 	logt("i=%d",t,i);
+	hispeed::get();
 }
 
 

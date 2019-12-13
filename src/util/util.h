@@ -17,12 +17,14 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include <time.h>
 
 using namespace std;
 
 namespace hispeed{
 
 #define TENG_RANDOM_NUMBER 0315
+
 inline struct timeval get_cur_time(){
 	struct timeval t1;
 	gettimeofday(&t1, NULL);
@@ -41,6 +43,18 @@ inline double get_time_elapsed(struct timeval &t1, bool update_start = false){
 	return elapsedTime;
 }
 
+inline string time_string(){
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	struct tm *nowtm;
+	char tmbuf[64];
+	char buf[64];
+	nowtm = localtime(&tv.tv_sec);
+	strftime(tmbuf, sizeof tmbuf, "%H:%M:%S", nowtm);
+	sprintf(buf,"%s.%04ld", tmbuf, tv.tv_usec/1000);
+	return string(buf);
+}
+
 static pthread_mutex_t print_lock;
 inline void logt(const char *format, struct timeval &start, ...){
 	pthread_mutex_lock(&print_lock);
@@ -49,14 +63,13 @@ inline void logt(const char *format, struct timeval &start, ...){
 	char sprint_buf[200];
 	int n = vsprintf(sprint_buf, format, args);
 	va_end(args);
-	fprintf(stderr,"thread %ld:\t%s",syscall(__NR_gettid),sprint_buf);
+	fprintf(stderr,"%s thread %ld:\t%s", time_string().c_str(), syscall(__NR_gettid),sprint_buf);
 
 	double mstime = get_time_elapsed(start, true);
-	cerr<<" takes ";
 	if(mstime>10000){
-		cerr<<mstime/1000<<" s"<<endl;
+		fprintf(stderr," takes %f s\n", mstime/1000);
 	}else{
-		cerr<<mstime<<" ms"<<endl;
+		fprintf(stderr," takes %f ms\n", mstime);
 	}
 	fflush(stderr);
 	pthread_mutex_unlock(&print_lock);
@@ -69,7 +82,7 @@ inline void log(const char *format, ...){
 	char sprint_buf[200];
 	int n = vsprintf(sprint_buf, format, args);
 	va_end(args);
-	fprintf(stderr,"thread %ld:\t%s\n",syscall(__NR_gettid),sprint_buf);
+	fprintf(stderr,"%s thread %ld:\t%s\n", time_string().c_str(), syscall(__NR_gettid),sprint_buf);
 	fflush(stderr);
 	pthread_mutex_unlock(&print_lock);
 }

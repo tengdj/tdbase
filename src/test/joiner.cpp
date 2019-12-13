@@ -65,13 +65,19 @@ int main(int argc, char **argv){
 
 	SpatialJoin *joiner = new SpatialJoin(gc);
 	if(intersect){
-		joiner->intersect(tile1, tile2);
-	}else{
 		vector<pair<Tile *, Tile *>> tile_pairs;
-		for(int i=0;i<8;i++){
+		for(int i=0;i<num_threads;i++){
+			joiner->intersect(tile1, tile2);
 			tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
 		}
-		joiner->nearest_neighbor_batch(tile_pairs, 8);
+		//joiner->intersect_batch(tile_pairs, num_threads);
+	}else{
+		vector<pair<Tile *, Tile *>> tile_pairs;
+		for(int i=0;i<1;i++){
+			//joiner->nearest_neighbor(tile1, tile2);
+			tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
+		}
+		joiner->nearest_neighbor_batch(tile_pairs, 1);
 	}
 	logt("join", start);
 

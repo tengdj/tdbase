@@ -18,7 +18,7 @@ using namespace std;
 namespace hispeed{
 
 class Tile{
-	pthread_mutex_t lock;
+	pthread_mutex_t read_lock;
 	size_t capacity = LONG_MAX;
 	aab box;
 	std::vector<HiMesh_Wrapper *> objects;
@@ -26,7 +26,7 @@ class Tile{
 	bool load(string path);
 	bool persist(string path);
 	bool parse_raw();
-	// retrieve the mesh of the voxel group with ID id on demand
+	// retrieve the data of the mesh with ID id on demand
 	void retrieve_mesh(int id);
 public:
 	Tile(std::string path, size_t capacity);
