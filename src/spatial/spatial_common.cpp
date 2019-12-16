@@ -104,7 +104,6 @@ Polyhedron *read_polyhedron(){
 	return poly;
 }
 
-
 }
 
 

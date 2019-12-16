@@ -4,7 +4,7 @@ CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result
 NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I ./ -I /usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/local/cuda/lib64 -L/usr/lib/x86_64-linux-gnu/ \
--lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lboost_program_options -lstdc++ 
+-lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lboost_program_options -lstdc++ -lspatialindex
 CGALFLAGS	= -lCGAL -Wl,-rpath
 
 ifdef DEBUG
@@ -72,7 +72,7 @@ STORAGE_OBJS := $(patsubst %.cpp,%.o,$(STORAGE_SRCS))
 JOIN_SRCS := $(wildcard join/*.cpp)
 JOIN_OBJS := $(patsubst %.cpp,%.o,$(JOIN_SRCS))
 
-all: compress decompress partition getoff join generator
+all: compress decompress partition getoff join generator queryprocessor resque
 
 compress: test/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -89,9 +89,14 @@ partition: test/partitioner.o $(PARTITION_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(
 join: test/joiner.o $(GEOMETRY_OBJS) $(OBJS_CU) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
+queryprocessor: ispeed/queryprocessor.o ispeed/mapreduce.o
+	$(CXX) $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
-generator: test/data_generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
+resque: ispeed/resque.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+	
+generator: test/data_generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
 	
 test: test/test.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@

@@ -16,6 +16,31 @@ using namespace std;
 
 namespace hispeed{
 
+class voxel_pair{
+public:
+	Voxel *v1;
+	Voxel *v2;
+	range dist;
+	bool intersect = false;
+	voxel_pair(Voxel *v1, Voxel *v2, range dist){
+		this->v1 = v1;
+		this->v2 = v2;
+		this->dist = dist;
+	};
+	voxel_pair(Voxel *v1, Voxel *v2){
+		this->v1 = v1;
+		this->v2 = v2;
+	}
+};
+
+typedef struct candidate_info_{
+	HiMesh_Wrapper *mesh_wrapper;
+	range distance;
+	vector<voxel_pair> voxel_pairs;
+}candidate_info;
+
+typedef std::pair<HiMesh_Wrapper *, vector<candidate_info>> candidate_entry;
+
 // type of the workers, GPU or CPU
 // each worker took a batch of jobs (X*Y) from the job queue
 // and conduct the join, the result is then stored to
@@ -71,7 +96,9 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
+	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2);
 	void nearest_neighbor(Tile *tile1, Tile *tile2);
+	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
 	void intersect(Tile *tile1, Tile *tile2);
 
 	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads);

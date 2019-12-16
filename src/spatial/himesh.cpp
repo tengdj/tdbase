@@ -30,6 +30,13 @@ void HiMesh::release_buffer(){
 	}
 	triangle_buffer.clear();
 }
+Polyhedron *HiMesh::to_polyhedron(){
+	stringstream ss;
+	ss<<*this;
+	Polyhedron *poly = new Polyhedron();
+	ss>>*poly;
+	return poly;
+}
 
 /*
  *

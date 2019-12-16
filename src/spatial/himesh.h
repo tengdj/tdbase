@@ -92,6 +92,7 @@ public:
 	~HiMesh(){
 		release_buffer();
 	}
+	Polyhedron *to_polyhedron();
 	void release_buffer();
 	Skeleton *extract_skeleton();
 	vector<Point> get_skeleton_points();

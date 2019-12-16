@@ -14,30 +14,6 @@ using namespace std;
 
 namespace hispeed{
 
-class voxel_pair{
-public:
-	Voxel *v1;
-	Voxel *v2;
-	range dist;
-	bool intersect = false;
-	voxel_pair(Voxel *v1, Voxel *v2, range dist){
-		this->v1 = v1;
-		this->v2 = v2;
-		this->dist = dist;
-	};
-	voxel_pair(Voxel *v1, Voxel *v2){
-		this->v1 = v1;
-		this->v2 = v2;
-	}
-};
-
-typedef struct candidate_info_{
-	HiMesh_Wrapper *mesh_wrapper;
-	range distance;
-	vector<voxel_pair> voxel_pairs;
-}candidate_info;
-
-typedef std::pair<HiMesh_Wrapper *, vector<candidate_info>> candidate_entry;
 
 inline bool update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, range &d){
 	int voxel_pair_size = voxel_pairs.size();
@@ -112,17 +88,10 @@ void report_candidate(vector<candidate_entry> &candidates){
 
 }
 
-/*
- * the main function for getting the nearest neighbor
- *
- * */
-void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
-	struct timeval start = get_cur_time();
-
-	// filtering with MBBs to get the candidate list
+vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2){
 	vector<candidate_entry> candidates;
-	OctreeNode *tree = tile2->build_octree(400);
 	vector<pair<int, range>> candidate_ids;
+	OctreeNode *tree = tile2->build_octree(400);
 	for(int i=0;i<tile1->num_objects();i++){
 		vector<candidate_info> candidate_list;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
@@ -169,6 +138,18 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 		candidates.push_back(candidate_entry(wrapper1, candidate_list));
 		candidate_ids.clear();
 	}
+	return candidates;
+}
+
+/*
+ * the main function for getting the nearest neighbor
+ *
+ * */
+void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
+	struct timeval start = get_cur_time();
+
+	// filtering with MBBs to get the candidate list
+	vector<candidate_entry> candidates = mbb_distance(tile1, tile2);
 	logt("comparing mbbs", start);
 	report_candidate(candidates);
 
@@ -330,16 +311,7 @@ inline void update_candidate_list_intersect(vector<candidate_entry> &candidates)
 	}
 }
 
-
-/*
- * the main function for detect the intersection
- * relationship among polyhedra in the tile
- *
- * */
-void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
-	struct timeval start = get_cur_time();
-
-	// filtering with MBBs to get the candidate list
+vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 	vector<candidate_entry> candidates;
 	OctreeNode *tree = tile2->build_octree(400);
 	vector<int> candidate_ids;
@@ -378,6 +350,22 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 		// save the candidate list
 		candidates.push_back(candidate_entry(wrapper1, candidate_list));
 	}
+	delete tree;
+	candidate_ids.clear();
+
+	return candidates;
+}
+
+/*
+ * the main function for detect the intersection
+ * relationship among polyhedra in the tile
+ *
+ * */
+void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
+	struct timeval start = get_cur_time();
+
+	// filtering with MBBs to get the candidate list
+	vector<candidate_entry> candidates = mbb_intersect(tile1, tile2);
 	logt("comparing mbbs", start);
 	// evaluate the candidate list, report and remove the results confirmed
 	update_candidate_list_intersect(candidates);

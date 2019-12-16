@@ -29,7 +29,7 @@ class Tile{
 	// retrieve the data of the mesh with ID id on demand
 	void retrieve_mesh(int id);
 public:
-	Tile(std::string path, size_t capacity);
+	Tile(std::string path, size_t capacity=LONG_MAX);
 	~Tile();
 
 	void decode_to(int id, int lod);
@@ -47,10 +47,13 @@ public:
 	void set_capacity(size_t max_num_objects){
 		capacity = max_num_objects;
 	}
+	void retrieve_all(){
+		for(HiMesh_Wrapper *w:objects){
+			retrieve_mesh(w->id);
+		}
+	}
 
 	OctreeNode *build_octree(size_t num_tiles);
-
-
 };
 
 }
