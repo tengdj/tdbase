@@ -154,7 +154,8 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 	report_candidate(candidates);
 
 	// now we start to get the distances with progressive level of details
-	for(int lod=0;lod<=100;lod+=50){
+	int lod = base_lod;
+	while(true){
 		struct timeval iter_start = get_cur_time();
 		const int pair_num = get_pair_num(candidates);
 		if(pair_num==0){
@@ -166,6 +167,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 		// retrieve the necessary meshes
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		uint segment_num = 0;
+		size_t segment_pair_num = 0;
 		for(candidate_entry c:candidates){
 			// the nearest neighbor is found
 			if(c.second.size()<=1){
@@ -198,12 +200,13 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 							voxel_map[tv] = p;
 						}
 					}
+					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
-		logt("decoded %ld voxels with %d segments for lod %d",
-				start, voxel_map.size(), segment_num, lod);
-		if(segment_num==0){
+		logt("decoded %ld voxels with %d segments %ld segment pairs for lod %d",
+				start, voxel_map.size(), segment_num, segment_pair_num, lod);
+		if(segment_pair_num==0){
 			log("no segments is filled in this round");
 			voxel_map.clear();
 			continue;
@@ -275,6 +278,14 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 		delete distances;
 		voxel_map.clear();
 		logt("current iteration", iter_start);
+		if(lod==100){
+			break;
+		}else{
+			lod+=lod_gap;
+			if(lod>100){
+				lod = 100;
+			}
+		}
 	}
 }
 
@@ -372,7 +383,8 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 	logt("update candidate list", start);
 
 	// now we start to ensure the intersection with progressive level of details
-	for(int lod=0;lod<=100;lod+=50){
+	int lod = base_lod;
+	while(true){
 		struct timeval iter_start = start;
 		size_t pair_num = get_pair_num(candidates);
 		if(pair_num==0){
@@ -466,6 +478,14 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 		voxel_map.clear();
 
 		logt("current iteration", iter_start);
+		if(lod==100){
+			break;
+		}else{
+			lod+=lod_gap;
+			if(lod>100){
+				lod = 100;
+			}
+		}
 	}
 }
 

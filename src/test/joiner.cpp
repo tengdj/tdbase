@@ -24,6 +24,8 @@ int main(int argc, char **argv){
 	bool intersect = false;
 	int num_threads = hispeed::get_num_threads();
 	size_t max_objects = LONG_MAX;
+	int base_lod = 0;
+	int lod_gap = 50;
 
 	po::options_description desc("joiner usage");
 	desc.add_options()
@@ -34,6 +36,8 @@ int main(int argc, char **argv){
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
 		("max_objects,m", po::value<size_t>(&max_objects), "max number of objects in a tile")
+		("base_lod", po::value<int>(&base_lod), "the base lod for progressive decoding polyhedral")
+		("lod_gap", po::value<int>(&lod_gap), "the lod gap for progressive decoding polyhedral")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -64,13 +68,18 @@ int main(int argc, char **argv){
 	logt("load tiles", start);
 
 	SpatialJoin *joiner = new SpatialJoin(gc);
+	if(vm.count("lod_gap")){
+		joiner->set_lod_gap(lod_gap);
+	}
+	if(vm.count("base_lod")){
+		joiner->set_base_lod(base_lod);
+	}
 	if(intersect){
 		vector<pair<Tile *, Tile *>> tile_pairs;
-		for(int i=0;i<num_threads;i++){
-			joiner->intersect(tile1, tile2);
+		for(int i=0;i<1;i++){
 			tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
 		}
-		//joiner->intersect_batch(tile_pairs, num_threads);
+		joiner->intersect_batch(tile_pairs, 1);
 	}else{
 		vector<pair<Tile *, Tile *>> tile_pairs;
 		for(int i=0;i<1;i++){

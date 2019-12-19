@@ -28,7 +28,13 @@ class Tile{
 	bool parse_raw();
 	// retrieve the data of the mesh with ID id on demand
 	void retrieve_mesh(int id);
+	vector<aab_d> rtree_obj;
+	SpatialIndex::ISpatialIndex* spidx = NULL;
+	SpatialIndex::IStorageManager* rtree_storage = NULL;
 public:
+	// for building tile instead of load from file
+	Tile(){};
+	void add_raw(char *data);
 	Tile(std::string path, size_t capacity=LONG_MAX);
 	~Tile();
 
@@ -54,6 +60,8 @@ public:
 	}
 
 	OctreeNode *build_octree(size_t num_tiles);
+	SpatialIndex::ISpatialIndex *build_rtree();
+
 };
 
 }

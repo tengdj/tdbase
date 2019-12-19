@@ -1,4 +1,4 @@
-FROM nvidia/cuda
+FROM nvidia/cuda:10.2-cudnn7-runtime-ubuntu18.04
 
 MAINTAINER Dejun Teng<tengdj@gmail.com>
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/ \
@@ -12,9 +12,8 @@ RUN apt-get update && \
       netcat \
       gnupg \
       apt-utils \
-      gcc g++ cmake libboost-all-dev libgeos++-dev \
-      freeglut3-dev libcgal-dev software-properties-common \
-      wget git vim
+      gcc g++ cmake wget git vim software-properties-common \
+      libboost-all-dev libgeos++-dev libmpfr-dev freeglut3-dev libcgal-dev 
 
 # install eigen
 RUN wget http://bitbucket.org/eigen/eigen/get/3.3.7.tar.bz2 && \
@@ -23,5 +22,14 @@ RUN wget http://bitbucket.org/eigen/eigen/get/3.3.7.tar.bz2 && \
     rm -rf eigen-eigen-323c052e1731 && \
     rm 3.3.7.tar.bz2
 
-
-
+# install spatialindex
+RUN wget http://download.osgeo.org/libspatialindex/spatialindex-src-1.8.5.tar.gz && \
+    tar zxvf spatialindex-src-1.8.5.tar.gz && \
+    cd spatialindex-src-1.8.5 && \
+    ./configure --prefix=/usr/local && \
+    make -j20 && \
+    make install && \
+    cd ../ && \
+    rm -rf spatialindex*
+    
+WORKDIR /hispeed

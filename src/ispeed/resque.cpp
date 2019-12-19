@@ -34,7 +34,6 @@ using namespace std;
 
 #include "spatial/spatial.h"
 #include "iutil.h"
-#include "rtree.h"
 #include "../spatial/himesh.h"
 #include "../storage/tile.h"
 namespace po = boost::program_options;
@@ -47,9 +46,7 @@ namespace po = boost::program_options;
  * */
 struct query_temp {
 	std::string tile_id;
-	std::map<int, std::vector<struct mbb_3d *>> mbbdata;
-	std::map<int, std::vector<HiMesh *>> meshes;
-	std::map<int, std::vector<std::vector<Delaunay::Point_3>>> skeleton_points;
+	Tile *tile[2];
 };
 
 
@@ -103,22 +100,7 @@ bool extract_params_resque(int argc, char **argv, struct query_op &vars){
  *
  * */
 
-/* Create an R-tree index on a given set of polygons */
-bool build_index_geoms(std::vector<struct mbb_3d *> & geom_mbbs, SpatialIndex::ISpatialIndex* & spidx,
-		SpatialIndex::IStorageManager* & storage) {
-	// build spatial index on tile boundaries
-	SpatialIndex::id_type  indexIdentifier;
-	CustomDataStream stream(&geom_mbbs);
-	storage = SpatialIndex::StorageManager::createNewMemoryStorageManager();
-	spidx   = SpatialIndex::RTree::createAndBulkLoadNewRTree(SpatialIndex::RTree::BLM_STR, stream, *storage,
-			FillFactor,
-			IndexCapacity,
-			LeafCapacity,
-			3,
-			SpatialIndex::RTree::RV_RSTAR, indexIdentifier);
-	// Error checking
-	return spidx->isIndexValid();
-}
+
 
 
 /*
@@ -200,71 +182,64 @@ bool intersects(HiMesh *P1, HiMesh *P2) {
 // performs spatial join on the current tile (bucket)
 int join_bucket_intersect(struct query_op &stop, struct query_temp &sttemp) {
 	struct timeval start = get_cur_time();
-	SpatialIndex::IStorageManager *storage = NULL;
-	SpatialIndex::ISpatialIndex *spidx = NULL;
-	/* Indicates where original data is mapped to */
-	int idx1 = 1;
-	int idx2 = 2;
 
 	int pairs = 0; // number of satisfied results
+	SpatialIndex::ISpatialIndex *spidx = sttemp.tile[1]->build_rtree();
+	logt("building index on set 2", start);
 
-	double low[3], high[3];  // Temporary value placeholders for MBB
-
-	try {
-		/* Handling for special nearest neighbor query */
-		// build the actual spatial index for input polygons from idx2
-		if (! build_index_geoms(sttemp.mbbdata[idx2], spidx, storage)) {
-			std::cerr << "Building index on geometries from set 2 has failed" << std::endl;
-			return -1;
+	uint pair_num = 0;
+	double low[3], high[3];
+	for (int i = 0; i < sttemp.tile[0]->num_objects(); i++) {
+		aab b = sttemp.tile[0]->get_mbb(i);
+		for(int j=0;j<3;j++){
+			low[j] = b.min[j];
+			high[j] = b.max[j];
 		}
-		logt("building index on set 2 for tile %s", start, sttemp.tile_id.c_str());
-
-		std::vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
-		for (int i = 0; i < geom_mbb1.size(); i++) {
-			/* Extract minimum bounding box */
-			struct mbb_3d * env1 = geom_mbb1[i];
-			low[0] = env1->low[0];
-			low[1] = env1->low[1];
-			low[2] = env1->low[2];
-			high[0] = env1->high[0];
-			high[1] = env1->high[1];
-			high[2] = env1->high[2];
-
-			/* Regular handling */
-			SpatialIndex::Region r(low, high, 3);
-			MyVisitor vis;
-			vis.matches.clear();
-			/* R-tree intersection check */
-			spidx->intersectsWithQuery(r, vis);
-			if(vis.matches.size()==0){
-				continue;
-			}
-
-			HiMesh *geom1 = sttemp.meshes[1][i];
-			geom1->advance_to(stop.decomp_lod);
-			// checking true intersection
-			for (uint32_t j = 0; j < vis.matches.size(); j++){
-				HiMesh *geom2 = sttemp.meshes[2][vis.matches[j]];
-				geom2->advance_to(stop.decomp_lod);
-				struct mbb_3d * env2 = sttemp.mbbdata[2][vis.matches[j]];
-				switch (stop.join_predicate){
-					case ST_INTERSECTS:
-						pairs += intersects(geom1, geom2);
-						break;
-					default:
-						std::cerr << "ERROR: unknown spatial predicate " << std::endl;
-						break;
-				}
-			}
+		/* Regular handling */
+		SpatialIndex::Region r(low, high, 3);
+		MyVisitor vis;
+		vis.matches.clear();
+		/* R-tree intersection check */
+		spidx->intersectsWithQuery(r, vis);
+		if(vis.matches.size()==0){
+			continue;
 		}
-	} catch (Tools::Exception& e) {
-		std::cerr << "******ERROR******" << std::endl;
-		std::cerr << e.what() << std::endl;
-		return -1;
-	} // end of catch
 
-	delete spidx;
-	delete storage;
+		HiMesh *geom1 = sttemp.tile[0]->get_mesh_wrapper(i)->mesh;
+		geom1->advance_to(stop.decomp_lod);
+		// checking true intersection
+		for (uint32_t j = 0; j < vis.matches.size(); j++){
+			HiMesh *geom2 = sttemp.tile[1]->get_mesh_wrapper(vis.matches[j])->mesh;
+			geom2->advance_to(stop.decomp_lod);
+		}
+		pair_num += vis.matches.size();
+	}
+	logt("decoding data for %u pairs", start, pair_num);
+	for (int i = 0; i < sttemp.tile[0]->num_objects(); i++) {
+		aab b = sttemp.tile[0]->get_mbb(i);
+		for(int j=0;j<3;j++){
+			low[j] = b.min[j];
+			high[j] = b.max[j];
+		}
+		/* Regular handling */
+		SpatialIndex::Region r(low, high, 3);
+
+		MyVisitor vis;
+		vis.matches.clear();
+		/* R-tree intersection check */
+		spidx->intersectsWithQuery(r, vis);
+		if(vis.matches.size()==0){
+			continue;
+		}
+
+		HiMesh *geom1 = sttemp.tile[0]->get_mesh_wrapper(i)->mesh;
+		// checking true intersection
+		for (uint32_t j = 0; j < vis.matches.size(); j++){
+			HiMesh *geom2 = sttemp.tile[1]->get_mesh_wrapper(vis.matches[j])->mesh;
+			pairs += intersects(geom1, geom2);
+		}
+	}
+	logt("intersect", start);
 	return pairs ;
 }
 
@@ -283,40 +258,39 @@ int join_bucket_nn_voronoi(struct query_op &stop, struct query_temp &sttemp) {
 	int idx2 = 2;
 	int nuclei_id = 0;
 	double low[3], high[3];  // Temporary value placeholders for MBB
-
-	try {
-		// extract the geometry from dataset2 (compressed blood vessels) and extract skeleton
-		Skeleton *skeleton = NULL;
-
-		std::vector<Delaunay::Point_3> P;
-		vector<struct mbb_3d *> geom_mbb2 = sttemp.mbbdata[idx2];
-		for (int i = 0; i < geom_mbb2.size(); i++) {
-			P.insert(P.begin(), sttemp.skeleton_points[2][i].begin(), sttemp.skeleton_points[2][i].end());
-		}
-		// building their Delaunay triangulation (Voronoi).
-		Delaunay tree(P.begin(), P.end());
-
-		// For each nuclei, find its nearest blood vessel by checking voronoi
-		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
-
-		for (int i = 0; i < geom_mbb1.size(); i++) {
-			struct mbb_3d * env1 = geom_mbb1[i];
-			Delaunay::Point_3 nuclei_centroid((env1->low[0]+env1->high[0])*0.5,
-								  (env1->low[1]+env1->high[1])*0.5,
-								  (env1->low[2]+env1->high[2])*0.5);
-			Delaunay::Point_3 nnp = tree.nearest_vertex(nuclei_centroid)->point();
-			double squared_dist = CGAL::to_double(CGAL::squared_distance(nnp, nuclei_centroid));
-			double distance = sqrt(squared_dist);
-			cout << nuclei_id << TAB << nuclei_centroid.x() << TAB << nuclei_centroid.y()
-					<< TAB << nuclei_centroid.z() << TAB << distance << "\n";
-			nuclei_id++;
-		}
-
-	} catch (Tools::Exception& e) {
-		std::cerr << "******ERROR******" << std::endl;
-		cerr << e.what() << std::endl;
-		return -1;
-	} // end of catch
+//
+//	try {
+//		// extract the geometry from dataset2 (compressed blood vessels) and extract skeleton
+//		Skeleton *skeleton = NULL;
+//
+//		std::vector<Delaunay::Point_3> P;
+//		vector<struct mbb_3d *> geom_mbb2 = sttemp.mbbdata[idx2];
+//		for (int i = 0; i < geom_mbb2.size(); i++) {
+//			P.insert(P.begin(), sttemp.skeleton_points[2][i].begin(), sttemp.skeleton_points[2][i].end());
+//		}
+//		// building their Delaunay triangulation (Voronoi).
+//		Delaunay tree(P.begin(), P.end());
+//
+//		// For each nuclei, find its nearest blood vessel by checking voronoi
+//		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
+//
+//		for (int i = 0; i < geom_mbb1.size(); i++) {
+//			struct mbb_3d * env1 = geom_mbb1[i];
+//			Delaunay::Point_3 nuclei_centroid((env1->low[0]+env1->high[0])*0.5,
+//								  (env1->low[1]+env1->high[1])*0.5,
+//								  (env1->low[2]+env1->high[2])*0.5);
+//			Delaunay::Point_3 nnp = tree.nearest_vertex(nuclei_centroid)->point();
+//			double squared_dist = CGAL::to_double(CGAL::squared_distance(nnp, nuclei_centroid));
+//			double distance = sqrt(squared_dist);
+//			cout << nuclei_id << TAB << nuclei_centroid.x() << TAB << nuclei_centroid.y()
+//					<< TAB << nuclei_centroid.z() << TAB << distance << "\n";
+//			nuclei_id++;
+//		}
+//	} catch (Tools::Exception& e) {
+//		std::cerr << "******ERROR******" << std::endl;
+//		cerr << e.what() << std::endl;
+//		return -1;
+//	} // end of catch
 
 	return nuclei_id ;
 }
@@ -334,137 +308,122 @@ int join_bucket_nn_rtree(struct query_op &stop, struct query_temp &sttemp) {
 	double low[3], high[3];  // Temporary value placeholders for MBB
 	int kneighs = 2; // kNN
 	struct timeval start = get_cur_time();
-
-	try {
-		/* Handling for special nearest neighbor query */
-		SpatialIndex::IStorageManager *storage = NULL;
-		SpatialIndex::ISpatialIndex *spidx = NULL;
-		if (! build_index_geoms(sttemp.mbbdata[idx2], spidx, storage)) {
-			return -1;
-		}
-		logt("build rtree", start);
-		unordered_set<int> unique_nn_id2; // the unique set of nearest blood vessels' offset
-		unordered_map<int, vector<int>> nn_id2; // mapping between the unique offset and length
-		vector<Point> nuclei_pts;
-
-		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
-		for (int i = 0; i < geom_mbb1.size(); i++) {
-			struct mbb_3d * env1 = geom_mbb1[i];
-			low[0] = env1->low[0];
-			low[1] = env1->low[1];
-			low[2] = env1->low[2];
-			high[0] = env1->high[0];
-			high[1] = env1->high[1];
-			high[2] = env1->high[2];
-
-			// Temporary value placeholders for MBB
-			double np[3];
-			MyVisitor vis;
-			/* R-tree intersection check */
-
-			np[0] = (low[0]+high[0])*0.5;
-			np[1] = (low[1]+high[1])*0.5;
-			np[2] = (low[2]+high[2])*0.5;
-			SpatialIndex::Point nuclei_centroid(SpatialIndex::Point(np, 3));
-			vis.matches.clear();
-			/* Find kNN objects*/
-			spidx->nearestNeighborQuery(kneighs, nuclei_centroid, vis);
-			for (uint32_t j = 0; j < vis.matches.size(); j++) {
-				// push the offset and length of its nearest blood vessels
-				//long offset = sttemp.offsetdata[idx2][vis.matches[j]], length = sttemp.lengthdata[idx2][vis.matches[j]];
-				nn_id2[i].push_back(vis.matches[j]);
-				// record the unique blood vessels' info
-				unique_nn_id2.insert(vis.matches[j]);
-			}
-			nuclei_pts.push_back(Point(np[0], np[1], np[2]));
-		}
-		if(unique_nn_id2.size()==0){
-			return 0;
-		}
-		logt("checking rtree", start);
-
-		/* for each unique nearest blood vessel, construct the AABB tree*/
-		unordered_map<int, Sc_Tree*> id2_aabbtree; // map between unique id of blood vessel and its AABB tree
-		// for each mentioned object in data set 2, build an AABB tree
-		Sc_Tree *tree = NULL;
-		Polyhedron *geom2[unique_nn_id2.size()];
-		int index = 0;
-		for(auto it = unique_nn_id2.begin(); it != unique_nn_id2.end(); ++it, ++index ){
-			HiMesh *mesh = sttemp.meshes[2][*it];
-			mesh->completeOperation();
-			geom2[index] = mesh->to_polyhedron();
-			tree = new Sc_Tree(faces(*geom2[index]).first, faces(*geom2[index]).second, *geom2[index]);
-			tree->accelerate_distance_queries();
-			id2_aabbtree[*it] = tree;
-		}
-		logt("build aabb tree", start);
-		/* for each nuclei, calculate distance by searching the AABB tree of its k nearest blood vessels*/
-		for (int j = 0; j < nuclei_pts.size(); j++) {
-			vector<int> ids = nn_id2[j];
-			double min_distance = DBL_MAX;
-			for(int m :ids){
-				Sc_Tree *aabbtree = id2_aabbtree[m];
-				assert(aabbtree!=NULL && "should never happen");
-				cout<<j<<" "<<m<<" "<<nuclei_pts[j]<<endl;
-				Sc_FT sqd = aabbtree->squared_distance(nuclei_pts[j]);
-				double distance = (double)CGAL::to_double(sqd);
-				cout<<distance<<endl;
-				if(min_distance>distance){
-					min_distance = distance;
-				}
-			}
-			min_distance = sqrt(min_distance);
-			cout <<  j << TAB << nuclei_pts[j].x() << TAB << nuclei_pts[j].y()
-				 << TAB << nuclei_pts[j].z() << TAB << min_distance << endl;
-			pairs++;
-		}
-		logt("do final computation", start);
-
-		delete spidx;
-		delete storage;
-
-		// release aabb tree of blood vessels
-		for (auto it = id2_aabbtree.begin(); it != id2_aabbtree.end(); ++it ) {
-			delete it->second;
-		}
-		id2_aabbtree.clear();
-		for(Polyhedron *poly:geom2){
-			delete poly;
-			poly = NULL;
-		}
-
-	} catch (Tools::Exception& e) {
-		std::cerr << "******ERROR******" << std::endl;
-		cerr << e.what() << std::endl;
-		return -1;
-	} // end of catch
+//
+//	try {
+//		/* Handling for special nearest neighbor query */
+//		SpatialIndex::IStorageManager *storage = NULL;
+//		SpatialIndex::ISpatialIndex *spidx = NULL;
+//		if (! build_index_geoms(sttemp.mbbdata[idx2], spidx, storage)) {
+//			return -1;
+//		}
+//		logt("build rtree", start);
+//		unordered_set<int> unique_nn_id2; // the unique set of nearest blood vessels' offset
+//		unordered_map<int, vector<int>> nn_id2; // mapping between the unique offset and length
+//		vector<Point> nuclei_pts;
+//
+//		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
+//		for (int i = 0; i < geom_mbb1.size(); i++) {
+//			struct mbb_3d * env1 = geom_mbb1[i];
+//			low[0] = env1->low[0];
+//			low[1] = env1->low[1];
+//			low[2] = env1->low[2];
+//			high[0] = env1->high[0];
+//			high[1] = env1->high[1];
+//			high[2] = env1->high[2];
+//
+//			// Temporary value placeholders for MBB
+//			double np[3];
+//			MyVisitor vis;
+//			/* R-tree intersection check */
+//
+//			np[0] = (low[0]+high[0])*0.5;
+//			np[1] = (low[1]+high[1])*0.5;
+//			np[2] = (low[2]+high[2])*0.5;
+//			SpatialIndex::Point nuclei_centroid(SpatialIndex::Point(np, 3));
+//			vis.matches.clear();
+//			/* Find kNN objects*/
+//			spidx->nearestNeighborQuery(kneighs, nuclei_centroid, vis);
+//			for (uint32_t j = 0; j < vis.matches.size(); j++) {
+//				// push the offset and length of its nearest blood vessels
+//				//long offset = sttemp.offsetdata[idx2][vis.matches[j]], length = sttemp.lengthdata[idx2][vis.matches[j]];
+//				nn_id2[i].push_back(vis.matches[j]);
+//				// record the unique blood vessels' info
+//				unique_nn_id2.insert(vis.matches[j]);
+//			}
+//			nuclei_pts.push_back(Point(np[0], np[1], np[2]));
+//		}
+//		if(unique_nn_id2.size()==0){
+//			return 0;
+//		}
+//		logt("checking rtree", start);
+//
+//		/* for each unique nearest blood vessel, construct the AABB tree*/
+//		unordered_map<int, Sc_Tree*> id2_aabbtree; // map between unique id of blood vessel and its AABB tree
+//		// for each mentioned object in data set 2, build an AABB tree
+//		Sc_Tree *tree = NULL;
+//		Polyhedron *geom2[unique_nn_id2.size()];
+//		int index = 0;
+//		for(auto it = unique_nn_id2.begin(); it != unique_nn_id2.end(); ++it, ++index ){
+//			HiMesh *mesh = sttemp.meshes[2][*it];
+//			mesh->advance_to(100);
+//			geom2[index] = mesh->to_polyhedron();
+//		}
+//		logt("decoding meshes", start);
+//		index = 0;
+//		for(auto it = unique_nn_id2.begin(); it != unique_nn_id2.end(); ++it, ++index ){
+//			tree = new Sc_Tree(faces(*geom2[index]).first, faces(*geom2[index]).second, *geom2[index]);
+//			tree->accelerate_distance_queries();
+//			id2_aabbtree[*it] = tree;
+//		}
+//		logt("build aabb tree", start);
+//		/* for each nuclei, calculate distance by searching the AABB tree of its k nearest blood vessels*/
+//		for (int j = 0; j < nuclei_pts.size(); j++) {
+//			vector<int> ids = nn_id2[j];
+//			double min_distance = DBL_MAX;
+//			for(int m :ids){
+//				Sc_Tree *aabbtree = id2_aabbtree[m];
+//				assert(aabbtree!=NULL && "should never happen");
+//				Sc_FT sqd = aabbtree->squared_distance(nuclei_pts[j]);
+//				double distance = (double)CGAL::to_double(sqd);
+//				if(min_distance>distance){
+//					min_distance = distance;
+//				}
+//			}
+//			min_distance = sqrt(min_distance);
+//			pairs++;
+//		}
+//		logt("do final computation", start);
+//
+//		delete spidx;
+//		delete storage;
+//
+//		// release aabb tree of blood vessels
+//		for (auto it = id2_aabbtree.begin(); it != id2_aabbtree.end(); ++it ) {
+//			delete it->second;
+//		}
+//		id2_aabbtree.clear();
+//		for(Polyhedron *poly:geom2){
+//			delete poly;
+//			poly = NULL;
+//		}
+//
+//	} catch (Tools::Exception& e) {
+//		std::cerr << "******ERROR******" << std::endl;
+//		cerr << e.what() << std::endl;
+//		return -1;
+//	} // end of catch
 
 	return pairs ;
 }
 
 /* Release objects in memory (for the current tile/bucket) */
 void release_mem(struct query_temp &sttemp) {
-	for (int j = 0; j < 2; j++ ) {
-		int delete_index = j + 1; // index are adjusted to start from 1
-		int len = sttemp.mbbdata[delete_index].size();
-		for(struct mbb_3d *a:sttemp.mbbdata[delete_index]){
-			delete a;
-		}
-		sttemp.mbbdata[delete_index].clear();
-		for(HiMesh *m:sttemp.meshes[delete_index]){
-			delete m;
-		}
-		sttemp.meshes[delete_index].clear();
-  	}
+	delete sttemp.tile[0];
+	delete sttemp.tile[1];
 }
 
 /*dispatch joins to target module*/
 int join_bucket(struct query_op &stop, struct query_temp &sttemp){
-
-	//return if either one dataset is empty
- 	if (sttemp.mbbdata[1].size() <= 0 || sttemp.mbbdata[1].size() <= 0) {
-		return 0;
-	}
 	// Process the current tile in memory
 	int pairs = 0;
 	switch(stop.join_predicate){
@@ -477,13 +436,10 @@ int join_bucket(struct query_op &stop, struct query_temp &sttemp){
 	default:
 		pairs = join_bucket_intersect(stop, sttemp);
 	}
-	std::cerr <<"Special T[" << sttemp.tile_id << "] |" << sttemp.mbbdata[1].size()
-			  << "|x|" << sttemp.mbbdata[2].size()
-		      << "|=|" << pairs << "|" << std::endl;
 	return pairs;
 }
 
-/* main body of the engine */
+
 int main(int argc, char** argv)
 {
 	struct timeval start = get_cur_time();
@@ -491,122 +447,99 @@ int main(int argc, char** argv)
 	if(!extract_params_resque(argc, argv, stop)){
 		return 0;
 	}
-	Tile *tile1 = new Tile("nuclei_10k.dt");
-	tile1->retrieve_all();
-	logt("retrieve data", start);
-	query_temp sttemp;
-	vector<struct mbb_3d *> mbbs;
-	std::vector<HiMesh *> meshes;
-	std::vector<std::vector<Delaunay::Point_3>> sps;
-	for(int i=0;i<tile1->num_objects();i++){
-		aab b = tile1->get_mbb(i);
-		struct mbb_3d *box = new struct mbb_3d();
-		for(int i=0;i<3;i++){
-			box->low[i] = b.min[i];
-			box->high[i] = b.max[i];
-		}
-		mbbs.push_back(box);
-		meshes.push_back(tile1->get_mesh_wrapper(i)->mesh);
-		std::vector<Delaunay::Point_3> sp;
-		for(Voxel *v:tile1->get_mesh_wrapper(i)->voxels){
-			sp.push_back(Delaunay::Point_3(v->core[0], v->core[1], v->core[2]));
-		}
-		sps.push_back(sp);
-	}
-	sttemp.tile_id = "tile";
-	sttemp.mbbdata[1] = mbbs;
-	sttemp.mbbdata[2] = mbbs;
-	sttemp.meshes[1] = meshes;
-	sttemp.meshes[2] = meshes;
-	sttemp.skeleton_points[1] = sps;
-	sttemp.skeleton_points[2] = sps;
 
+	Tile *tiles[2];
+	tiles[0] = new Tile("nuclei_10k.dt");
+	tiles[1] = new Tile("nuclei_10k.dt");
+	tiles[0]->retrieve_all();
+	tiles[1]->retrieve_all();
 	logt("organize data",start);
+	query_temp sttemp;
+	sttemp.tile[0] = tiles[0];
+	sttemp.tile[1] = tiles[1];
 
 	join_bucket(stop, sttemp);
 	logt("do join",start);
 
-	delete tile1;
+	delete tiles[0];
+	delete tiles[1];
 	return 0;
 }
 
 /* main body of the engine */
 int main1(int argc, char** argv)
 {
-
-	struct query_op stop;
-	if(extract_params_resque(argc, argv, stop)){
-		return 0;;
-	}
-
-	// Processing variables
-	std::string input_line; // Temporary line
-	std::vector<std::string> fields; // Temporary fields
-	int sid = 0; // Join index ID for the current object
-	std::string tile_id = ""; // The current tile_id
-	std::string previd = ""; // the tile_id of the previously read object
-	int tile_counter = 0; // number of processed tiles
-	query_temp sttemp;
-
-	long offset = 0, length = 0;
-	struct mbb_3d *mbb_ptr = NULL;
-
-	// Read line by line inputs
-	while (std::cin && getline(std::cin, input_line) && !std::cin.eof()) {
-
-		tokenize(input_line, fields, TAB, true);
-		if(fields.size()!=11){//skip the corrupted lines
-			std::cerr<<"malformed: "<<fields.size()<<endl;
-						std::cerr<<input_line;
-			continue;
-		}
-		/* Parsing fields from input */
-		tile_id = fields[0];
-		// dataset id
-		sid = atoi(fields[2].c_str());
-		try {
-			// Parsing MBB
-			mbb_ptr = new struct mbb_3d();
-			for (int k = 0; k < 3; k++) {
-				mbb_ptr->low[k] = std::atof(fields[3 + k].c_str());
-			}
-			for (int k = 0; k < 3; k++) {
-				mbb_ptr->high[k] = std::atof(fields[6 + k].c_str());
-			}
-		} catch (...) {
-			std::cerr << "******MBB Parsing Error******" << std::endl;
-			return -1;
-		}
-
-		try {
-			offset = atol(fields[9].c_str());
-			length = atol(fields[10].c_str());
-		}catch (...) {
-			std::cerr << "******Offset and Length Parsing Error******" << std::endl;
-			return -1;
-		}
-
-		/* Process the current tile (bucket) when finishing reading all objects belonging
-		   to the current tile */
-		if (previd.compare(tile_id) != 0 && previd.size() > 0 ) {
-			sttemp.tile_id = previd;
-			join_bucket(stop, sttemp);
-			release_mem(sttemp);
-			tile_counter++;
-		}
-
-		// populate the bucket for join
-		sttemp.mbbdata[sid].push_back(mbb_ptr);
-
-		/* Update the field */
-		previd = tile_id;
-		fields.clear();
-	}
-	// Process the last tile (what remains in memory)
-	sttemp.tile_id = tile_id;
-	join_bucket(stop, sttemp);
-	release_mem(sttemp);
-	tile_counter++;
+//	struct query_op stop;
+//	if(extract_params_resque(argc, argv, stop)){
+//		return 0;;
+//	}
+//
+//	// Processing variables
+//	std::string input_line; // Temporary line
+//	std::vector<std::string> fields; // Temporary fields
+//	int sid = 0; // Join index ID for the current object
+//	std::string tile_id = ""; // The current tile_id
+//	std::string previd = ""; // the tile_id of the previously read object
+//	int tile_counter = 0; // number of processed tiles
+//	query_temp sttemp;
+//
+//	long offset = 0, length = 0;
+//	struct mbb_3d *mbb_ptr = NULL;
+//
+//	// Read line by line inputs
+//	while (std::cin && getline(std::cin, input_line) && !std::cin.eof()) {
+//
+//		tokenize(input_line, fields, TAB, true);
+//		if(fields.size()!=11){//skip the corrupted lines
+//			std::cerr<<"malformed: "<<fields.size()<<endl;
+//						std::cerr<<input_line;
+//			continue;
+//		}
+//		/* Parsing fields from input */
+//		tile_id = fields[0];
+//		// dataset id
+//		sid = atoi(fields[2].c_str());
+//		try {
+//			// Parsing MBB
+//			mbb_ptr = new struct mbb_3d();
+//			for (int k = 0; k < 3; k++) {
+//				mbb_ptr->low[k] = std::atof(fields[3 + k].c_str());
+//			}
+//			for (int k = 0; k < 3; k++) {
+//				mbb_ptr->high[k] = std::atof(fields[6 + k].c_str());
+//			}
+//		} catch (...) {
+//			std::cerr << "******MBB Parsing Error******" << std::endl;
+//			return -1;
+//		}
+//
+//		try {
+//			offset = atol(fields[9].c_str());
+//			length = atol(fields[10].c_str());
+//		}catch (...) {
+//			std::cerr << "******Offset and Length Parsing Error******" << std::endl;
+//			return -1;
+//		}
+//
+//		/* Process the current tile (bucket) when finishing reading all objects belonging
+//		   to the current tile */
+//		if (previd.compare(tile_id) != 0 && previd.size() > 0 ) {
+//			join_bucket(stop, sttemp);
+//			release_mem(sttemp);
+//			tile_counter++;
+//		}
+//
+//		// populate the bucket for join
+//		sttemp.mbbdata[sid].push_back(mbb_ptr);
+//
+//		/* Update the field */
+//		previd = tile_id;
+//		fields.clear();
+//	}
+//	// Process the last tile (what remains in memory)
+//	join_bucket(stop, sttemp);
+//	release_mem(sttemp);
+//	tile_counter++;
 
 	return 0;
 }

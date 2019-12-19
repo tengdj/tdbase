@@ -12,9 +12,6 @@ const std::string RESQUE = "resque_3d";
 
 #define SPACE " "
 #define SLASH "/"
-#define FillFactor 0.9
-#define IndexCapacity 10
-#define LeafCapacity 50
 
 enum Jointype{
 	ST_ERROR = 0,

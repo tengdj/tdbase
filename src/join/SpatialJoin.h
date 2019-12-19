@@ -77,9 +77,17 @@ const static long VOXEL_BUFFER_SIZE = 1<<30;
 class SpatialJoin{
 
 	geometry_computer *computer = NULL;
-
+	int base_lod = 0;
+	int lod_gap = 50;
 public:
-
+	void set_base_lod(int v){
+		assert(v>=0&&v<=100);
+		base_lod = v;
+	}
+	void set_lod_gap(int v){
+		assert(v>0&&v<=100);
+		lod_gap = v;
+	}
 	SpatialJoin(geometry_computer *c){
 		assert(c);
 		computer = c;

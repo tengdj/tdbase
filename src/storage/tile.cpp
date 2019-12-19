@@ -54,6 +54,11 @@ Tile::~Tile(){
 		fclose(dt_fs);
 		dt_fs = NULL;
 	}
+	if(spidx){
+		delete spidx;
+		delete rtree_storage;
+		rtree_obj.clear();
+	}
 }
 
 // persist the meta data for current tile as a cache
@@ -168,11 +173,45 @@ OctreeNode *Tile::build_octree(size_t leaf_size){
 	}
 	return octree;
 }
+SpatialIndex::ISpatialIndex *Tile::build_rtree(){
+	if(spidx==NULL){
+		for(HiMesh_Wrapper *w:objects){
+			rtree_obj.push_back(aab_d(w->box.box));
+		}
+		assert(hispeed::build_index_geoms(rtree_obj, spidx, rtree_storage));
+	}
+	return spidx;
+}
 
 void Tile::decode_to(int id, int lod){
 	assert(id>=0&&id<objects.size());
 	retrieve_mesh(id);
 	objects[id]->advance_to(lod);
+}
+
+void Tile::add_raw(char *data){
+	size_t offset = 0;
+	size_t size_tmp = 0;
+	memcpy((char *)&size_tmp, data+offset, sizeof(size_t));
+	offset += sizeof(size_t);
+	HiMesh *mesh = new HiMesh(data+offset, size_tmp);
+	offset += size_tmp;
+	memcpy((char *)&size_tmp, data+offset, sizeof(size_t));
+	offset += sizeof(size_t);
+	HiMesh_Wrapper *hw = new HiMesh_Wrapper();
+	for(size_t i=0;i<size_tmp;i++){
+		Voxel *v = new Voxel();
+		memcpy((char *)v->box.min, data+offset, 3*sizeof(float));
+		offset += 3*sizeof(float);
+		memcpy((char *)v->box.max, data+offset, 3*sizeof(float));
+		offset += 3*sizeof(float);
+		memcpy((char *)v->core, data+offset, 3*sizeof(float));
+		offset += 3*sizeof(float);
+		hw->voxels.push_back(v);
+		hw->box.box.update(v->box);
+	}
+	this->box.update(hw->box.box);
+
 }
 
 }
