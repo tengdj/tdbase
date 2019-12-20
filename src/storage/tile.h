@@ -53,6 +53,7 @@ public:
 	void set_capacity(size_t max_num_objects){
 		capacity = max_num_objects;
 	}
+
 	void retrieve_all(){
 		for(HiMesh_Wrapper *w:objects){
 			retrieve_mesh(w->id);

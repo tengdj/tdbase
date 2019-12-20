@@ -188,55 +188,32 @@ int join_bucket_intersect(struct query_op &stop, struct query_temp &sttemp) {
 	logt("building index on set 2", start);
 
 	uint pair_num = 0;
-	double low[3], high[3];
 	for (int i = 0; i < sttemp.tile[0]->num_objects(); i++) {
-		aab b = sttemp.tile[0]->get_mbb(i);
-		for(int j=0;j<3;j++){
-			low[j] = b.min[j];
-			high[j] = b.max[j];
-		}
-		/* Regular handling */
-		SpatialIndex::Region r(low, high, 3);
+		aab_d b(sttemp.tile[0]->get_mbb(i));
+		SpatialIndex::Region r(b.low, b.high, 3);
 		MyVisitor vis;
-		vis.matches.clear();
-		/* R-tree intersection check */
 		spidx->intersectsWithQuery(r, vis);
 		if(vis.matches.size()==0){
 			continue;
 		}
-
-		HiMesh *geom1 = sttemp.tile[0]->get_mesh_wrapper(i)->mesh;
-		geom1->advance_to(stop.decomp_lod);
-		// checking true intersection
+		sttemp.tile[0]->decode_to(i,stop.decomp_lod);
 		for (uint32_t j = 0; j < vis.matches.size(); j++){
-			HiMesh *geom2 = sttemp.tile[1]->get_mesh_wrapper(vis.matches[j])->mesh;
-			geom2->advance_to(stop.decomp_lod);
+			sttemp.tile[1]->decode_to(vis.matches[j],stop.decomp_lod);
 		}
 		pair_num += vis.matches.size();
 	}
 	logt("decoding data for %u pairs", start, pair_num);
 	for (int i = 0; i < sttemp.tile[0]->num_objects(); i++) {
-		aab b = sttemp.tile[0]->get_mbb(i);
-		for(int j=0;j<3;j++){
-			low[j] = b.min[j];
-			high[j] = b.max[j];
-		}
-		/* Regular handling */
-		SpatialIndex::Region r(low, high, 3);
-
+		aab_d b(sttemp.tile[0]->get_mbb(i));
+		SpatialIndex::Region r(b.low, b.high, 3);
 		MyVisitor vis;
-		vis.matches.clear();
-		/* R-tree intersection check */
 		spidx->intersectsWithQuery(r, vis);
 		if(vis.matches.size()==0){
 			continue;
 		}
-
-		HiMesh *geom1 = sttemp.tile[0]->get_mesh_wrapper(i)->mesh;
-		// checking true intersection
 		for (uint32_t j = 0; j < vis.matches.size(); j++){
-			HiMesh *geom2 = sttemp.tile[1]->get_mesh_wrapper(vis.matches[j])->mesh;
-			pairs += intersects(geom1, geom2);
+			pairs += intersects(sttemp.tile[0]->get_mesh_wrapper(i)->mesh,
+					sttemp.tile[1]->get_mesh_wrapper(vis.matches[j])->mesh);
 		}
 	}
 	logt("intersect", start);

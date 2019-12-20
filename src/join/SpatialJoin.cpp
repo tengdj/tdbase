@@ -384,6 +384,7 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 
 	// now we start to ensure the intersection with progressive level of details
 	int lod = base_lod;
+	size_t triangle_pair_num = 0;
 	while(true){
 		struct timeval iter_start = start;
 		size_t pair_num = get_pair_num(candidates);
@@ -420,10 +421,11 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 							voxel_map[tv] = p;
 						}
 					}
+					triangle_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
-		logt("decoded %ld voxels with %ld triangles for lod %d", start, voxel_map.size(), triangle_num, lod);
+		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d", start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
 
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[9*triangle_num];
