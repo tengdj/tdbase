@@ -82,9 +82,6 @@ enum data_type{
  *
  * */
 class HiMesh:public MyMesh{
-	// the buffer for filling segments/triangles to voxels
-	map<int, float *> segment_buffer;
-	map<int, float *> triangle_buffer;
 	size_t fill_segments(float *segments);
 	size_t fill_triangles(float *triangles);
 public:
@@ -93,7 +90,6 @@ public:
 		release_buffer();
 	}
 	Polyhedron *to_polyhedron();
-	void release_buffer();
 	Skeleton *extract_skeleton();
 	vector<Point> get_skeleton_points();
 	vector<Voxel *> generate_voxels(int voxel_size);

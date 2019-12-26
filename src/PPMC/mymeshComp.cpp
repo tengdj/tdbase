@@ -130,24 +130,15 @@ void MyMesh::decimationStep()
 
     if (i_nbRemovedVertices == 0)
     {
-        if (b_allowConvexity)
-        {
-            for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
-            {
-                if(isRemovable(vit))
-                    printf("Still a vertex that can be removed !\n");
-            }
-            operation = Idle;
-            b_jobCompleted = true;
-            i_curDecimationId--;
-            writeCompressedData();
-        }
-        else
-        {
-        	b_allowConvexity = true;
-            i_levelNotConvexId = i_curDecimationId;
-            beginDecimationConquest();
-        }
+		for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
+		{
+			if(isRemovable(vit))
+				printf("Still a vertex that can be removed !\n");
+		}
+		operation = Idle;
+		b_jobCompleted = true;
+		i_curDecimationId--;
+		writeCompressedData();
     }
     else
     {

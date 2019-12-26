@@ -51,7 +51,6 @@
 
 namespace hispeed{
 
-
 // return the distance of two segments
 __device__
 inline float SegDist_kernel(const float *S, const float *T,

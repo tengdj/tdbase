@@ -61,7 +61,7 @@ MyMesh *get_mesh(string input_line, bool complete_compress){
 	boost::replace_all(input_line, "|", "\n");
 	// Init the random number generator.
 	MyMesh *mesh = new MyMesh(100,
-				 COMPRESSION_MODE_ID, 12, true,
+				 COMPRESSION_MODE_ID, 12,
 				 input_line.c_str(), input_line.size());
 	if(complete_compress){
 		mesh->completeOperation();
@@ -79,7 +79,7 @@ MyMesh *read_mesh(){
 
 MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 	MyMesh *decompressed = new MyMesh(lod,
-			 DECOMPRESSION_MODE_ID, 12, true,
+			 DECOMPRESSION_MODE_ID, 12,
 			 compressed->p_data, compressed->dataOffset);
 	decompressed->completeOperation();
 	return decompressed;
@@ -87,7 +87,7 @@ MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 
 MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation){
 	MyMesh *mesh = new MyMesh(100,
-			DECOMPRESSION_MODE_ID, 12, true,
+			DECOMPRESSION_MODE_ID, 12,
 			data, length);
 	if(complete_operation){
 		mesh->completeOperation();

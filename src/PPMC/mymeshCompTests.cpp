@@ -58,6 +58,7 @@ bool MyMesh::willViolateManifold(const std::vector<Halfedge_const_handle> &polyg
     return false;
 }
 
+
 /**
   * Test for the convexity of a polygon
   */
@@ -189,7 +190,7 @@ float MyMesh::removalError(Vertex_const_handle v,
 bool MyMesh::isRemovable(Vertex_const_handle v) const
 {
 	if (v != vh_departureConquest[0] && v != vh_departureConquest[1] &&
-		!v->isConquered() && v->vertex_degree() > 2 && v->vertex_degree() <= 16)
+		!v->isConquered() && v->vertex_degree() > 2 && v->vertex_degree() <= 8)
 	{
 	  //test convexity
 	  std::vector<Vertex_const_handle> vh_oneRing;
@@ -197,6 +198,7 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 
 	  vh_oneRing.reserve(v->vertex_degree());
 	  heh_oneRing.reserve(v->vertex_degree());
+	  //vh_oneRing.push_back(v);
 	  Halfedge_around_vertex_const_circulator hit(v->vertex_begin()), end(hit);
 	  do
 	  {
@@ -205,8 +207,7 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 	  }
 	  while(++hit != end);
 
-	  bool removable = !willViolateManifold(heh_oneRing)
-				   && (b_allowConvexity ? true:isConvex(vh_oneRing));
+	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing);
 	  return removable;
 	}
 	return false;

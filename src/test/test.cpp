@@ -8,14 +8,46 @@
 #include <stdio.h>
 #include <iostream>
 #include <type_traits>
+#include <math.h>
 #include "util/util.h"
 using namespace std;
 using namespace hispeed;
+
+inline void normalize_vec(float vec[3]){
+	float v = 0;
+	for(int i=0;i<3;i++){
+		v += vec[i]*vec[i];
+	}
+	v = sqrt(v);
+	for(int i=0;i<3;i++){
+		vec[i] = vec[i]/v;
+	}
+}
+
+inline void cross_product(float vec1[3], float vec2[3], float result[3]){
+	result[0] = vec1[1]*vec2[2]-vec1[2]*vec2[1];
+	result[1] = vec1[2]*vec2[0]-vec1[0]*vec2[2];
+	result[2] = vec1[0]*vec2[1]-vec1[1]*vec2[0];
+}
+
 int main(int argc, char **argv){
-	struct timeval t = get_cur_time();
-	int i = 10;
-	logt("i=%d",t,i);
-	hispeed::get();
+	float vec1[3],vec2[3],result[3];
+	vec1[0] = -1.0;
+	vec1[1] = 0;
+	vec1[2] = 1.0;
+	vec2[0] = 1.0;
+	vec2[1] = 0.0;
+	vec2[2] = 1.0;
+	normalize_vec(vec1);
+	normalize_vec(vec2);
+
+	cross_product(vec1,vec2,result);
+	cout<<result[0]<<" "<<result[1]<<" "<<result[2]<<endl;
+	for(int i=0;i<3;i++){
+		vec1[i] = -vec1[i];
+	}
+	cross_product(vec1,vec2,result);
+	cout<<result[0]<<" "<<result[1]<<" "<<result[2]<<endl;
 }
 
 

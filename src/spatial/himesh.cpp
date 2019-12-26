@@ -12,24 +12,6 @@
 
 namespace hispeed{
 
-void HiMesh::release_buffer(){
-	for(map<int, float *>::iterator it=segment_buffer.begin();
-			it!=segment_buffer.end();it++){
-		if(it->second!=NULL){
-			delete it->second;
-			it->second=NULL;
-		}
-	}
-	segment_buffer.clear();
-	for(map<int, float *>::iterator it=triangle_buffer.begin();
-			it!=triangle_buffer.end();it++){
-		if(it->second!=NULL){
-			delete it->second;
-			it->second=NULL;
-		}
-	}
-	triangle_buffer.clear();
-}
 Polyhedron *HiMesh::to_polyhedron(){
 	stringstream ss;
 	ss<<*this;
@@ -243,35 +225,23 @@ void HiMesh::advance_to(int lod){
 // assign each segment(0) or triangle(1) to the proper voxel
 void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle){
 	assert(voxels.size()>0);
-	release_buffer();
 	size_t num_of_data = 0;
 	int  size_of_datum = 0;
 	float *data_buffer = NULL;
 	int lod = i_decompPercentage;
-	// already filled
-	if(voxels[0]->data.find(lod)!=voxels[0]->data.end()){
-		return;
-	}
+	// the voxel should not be filled
+	assert(voxels[0]->data.find(lod)==voxels[0]->data.end());
+
 	if(seg_or_triangle==DT_Segment){
 		num_of_data = size_of_edges();
 		size_of_datum = 6;
-		if(segment_buffer.find(lod)!=segment_buffer.end()){
-			data_buffer = segment_buffer[lod];
-		}else{
-			data_buffer = new float[num_of_data*size_of_datum];
-			fill_segments(data_buffer);
-			segment_buffer[lod] = data_buffer;
-		}
+		data_buffer = new float[num_of_data*size_of_datum];
+		fill_segments(data_buffer);
 	}else{
 		num_of_data = size_of_facets();
 		size_of_datum = 9;
-		if(triangle_buffer.find(lod)!=triangle_buffer.end()){
-			data_buffer = triangle_buffer[lod];
-		}else{
-			data_buffer = new float[num_of_data*size_of_datum];
-			fill_triangles(data_buffer);
-			segment_buffer[lod] = data_buffer;
-		}
+		data_buffer = new float[num_of_data*size_of_datum];
+		fill_triangles(data_buffer);
 	}
 
 	// for the special case only one voxel exist
@@ -329,10 +299,11 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 
 	delete groups;
 	delete group_count;
+	delete data_buffer;
 }
 
 HiMesh::HiMesh(const char* data, long length):
-		MyMesh(0, DECOMPRESSION_MODE_ID, 12, true, data, length){
+		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length){
 }
 
 list<Segment> HiMesh::get_segments(){
@@ -361,9 +332,16 @@ TriangleTree *get_aabb_tree(Polyhedron *p){
 }
 
 void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
-	assert(mesh);
 	pthread_mutex_lock(&lock);
-	mesh->fill_voxel(voxels, seg_tri);
+	// mesh could be NULL when multiple threads compete
+	if(mesh){
+		mesh->fill_voxel(voxels, seg_tri);
+		// filled the maximum LOD, release the mesh
+		if(mesh->i_decompPercentage==100){
+			delete mesh;
+			mesh = NULL;
+		}
+	}
 	pthread_mutex_unlock(&lock);
 }
 

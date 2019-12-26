@@ -27,14 +27,13 @@
 MyMesh::MyMesh(unsigned i_decompPercentage,
                const int i_mode,
                unsigned i_quantBits,
-               bool b_allowConcaveFaces,
 			   const char* data,
 			   long length
 			   ) :
     CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(), i_mode(i_mode),
     b_jobCompleted(false), operation(Idle),
     i_curDecimationId(0), i_curQuantizationId(0), i_curOperationId(0),
-    i_levelNotConvexId(0), b_allowConvexity(b_allowConcaveFaces), connectivitySize(0),
+    i_levelNotConvexId(0), connectivitySize(0),
     geometrySize(0), i_quantBits(i_quantBits), dataOffset(0),
     i_decompPercentage(i_decompPercentage)
 	{

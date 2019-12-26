@@ -377,7 +377,6 @@ public:
 	MyMesh(unsigned i_decompPercentage,
 		   const int i_mode,
 		   unsigned i_quantBits,
-		   bool b_allowConcaveFaces,
 		   const char* data, long length);
 
 	~MyMesh();
@@ -419,6 +418,7 @@ public:
 	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
 	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
 	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
+
 	float removalError(Vertex_const_handle v,
 					   const std::vector<Vertex_const_handle> &polygon) const;
 
@@ -479,7 +479,6 @@ public:
 	unsigned i_curOperationId;
 
 	unsigned i_levelNotConvexId;
-	bool b_allowConvexity;
 
 	// The vertices of the edge that is the departure of the coding and decoding conquests.
 	Vertex_handle vh_departureConquest[2];

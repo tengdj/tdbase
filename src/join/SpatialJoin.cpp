@@ -425,7 +425,8 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
-		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d", start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
+		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d",
+				start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
 
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[9*triangle_num];

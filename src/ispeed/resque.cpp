@@ -37,7 +37,7 @@ using namespace std;
 #include "../spatial/himesh.h"
 #include "../storage/tile.h"
 namespace po = boost::program_options;
-
+using namespace hispeed;
 
 /*
  * Struct to hold temporary values during spatial operations
@@ -91,25 +91,6 @@ bool extract_params_resque(int argc, char **argv, struct query_op &vars){
 	return true;
 }
 
-
-/*
- *
- *
- * for intersection part
- *
- *
- * */
-
-
-
-
-/*
- *
- * CGAL related functions
- *
- * */
-
-
 typedef MyKernel::Triangle_3                               Triangle;
 typedef std::vector<Triangle>                               Triangles;
 typedef Triangles::iterator                                   Iterator;
@@ -162,8 +143,8 @@ void get_triangle(HiMesh *P, std::vector<Triangle>& triangles,  std::vector<Box>
 	}
 }
 
-bool intersects(HiMesh *P1, HiMesh *P2) {
 
+bool intersects(HiMesh *P1, HiMesh *P2) {
 	// Use Nef_polyhedron for intersection detection
 	Triangles triangles1, triangles2;
 	std::vector<Box> boxes1, boxes2;
@@ -171,11 +152,11 @@ bool intersects(HiMesh *P1, HiMesh *P2) {
 
 	get_triangle(P1, triangles1, boxes1, boxes1_ptr);
 	get_triangle(P2, triangles2, boxes2, boxes2_ptr);
-
 	intersection_flag = false;
 	CGAL::box_intersection_d( boxes1_ptr.begin(), boxes1_ptr.end(),
 							  boxes2_ptr.begin(), boxes2_ptr.end(),
 							  Report());
+
 	return intersection_flag;
 }
 
@@ -189,7 +170,8 @@ int join_bucket_intersect(struct query_op &stop, struct query_temp &sttemp) {
 
 	uint pair_num = 0;
 	for (int i = 0; i < sttemp.tile[0]->num_objects(); i++) {
-		aab_d b(sttemp.tile[0]->get_mbb(i));
+		aab box = sttemp.tile[0]->get_mbb(i);
+		aab_d b(box);
 		SpatialIndex::Region r(b.low, b.high, 3);
 		MyVisitor vis;
 		spidx->intersectsWithQuery(r, vis);
@@ -204,7 +186,8 @@ int join_bucket_intersect(struct query_op &stop, struct query_temp &sttemp) {
 	}
 	logt("decoding data for %u pairs", start, pair_num);
 	for (int i = 0; i < sttemp.tile[0]->num_objects(); i++) {
-		aab_d b(sttemp.tile[0]->get_mbb(i));
+		aab box = sttemp.tile[0]->get_mbb(i);
+		aab_d b(box);
 		SpatialIndex::Region r(b.low, b.high, 3);
 		MyVisitor vis;
 		spidx->intersectsWithQuery(r, vis);
@@ -235,39 +218,39 @@ int join_bucket_nn_voronoi(struct query_op &stop, struct query_temp &sttemp) {
 	int idx2 = 2;
 	int nuclei_id = 0;
 	double low[3], high[3];  // Temporary value placeholders for MBB
-//
-//	try {
-//		// extract the geometry from dataset2 (compressed blood vessels) and extract skeleton
-//		Skeleton *skeleton = NULL;
-//
-//		std::vector<Delaunay::Point_3> P;
-//		vector<struct mbb_3d *> geom_mbb2 = sttemp.mbbdata[idx2];
-//		for (int i = 0; i < geom_mbb2.size(); i++) {
-//			P.insert(P.begin(), sttemp.skeleton_points[2][i].begin(), sttemp.skeleton_points[2][i].end());
-//		}
-//		// building their Delaunay triangulation (Voronoi).
-//		Delaunay tree(P.begin(), P.end());
-//
-//		// For each nuclei, find its nearest blood vessel by checking voronoi
-//		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
-//
-//		for (int i = 0; i < geom_mbb1.size(); i++) {
-//			struct mbb_3d * env1 = geom_mbb1[i];
-//			Delaunay::Point_3 nuclei_centroid((env1->low[0]+env1->high[0])*0.5,
-//								  (env1->low[1]+env1->high[1])*0.5,
-//								  (env1->low[2]+env1->high[2])*0.5);
-//			Delaunay::Point_3 nnp = tree.nearest_vertex(nuclei_centroid)->point();
-//			double squared_dist = CGAL::to_double(CGAL::squared_distance(nnp, nuclei_centroid));
-//			double distance = sqrt(squared_dist);
-//			cout << nuclei_id << TAB << nuclei_centroid.x() << TAB << nuclei_centroid.y()
-//					<< TAB << nuclei_centroid.z() << TAB << distance << "\n";
-//			nuclei_id++;
-//		}
-//	} catch (Tools::Exception& e) {
-//		std::cerr << "******ERROR******" << std::endl;
-//		cerr << e.what() << std::endl;
-//		return -1;
-//	} // end of catch
+
+	try {
+		// extract the geometry from dataset2 (compressed blood vessels) and extract skeleton
+		Skeleton *skeleton = NULL;
+
+		std::vector<Delaunay::Point_3> P;
+		vector<struct mbb_3d *> geom_mbb2 = sttemp.mbbdata[idx2];
+		for (int i = 0; i < geom_mbb2.size(); i++) {
+			P.insert(P.begin(), sttemp.skeleton_points[2][i].begin(), sttemp.skeleton_points[2][i].end());
+		}
+		// building their Delaunay triangulation (Voronoi).
+		Delaunay tree(P.begin(), P.end());
+
+		// For each nuclei, find its nearest blood vessel by checking voronoi
+		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
+
+		for (int i = 0; i < geom_mbb1.size(); i++) {
+			struct mbb_3d * env1 = geom_mbb1[i];
+			Delaunay::Point_3 nuclei_centroid((env1->low[0]+env1->high[0])*0.5,
+								  (env1->low[1]+env1->high[1])*0.5,
+								  (env1->low[2]+env1->high[2])*0.5);
+			Delaunay::Point_3 nnp = tree.nearest_vertex(nuclei_centroid)->point();
+			double squared_dist = CGAL::to_double(CGAL::squared_distance(nnp, nuclei_centroid));
+			double distance = sqrt(squared_dist);
+			cout << nuclei_id << TAB << nuclei_centroid.x() << TAB << nuclei_centroid.y()
+					<< TAB << nuclei_centroid.z() << TAB << distance << "\n";
+			nuclei_id++;
+		}
+	} catch (Tools::Exception& e) {
+		std::cerr << "******ERROR******" << std::endl;
+		cerr << e.what() << std::endl;
+		return -1;
+	} // end of catch
 
 	return nuclei_id ;
 }
@@ -285,110 +268,110 @@ int join_bucket_nn_rtree(struct query_op &stop, struct query_temp &sttemp) {
 	double low[3], high[3];  // Temporary value placeholders for MBB
 	int kneighs = 2; // kNN
 	struct timeval start = get_cur_time();
-//
-//	try {
-//		/* Handling for special nearest neighbor query */
-//		SpatialIndex::IStorageManager *storage = NULL;
-//		SpatialIndex::ISpatialIndex *spidx = NULL;
-//		if (! build_index_geoms(sttemp.mbbdata[idx2], spidx, storage)) {
-//			return -1;
-//		}
-//		logt("build rtree", start);
-//		unordered_set<int> unique_nn_id2; // the unique set of nearest blood vessels' offset
-//		unordered_map<int, vector<int>> nn_id2; // mapping between the unique offset and length
-//		vector<Point> nuclei_pts;
-//
-//		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
-//		for (int i = 0; i < geom_mbb1.size(); i++) {
-//			struct mbb_3d * env1 = geom_mbb1[i];
-//			low[0] = env1->low[0];
-//			low[1] = env1->low[1];
-//			low[2] = env1->low[2];
-//			high[0] = env1->high[0];
-//			high[1] = env1->high[1];
-//			high[2] = env1->high[2];
-//
-//			// Temporary value placeholders for MBB
-//			double np[3];
-//			MyVisitor vis;
-//			/* R-tree intersection check */
-//
-//			np[0] = (low[0]+high[0])*0.5;
-//			np[1] = (low[1]+high[1])*0.5;
-//			np[2] = (low[2]+high[2])*0.5;
-//			SpatialIndex::Point nuclei_centroid(SpatialIndex::Point(np, 3));
-//			vis.matches.clear();
-//			/* Find kNN objects*/
-//			spidx->nearestNeighborQuery(kneighs, nuclei_centroid, vis);
-//			for (uint32_t j = 0; j < vis.matches.size(); j++) {
-//				// push the offset and length of its nearest blood vessels
-//				//long offset = sttemp.offsetdata[idx2][vis.matches[j]], length = sttemp.lengthdata[idx2][vis.matches[j]];
-//				nn_id2[i].push_back(vis.matches[j]);
-//				// record the unique blood vessels' info
-//				unique_nn_id2.insert(vis.matches[j]);
-//			}
-//			nuclei_pts.push_back(Point(np[0], np[1], np[2]));
-//		}
-//		if(unique_nn_id2.size()==0){
-//			return 0;
-//		}
-//		logt("checking rtree", start);
-//
-//		/* for each unique nearest blood vessel, construct the AABB tree*/
-//		unordered_map<int, Sc_Tree*> id2_aabbtree; // map between unique id of blood vessel and its AABB tree
-//		// for each mentioned object in data set 2, build an AABB tree
-//		Sc_Tree *tree = NULL;
-//		Polyhedron *geom2[unique_nn_id2.size()];
-//		int index = 0;
-//		for(auto it = unique_nn_id2.begin(); it != unique_nn_id2.end(); ++it, ++index ){
-//			HiMesh *mesh = sttemp.meshes[2][*it];
-//			mesh->advance_to(100);
-//			geom2[index] = mesh->to_polyhedron();
-//		}
-//		logt("decoding meshes", start);
-//		index = 0;
-//		for(auto it = unique_nn_id2.begin(); it != unique_nn_id2.end(); ++it, ++index ){
-//			tree = new Sc_Tree(faces(*geom2[index]).first, faces(*geom2[index]).second, *geom2[index]);
-//			tree->accelerate_distance_queries();
-//			id2_aabbtree[*it] = tree;
-//		}
-//		logt("build aabb tree", start);
-//		/* for each nuclei, calculate distance by searching the AABB tree of its k nearest blood vessels*/
-//		for (int j = 0; j < nuclei_pts.size(); j++) {
-//			vector<int> ids = nn_id2[j];
-//			double min_distance = DBL_MAX;
-//			for(int m :ids){
-//				Sc_Tree *aabbtree = id2_aabbtree[m];
-//				assert(aabbtree!=NULL && "should never happen");
-//				Sc_FT sqd = aabbtree->squared_distance(nuclei_pts[j]);
-//				double distance = (double)CGAL::to_double(sqd);
-//				if(min_distance>distance){
-//					min_distance = distance;
-//				}
-//			}
-//			min_distance = sqrt(min_distance);
-//			pairs++;
-//		}
-//		logt("do final computation", start);
-//
-//		delete spidx;
-//		delete storage;
-//
-//		// release aabb tree of blood vessels
-//		for (auto it = id2_aabbtree.begin(); it != id2_aabbtree.end(); ++it ) {
-//			delete it->second;
-//		}
-//		id2_aabbtree.clear();
-//		for(Polyhedron *poly:geom2){
-//			delete poly;
-//			poly = NULL;
-//		}
-//
-//	} catch (Tools::Exception& e) {
-//		std::cerr << "******ERROR******" << std::endl;
-//		cerr << e.what() << std::endl;
-//		return -1;
-//	} // end of catch
+
+	try {
+		/* Handling for special nearest neighbor query */
+		SpatialIndex::IStorageManager *storage = NULL;
+		SpatialIndex::ISpatialIndex *spidx = NULL;
+		if (! build_index_geoms(sttemp.mbbdata[idx2], spidx, storage)) {
+			return -1;
+		}
+		logt("build rtree", start);
+		unordered_set<int> unique_nn_id2; // the unique set of nearest blood vessels' offset
+		unordered_map<int, vector<int>> nn_id2; // mapping between the unique offset and length
+		vector<Point> nuclei_pts;
+
+		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
+		for (int i = 0; i < geom_mbb1.size(); i++) {
+			struct mbb_3d * env1 = geom_mbb1[i];
+			low[0] = env1->low[0];
+			low[1] = env1->low[1];
+			low[2] = env1->low[2];
+			high[0] = env1->high[0];
+			high[1] = env1->high[1];
+			high[2] = env1->high[2];
+
+			// Temporary value placeholders for MBB
+			double np[3];
+			MyVisitor vis;
+			/* R-tree intersection check */
+
+			np[0] = (low[0]+high[0])*0.5;
+			np[1] = (low[1]+high[1])*0.5;
+			np[2] = (low[2]+high[2])*0.5;
+			SpatialIndex::Point nuclei_centroid(SpatialIndex::Point(np, 3));
+			vis.matches.clear();
+			/* Find kNN objects*/
+			spidx->nearestNeighborQuery(kneighs, nuclei_centroid, vis);
+			for (uint32_t j = 0; j < vis.matches.size(); j++) {
+				// push the offset and length of its nearest blood vessels
+				//long offset = sttemp.offsetdata[idx2][vis.matches[j]], length = sttemp.lengthdata[idx2][vis.matches[j]];
+				nn_id2[i].push_back(vis.matches[j]);
+				// record the unique blood vessels' info
+				unique_nn_id2.insert(vis.matches[j]);
+			}
+			nuclei_pts.push_back(Point(np[0], np[1], np[2]));
+		}
+		if(unique_nn_id2.size()==0){
+			return 0;
+		}
+		logt("checking rtree", start);
+
+		/* for each unique nearest blood vessel, construct the AABB tree*/
+		unordered_map<int, Sc_Tree*> id2_aabbtree; // map between unique id of blood vessel and its AABB tree
+		// for each mentioned object in data set 2, build an AABB tree
+		Sc_Tree *tree = NULL;
+		Polyhedron *geom2[unique_nn_id2.size()];
+		int index = 0;
+		for(auto it = unique_nn_id2.begin(); it != unique_nn_id2.end(); ++it, ++index ){
+			HiMesh *mesh = sttemp.meshes[2][*it];
+			mesh->advance_to(100);
+			geom2[index] = mesh->to_polyhedron();
+		}
+		logt("decoding meshes", start);
+		index = 0;
+		for(auto it = unique_nn_id2.begin(); it != unique_nn_id2.end(); ++it, ++index ){
+			tree = new Sc_Tree(faces(*geom2[index]).first, faces(*geom2[index]).second, *geom2[index]);
+			tree->accelerate_distance_queries();
+			id2_aabbtree[*it] = tree;
+		}
+		logt("build aabb tree", start);
+		/* for each nuclei, calculate distance by searching the AABB tree of its k nearest blood vessels*/
+		for (int j = 0; j < nuclei_pts.size(); j++) {
+			vector<int> ids = nn_id2[j];
+			double min_distance = DBL_MAX;
+			for(int m :ids){
+				Sc_Tree *aabbtree = id2_aabbtree[m];
+				assert(aabbtree!=NULL && "should never happen");
+				Sc_FT sqd = aabbtree->squared_distance(nuclei_pts[j]);
+				double distance = (double)CGAL::to_double(sqd);
+				if(min_distance>distance){
+					min_distance = distance;
+				}
+			}
+			min_distance = sqrt(min_distance);
+			pairs++;
+		}
+		logt("do final computation", start);
+
+		delete spidx;
+		delete storage;
+
+		// release aabb tree of blood vessels
+		for (auto it = id2_aabbtree.begin(); it != id2_aabbtree.end(); ++it ) {
+			delete it->second;
+		}
+		id2_aabbtree.clear();
+		for(Polyhedron *poly:geom2){
+			delete poly;
+			poly = NULL;
+		}
+
+	} catch (Tools::Exception& e) {
+		std::cerr << "******ERROR******" << std::endl;
+		cerr << e.what() << std::endl;
+		return -1;
+	} // end of catch
 
 	return pairs ;
 }

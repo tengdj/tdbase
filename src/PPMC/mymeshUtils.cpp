@@ -61,14 +61,10 @@ Vector MyMesh::computeNormal(const std::vector<Vertex_const_handle> & polygon) c
     for(int i=0; i<s; ++i)
     {
         Vector op(CGAL::ORIGIN, polygon[i]->point());
-        
-     //    std::cerr << "polygon " << i << "\t" <<  polygon[i]->point()  << std::endl;
         Vector op2(CGAL::ORIGIN, polygon[(i+1)%s]->point());
         n = n + CGAL::cross_product(op,op2);
     }
     float f_sqLen = n.squared_length();
- //   std::cerr << "f_sqLen" << f_sqLen << std::endl;
- //   exit(0);
     return f_sqLen == 0 ? CGAL::NULL_VECTOR : n / sqrt(f_sqLen);
 }
 
