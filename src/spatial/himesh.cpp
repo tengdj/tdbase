@@ -84,7 +84,7 @@ vector<Point> HiMesh::get_skeleton_points(){
 vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	vector<Voxel *> voxels;
 	int lod = i_decompPercentage;
-	if(size_of_edges()<voxel_size*3){
+	if(size_of_vertices()<voxel_size*3){
 		Voxel *v = new Voxel();
 		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
 		v->size[lod] = size_of_edges();
@@ -97,20 +97,23 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	// sample the points of the skeleton with the calculated sample rate
 	int num_points = skeleton_points.size();
 	int skeleton_sample_rate =
-			((size_of_edges()/voxel_size)*100)/num_points;
+			((size_of_vertices()/voxel_size)*100)/num_points;
 	for(int i=0;i<num_points;){
 		if(!hispeed::get_rand_sample(skeleton_sample_rate)){
 			skeleton_points.erase(skeleton_points.begin()+i);
 			num_points--;
 		}else{
-			Voxel *v = new Voxel();
-			v->core[0] = skeleton_points[i][0];
-			v->core[1] = skeleton_points[i][1];
-			v->core[2] = skeleton_points[i][2];
-			v->size[lod] = 0;
-			voxels.push_back(v);
 			i++;
 		}
+	}
+
+	for(int i=0;i<skeleton_points.size();i++){
+		Voxel *v = new Voxel();
+		v->core[0] = skeleton_points[i][0];
+		v->core[1] = skeleton_points[i][1];
+		v->core[2] = skeleton_points[i][2];
+		v->size[lod] = 0;
+		voxels.push_back(v);
 	}
 
 	if(voxels.size()==0){
@@ -124,21 +127,18 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		return voxels;
 	}
 
-	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
-		Point p1 = eit->vertex()->point();
-		Point p2 = eit->opposite()->vertex()->point();
-
+	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+		Point p = vit->point();
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<skeleton_points.size();j++){
-			float cur_dist = distance(skeleton_points[j], p1);
+			float cur_dist = distance(skeleton_points[j], p);
 			if(cur_dist<min_dist){
 				gid = j;
 				min_dist = cur_dist;
 			}
 		}
-		voxels[gid]->box.update(p1[0],p1[1],p1[2]);
-		voxels[gid]->box.update(p2[0],p2[1],p2[2]);
+		voxels[gid]->box.update(p.x(),p.y(),p.z());
 		voxels[gid]->size[lod]++;
 	}
 
@@ -152,6 +152,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 			i++;
 		}
 	}
+
 	skeleton_points.clear();
 	return voxels;
 }
@@ -225,13 +226,15 @@ void HiMesh::advance_to(int lod){
 // assign each segment(0) or triangle(1) to the proper voxel
 void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle){
 	assert(voxels.size()>0);
+
 	size_t num_of_data = 0;
 	int  size_of_datum = 0;
 	float *data_buffer = NULL;
 	int lod = i_decompPercentage;
 	// the voxel should not be filled
-	assert(voxels[0]->data.find(lod)==voxels[0]->data.end());
-
+	if(voxels[0]->data.find(lod)!=voxels[0]->data.end()){
+		return;
+	}
 	if(seg_or_triangle==DT_Segment){
 		num_of_data = size_of_edges();
 		size_of_datum = 6;
@@ -263,7 +266,7 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 	for(int i=0;i<voxels.size();i++){
 		voxels[i]->size[lod] = 0;
 		voxels[i]->data[lod] = NULL;
-		group_count[i];
+		group_count[i] = 0;
 	}
 	for(int i=0;i<num_of_data;i++){
 		// for both segment and triangle, we assign it with only the first
@@ -302,10 +305,12 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 	delete data_buffer;
 }
 
-HiMesh::HiMesh(const char* data, long length):
-		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length){
+HiMesh::HiMesh(char* data, long length):
+		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length, true){
 }
-
+HiMesh::HiMesh(char* data, long length, bool od):
+		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length, od){
+}
 list<Segment> HiMesh::get_segments(){
 	list<Segment> segments;
 	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
@@ -318,11 +323,73 @@ list<Segment> HiMesh::get_segments(){
 	return segments;
 }
 
+void HiMesh::to_wkt(){
+	cout<<"POLYHEDRALSURFACE Z (";
+	for ( Facet_const_iterator fit = facets_begin(); fit != facets_end(); ++fit){
+		cout<<"((";
+		bool first = true;
+		Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
+		do {
+			if(!first){
+				cout<<",";
+			}
+			first = false;
+			Point p = hit->vertex()->point();
+			cout<<p[0]<<" "<<p[1]<<" "<<p[2];
+			// Write the current vertex id.
+		} while(++hit != end);
+		cout<<"))";
+	}
+	cout<<")"<<endl;
+}
+
 SegTree *HiMesh::get_aabb_tree(){
 	list<Segment> segments = get_segments();
 	SegTree *tree = new SegTree(segments.begin(), segments.end());
 	//tree->accelerate_distance_queries();
 	return tree;
+}
+
+float HiMesh::get_volume() {
+	Nef_polyhedron inputpoly;
+	stringstream ss;
+	ss<<*this;
+	CGAL::OFF_to_nef_3(ss, inputpoly);
+	// to check if the intersected object can be converted to polyhedron or not
+	std::vector<Polyhedron> PList;
+
+	// decompose non-convex volume to convex parts
+	cout<<"teng1"<<endl;
+
+	convex_decomposition_3(inputpoly);
+	cout<<"teng2"<<endl;
+
+	for(Volume_const_iterator ci = ++inputpoly.volumes_begin() ; ci != inputpoly.volumes_end(); ++ci) {
+		if(ci->mark()) {
+			cout<<"teng"<<endl;
+			Polyhedron P;
+			inputpoly.convert_inner_shell_to_polyhedron(ci->shells_begin(), P);
+			PList.push_back(P);
+		}
+	}
+	cout<<PList.size()<<endl;
+
+	double total_volume = 0, hull_volume = 0;
+	for(Polyhedron poly:PList)
+	{
+		std::vector<Point> L;
+		for (Polyhedron::Vertex_const_iterator  it = poly.vertices_begin(); it != poly.vertices_end(); it++) {
+			L.push_back(Point(it->point().x(), it->point().y(), it->point().z()));
+		}
+		Triangulation T(L.begin(), L.end());
+		hull_volume = 0;
+		for(Triangulation::Finite_cells_iterator it = T.finite_cells_begin(); it != T.finite_cells_end(); it++) {
+			Tetrahedron tetr = T.tetrahedron(it);
+			hull_volume += to_double(tetr.volume());
+		}
+		total_volume += hull_volume;
+	}
+	return total_volume;
 }
 
 TriangleTree *get_aabb_tree(Polyhedron *p){
@@ -344,6 +411,8 @@ void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
 	}
 	pthread_mutex_unlock(&lock);
 }
+
+
 
 
 }

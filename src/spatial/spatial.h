@@ -14,9 +14,15 @@
 #include "../PPMC/ppmc.h"
 #include "../util/util.h"
 #include "../geometry/aab.h"
+#include <CGAL/OFF_to_nef_3.h>
 
 using namespace CGAL;
 using namespace std;
+
+typedef CGAL::Nef_polyhedron_3<MyKernel> Nef_polyhedron;
+typedef CGAL::Triangulation_3<MyKernel> Triangulation;
+typedef Triangulation::Tetrahedron 	Tetrahedron;
+typedef Nef_polyhedron::Volume_const_iterator Volume_const_iterator;
 
 // some local definition
 
@@ -41,12 +47,22 @@ inline string read_polyhedron_str(){
 	boost::replace_all(input_line, "|", "\n");
 	return input_line;
 }
+float get_volume(Polyhedron *polyhedron);
 Polyhedron *read_polyhedron();
 
 inline float distance(Point p1, Point p2){
 	float dist = 0;
 	for(int i=0;i<3;i++){
 		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
+	}
+	return dist;
+}
+
+// manhattan distance
+inline float mdistance(Point p1, Point p2){
+	float dist = 0;
+	for(int i=0;i<3;i++){
+		dist += abs(p2[i]-p1[i]);
 	}
 	return dist;
 }

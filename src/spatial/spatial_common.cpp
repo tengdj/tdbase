@@ -59,10 +59,12 @@ MyMesh *get_mesh(string input_line, bool complete_compress){
 		return NULL;
 	}
 	boost::replace_all(input_line, "|", "\n");
+	char *data = new char[input_line.size()];
+	memcpy(data, input_line.c_str(), input_line.size());
 	// Init the random number generator.
 	MyMesh *mesh = new MyMesh(100,
 				 COMPRESSION_MODE_ID, 12,
-				 input_line.c_str(), input_line.size());
+				 data, input_line.size(), false);
 	if(complete_compress){
 		mesh->completeOperation();
 	}
@@ -80,7 +82,7 @@ MyMesh *read_mesh(){
 MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 	MyMesh *decompressed = new MyMesh(lod,
 			 DECOMPRESSION_MODE_ID, 12,
-			 compressed->p_data, compressed->dataOffset);
+			 compressed->p_data, compressed->dataOffset, false);
 	decompressed->completeOperation();
 	return decompressed;
 }
@@ -88,7 +90,7 @@ MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation){
 	MyMesh *mesh = new MyMesh(100,
 			DECOMPRESSION_MODE_ID, 12,
-			data, length);
+			data, length, true);
 	if(complete_operation){
 		mesh->completeOperation();
 	}
@@ -102,6 +104,49 @@ Polyhedron *read_polyhedron(){
 	Polyhedron *poly = new Polyhedron();
 	ss>>*poly;
 	return poly;
+}
+
+float get_volume(Polyhedron *polyhedron) {
+	Nef_polyhedron inputpoly;
+	stringstream ss;
+	ss<<*polyhedron;
+	cout<<"teng0"<<endl;
+	CGAL::OFF_to_nef_3(ss, inputpoly);
+	// to check if the intersected object can be converted to polyhedron or not
+	std::vector<Polyhedron> PList;
+
+	// decompose non-convex volume to convex parts
+	cout<<"teng1"<<endl;
+
+	convex_decomposition_3(inputpoly);
+	cout<<"teng2"<<endl;
+
+	for(Volume_const_iterator ci = ++inputpoly.volumes_begin() ; ci != inputpoly.volumes_end(); ++ci) {
+		if(ci->mark()) {
+			cout<<"teng"<<endl;
+			Polyhedron P;
+			inputpoly.convert_inner_shell_to_polyhedron(ci->shells_begin(), P);
+			PList.push_back(P);
+		}
+	}
+	cout<<PList.size()<<endl;
+
+	double total_volume = 0, hull_volume = 0;
+	for(Polyhedron poly:PList)
+	{
+		std::vector<Point> L;
+		for (Polyhedron::Vertex_const_iterator  it = poly.vertices_begin(); it != poly.vertices_end(); it++) {
+			L.push_back(Point(it->point().x(), it->point().y(), it->point().z()));
+		}
+		Triangulation T(L.begin(), L.end());
+		hull_volume = 0;
+		for(Triangulation::Finite_cells_iterator it = T.finite_cells_begin(); it != T.finite_cells_end(); it++) {
+			Tetrahedron tetr = T.tetrahedron(it);
+			hull_volume += to_double(tetr.volume());
+		}
+		total_volume += hull_volume;
+	}
+	return total_volume;
 }
 
 }

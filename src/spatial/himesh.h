@@ -35,6 +35,9 @@ typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> TrianglePrimitive;
 typedef CGAL::AABB_traits<MyKernel, TrianglePrimitive> TriangleTraits;
 typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 
+
+
+
 namespace hispeed{
 
 /*
@@ -84,15 +87,19 @@ enum data_type{
 class HiMesh:public MyMesh{
 	size_t fill_segments(float *segments);
 	size_t fill_triangles(float *triangles);
+	bool own_data = true;
 public:
-	HiMesh(const char *, long length);
+	HiMesh(char *data, long length, bool own_data);
+	HiMesh(char *data, long length);
 	~HiMesh(){
-		release_buffer();
+		//release_buffer();
 	}
 	Polyhedron *to_polyhedron();
 	Skeleton *extract_skeleton();
 	vector<Point> get_skeleton_points();
 	vector<Voxel *> generate_voxels(int voxel_size);
+	void to_wkt();
+	float get_volume();
 
 	void fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
 	list<Segment> get_segments();

@@ -152,6 +152,8 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 	vector<candidate_entry> candidates = mbb_distance(tile1, tile2);
 	logt("comparing mbbs", start);
 	report_candidate(candidates);
+	double decode_time = 0;
+	double computation_time = 0;
 
 	// now we start to get the distances with progressive level of details
 	int lod = base_lod;
@@ -168,6 +170,17 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		uint segment_num = 0;
 		size_t segment_pair_num = 0;
+
+		int candidate_length = 0;
+		for(candidate_entry &e:candidates){
+			for(candidate_info &i:e.second){
+				candidate_length += i.voxel_pairs.size();
+			}
+		}
+		cout<<lod<<","<<candidates.size()<<","<<(1.0*candidate_length)/candidates.size()<<endl;
+
+
+		double fill_time = 0;
 		for(candidate_entry c:candidates){
 			// the nearest neighbor is found
 			if(c.second.size()<=1){
@@ -180,13 +193,17 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 					assert(vp.v1&&vp.v2);
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
-						// ensure the msh is extracted
+						// ensure the mesh is extracted
 						tile1->decode_to(wrapper1->id, lod);
+						timeval cur = hispeed::get_cur_time();
 						wrapper1->fill_voxels(DT_Segment);
+						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(wrapper2->id, lod);
+						timeval cur = hispeed::get_cur_time();
 						wrapper2->fill_voxels(DT_Segment);
+						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 
 					// update the voxel map
@@ -204,6 +221,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
+		decode_time += hispeed::get_time_elapsed(start, false);
 		logt("decoded %ld voxels with %d segments %ld segment pairs for lod %d",
 				start, voxel_map.size(), segment_num, segment_pair_num, lod);
 		if(segment_pair_num==0){
@@ -211,6 +229,15 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 			voxel_map.clear();
 			continue;
 		}
+		cerr<<"\ndecoding time\t"<<tile1->decode_time
+			<<"\n\tretrieve time\t"<< tile1->retrieve_time
+			<<"\n\t\tdisk time\t" << tile1->disk_time
+			<<"\n\t\tmalloc time\t"<<tile1->malloc_time
+			<<"\n\t\tnewmesh time\t"<<tile1->newmesh_time
+			<<"\n\tadvance time\t"<< tile1->advance_time
+			<<"\nfilling time\t"<<fill_time
+			<<endl<<endl;
+		tile1->reset_time();
 
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[6*segment_num];
@@ -241,6 +268,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 		gp.distances = distances;
 		gp.data_size = segment_num;
 		computer->get_distance(gp);
+		computation_time += hispeed::get_time_elapsed(start, false);
 		logt("get distance", start);
 
 		// now update the distance range with the new distances
@@ -278,6 +306,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 		delete distances;
 		voxel_map.clear();
 		logt("current iteration", iter_start);
+
 		if(lod==100){
 			break;
 		}else{
@@ -287,6 +316,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 			}
 		}
 	}
+	cout<<decode_time<<","<<computation_time<<endl;
 }
 
 /*

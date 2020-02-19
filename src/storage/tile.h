@@ -38,6 +38,22 @@ public:
 	Tile(std::string path, size_t capacity=LONG_MAX);
 	~Tile();
 
+	// for profiling performance
+	double decode_time = 0;
+	double retrieve_time = 0;
+	double advance_time = 0;
+	double disk_time = 0;
+	double malloc_time = 0;
+	double newmesh_time = 0;
+	void reset_time(){
+		decode_time = 0;
+		retrieve_time = 0;
+		advance_time = 0;
+		disk_time = 0;
+		malloc_time = 0;
+		newmesh_time = 0;
+	}
+
 	void decode_to(int id, int lod);
 	HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());

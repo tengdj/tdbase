@@ -27,30 +27,29 @@
 MyMesh::MyMesh(unsigned i_decompPercentage,
                const int i_mode,
                unsigned i_quantBits,
-			   const char* data,
-			   long length
-			   ) :
+			   char* data,
+			   long length,
+			   bool copy_data) :
     CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(), i_mode(i_mode),
     b_jobCompleted(false), operation(Idle),
     i_curDecimationId(0), i_curQuantizationId(0), i_curOperationId(0),
     i_levelNotConvexId(0), connectivitySize(0),
     geometrySize(0), i_quantBits(i_quantBits), dataOffset(0),
     i_decompPercentage(i_decompPercentage)
-	{
+{
 	assert(length>0);
-    // Create the compressed data buffer.
-    p_data = new char[length];
-    // Fill the buffer with 0.
-    for (size_t i = 0; i < length; ++i) {
-       p_data[i] = 0;
-    }
 
-
-    // Initialize the range coder structure.
-    rangeCoder.p_data = p_data;
-    rangeCoder.p_dataOffset = &dataOffset;
 	srand(PPMC_RANDOM_CONSTANT);
     if (i_mode == COMPRESSION_MODE_ID) {
+        // Create the compressed data buffer.
+        p_data = new char[length];
+        // Fill the buffer with 0.
+        for (size_t i = 0; i < length; ++i) {
+           p_data[i] = 0;
+        }
+        // Initialize the range coder structure.
+        rangeCoder.p_data = p_data;
+        rangeCoder.p_dataOffset = &dataOffset;
 	    std::istringstream is;
 	    is.str(data);
         is >> *this;
@@ -74,7 +73,15 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
 		vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 		vh_departureConquest[1] = halfedges_begin()->vertex();
     } else {
-        memcpy(p_data, data, length);
+    	if(copy_data){
+            p_data = new char[length];
+    		memcpy(p_data, data, length);
+    	}else{
+    		p_data = data;
+    	}
+        // Initialize the range coder structure.
+        rangeCoder.p_data = p_data;
+        rangeCoder.p_dataOffset = &dataOffset;
     	readCompressedData();
         // Set the vertices of the edge that is the departure of the coding and decoding conquests.
         vh_departureConquest[0] = vertices_begin();

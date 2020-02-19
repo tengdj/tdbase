@@ -77,7 +77,7 @@ public:
 			min[1] = y;
 		}
 		if(max[1]<y){
-			max[1] = x;
+			max[1] = y;
 		}
 		if(min[2]>z){
 			min[2] = z;
@@ -147,6 +147,9 @@ public:
 			dl += (max[i]-min[i])*(max[i]-min[i]);
 		}
 		return dl;
+	}
+	float volume(){
+		return (max[0]-min[0])*(max[1]-min[1])*(max[2]-min[2]);
 	}
 
 	// get the possible minimum and maximum distance of

@@ -204,21 +204,24 @@ void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size
 
 	CUDA_SAFE_CALL(cudaMemcpy(d_data, data, segment_num*6*sizeof(float), cudaMemcpyHostToDevice));
 	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, batch_num*4*sizeof(uint), cudaMemcpyHostToDevice));
-	logt("copying data to GPU", start);
+	//logt("copying data to GPU", start);
 
 	// compute the vectors of segments in data, save to d_vec
 	get_vector_kernel<<<segment_num/1024+1,1024>>>(d_data, d_vec, segment_num);
 	check_execution();
 	// compute the distance in parallel
+	if(max_size_2>1024){
+		max_size_2=1023;
+	}
 	for(uint cur_offset_1=0;cur_offset_1<max_size_1;cur_offset_1++){
 		SegDist_cuda<<<batch_num, max_size_2>>>(d_data, d_os, d_vec, d_dist, cur_offset_1);
 		check_execution();
 	}
 	cudaDeviceSynchronize();
-	logt("distances computations", start);
+	//logt("distances computations", start);
 
 	CUDA_SAFE_CALL(cudaMemcpy(result, d_dist, batch_num*sizeof(float), cudaMemcpyDeviceToHost));
-	logt("copy data out", start);
+	//logt("copy data out", start);
 }
 
 }

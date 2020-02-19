@@ -377,7 +377,9 @@ public:
 	MyMesh(unsigned i_decompPercentage,
 		   const int i_mode,
 		   unsigned i_quantBits,
-		   const char* data, long length);
+		   char* data,
+		   long length,
+		   bool copy_data);
 
 	~MyMesh();
 

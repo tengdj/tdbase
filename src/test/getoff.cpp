@@ -6,16 +6,35 @@
  */
 
 #include "../spatial/spatial.h"
+#include "../spatial/himesh.h"
 
 using namespace hispeed;
 
 int main(int argc, char **argv){
 
-	if(argc<2){
-		log("usage: getoff path/to/output");
-		return 0;
-	}
+//	if(argc<2){
+//		log("usage: getoff path/to/output");
+//		return 0;
+//	}
+	Polyhedron *poly = hispeed::read_polyhedron();
+	float volume = -CGAL::Polygon_mesh_processing::volume(*poly);
+	delete poly;
 	MyMesh *mesh = hispeed::read_mesh();
-	mesh->writeMeshOff(argv[1]);
+	mesh->completeOperation();
+	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	himesh->advance_to(100);
+	for(int i=370;i<=1000;i+=5){
+		vector<Voxel *> boxes = himesh->generate_voxels(i);
+		int num_boxes = boxes.size();
+		float size = 0;
+		for(Voxel *v:boxes){
+			size += v->box.volume();
+			delete v;
+		}
+		boxes.clear();
+		cout<<i<<","<<num_boxes<<","<<size/volume<<endl;
+	}
 	delete mesh;
+	delete himesh;
+
 }

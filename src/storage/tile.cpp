@@ -149,21 +149,23 @@ void Tile::retrieve_mesh(int id){
 	char *mesh_data = NULL;
 	pthread_mutex_lock(&read_lock);
 	if(wrapper->mesh==NULL){
+		timeval cur = hispeed::get_cur_time();
 		mesh_data = new char[wrapper->data_size];
+		malloc_time += hispeed::get_time_elapsed(cur, true);
 		assert(dt_fs);
 		fseek(dt_fs, wrapper->offset, SEEK_SET);
-		assert(wrapper->data_size==
-				fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs));
+		size_t rd = fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs);
+		disk_time += hispeed::get_time_elapsed(cur, true);
+		assert(wrapper->data_size==rd);
 	}
 	pthread_mutex_unlock(&read_lock);
 	pthread_mutex_lock(&wrapper->lock);
 	if(wrapper->mesh==NULL){
-		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size);
+		timeval cur = hispeed::get_cur_time();
+		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size, false);
+		newmesh_time += hispeed::get_time_elapsed(cur, true);
 	}
 	pthread_mutex_unlock(&wrapper->lock);
-	if(mesh_data){
-		delete mesh_data;
-	}
 }
 
 OctreeNode *Tile::build_octree(size_t leaf_size){
@@ -183,10 +185,16 @@ SpatialIndex::ISpatialIndex *Tile::build_rtree(){
 	return spidx;
 }
 
+
 void Tile::decode_to(int id, int lod){
 	assert(id>=0&&id<objects.size());
+	timeval cur = hispeed::get_cur_time();
+	timeval start = hispeed::get_cur_time();
 	retrieve_mesh(id);
+	retrieve_time += hispeed::get_time_elapsed(cur,true);
 	objects[id]->advance_to(lod);
+	advance_time += hispeed::get_time_elapsed(cur,true);
+	decode_time += hispeed::get_time_elapsed(start,true);
 }
 
 void Tile::add_raw(char *data){
@@ -194,7 +202,7 @@ void Tile::add_raw(char *data){
 	size_t size_tmp = 0;
 	memcpy((char *)&size_tmp, data+offset, sizeof(size_t));
 	offset += sizeof(size_t);
-	HiMesh *mesh = new HiMesh(data+offset, size_tmp);
+	HiMesh *mesh = new HiMesh(data+offset, size_tmp, true);
 	offset += size_tmp;
 	memcpy((char *)&size_tmp, data+offset, sizeof(size_t));
 	offset += sizeof(size_t);

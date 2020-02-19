@@ -126,7 +126,7 @@ class geometry_computer{
 	bool gpu_busy = false;
 	void request_cpu();
 	void release_cpu();
-	gpu_info *request_gpu(int min_size);
+	gpu_info *request_gpu(int min_size, bool force=false);
 	void release_gpu(gpu_info *info);
 
 	char *d_cuda = NULL;

@@ -48,7 +48,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 	std::ifstream nfile(nuclei_path);
 	std::ifstream vfile(vessel_path);
 	string input_line;
-	while(std::getline(vfile, input_line)){
+	if(std::getline(vfile, input_line)){
 		hispeed::replace_bar(input_line);
 		stringstream ss;
 		ss<<input_line;
@@ -70,9 +70,10 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 		tmpb.min[2] = 0;
 		vessel_box.update(tmpb);
 		HiMesh *himesh = poly_to_himesh(vessel);
-		vessel_voxels = himesh->generate_voxels(500);
+		vessel_voxels = himesh->generate_voxels(100);
 		delete himesh;
-		break;
+	}else{
+		assert(false&&"error reading the vessel file");
 	}
 
 	while(std::getline(nfile, input_line)){
@@ -161,11 +162,10 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 	}
 }
 
-
-Polyhedron shift_nuclei(float shift[3], int polyid){
+Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
 	Polyhedron poly;
 	stringstream ss;
-	ss << nucleis[polyid];
+	ss << poly_o;
 	ss >> poly;
 	for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
 		Point p = vi->point();
@@ -234,7 +234,7 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset){
 				shift[1] = j*nuclei_box.max[1]+base[1];
 				shift[2] = k*nuclei_box.max[2]+base[2];
 				int polyid = hispeed::get_rand_number(nucleis.size()-1);
-				Polyhedron poly = shift_nuclei(shift, polyid);
+				Polyhedron poly = shift_polyhedron(shift, nucleis[polyid]);
 				organize_data(poly, nucleis_voxels[polyid], shift, data, offset);
 				generated++;
 			}
@@ -253,9 +253,11 @@ void *generate_unit(void *arg){
 	char *data = new char[buffer_size];
 	while(!jobs.empty()){
 		pthread_mutex_lock(&mylock);
+
 		tuple<float, float, float> job = jobs.front();
 		jobs.pop();
 		log("%ld jobs left", jobs.size());
+
 		pthread_mutex_unlock(&mylock);
 		size_t offset = 0;
 		float base[3] = {get<0>(job),get<1>(job),get<2>(job)};
@@ -270,6 +272,27 @@ void *generate_unit(void *arg){
 	return NULL;
 }
 
+void generate_vfile(const char *path, vector<tuple<float, float, float>> &vessel_shifts, int voxel_size){
+	char *data = new char[vessel_shifts.size()*100000*2];
+	size_t offset = 0;
+	HiMesh *himesh = poly_to_himesh(vessel);
+	vector<Voxel *> voxels = himesh->generate_voxels(voxel_size);
+	for(tuple<float, float, float> tp:vessel_shifts){
+		float base[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
+		organize_data(vessel, voxels, base, data, offset);
+	}
+	ofstream *v_os = new std::ofstream(path, std::ios::out | std::ios::binary);
+	v_os->write(data, offset);
+	v_os->close();
+	delete v_os;
+	log("%d voxels are generated for the vessel",voxels.size());
+	for(Voxel *v:voxels){
+		delete v;
+	}
+	voxels.clear();
+	delete himesh;
+}
+
 
 int main(int argc, char **argv){
 	string nuclei_pt;
@@ -279,16 +302,18 @@ int main(int argc, char **argv){
 	int num_nuclei_per_vessel = 10000;
 	int num_vessel = 1;
 	float shrink = 20;
+	int voxel_size = 400;
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
 		("nuclei,u", po::value<string>(&nuclei_pt)->required(), "path to the nuclei prototype file")
 		("vessel,v", po::value<string>(&vessel_pt)->required(), "path to the vessel prototype file")
-		("output,o", po::value<string>(&output_path)->required(), "path to the output file")
+		("output,o", po::value<string>(&output_path)->required(), "initial of the output files")
 		("shrink,s", po::value<float>(&shrink), "shrink the size of nuclei by how many times")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
 		("nv", po::value<int>(&num_vessel), "number of vessels")
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
+		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
 		;
 
 	po::variables_map vm;
@@ -301,27 +326,40 @@ int main(int argc, char **argv){
 	po::notify(vm);
 
 	struct timeval start = get_cur_time();
-	load_prototype(nuclei_pt.c_str(), vessel_pt.c_str(), shrink, num_nuclei_per_vessel);
-	logt("load prototype files", start);
-	os = new std::ofstream(output_path.c_str(), std::ios::out | std::ios::binary);
+
+	char nuclei_output[256];
+	char vessel_output[256];
+	sprintf(nuclei_output,"%s_n_n%d_s%d_vs%d.dt",output_path.c_str(),num_nuclei_per_vessel*num_vessel,(int)shrink, voxel_size);
+	sprintf(vessel_output,"%s_v_n%d_s%d_vs%d.dt",output_path.c_str(),num_nuclei_per_vessel*num_vessel,(int)shrink, voxel_size);
+	os = new std::ofstream(nuclei_output, std::ios::out | std::ios::binary);
 
 	// generate some job for worker to process
 	int x_dim = (int)pow((float)num_vessel, 1.0/3);
 	int y_dim = x_dim;
 	int z_dim = num_vessel/(x_dim*y_dim);
-
+	num_nuclei_per_vessel = (num_nuclei_per_vessel*num_vessel)/(x_dim*y_dim*z_dim);
+	load_prototype(nuclei_pt.c_str(), vessel_pt.c_str(), shrink, num_nuclei_per_vessel);
+	logt("load prototype files", start);
+	vector<tuple<float, float, float>> vessel_shifts;
 	for(int i=0;i<x_dim;i++){
 		for(int j=0;j<y_dim;j++){
 			for(int k=0;k<z_dim;k++){
 				jobs.push(std::make_tuple(i*vessel_box.max[0], j*vessel_box.max[1], k*vessel_box.max[2]));
+				vessel_shifts.push_back(std::make_tuple(i*vessel_box.max[0], j*vessel_box.max[1], k*vessel_box.max[2]));
 			}
 		}
+	}
+	if(num_threads<jobs.size()){
+		num_threads = jobs.size();
 	}
 
 	pthread_t threads[num_threads];
 	for(int i=0;i<num_threads;i++){
 		pthread_create(&threads[i], NULL, generate_unit, NULL);
 	}
+
+	generate_vfile(vessel_output, vessel_shifts, voxel_size);
+	vessel_shifts.clear();
 
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
