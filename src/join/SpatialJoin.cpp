@@ -141,23 +141,50 @@ vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2){
 	return candidates;
 }
 
+double global_decode_time = 0;
+double global_computation_time = 0;
+double global_packing_time = 0;
+double global_updatelist_time = 0;
+double global_total_time = 0;
+pthread_mutex_t g_lock;
+
+void report_time(){
+	cout<<global_total_time<<","
+		<<global_decode_time<<","
+		<<global_packing_time<<","
+		<<global_computation_time<<","
+		<<global_updatelist_time<<endl;
+}
 /*
  * the main function for getting the nearest neighbor
  *
  * */
 void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 	struct timeval start = get_cur_time();
+	struct timeval very_start = get_cur_time();
 
+	double decode_time = 0;
+	double packing_time = 0;
+	double computation_time = 0;
+	double updatelist_time = 0;
 	// filtering with MBBs to get the candidate list
 	vector<candidate_entry> candidates = mbb_distance(tile1, tile2);
 	logt("comparing mbbs", start);
 	report_candidate(candidates);
-	double decode_time = 0;
-	double computation_time = 0;
+
 
 	// now we start to get the distances with progressive level of details
-	int lod = base_lod;
-	while(true){
+	if(lods.size()==0){
+		for(int lod = base_lod;lod<=top_lod;lod+=lod_gap){
+			lods.push_back(lod);
+		}
+		if(lods[lods.size()-1]<top_lod){
+			lods.push_back(top_lod);
+		}
+	}
+
+
+	for(int lod:lods){
 		struct timeval iter_start = get_cur_time();
 		const int pair_num = get_pair_num(candidates);
 		if(pair_num==0){
@@ -177,32 +204,30 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 				candidate_length += i.voxel_pairs.size();
 			}
 		}
-		cout<<lod<<","<<candidates.size()<<","<<(1.0*candidate_length)/candidates.size()<<endl;
-
 
 		double fill_time = 0;
-		for(candidate_entry c:candidates){
+		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
 			if(c.second.size()<=1){
 				continue;
 			}
 			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info info:c.second){
+			for(candidate_info &info:c.second){
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
-				for(voxel_pair vp:info.voxel_pairs){
+				for(voxel_pair &vp:info.voxel_pairs){
 					assert(vp.v1&&vp.v2);
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						// ensure the mesh is extracted
 						tile1->decode_to(wrapper1->id, lod);
 						timeval cur = hispeed::get_cur_time();
-						wrapper1->fill_voxels(DT_Segment);
+						wrapper1->fill_voxels(DT_Segment, lod==lods[lods.size()-1]);
 						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(wrapper2->id, lod);
 						timeval cur = hispeed::get_cur_time();
-						wrapper2->fill_voxels(DT_Segment);
+						wrapper2->fill_voxels(DT_Segment, lod==lods[lods.size()-1]);
 						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 
@@ -260,6 +285,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 			}
 		}
 		assert(index==pair_num);
+		packing_time += hispeed::get_time_elapsed(start, false);
 		logt("organizing data", start);
 		geometry_param gp;
 		gp.data = data;
@@ -281,7 +307,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 					// update the distance
 					if(vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
 						range dist = vp.dist;
-						if(lod==100){
+						if(lod==lods[lods.size()-1]){
 							// now we have a precise distance
 							dist.closest = distances[index];
 							dist.farthest = distances[index];
@@ -299,6 +325,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 			update_candidate_list(ce.second, min_candidate);
 		}
 		report_candidate(candidates);
+		updatelist_time += hispeed::get_time_elapsed(start, false);
 		logt("update candidate list", start);
 
 		delete data;
@@ -307,16 +334,94 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 		voxel_map.clear();
 		logt("current iteration", iter_start);
 
-		if(lod==100){
+		if(lod==lods[lods.size()-1]){
 			break;
-		}else{
-			lod+=lod_gap;
-			if(lod>100){
-				lod = 100;
-			}
 		}
 	}
-	cout<<decode_time<<","<<computation_time<<endl;
+	pthread_mutex_lock(&g_lock);
+	global_decode_time += decode_time;
+	global_packing_time += packing_time;
+	global_computation_time += computation_time;
+	global_updatelist_time += updatelist_time;
+	global_total_time += hispeed::get_time_elapsed(very_start, false);
+	report_time();
+	pthread_mutex_unlock(&g_lock);
+
+}
+
+void SpatialJoin::nearest_neighbor_aabb(Tile *tile1, Tile *tile2){
+	struct timeval start = get_cur_time();
+	struct timeval very_start = get_cur_time();
+	double decode_time = 0;
+	double packing_time = 0;
+	double computation_time = 0;
+	// filtering with MBBs to get the candidate list
+	vector<candidate_entry> candidates = mbb_distance(tile1, tile2);
+	logt("comparing mbbs", start);
+
+
+	// generate the aabb tree for all the referred polyhedrons
+	int candidate_size = 0;
+	for(candidate_entry c:candidates){
+		if(c.second.size()<=1){
+			continue;
+		}
+		for(candidate_info info:c.second){
+			HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
+			tile2->decode_to(wrapper2->id,100);
+		}
+		tile1->decode_to(c.first->id, 100);
+		candidate_size += c.second.size();
+	}
+	decode_time += hispeed::get_time_elapsed(start, false);
+	logt("decode data",start);
+	log("%ld polyhedron has %d candidates", candidates.size(), candidate_size);
+
+	for(candidate_entry c:candidates){
+		if(c.second.size()<=1){
+			continue;
+		}
+		for(candidate_info info:c.second){
+			HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
+			wrapper2->mesh->get_aabb_tree();
+		}
+	}
+	packing_time += hispeed::get_time_elapsed(start, false);
+	logt("build aabb tree",start);
+
+	for(candidate_entry c:candidates){
+		// the nearest neighbor is found
+		if(c.second.size()<=1){
+			continue;
+		}
+		HiMesh_Wrapper *wrapper1 = c.first;
+		double min_dist = DBL_MAX;
+		vector<Point> vertices;
+		wrapper1->mesh->get_vertices(vertices);
+		for(candidate_info info:c.second){
+			HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
+			int index = 0;
+			for(Point &p:vertices){
+				FT sqd = wrapper2->mesh->get_aabb_tree()->squared_distance(p);
+				double distance = (double)CGAL::to_double(sqd);
+				if(min_dist>distance){
+					min_dist = distance;
+				}
+			}
+		}// end for distance_candiate list
+		vertices.clear();
+	}// end for candidates
+	computation_time += hispeed::get_time_elapsed(start, false);
+	logt("getting distance", start);
+
+	pthread_mutex_lock(&g_lock);
+	global_decode_time += decode_time;
+	global_packing_time += packing_time;
+	global_computation_time += computation_time;
+	global_total_time += hispeed::get_time_elapsed(very_start, false);
+	report_time();
+	pthread_mutex_unlock(&g_lock);
+
 }
 
 /*
@@ -398,12 +503,16 @@ vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 }
 
 /*
- * the main function for detect the intersection
+ * the main function for detecting the intersection
  * relationship among polyhedra in the tile
  *
  * */
 void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 	struct timeval start = get_cur_time();
+	struct timeval very_start = get_cur_time();
+	double decode_time = 0;
+	double packing_time = 0;
+	double computation_time = 0;
 
 	// filtering with MBBs to get the candidate list
 	vector<candidate_entry> candidates = mbb_intersect(tile1, tile2);
@@ -413,9 +522,17 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 	logt("update candidate list", start);
 
 	// now we start to ensure the intersection with progressive level of details
-	int lod = base_lod;
 	size_t triangle_pair_num = 0;
-	while(true){
+	double fill_time = 0;
+	if(lods.size()==0){
+		for(int lod = base_lod;lod<=top_lod;lod+=lod_gap){
+			lods.push_back(lod);
+		}
+		if(lods[lods.size()-1]<top_lod){
+			lods.push_back(top_lod);
+		}
+	}
+	for(int lod:lods){
 		struct timeval iter_start = start;
 		size_t pair_num = get_pair_num(candidates);
 		if(pair_num==0){
@@ -433,11 +550,15 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						tile1->decode_to(wrapper1->id, lod);
-						wrapper1->fill_voxels(DT_Triangle);
+						timeval cur = hispeed::get_cur_time();
+						wrapper1->fill_voxels(DT_Triangle, lod==lods[lods.size()-1]);
+						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(wrapper2->id, lod);
-						wrapper2->fill_voxels(DT_Triangle);
+						timeval cur = hispeed::get_cur_time();
+						wrapper2->fill_voxels(DT_Triangle, lod==lods[lods.size()-1]);
+						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 
 					// update the voxel map
@@ -455,9 +576,20 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
+		decode_time += hispeed::get_time_elapsed(start, false);
 		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d",
 				start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
 
+		cerr<<"\ndecoding time\t"<<tile1->decode_time+tile2->decode_time
+			<<"\n\tretrieve time\t"<< tile1->retrieve_time+tile2->retrieve_time
+			<<"\n\t\tdisk time\t" << tile1->disk_time+tile2->disk_time
+			<<"\n\t\tmalloc time\t"<<tile1->malloc_time+tile2->malloc_time
+			<<"\n\t\tnewmesh time\t"<<tile1->newmesh_time+tile2->newmesh_time
+			<<"\n\tadvance time\t"<< tile1->advance_time+tile2->advance_time
+			<<"\nfilling time\t"<<fill_time
+			<<endl<<endl;
+		tile1->reset_time();
+		tile2->reset_time();
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[9*triangle_num];
 		for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin();
@@ -482,6 +614,7 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 			}
 		}
 		assert(index==pair_num);
+		packing_time += hispeed::get_time_elapsed(start, false);
 		logt("organizing data", start);
 		geometry_param gp;
 		gp.data = data;
@@ -489,6 +622,7 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 		gp.offset_size = offset_size;
 		gp.intersect = intersect_status;
 		computer->get_intersect(gp);
+		computation_time += hispeed::get_time_elapsed(start, false);
 		logt("checking intersection", start);
 
 		// now update the intersection status and update the all candidate list
@@ -511,15 +645,16 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 		voxel_map.clear();
 
 		logt("current iteration", iter_start);
-		if(lod==100){
-			break;
-		}else{
-			lod+=lod_gap;
-			if(lod>100){
-				lod = 100;
-			}
-		}
 	}
+
+	pthread_mutex_lock(&g_lock);
+	global_decode_time += decode_time;
+	global_packing_time += packing_time;
+	global_computation_time += computation_time;
+	global_total_time += hispeed::get_time_elapsed(very_start, false);
+	report_time();
+	pthread_mutex_unlock(&g_lock);
+
 }
 
 
@@ -532,6 +667,7 @@ public:
 		pthread_mutex_init (&lock, NULL);
 		joiner = NULL;
 	}
+	bool ispeed = false;
 };
 
 void *nearest_neighbor_single(void *param){
@@ -545,17 +681,28 @@ void *nearest_neighbor_single(void *param){
 		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
 		nnparam->tile_queue.pop();
 		pthread_mutex_unlock(&nnparam->lock);
-		nnparam->joiner->nearest_neighbor(p.first, p.second);
+		if(nnparam->ispeed){
+			p.first->disable_innerpart();
+			p.second->disable_innerpart();
+			nnparam->joiner->nearest_neighbor_aabb(p.first, p.second);
+		}else{
+			nnparam->joiner->nearest_neighbor(p.first, p.second);
+		}
+		if(p.second!=p.first){
+			delete p.second;
+		}
+		delete p.first;
 	}
 	return NULL;
 }
 
-void SpatialJoin::nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads){
+void SpatialJoin::nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads, bool ispeed){
 	struct nn_param param;
 	for(pair<Tile *, Tile *> &p:tile_pairs){
 		param.tile_queue.push(p);
 	}
 	param.joiner = this;
+	param.ispeed = ispeed;
 	pthread_t threads[num_threads];
 	for(int i=0;i<num_threads;i++){
 		pthread_create(&threads[i], NULL, nearest_neighbor_single, (void *)&param);
@@ -581,6 +728,10 @@ void *intersect_single(void *param){
 		nnparam->tile_queue.pop();
 		pthread_mutex_unlock(&nnparam->lock);
 		nnparam->joiner->intersect(p.first, p.second);
+		if(p.second!=p.first){
+			delete p.second;
+		}
+		delete p.first;
 	}
 	return NULL;
 }

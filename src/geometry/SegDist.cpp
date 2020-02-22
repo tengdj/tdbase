@@ -80,6 +80,12 @@ float SegDist(const float *seg1, const float *seg2,
 // of segments and return the minimum distance
 float SegDist_single(const float *data1, const float *data2,
 		size_t size1, size_t size2){
+	if(size1>10000){
+		size1=10000;
+	}
+	if(size2>10000){
+		size2=10000;
+	}
 	float local_min = DBL_MAX;
 	float *A = new float[size1*3];
 	float *B = new float[size2*3];
@@ -93,7 +99,6 @@ float SegDist_single(const float *data1, const float *data2,
 		VmV(B+i*3, data2+i*6+3, data2+i*6);
 		BdB[i] = VdotV(B+i*3, B+i*3);
 	}
-
 	for(int i=0;i<size1;i++){
 		for(int j=0;j<size2;j++){
 			const float *cur_S = data1+i*6;

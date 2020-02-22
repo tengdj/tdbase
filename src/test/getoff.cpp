@@ -22,7 +22,10 @@ int main(int argc, char **argv){
 	MyMesh *mesh = hispeed::read_mesh();
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
-	himesh->advance_to(100);
+	for(int i=0;i<=100;i+=10){
+		himesh->advance_to(i);
+		cout<<i<<","<<himesh->size_of_vertices()<<","<<himesh->size_of_edges()<<endl;
+	}
 	for(int i=370;i<=1000;i+=5){
 		vector<Voxel *> boxes = himesh->generate_voxels(i);
 		int num_boxes = boxes.size();

@@ -38,7 +38,7 @@ HiMesh *poly_to_himesh(Polyhedron &poly){
 	return himesh;
 }
 
-MyMesh *poly_to_mesh(Polyhedron &poly){
+MyMesh *poly_to_mesh(Polyhedron poly){
 	stringstream ss;
 	ss<<poly;
 	return hispeed::get_mesh(ss.str(), true);
@@ -179,7 +179,7 @@ Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
  * */
 inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
 		float shift[3], char *data, size_t &offset){
-	MyMesh *mesh = poly_to_mesh(poly);
+	MyMesh *mesh = poly_to_mesh(shift_polyhedron(shift, poly));
 	memcpy(data+offset, (char *)&mesh->dataOffset, sizeof(size_t));
 	offset += sizeof(size_t);
 	memcpy(data+offset, mesh->p_data, mesh->dataOffset);
@@ -216,7 +216,7 @@ inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
  * a given shift base
  *
  * */
-inline int generate_nuclei(float base[3], char *data, size_t &offset){
+inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data2, size_t &offset2){
 	int nuclei_num[3];
 	for(int i=0;i<3;i++){
 		nuclei_num[i] = (int)(vessel_box.max[i]/nuclei_box.max[i]);
@@ -234,8 +234,11 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset){
 				shift[1] = j*nuclei_box.max[1]+base[1];
 				shift[2] = k*nuclei_box.max[2]+base[2];
 				int polyid = hispeed::get_rand_number(nucleis.size()-1);
-				Polyhedron poly = shift_polyhedron(shift, nucleis[polyid]);
-				organize_data(poly, nucleis_voxels[polyid], shift, data, offset);
+				organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
+				{
+					int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
+					organize_data(nucleis[polyid], nucleis_voxels[polyid2], shift, data2, offset2);
+				}
 				generated++;
 			}
 		}
@@ -244,6 +247,7 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset){
 }
 
 ofstream *os = NULL;
+ofstream *os2 = NULL;
 queue<tuple<float, float, float>> jobs;
 pthread_mutex_t mylock;
 long global_generated = 0;
@@ -251,6 +255,7 @@ long global_generated = 0;
 
 void *generate_unit(void *arg){
 	char *data = new char[buffer_size];
+	char *data2 = new char[buffer_size];
 	while(!jobs.empty()){
 		pthread_mutex_lock(&mylock);
 
@@ -260,15 +265,18 @@ void *generate_unit(void *arg){
 
 		pthread_mutex_unlock(&mylock);
 		size_t offset = 0;
+		size_t offset2 = 0;
 		float base[3] = {get<0>(job),get<1>(job),get<2>(job)};
-		int generated = generate_nuclei(base, data, offset);
+		int generated = generate_nuclei(base, data, offset, data2, offset2);
 
 		pthread_mutex_lock(&mylock);
 		os->write(data, offset);
+		os2->write(data2, offset2);
 		global_generated += generated;
 		pthread_mutex_unlock(&mylock);
 	}
 	delete data;
+	delete data2;
 	return NULL;
 }
 
@@ -278,8 +286,8 @@ void generate_vfile(const char *path, vector<tuple<float, float, float>> &vessel
 	HiMesh *himesh = poly_to_himesh(vessel);
 	vector<Voxel *> voxels = himesh->generate_voxels(voxel_size);
 	for(tuple<float, float, float> tp:vessel_shifts){
-		float base[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
-		organize_data(vessel, voxels, base, data, offset);
+		float shift[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
+		organize_data(vessel, voxels, shift, data, offset);
 	}
 	ofstream *v_os = new std::ofstream(path, std::ios::out | std::ios::binary);
 	v_os->write(data, offset);
@@ -328,10 +336,15 @@ int main(int argc, char **argv){
 	struct timeval start = get_cur_time();
 
 	char nuclei_output[256];
+	char nuclei_output2[256];
+
 	char vessel_output[256];
-	sprintf(nuclei_output,"%s_n_n%d_s%d_vs%d.dt",output_path.c_str(),num_nuclei_per_vessel*num_vessel,(int)shrink, voxel_size);
-	sprintf(vessel_output,"%s_v_n%d_s%d_vs%d.dt",output_path.c_str(),num_nuclei_per_vessel*num_vessel,(int)shrink, voxel_size);
+	sprintf(nuclei_output,"%s_n_nv%d_nu%d_s%d_vs%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size);
+	sprintf(nuclei_output2,"%s_n2_nv%d_nu%d_s%d_vs%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size);
+
+	sprintf(vessel_output,"%s_v_nv%d_nu%d_s%d_vs%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size);
 	os = new std::ofstream(nuclei_output, std::ios::out | std::ios::binary);
+	os2 = new std::ofstream(nuclei_output2, std::ios::out | std::ios::binary);
 
 	// generate some job for worker to process
 	int x_dim = (int)pow((float)num_vessel, 1.0/3);
@@ -349,7 +362,7 @@ int main(int argc, char **argv){
 			}
 		}
 	}
-	if(num_threads<jobs.size()){
+	if(num_threads>jobs.size()){
 		num_threads = jobs.size();
 	}
 
@@ -366,6 +379,7 @@ int main(int argc, char **argv){
 		pthread_join(threads[i], &status);
 	}
 	os->close();
+	os2->close();
 	logt("%ld nucleis are generated for %d vessels", start, global_generated, x_dim*y_dim*z_dim);
 	delete os;
 }

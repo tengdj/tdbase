@@ -31,12 +31,14 @@ class Tile{
 	vector<aab_d> rtree_obj;
 	SpatialIndex::ISpatialIndex* spidx = NULL;
 	SpatialIndex::IStorageManager* rtree_storage = NULL;
+
 public:
 	// for building tile instead of load from file
 	Tile(){};
 	void add_raw(char *data);
 	Tile(std::string path, size_t capacity=LONG_MAX);
 	~Tile();
+	void disable_innerpart();
 
 	// for profiling performance
 	double decode_time = 0;
@@ -73,6 +75,12 @@ public:
 	void retrieve_all(){
 		for(HiMesh_Wrapper *w:objects){
 			retrieve_mesh(w->id);
+		}
+	}
+
+	void advance_all(int lod){
+		for(HiMesh_Wrapper *w:objects){
+			w->advance_to(lod);
 		}
 	}
 

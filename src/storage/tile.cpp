@@ -61,6 +61,24 @@ Tile::~Tile(){
 	}
 }
 
+void Tile::disable_innerpart(){
+	for(HiMesh_Wrapper *w:this->objects){
+		if(w->voxels.size()>1){
+			for(Voxel *v:w->voxels){
+				delete v;
+			}
+			w->voxels.clear();
+			Voxel *v = new Voxel();
+			v->box = w->box.box;
+			for(int i=0;i<3;i++){
+				v->core[i] = (v->box.max[i]-v->box.min[i])/2+v->box.min[i];
+			}
+			w->voxels.push_back(v);
+		}
+	}
+}
+
+
 // persist the meta data for current tile as a cache
 bool Tile::persist(string path){
 	FILE *mt_fs = fopen(path.c_str(), "wb+");

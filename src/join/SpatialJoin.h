@@ -79,10 +79,23 @@ class SpatialJoin{
 	geometry_computer *computer = NULL;
 	int base_lod = 0;
 	int lod_gap = 50;
+	int top_lod = 100;
+	vector<int> lods;
 public:
+	void set_lods(vector<int> &ls){
+		sort(ls.begin(), ls.end());
+		for(int l:ls){
+			assert(l>=100&&l>=0);
+			lods.push_back(l);
+		}
+	}
 	void set_base_lod(int v){
 		assert(v>=0&&v<=100);
 		base_lod = v;
+	}
+	void set_top_lod(int v){
+		assert(v>=0&&v<=100);
+		top_lod = v;
 	}
 	void set_lod_gap(int v){
 		assert(v>0&&v<=100);
@@ -106,10 +119,12 @@ public:
 	 * */
 	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2);
 	void nearest_neighbor(Tile *tile1, Tile *tile2);
+	void nearest_neighbor_aabb(Tile *tile1, Tile *tile2);
+
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
 	void intersect(Tile *tile1, Tile *tile2);
 
-	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads);
+	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads, bool ispeed);
 	void intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads);
 
 	/*

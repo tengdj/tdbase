@@ -54,6 +54,9 @@ struct query_temp {
 struct query_op {
 	Jointype join_predicate = ST_INTERSECTS; /* Join predicate*/
 	int decomp_lod = 100; // decompression level/level of details 0 to 100
+	string path1;
+	string path2;
+	int repeat = 1;
 };
 
 bool extract_params_resque(int argc, char **argv, struct query_op &vars){
@@ -66,8 +69,10 @@ bool extract_params_resque(int argc, char **argv, struct query_op &vars){
 			("help,h", "This help message")
 			("lod,l", po::value<int>(&vars.decomp_lod) , "Decompression LOD. (0, 100]. Default is 100.")
 			("predicate,p", po::value<string>(&jointype)->required(), "Predicate for spatial join and nn queries "
-					"[ st_intersects | st_touches | st_crosses | st_contains | st_adjacent | st_disjoint "
-					"| st_equals | st_dwithin | st_within | st_overlaps | st_nn_voronoi | st_nn_rtree ] ")
+					"[ st_intersects | st_nn_rtree ] ")
+			("tile1", po::value<string>(&vars.path1)->required(), "path to tile 1")
+			("tile2", po::value<string>(&vars.path2), "path to tile 2")
+			("r", po::value<int>(&vars.repeat), "number of repeats")
 			;
 		po::variables_map vm;
 		po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -166,6 +171,7 @@ int join_bucket_intersect(struct query_op &stop, struct query_temp &sttemp) {
 
 	int pairs = 0; // number of satisfied results
 	SpatialIndex::ISpatialIndex *spidx = sttemp.tile[1]->build_rtree();
+	assert(spidx);
 	logt("building index on set 2", start);
 
 	uint pair_num = 0;
@@ -211,49 +217,49 @@ int join_bucket_intersect(struct query_op &stop, struct query_temp &sttemp) {
  * in data set 2 by looking up the voronoi graph
  *
  * */
-int join_bucket_nn_voronoi(struct query_op &stop, struct query_temp &sttemp) {
-
-	/* Indicates where original data is mapped to */
-	int idx1 = 1;
-	int idx2 = 2;
-	int nuclei_id = 0;
-	double low[3], high[3];  // Temporary value placeholders for MBB
-
-	try {
-		// extract the geometry from dataset2 (compressed blood vessels) and extract skeleton
-		Skeleton *skeleton = NULL;
-
-		std::vector<Delaunay::Point_3> P;
-		vector<struct mbb_3d *> geom_mbb2 = sttemp.mbbdata[idx2];
-		for (int i = 0; i < geom_mbb2.size(); i++) {
-			P.insert(P.begin(), sttemp.skeleton_points[2][i].begin(), sttemp.skeleton_points[2][i].end());
-		}
-		// building their Delaunay triangulation (Voronoi).
-		Delaunay tree(P.begin(), P.end());
-
-		// For each nuclei, find its nearest blood vessel by checking voronoi
-		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
-
-		for (int i = 0; i < geom_mbb1.size(); i++) {
-			struct mbb_3d * env1 = geom_mbb1[i];
-			Delaunay::Point_3 nuclei_centroid((env1->low[0]+env1->high[0])*0.5,
-								  (env1->low[1]+env1->high[1])*0.5,
-								  (env1->low[2]+env1->high[2])*0.5);
-			Delaunay::Point_3 nnp = tree.nearest_vertex(nuclei_centroid)->point();
-			double squared_dist = CGAL::to_double(CGAL::squared_distance(nnp, nuclei_centroid));
-			double distance = sqrt(squared_dist);
-			cout << nuclei_id << TAB << nuclei_centroid.x() << TAB << nuclei_centroid.y()
-					<< TAB << nuclei_centroid.z() << TAB << distance << "\n";
-			nuclei_id++;
-		}
-	} catch (Tools::Exception& e) {
-		std::cerr << "******ERROR******" << std::endl;
-		cerr << e.what() << std::endl;
-		return -1;
-	} // end of catch
-
-	return nuclei_id ;
-}
+//int join_bucket_nn_voronoi(struct query_op &stop, struct query_temp &sttemp) {
+//
+//	/* Indicates where original data is mapped to */
+//	int idx1 = 1;
+//	int idx2 = 2;
+//	int nuclei_id = 0;
+//	double low[3], high[3];  // Temporary value placeholders for MBB
+//
+//	try {
+//		// extract the geometry from dataset2 (compressed blood vessels) and extract skeleton
+//		Skeleton *skeleton = NULL;
+//
+//		std::vector<Delaunay::Point_3> P;
+//		vector<struct mbb_3d *> geom_mbb2 = sttemp.mbbdata[idx2];
+//		for (int i = 0; i < geom_mbb2.size(); i++) {
+//			P.insert(P.begin(), sttemp.skeleton_points[2][i].begin(), sttemp.skeleton_points[2][i].end());
+//		}
+//		// building their Delaunay triangulation (Voronoi).
+//		Delaunay tree(P.begin(), P.end());
+//
+//		// For each nuclei, find its nearest blood vessel by checking voronoi
+//		vector<struct mbb_3d *> geom_mbb1 = sttemp.mbbdata[idx1];
+//
+//		for (int i = 0; i < geom_mbb1.size(); i++) {
+//			struct mbb_3d * env1 = geom_mbb1[i];
+//			Delaunay::Point_3 nuclei_centroid((env1->low[0]+env1->high[0])*0.5,
+//								  (env1->low[1]+env1->high[1])*0.5,
+//								  (env1->low[2]+env1->high[2])*0.5);
+//			Delaunay::Point_3 nnp = tree.nearest_vertex(nuclei_centroid)->point();
+//			double squared_dist = CGAL::to_double(CGAL::squared_distance(nnp, nuclei_centroid));
+//			double distance = sqrt(squared_dist);
+//			cout << nuclei_id << TAB << nuclei_centroid.x() << TAB << nuclei_centroid.y()
+//					<< TAB << nuclei_centroid.z() << TAB << distance << "\n";
+//			nuclei_id++;
+//		}
+//	} catch (Tools::Exception& e) {
+//		std::cerr << "******ERROR******" << std::endl;
+//		cerr << e.what() << std::endl;
+//		return -1;
+//	} // end of catch
+//
+//	return nuclei_id ;
+//}
 
 /*
  * perform nearest neighbor query on data sets with AABB tree
@@ -388,7 +394,7 @@ int join_bucket(struct query_op &stop, struct query_temp &sttemp){
 	int pairs = 0;
 	switch(stop.join_predicate){
 	case ST_NN_VORONOI:
-		pairs = join_bucket_nn_voronoi(stop, sttemp);
+		//pairs = join_bucket_nn_voronoi(stop, sttemp);
 		break;
 	case ST_NN_RTREE:
 		pairs = join_bucket_nn_rtree(stop, sttemp);
@@ -408,21 +414,22 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	Tile *tiles[2];
-	tiles[0] = new Tile("nuclei_10k.dt");
-	tiles[1] = new Tile("nuclei_10k.dt");
-	tiles[0]->retrieve_all();
-	tiles[1]->retrieve_all();
-	logt("organize data",start);
 	query_temp sttemp;
-	sttemp.tile[0] = tiles[0];
-	sttemp.tile[1] = tiles[1];
-
+	sttemp.tile[0] = new Tile(stop.path1.c_str());
+	sttemp.tile[0]->retrieve_all();
+	if(stop.path2.length()>1){
+		sttemp.tile[1] = new Tile(stop.path2.c_str());
+		sttemp.tile[1]->retrieve_all();
+	}else{
+		sttemp.tile[1] = sttemp.tile[0];
+	}
+	logt("organize data",start);
 	join_bucket(stop, sttemp);
 	logt("do join",start);
-
-	delete tiles[0];
-	delete tiles[1];
+	if(sttemp.tile[1]!=sttemp.tile[0]){
+		delete sttemp.tile[1];
+	}
+	delete sttemp.tile[0];
 	return 0;
 }
 

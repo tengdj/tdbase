@@ -124,7 +124,7 @@ class geometry_computer{
 	int max_thread_num = hispeed::get_num_threads();
 	bool cpu_busy = false;
 	bool gpu_busy = false;
-	void request_cpu();
+	bool request_cpu();
 	void release_cpu();
 	gpu_info *request_gpu(int min_size, bool force=false);
 	void release_gpu(gpu_info *info);
@@ -134,6 +134,10 @@ class geometry_computer{
 
 public:
 	~geometry_computer();
+	geometry_computer(){
+		pthread_mutex_init(&cpu_lock, NULL);
+		pthread_mutex_init(&gpu_lock, NULL);
+	}
 
 	bool init_gpus();
 	void get_distance_gpu(geometry_param &param);

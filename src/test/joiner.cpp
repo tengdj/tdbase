@@ -22,10 +22,14 @@ int main(int argc, char **argv){
 	string tile1_path("nuclei_tmp.dt");
 	string tile2_path("nuclei_tmp.dt");
 	bool intersect = false;
+	bool ispeed = false;
 	int num_threads = hispeed::get_num_threads();
+	int num_repeat_threads = hispeed::get_num_threads();
+
 	size_t max_objects = LONG_MAX;
 	int base_lod = 0;
 	int lod_gap = 50;
+	int top_lod = 100;
 	int repeated = 1;
 
 	po::options_description desc("joiner usage");
@@ -36,10 +40,15 @@ int main(int argc, char **argv){
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
+		("rn", po::value<int>(&num_repeat_threads), "number of threads for repeating jobs")
 		("repeat,r", po::value<int>(&repeated), "repeat tiles")
 		("max_objects,m", po::value<size_t>(&max_objects), "max number of objects in a tile")
 		("base_lod", po::value<int>(&base_lod), "the base lod for progressive decoding polyhedral")
+		("top_lod", po::value<int>(&top_lod), "the top lod for progressive decoding polyhedral")
 		("lod_gap", po::value<int>(&lod_gap), "the lod gap for progressive decoding polyhedral")
+		("lod", po::value<std::vector<std::string>>()->multitoken()->
+		        zero_tokens()->composing(), "the lods need be processed")
+		("ispeed", "run in ispeed mode")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -57,9 +66,13 @@ int main(int argc, char **argv){
 	if(vm.count("intersect")){
 		intersect = true;
 	}
+	if(vm.count("ispeed")){
+		ispeed = true;
+	}
 	if(vm.count("threads")&&num_threads>0){
 		gc->set_thread_num(num_threads);
 	}
+
 
 	SpatialJoin *joiner = new SpatialJoin(gc);
 	if(vm.count("lod_gap")){
@@ -67,6 +80,16 @@ int main(int argc, char **argv){
 	}
 	if(vm.count("base_lod")){
 		joiner->set_base_lod(base_lod);
+	}
+	if(vm.count("top_lod")){
+		joiner->set_top_lod(top_lod);
+	}
+	if(vm.count("lod")){
+		vector<int> lods;
+		for(string l:vm["lod"].as<std::vector<std::string>>()){
+			lods.push_back(atoi(l.c_str()));
+		}
+		joiner->set_lods(lods);
 	}
 
 	vector<pair<Tile *, Tile *>> tile_pairs;
@@ -82,18 +105,11 @@ int main(int argc, char **argv){
 	logt("load tiles", start);
 
 	if(intersect){
-		joiner->intersect_batch(tile_pairs, num_threads);
+		joiner->intersect_batch(tile_pairs, num_repeat_threads);
 	}else{
-		joiner->nearest_neighbor_batch(tile_pairs, num_threads);
+		joiner->nearest_neighbor_batch(tile_pairs, num_repeat_threads, ispeed);
 	}
 	logt("join", start);
-
-	for(pair<Tile *, Tile *> p:tile_pairs){
-		if(p.second!=p.first){
-			delete p.second;
-		}
-		delete p.first;
-	}
 	tile_pairs.clear();
 	delete joiner;
 	delete gc;

@@ -88,11 +88,17 @@ class HiMesh:public MyMesh{
 	size_t fill_segments(float *segments);
 	size_t fill_triangles(float *triangles);
 	bool own_data = true;
+	SegTree *aabb_tree = NULL;
+	list<Segment> segments;
 public:
 	HiMesh(char *data, long length, bool own_data);
 	HiMesh(char *data, long length);
 	~HiMesh(){
 		//release_buffer();
+		if(aabb_tree){
+			delete aabb_tree;
+		}
+		segments.clear();
 	}
 	Polyhedron *to_polyhedron();
 	Skeleton *extract_skeleton();
@@ -102,7 +108,7 @@ public:
 	float get_volume();
 
 	void fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
-	list<Segment> get_segments();
+	void get_segments();
 	SegTree *get_aabb_tree();
 
 	inline void get_vertices(std::vector<Point> &points){
@@ -162,7 +168,7 @@ public:
 	}
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle
-	void fill_voxels(enum data_type seg_tri);
+	void fill_voxels(enum data_type seg_tri, bool release_mesh);
 
 	void reset(){
 		pthread_mutex_lock(&lock);

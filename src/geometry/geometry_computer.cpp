@@ -21,10 +21,17 @@ void *SegDist_unit(void *params_void){
 	}
 	return NULL;
 }
-void geometry_computer::request_cpu(){
-	pthread_mutex_lock(&cpu_lock);
-	assert(!cpu_busy);
-	cpu_busy = true;
+bool geometry_computer::request_cpu(){
+	if(cpu_busy==false){
+		pthread_mutex_lock(&cpu_lock);
+		if(cpu_busy==false){
+			cpu_busy = true;
+			return true;
+		}else{
+			pthread_mutex_unlock(&cpu_lock);
+		}
+	}
+	return false;
 }
 void geometry_computer::release_cpu(){
 	assert(cpu_busy);
@@ -68,7 +75,7 @@ bool geometry_computer::init_gpus(){
 }
 
 void geometry_computer::get_distance_cpu(geometry_param &cc){
-	request_cpu();
+
 	pthread_t threads[max_thread_num];
 	geometry_param params[max_thread_num];
 	int each_thread = cc.pair_num/max_thread_num;
@@ -90,7 +97,6 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
-	release_cpu();
 }
 
 void geometry_computer::get_distance_gpu(geometry_param &cc){
@@ -103,16 +109,23 @@ void geometry_computer::get_distance_gpu(geometry_param &cc){
 
 void geometry_computer::get_distance(geometry_param &cc){
 
-	// todo: break the job into units and compute separately
-	// otherwise one thread will block GPU or cpu for too long
-	// GPU has a higher priority
-	gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024);
-	if(gpu){
-		log("GPU %d started to get distance", gpu->device_id);
-		hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
-		release_gpu(gpu);
-	}else{
-		get_distance_cpu(cc);
+	while(true){
+		// todo: break the job into units and compute separately
+		// otherwise one thread will block GPU or cpu for too long
+		// GPU has a higher priority
+		gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024, false);
+		if(gpu){
+			log("GPU %d started to get distance", gpu->device_id);
+			hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
+			release_gpu(gpu);
+			break;
+		}else if(request_cpu()){
+			get_distance_cpu(cc);
+			release_cpu();
+			break;
+		}else{
+			usleep(10);
+		}
 	}
 }
 
@@ -128,7 +141,9 @@ void *TriInt_unit(void *params_void){
 }
 
 void geometry_computer::get_intersect(geometry_param &cc){
-	request_cpu();
+	while(!request_cpu()){
+		usleep(10);;
+	}
 
 	// compute the minimum distance of segment pairs with multiple threads
 	pthread_t threads[max_thread_num];

@@ -285,6 +285,7 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 		group_count[gid]++;
 	}
 
+
 	for(int i=0;i<voxels.size();i++){
 		if(group_count[i]>0){
 			voxels[i]->data[lod] = new float[group_count[i]*size_of_datum];
@@ -311,8 +312,8 @@ HiMesh::HiMesh(char* data, long length):
 HiMesh::HiMesh(char* data, long length, bool od):
 		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length, od){
 }
-list<Segment> HiMesh::get_segments(){
-	list<Segment> segments;
+void HiMesh::get_segments(){
+	segments.clear();
 	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
 		Point p1 = eit->vertex()->point();
 		Point p2 = eit->opposite()->vertex()->point();
@@ -320,7 +321,6 @@ list<Segment> HiMesh::get_segments(){
 			segments.push_back(Segment(p1, p2));
 		}
 	}
-	return segments;
 }
 
 void HiMesh::to_wkt(){
@@ -344,10 +344,13 @@ void HiMesh::to_wkt(){
 }
 
 SegTree *HiMesh::get_aabb_tree(){
-	list<Segment> segments = get_segments();
-	SegTree *tree = new SegTree(segments.begin(), segments.end());
-	//tree->accelerate_distance_queries();
-	return tree;
+	advance_to(100);
+	if(aabb_tree==NULL){
+		get_segments();
+		aabb_tree = new SegTree(segments.begin(), segments.end());
+		aabb_tree->accelerate_distance_queries();
+	}
+	return aabb_tree;
 }
 
 float HiMesh::get_volume() {
@@ -398,13 +401,13 @@ TriangleTree *get_aabb_tree(Polyhedron *p){
 	return tree;
 }
 
-void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
+void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri, bool release_mesh){
 	pthread_mutex_lock(&lock);
 	// mesh could be NULL when multiple threads compete
 	if(mesh){
 		mesh->fill_voxel(voxels, seg_tri);
 		// filled the maximum LOD, release the mesh
-		if(mesh->i_decompPercentage==100){
+		if(release_mesh){
 			delete mesh;
 			mesh = NULL;
 		}
