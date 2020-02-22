@@ -56,6 +56,7 @@ inline string time_string(){
 }
 
 static pthread_mutex_t print_lock;
+static bool can_print = false;
 inline void logt(const char *format, struct timeval &start, ...){
 	pthread_mutex_lock(&print_lock);
 	va_list args;
@@ -63,15 +64,18 @@ inline void logt(const char *format, struct timeval &start, ...){
 	char sprint_buf[200];
 	int n = vsprintf(sprint_buf, format, args);
 	va_end(args);
-	fprintf(stderr,"%s thread %ld:\t%s", time_string().c_str(), syscall(__NR_gettid),sprint_buf);
-
-	double mstime = get_time_elapsed(start, true);
-	if(mstime>10000){
-		fprintf(stderr," takes %f s\n", mstime/1000);
-	}else{
-		fprintf(stderr," takes %f ms\n", mstime);
+	if(can_print){
+		fprintf(stderr,"%s thread %ld:\t%s", time_string().c_str(), syscall(__NR_gettid),sprint_buf);
 	}
-	fflush(stderr);
+	double mstime = get_time_elapsed(start, true);
+	if(can_print){
+		if(mstime>1000){
+			fprintf(stderr," takes %f s\n", mstime/1000);
+		}else{
+			fprintf(stderr," takes %f ms\n", mstime);
+		}
+		fflush(stderr);
+	}
 	pthread_mutex_unlock(&print_lock);
 }
 

@@ -113,7 +113,7 @@ void geometry_computer::get_distance(geometry_param &cc){
 		// todo: break the job into units and compute separately
 		// otherwise one thread will block GPU or cpu for too long
 		// GPU has a higher priority
-		gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024, false);
+		gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024, true);
 		if(gpu){
 			log("GPU %d started to get distance", gpu->device_id);
 			hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);

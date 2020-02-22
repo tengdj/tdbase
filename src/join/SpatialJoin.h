@@ -81,6 +81,14 @@ class SpatialJoin{
 	int lod_gap = 50;
 	int top_lod = 100;
 	vector<int> lods;
+	double global_total_time = 0;
+	double global_index_time = 0;
+	double global_decode_time = 0;
+	double global_packing_time = 0;
+	double global_computation_time = 0;
+	double global_updatelist_time = 0;
+	pthread_mutex_t g_lock;
+
 public:
 	void set_lods(vector<int> &ls){
 		sort(ls.begin(), ls.end());
@@ -103,10 +111,12 @@ public:
 	}
 	SpatialJoin(geometry_computer *c){
 		assert(c);
+		pthread_mutex_init(&g_lock, NULL);
 		computer = c;
 	}
 	~SpatialJoin(){
 	}
+	void report_time(double t);
 
 	/*
 	 *
@@ -154,8 +164,6 @@ public:
 
 
 };
-
-
 
 }
 

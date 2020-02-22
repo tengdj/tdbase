@@ -49,6 +49,7 @@ int main(int argc, char **argv){
 		("lod", po::value<std::vector<std::string>>()->multitoken()->
 		        zero_tokens()->composing(), "the lods need be processed")
 		("ispeed", "run in ispeed mode")
+		("print,p", "print")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -57,6 +58,9 @@ int main(int argc, char **argv){
 		return 0;
 	}
 	po::notify(vm);
+	if(vm.count("print")){
+		hispeed::can_print = true;
+	}
 
 	geometry_computer *gc = new geometry_computer();
 	if(vm.count("gpu")){
@@ -109,8 +113,10 @@ int main(int argc, char **argv){
 	}else{
 		joiner->nearest_neighbor_batch(tile_pairs, num_repeat_threads, ispeed);
 	}
+	double join_time = hispeed::get_time_elapsed(start,false);
 	logt("join", start);
 	tile_pairs.clear();
+	joiner->report_time(join_time);
 	delete joiner;
 	delete gc;
 	logt("cleaning", start);
