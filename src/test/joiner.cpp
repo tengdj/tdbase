@@ -49,7 +49,6 @@ int main(int argc, char **argv){
 		("lod", po::value<std::vector<std::string>>()->multitoken()->
 		        zero_tokens()->composing(), "the lods need be processed")
 		("ispeed", "run in ispeed mode")
-		("print,p", "print")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -58,9 +57,6 @@ int main(int argc, char **argv){
 		return 0;
 	}
 	po::notify(vm);
-	if(vm.count("print")){
-		hispeed::can_print = true;
-	}
 
 	geometry_computer *gc = new geometry_computer();
 	if(vm.count("gpu")){

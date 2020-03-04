@@ -206,7 +206,6 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 			heh_oneRing.push_back(hit->opposite());
 	  }
 	  while(++hit != end);
-
 	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing);
 	  return removable;
 	}

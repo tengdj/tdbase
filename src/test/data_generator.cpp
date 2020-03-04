@@ -22,7 +22,6 @@ const int buffer_size = 50*(1<<20);
 vector<Polyhedron> nucleis;
 vector<vector<Voxel *>> nucleis_voxels;
 Polyhedron vessel;
-vector<Voxel *> vessel_voxels;
 aab nuclei_box;
 aab vessel_box;
 
@@ -48,6 +47,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 	std::ifstream nfile(nuclei_path);
 	std::ifstream vfile(vessel_path);
 	string input_line;
+	vector<Voxel *> vessel_voxels;
 	if(std::getline(vfile, input_line)){
 		hispeed::replace_bar(input_line);
 		stringstream ss;
@@ -160,6 +160,10 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 			}
 		}
 	}
+	for(Voxel *v:vessel_voxels){
+		delete v;
+	}
+	vessel_voxels.clear();
 }
 
 Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
@@ -179,7 +183,8 @@ Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
  * */
 inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
 		float shift[3], char *data, size_t &offset){
-	MyMesh *mesh = poly_to_mesh(shift_polyhedron(shift, poly));
+	Polyhedron shifted = shift_polyhedron(shift, poly);
+	MyMesh *mesh = poly_to_mesh(shifted);
 	memcpy(data+offset, (char *)&mesh->dataOffset, sizeof(size_t));
 	offset += sizeof(size_t);
 	memcpy(data+offset, mesh->p_data, mesh->dataOffset);
@@ -280,7 +285,7 @@ void *generate_unit(void *arg){
 	return NULL;
 }
 
-void generate_vfile(const char *path, vector<tuple<float, float, float>> &vessel_shifts, int voxel_size){
+void generate_vessel(const char *path, vector<tuple<float, float, float>> &vessel_shifts, int voxel_size){
 	char *data = new char[vessel_shifts.size()*100000*2];
 	size_t offset = 0;
 	HiMesh *himesh = poly_to_himesh(vessel);
@@ -371,7 +376,7 @@ int main(int argc, char **argv){
 		pthread_create(&threads[i], NULL, generate_unit, NULL);
 	}
 
-	generate_vfile(vessel_output, vessel_shifts, voxel_size);
+	generate_vessel(vessel_output, vessel_shifts, voxel_size);
 	vessel_shifts.clear();
 
 	for(int i = 0; i < num_threads; i++ ){

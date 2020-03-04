@@ -105,6 +105,12 @@ void SpatialJoin::report_time(double t){
 		<<t*global_computation_time/global_total_time<<","
 		<<t*global_updatelist_time/global_total_time<<","
 		<<t*(global_total_time-global_decode_time-global_computation_time-global_index_time)/global_total_time<<endl;
+//	cout<<"total, decode, computation, other"<<endl;
+//	t /= 1000;
+//	cout<<t<<","
+//		<<t*global_decode_time/global_total_time<<","
+//		<<t*global_computation_time/global_total_time<<","
+//		<<t*(global_total_time-global_decode_time-global_computation_time)/global_total_time<<endl;
 }
 
 vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2){
@@ -214,7 +220,6 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 			}
 		}
 
-		double fill_time = 0;
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
 			if(c.second.size()<=1){
@@ -229,15 +234,11 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						// ensure the mesh is extracted
 						tile1->decode_to(wrapper1->id, lod);
-						timeval cur = hispeed::get_cur_time();
 						wrapper1->fill_voxels(DT_Segment, lod==lods[lods.size()-1]);
-						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(wrapper2->id, lod);
-						timeval cur = hispeed::get_cur_time();
 						wrapper2->fill_voxels(DT_Segment, lod==lods[lods.size()-1]);
-						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 
 					// update the voxel map
@@ -616,6 +617,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 		// organize the data for computing
 		uint *offset_size = new uint[4*pair_num];
 		bool *intersect_status = new bool[pair_num];
+		for(int i=0;i<pair_num;i++){
+			intersect_status[i] = false;
+		}
 		int index = 0;
 		for(candidate_entry c:candidates){
 			for(candidate_info info:c.second){
@@ -655,9 +659,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 		updatelist_time += hispeed::get_time_elapsed(start, false);
 		logt("update candidate list", start);
 
-		delete data;
-		delete offset_size;
-		delete intersect_status;
+		delete []data;
+		delete []offset_size;
+		delete []intersect_status;
 		voxel_map.clear();
 
 		logt("current iteration", iter_start);

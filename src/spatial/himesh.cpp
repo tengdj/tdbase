@@ -34,6 +34,12 @@ Skeleton *HiMesh::extract_skeleton(){
 	os << *this;
 	Triangle_mesh tmesh;
 	os >> tmesh;
+	assert(CGAL::Polygon_mesh_processing::triangulate_faces(tmesh));
+	for(boost::graph_traits<Triangle_mesh>::face_descriptor fit : faces(tmesh))
+	    if (next(next(halfedge(fit, tmesh), tmesh), tmesh)
+	        !=   prev(halfedge(fit, tmesh), tmesh))
+	      std::cerr << "Error: non-triangular face left in mesh." << std::endl;
+
 	if (!CGAL::is_triangle_mesh(tmesh)){
 		log("Input geometry is not triangulated.");
 		exit(-1);
@@ -82,6 +88,7 @@ vector<Point> HiMesh::get_skeleton_points(){
  * of axis aligned boxes for those sets
  * */
 vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
+	timeval start = hispeed::get_cur_time();
 	vector<Voxel *> voxels;
 	int lod = i_decompPercentage;
 	if(size_of_vertices()<voxel_size*3){
@@ -92,26 +99,69 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		return voxels;
 	}
 	// this step takes 99 percent of the computation load
-	std::vector<Point> skeleton_points = get_skeleton_points();
+	if(skeleton_points.size()==0){
+		skeleton_points = get_skeleton_points();
+	}
 
 	// sample the points of the skeleton with the calculated sample rate
 	int num_points = skeleton_points.size();
 	int skeleton_sample_rate =
 			((size_of_vertices()/voxel_size)*100)/num_points;
-	for(int i=0;i<num_points;){
-		if(!hispeed::get_rand_sample(skeleton_sample_rate)){
-			skeleton_points.erase(skeleton_points.begin()+i);
-			num_points--;
-		}else{
-			i++;
+	int num_cores = size_of_vertices()/voxel_size;
+	assert(num_cores>3);
+	if(num_cores>num_points){
+		num_cores = num_points;
+	}
+	bool *need_keep = new bool[num_points];
+	for(int i=0;i<num_points;i++){
+		need_keep[i] = false;
+	}
+	for(int i=0;i<num_cores;i++){
+		int target = 0;
+		int try_round = 0;
+		bool assigned = true;
+		while(try_round++<10){
+			target = hispeed::get_rand_number(num_cores);
+			if(!need_keep[target]){
+				need_keep[target] = true;
+				assigned = true;
+				break;
+			}
+		}
+		if(!assigned){
+			for(int j=target;j<num_points;j++){
+				if(!need_keep[j]){
+					need_keep[j] = true;
+					assigned = true;
+					break;
+				}
+			}
+		}
+		if(!assigned){
+			for(int j=target;j>=0;j--){
+				if(!need_keep[j]){
+					need_keep[j] = true;
+					assigned = true;
+					break;
+				}
+			}
+		}
+		assert(assigned);
+	}
+	vector<Point> local_skeleton_points;
+	for(int i=0;i<num_points;i++){
+		if(need_keep[i]){
+			local_skeleton_points.push_back(skeleton_points[i]);
 		}
 	}
 
-	for(int i=0;i<skeleton_points.size();i++){
+	delete []need_keep;
+
+	for(int i=0;i<local_skeleton_points.size();i++){
 		Voxel *v = new Voxel();
-		v->core[0] = skeleton_points[i][0];
-		v->core[1] = skeleton_points[i][1];
-		v->core[2] = skeleton_points[i][2];
+		v->core[0] = local_skeleton_points[i][0];
+		v->core[1] = local_skeleton_points[i][1];
+		v->core[2] = local_skeleton_points[i][2];
 		v->size[lod] = 0;
 		voxels.push_back(v);
 	}
@@ -131,8 +181,8 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		Point p = vit->point();
 		float min_dist = DBL_MAX;
 		int gid = -1;
-		for(int j=0;j<skeleton_points.size();j++){
-			float cur_dist = distance(skeleton_points[j], p);
+		for(int j=0;j<local_skeleton_points.size();j++){
+			float cur_dist = distance(local_skeleton_points[j], p);
 			if(cur_dist<min_dist){
 				gid = j;
 				min_dist = cur_dist;
@@ -153,7 +203,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		}
 	}
 
-	skeleton_points.clear();
+	local_skeleton_points.clear();
 	return voxels;
 }
 
@@ -254,6 +304,7 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 		memcpy(voxels[0]->data[lod],
 			   data_buffer,
 			   num_of_data*size_of_datum*sizeof(float));
+		delete []data_buffer;
 		return;
 	}
 

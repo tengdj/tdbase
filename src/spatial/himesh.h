@@ -19,7 +19,8 @@
 #include "../PPMC/configuration.h"
 #include "../spatial/spatial.h"
 
-
+#include <CGAL/Surface_mesh.h>
+#include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
 
 //CGAL::Polyhedron_3< MyKernel, MyItems > Polyhedron;
 
@@ -60,7 +61,7 @@ public:
 	void reset(){
 		for(map<int, float *>::iterator it=data.begin();it!=data.end();it++){
 			if(it->second!=NULL){
-				delete it->second;
+				delete []it->second;
 				it->second = NULL;
 			}
 		}
@@ -90,6 +91,7 @@ class HiMesh:public MyMesh{
 	bool own_data = true;
 	SegTree *aabb_tree = NULL;
 	list<Segment> segments;
+	std::vector<Point> skeleton_points;
 public:
 	HiMesh(char *data, long length, bool own_data);
 	HiMesh(char *data, long length);
@@ -99,6 +101,7 @@ public:
 			delete aabb_tree;
 		}
 		segments.clear();
+		skeleton_points.clear();
 	}
 	Polyhedron *to_polyhedron();
 	Skeleton *extract_skeleton();

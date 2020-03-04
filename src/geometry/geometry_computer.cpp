@@ -75,7 +75,9 @@ bool geometry_computer::init_gpus(){
 }
 
 void geometry_computer::get_distance_cpu(geometry_param &cc){
-
+	while(!request_cpu()){
+		usleep(10);
+	}
 	pthread_t threads[max_thread_num];
 	geometry_param params[max_thread_num];
 	int each_thread = cc.pair_num/max_thread_num;
@@ -97,6 +99,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
+	release_cpu();
 }
 
 void geometry_computer::get_distance_gpu(geometry_param &cc){
@@ -108,24 +111,10 @@ void geometry_computer::get_distance_gpu(geometry_param &cc){
 }
 
 void geometry_computer::get_distance(geometry_param &cc){
-
-	while(true){
-		// todo: break the job into units and compute separately
-		// otherwise one thread will block GPU or cpu for too long
-		// GPU has a higher priority
-		gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024, true);
-		if(gpu){
-			log("GPU %d started to get distance", gpu->device_id);
-			hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
-			release_gpu(gpu);
-			break;
-		}else if(request_cpu()){
-			get_distance_cpu(cc);
-			release_cpu();
-			break;
-		}else{
-			usleep(10);
-		}
+	if(gpus.size()>0){
+		get_distance_gpu(cc);
+	}else{
+		get_distance_cpu(cc);
 	}
 }
 
