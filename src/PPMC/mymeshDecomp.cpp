@@ -52,7 +52,6 @@ void MyMesh::startNextDecompresssionOp()
   */
 void MyMesh::beginUndecimationConquest()
 {
-
     for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
 
@@ -202,7 +201,6 @@ void MyMesh::InsertedEdgeDecodingStep()
 
         return;
     }
-
     // Stop the decoder.
     done_decoding(&rangeCoder);
 

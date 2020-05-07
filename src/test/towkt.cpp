@@ -12,18 +12,20 @@ using namespace hispeed;
 
 int main(int argc, char **argv){
 
-	MyMesh *mesh = hispeed::read_mesh();
-	mesh->completeOperation();
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
-	int lod = 100;
-	if(argc>2){
-		lod = atoi(argv[2]);
-	}
-	himesh->advance_to(lod);
-	himesh->to_wkt();
+	for(int i=0;i<1000;i++){
+		MyMesh *mesh = hispeed::read_mesh();
+		mesh->completeOperation();
+		HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+		int lod = 100;
+		if(argc>2){
+			lod = atoi(argv[2]);
+		}
+		himesh->advance_to(lod);
+		himesh->to_wkt();
 
-	delete mesh;
-	delete himesh;
+		delete mesh;
+		delete himesh;
+	}
 }
 
 

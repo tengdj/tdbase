@@ -26,15 +26,20 @@ Polyhedron *HiMesh::to_polyhedron(){
  *
  * */
 Skeleton *HiMesh::extract_skeleton(){
-	assert(i_decompPercentage==100&&this->b_jobCompleted &&
-			"the skeleton can only be extracted on the fully decompressed polyhedron");
+	//assert(i_decompPercentage==100&&this->b_jobCompleted &&
+	//		"the skeleton can only be extracted on the fully decompressed polyhedron");
+	if(skeletons.find(i_decompPercentage)!=skeletons.end()){
+		return skeletons[i_decompPercentage];
+	}
 	struct timeval start = get_cur_time();
 	Skeleton *skeleton  = new Skeleton();
 	std::stringstream os;
 	os << *this;
+	logt("dump to stream", start);
 	Triangle_mesh tmesh;
 	os >> tmesh;
-	assert(CGAL::Polygon_mesh_processing::triangulate_faces(tmesh));
+	logt("convert to triangle mesh", start);
+	assert(CGAL::Polygon_mesh_processing::triangulate_faces(faces(tmesh), tmesh));
 	for(boost::graph_traits<Triangle_mesh>::face_descriptor fit : faces(tmesh))
 	    if (next(next(halfedge(fit, tmesh), tmesh), tmesh)
 	        !=   prev(halfedge(fit, tmesh), tmesh))
@@ -44,31 +49,48 @@ Skeleton *HiMesh::extract_skeleton(){
 		log("Input geometry is not triangulated.");
 		exit(-1);
 	}
+	logt("triangulate", start);
+
 	try{
 		Skeletonization mcs(tmesh);
+		logt("initialize skeletonization", start);
+
 		// 1. Contract the mesh by mean curvature flow.
 		mcs.contract_geometry();
+		logt("contract geometry", start);
+
 		// 2. Collapse short edges and split bad triangles.
 		mcs.collapse_edges();
+		logt("collapse edges", start);
+
 		mcs.split_faces();
+		logt("split faces", start);
+
 		// 3. Fix degenerate vertices.
 		//mcs.detect_degeneracies();
 
 		// Perform the above three steps in one iteration.
 		mcs.contract();
+		logt("contract", start);
+
 		// Iteratively apply step 1 to 3 until convergence.
 		mcs.contract_until_convergence();
+		logt("contract until convergence", start);
+
 		// Convert the contracted mesh into a curve skeleton and
 		// get the correspondent surface points
 		mcs.convert_to_skeleton(*skeleton);
+		logt("convert to skeleton", start);
+
 	}catch(std::exception &exc){
 		log(exc.what());
 		exit(-1);
 	}
+	skeletons[i_decompPercentage] = skeleton;
 	return skeleton;
 }
 
-vector<Point> HiMesh::get_skeleton_points(){
+vector<Point> HiMesh::get_skeleton_points(int num_cores){
 	vector<Point> ret;
 	Skeleton *skeleton = extract_skeleton();
 	if(!skeleton){
@@ -78,39 +100,12 @@ vector<Point> HiMesh::get_skeleton_points(){
 		auto p = (*skeleton)[v].point;
 		ret.push_back(Point(p.x(),p.y(),p.z()));
 	}
-	delete skeleton;
-	return ret;
-}
 
-/*
- * get the skeleton of the polyhedron, and then group the triangles
- * or edges around the points of the skeleton, and generate a list
- * of axis aligned boxes for those sets
- * */
-vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
-	timeval start = hispeed::get_cur_time();
-	vector<Voxel *> voxels;
-	int lod = i_decompPercentage;
-	if(size_of_vertices()<voxel_size*3){
-		Voxel *v = new Voxel();
-		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
-		v->size[lod] = size_of_edges();
-		voxels.push_back(v);
-		return voxels;
-	}
-	// this step takes 99 percent of the computation load
-	if(skeleton_points.size()==0){
-		skeleton_points = get_skeleton_points();
-	}
-
-	// sample the points of the skeleton with the calculated sample rate
-	int num_points = skeleton_points.size();
-	int skeleton_sample_rate =
-			((size_of_vertices()/voxel_size)*100)/num_points;
-	int num_cores = size_of_vertices()/voxel_size;
-	assert(num_cores>3);
+	int num_points = ret.size();
+	int skeleton_sample_rate = (num_cores*100)/num_points;
 	if(num_cores>num_points){
 		num_cores = num_points;
+		return ret;
 	}
 	bool *need_keep = new bool[num_points];
 	for(int i=0;i<num_points;i++){
@@ -148,20 +143,44 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		}
 		assert(assigned);
 	}
-	vector<Point> local_skeleton_points;
-	for(int i=0;i<num_points;i++){
-		if(need_keep[i]){
-			local_skeleton_points.push_back(skeleton_points[i]);
+	int index = 0;
+	for(auto it=ret.begin();it!=ret.end();){
+		if(!need_keep[index++]){
+			ret.erase(it);
+		}else{
+			it++;
 		}
 	}
-
 	delete []need_keep;
+	return ret;
+}
 
-	for(int i=0;i<local_skeleton_points.size();i++){
+/*
+ * get the skeleton of the polyhedron, and then group the triangles
+ * or edges around the points of the skeleton, and generate a list
+ * of axis aligned boxes for those sets
+ * */
+vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
+	timeval start = hispeed::get_cur_time();
+	vector<Voxel *> voxels;
+	int lod = i_decompPercentage;
+	if(size_of_vertices()<voxel_size*3){
 		Voxel *v = new Voxel();
-		v->core[0] = local_skeleton_points[i][0];
-		v->core[1] = local_skeleton_points[i][1];
-		v->core[2] = local_skeleton_points[i][2];
+		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
+		v->size[lod] = size_of_edges();
+		voxels.push_back(v);
+		return voxels;
+	}
+	// sample the points of the skeleton with the calculated sample rate
+	int num_cores = size_of_vertices()/voxel_size;
+	assert(num_cores>3);
+	// this step takes 99 percent of the computation load
+	vector<Point> skeleton_points = get_skeleton_points(num_cores);
+	for(int i=0;i<skeleton_points.size();i++){
+		Voxel *v = new Voxel();
+		v->core[0] = skeleton_points[i][0];
+		v->core[1] = skeleton_points[i][1];
+		v->core[2] = skeleton_points[i][2];
 		v->size[lod] = 0;
 		voxels.push_back(v);
 	}
@@ -181,8 +200,8 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		Point p = vit->point();
 		float min_dist = DBL_MAX;
 		int gid = -1;
-		for(int j=0;j<local_skeleton_points.size();j++){
-			float cur_dist = distance(local_skeleton_points[j], p);
+		for(int j=0;j<skeleton_points.size();j++){
+			float cur_dist = distance(skeleton_points[j], p);
 			if(cur_dist<min_dist){
 				gid = j;
 				min_dist = cur_dist;
@@ -203,7 +222,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		}
 	}
 
-	local_skeleton_points.clear();
+	skeleton_points.clear();
 	return voxels;
 }
 
@@ -376,19 +395,29 @@ void HiMesh::get_segments(){
 
 void HiMesh::to_wkt(){
 	cout<<"POLYHEDRALSURFACE Z (";
+	bool lfirst = true;
 	for ( Facet_const_iterator fit = facets_begin(); fit != facets_end(); ++fit){
+		if(lfirst){
+			lfirst = false;
+		}else{
+			cout<<",";
+		}
 		cout<<"((";
 		bool first = true;
 		Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
+		Point firstpoint;
 		do {
+			Point p = hit->vertex()->point();
 			if(!first){
 				cout<<",";
+			}else{
+				firstpoint = p;
 			}
 			first = false;
-			Point p = hit->vertex()->point();
 			cout<<p[0]<<" "<<p[1]<<" "<<p[2];
 			// Write the current vertex id.
 		} while(++hit != end);
+		cout<<","<<firstpoint[0]<<" "<<firstpoint[1]<<" "<<firstpoint[2];
 		cout<<"))";
 	}
 	cout<<")"<<endl;

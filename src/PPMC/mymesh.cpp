@@ -113,13 +113,16 @@ void MyMesh::batchOperation()
 {
     if (b_jobCompleted)
         return;
+    Operation oo = operation;
     switch (operation)
     {
     case Idle:
         if (i_mode == COMPRESSION_MODE_ID)
             startNextCompresssionOp();
-        else
+        else{
             startNextDecompresssionOp();
+        }
+
         break;
     case DecimationConquest:
         while(operation == DecimationConquest)
@@ -135,11 +138,17 @@ void MyMesh::batchOperation()
         break;
     case UndecimationConquest:
         while(operation == UndecimationConquest)
-            undecimationStep();
+        {
+        	undecimationStep();
+        }
+
         break;
     case InsertedEdgeDecoding:
         while(operation == InsertedEdgeDecoding)
-            InsertedEdgeDecodingStep();
+        {
+        	InsertedEdgeDecodingStep();
+        }
+
         break;
     default:
         break;
@@ -153,7 +162,9 @@ void MyMesh::batchOperation()
 void MyMesh::completeOperation()
 {
     while (!b_jobCompleted)
-        batchOperation();
+    {
+    	batchOperation();
+    }
 }
 
 

@@ -283,7 +283,7 @@ static Inline void dec_normalize( rangecoder *rc )
 #endif
 
 
-/* Calculate culmulative frequency for next symbol. Does NO update!*/
+/* Calculate cumulative frequency for next symbol. Does NO update!*/
 /* rc is the range coder to be used                          */
 /* tot_f is the total frequency                              */
 /* or: totf is (code_value)1<<shift                                      */

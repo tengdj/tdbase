@@ -32,6 +32,8 @@
 #include <CGAL/bounding_box.h>
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+
 #include <CGAL/IO/Polyhedron_iostream.h>
 #include <CGAL/box_intersection_d.h>
 #include <CGAL/Bbox_3.h>
@@ -57,9 +59,12 @@
 #include "../PPMC/rangeCoder/rangecod.h"
 #include "../geometry/aab.h"
 #include "configuration.h"
+#include "../util/util.h"
 
 // definition for the CGAL library
+//typedef CGAL::Exact_predicates_exact_constructions_kernel MyKernel;
 typedef CGAL::Simple_cartesian<float> MyKernel;
+
 typedef MyKernel::Point_3 Point;
 typedef MyKernel::Vector_3 Vector;
 

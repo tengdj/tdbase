@@ -91,7 +91,8 @@ class HiMesh:public MyMesh{
 	bool own_data = true;
 	SegTree *aabb_tree = NULL;
 	list<Segment> segments;
-	std::vector<Point> skeleton_points;
+
+	std::map<int, Skeleton *> skeletons;
 public:
 	HiMesh(char *data, long length, bool own_data);
 	HiMesh(char *data, long length);
@@ -99,13 +100,16 @@ public:
 		//release_buffer();
 		if(aabb_tree){
 			delete aabb_tree;
+			segments.clear();
 		}
-		segments.clear();
-		skeleton_points.clear();
+		for(std::map<int, Skeleton *>::iterator it=skeletons.begin();it!=skeletons.end();it++){
+			delete it->second;
+		}
+		skeletons.clear();
 	}
 	Polyhedron *to_polyhedron();
 	Skeleton *extract_skeleton();
-	vector<Point> get_skeleton_points();
+	vector<Point> get_skeleton_points(int num_skeleton_points);
 	vector<Voxel *> generate_voxels(int voxel_size);
 	void to_wkt();
 	float get_volume();

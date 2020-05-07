@@ -61,10 +61,12 @@ MyMesh *get_mesh(string input_line, bool complete_compress){
 	boost::replace_all(input_line, "|", "\n");
 	char *data = new char[input_line.size()];
 	memcpy(data, input_line.c_str(), input_line.size());
+
 	// Init the random number generator.
 	MyMesh *mesh = new MyMesh(100,
 				 COMPRESSION_MODE_ID, 12,
 				 data, input_line.size(), false);
+
 	if(complete_compress){
 		mesh->completeOperation();
 	}

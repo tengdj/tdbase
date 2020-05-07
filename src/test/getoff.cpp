@@ -20,25 +20,25 @@ int main(int argc, char **argv){
 	float volume = -CGAL::Polygon_mesh_processing::volume(*poly);
 	stringstream ss;
 	ss<<*poly;
-	cout<<*poly;
-	delete poly;
 
-	MyMesh *mesh = hispeed::get_mesh(ss.str(),false);
 	timeval start = hispeed::get_cur_time();
+	MyMesh *mesh = hispeed::get_mesh(ss.str(),false);
+	logt("get mesh",start);
 	mesh->completeOperation();
 	logt("encoding takes",start);
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(atoi(argv[1]));
 	logt("decoding takes",start);
-	cout<<himesh->size_of_vertices()<<" "<<himesh->get_skeleton_points().size()<<endl;
+	cout<<himesh->size_of_vertices()<<" "<<himesh->get_skeleton_points(150).size()<<endl;
 	logt("extract skeleton",start);
-	himesh->generate_voxels(100);
-	logt("generate voxels",start);
-	himesh->generate_voxels(100);
+	vector<Voxel *> voxels = himesh->generate_voxels(30);
 	logt("generate voxels",start);
 	himesh->get_aabb_tree();
 	logt("building index",start);
-
+	for(int j=0;j<voxels.size();j++){
+		hispeed::write_polyhedron(hispeed::make_cube(voxels[j]->box),j);
+	}
+	himesh->writeMeshOff("v.off");
 
 
 

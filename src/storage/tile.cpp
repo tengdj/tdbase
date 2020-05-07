@@ -54,11 +54,6 @@ Tile::~Tile(){
 		fclose(dt_fs);
 		dt_fs = NULL;
 	}
-	if(spidx){
-		delete spidx;
-		delete rtree_storage;
-		rtree_obj.clear();
-	}
 }
 
 void Tile::disable_innerpart(){
@@ -192,15 +187,6 @@ OctreeNode *Tile::build_octree(size_t leaf_size){
 		octree->addObject(&w->box);
 	}
 	return octree;
-}
-SpatialIndex::ISpatialIndex *Tile::build_rtree(){
-	if(spidx==NULL){
-		for(HiMesh_Wrapper *w:objects){
-			rtree_obj.push_back(aab_d(w->box.box));
-		}
-		assert(hispeed::build_index_geoms(rtree_obj, spidx, rtree_storage));
-	}
-	return spidx;
 }
 
 
