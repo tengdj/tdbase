@@ -3,6 +3,7 @@
 .settings/
 *.dt
 *.mt
+*.wkt
 *.o
 *.off
 build/

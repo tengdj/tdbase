@@ -32,6 +32,7 @@ Polyhedron *make_cube(aab box);
 
 void write_polyhedron(Polyhedron *mesh, const char *path);
 void write_polyhedron(Polyhedron *mesh, int id);
+string polyhedron_to_wkt(Polyhedron *poly);
 // some utility functions to operate mesh polyhedrons
 extern MyMesh *get_mesh(string input, bool complete_compress = false);
 extern MyMesh *read_mesh();

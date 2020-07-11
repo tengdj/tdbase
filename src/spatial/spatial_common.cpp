@@ -54,6 +54,39 @@ void write_polyhedron(Polyhedron *mesh, int id){
 	write_polyhedron(mesh, path);
 }
 
+string polyhedron_to_wkt(Polyhedron *poly){
+	stringstream ss;
+	ss.precision(10);
+	ss<<"POLYHEDRALSURFACE Z (";
+	bool lfirst = true;
+	for ( Polyhedron::Facet_iterator fit = poly->facets_begin(); fit != poly->facets_end(); ++fit){
+		if(lfirst){
+			lfirst = false;
+		}else{
+			ss<<",";
+		}
+		ss<<"((";
+		bool first = true;
+		Polyhedron::Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
+		Point firstpoint;
+		do {
+			Point p = hit->vertex()->point();
+			if(!first){
+				ss<<",";
+			}else{
+				firstpoint = p;
+			}
+			first = false;
+			ss<<p[0]<<" "<<p[1]<<" "<<p[2];
+			// Write the current vertex id.
+		} while(++hit != end);
+		ss<<","<<firstpoint[0]<<" "<<firstpoint[1]<<" "<<firstpoint[2];
+		ss<<"))";
+	}
+	ss<<")"<<endl;
+	return ss.str();
+}
+
 MyMesh *get_mesh(string input_line, bool complete_compress){
 	if(input_line.size()==0){
 		return NULL;

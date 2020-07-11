@@ -49,7 +49,7 @@ bool MySearchCallback(ValueType id)
 }
 
 
-int main()
+int main1()
 {
   typedef RTree<ValueType, float, 2> MyTree;
   MyTree tree;
