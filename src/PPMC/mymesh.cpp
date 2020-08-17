@@ -111,6 +111,7 @@ MyMesh::~MyMesh(){
   */
 void MyMesh::batchOperation()
 {
+	//struct timeval start = get_cur_time();
     if (b_jobCompleted)
         return;
     Operation oo = operation;
@@ -122,7 +123,6 @@ void MyMesh::batchOperation()
         else{
             startNextDecompresssionOp();
         }
-
         break;
     case DecimationConquest:
         while(operation == DecimationConquest)
@@ -138,21 +138,16 @@ void MyMesh::batchOperation()
         break;
     case UndecimationConquest:
         while(operation == UndecimationConquest)
-        {
         	undecimationStep();
-        }
-
         break;
     case InsertedEdgeDecoding:
         while(operation == InsertedEdgeDecoding)
-        {
         	InsertedEdgeDecodingStep();
-        }
-
         break;
     default:
         break;
     }
+    //logt("operation %s",start,operation_str[oo]);
 }
 
 

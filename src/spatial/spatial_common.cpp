@@ -110,14 +110,17 @@ MyMesh *get_mesh(string input_line, bool complete_compress){
 MyMesh *read_mesh(){
 	string input_line;
 	getline(std::cin, input_line);
-	return get_mesh(input_line);
+	MyMesh *mesh = get_mesh(input_line);
+	assert(mesh && "this function must return a valid mesh");
+	return mesh;
+
 }
 
 
 MyMesh *decompress_mesh(MyMesh *compressed, int lod){
 	MyMesh *decompressed = new MyMesh(lod,
 			 DECOMPRESSION_MODE_ID, 12,
-			 compressed->p_data, compressed->dataOffset, false);
+			 compressed->p_data, compressed->dataOffset, true);
 	decompressed->completeOperation();
 	return decompressed;
 }

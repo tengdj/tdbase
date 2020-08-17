@@ -231,21 +231,10 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 		i_quantCellId = nId;
 	}
 
-	inline Point getOldPos() const
-	{
-		return oldPos;
-	}
-
-	inline void setOldPos(Point pos)
-	{
-		oldPos = pos;
-	}
-
   private:
 	Flag flag;
 	size_t id;
 	unsigned i_quantCellId;
-	Point oldPos;
 };
 
 
@@ -369,10 +358,13 @@ struct MyItems : public CGAL::Polyhedron_items_3
 };
 
 // Operation list.
-enum Operation {Idle,
+enum Operation {Idle = 0,
                 DecimationConquest, RemovedVertexCoding, InsertedEdgeCoding, // Compression.
                 UndecimationConquest, InsertedEdgeDecoding // Decompression.
                 };
+
+const static char *operation_str[6] = {"Idle","DecimationConquest", "RemovedVertexCoding", "InsertedEdgeCoding", // Compression.
+        "UndecimationConquest", "InsertedEdgeDecoding"};
 
 class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {

@@ -27,11 +27,13 @@
   */
 void MyMesh::startNextDecompresssionOp()
 {
-    if ((float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 >= i_decompPercentage)
-    {
+    if ((float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 >= i_decompPercentage){
 
+    	struct timeval start = get_cur_time();
         for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
-            hit->resetState();
+        {
+        	hit->resetState();
+        }
 
         for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
             fit->resetState();
@@ -79,6 +81,8 @@ void MyMesh::beginUndecimationConquest()
 /**
   * One undecimation step.
   */
+int idx = 0;
+
 void MyMesh::undecimationStep()
 {
     while (!gateQueue.empty())
@@ -117,8 +121,6 @@ void MyMesh::undecimationStep()
             decodeGeometrySym(f);
         else
             f->setUnsplittable();
-
-        return;
     }
 
     // Stop the decoder.
@@ -201,6 +203,20 @@ void MyMesh::InsertedEdgeDecodingStep()
 
         return;
     }
+
+
+	int added = 0;
+	int original = 0;
+    for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
+    {
+    	if(hit->isAdded()){
+    		added++;
+    	}else{
+    		original++;
+    	}
+    }
+    cout<<added<<" "<<original<<endl;
+
     // Stop the decoder.
     done_decoding(&rangeCoder);
 
@@ -213,6 +229,7 @@ void MyMesh::InsertedEdgeDecodingStep()
     i_curDecimationId++; // Increment the current decimation operation id.
     i_curOperationId++;
     operation = Idle;
+
 }
 
 

@@ -86,7 +86,7 @@ void MyMesh::decimationStep()
         //the face is not processed. Count the number of non conquered vertices that can be split
         int numSplittableVerts = 0;
         Halfedge_handle unconqueredVertexHE;
-        //assert(h->vertex()->isConquered());
+
         for(Halfedge_handle hh = h->next(); hh!=h; hh=hh->next())
         {
             if(isRemovable(hh->vertex()))
@@ -160,7 +160,7 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         Vertex_handle v = startH->vertex();
 
         //make sure that the center vertex can be removed
-        assert(!v->isConquered());
+        //assert(!v->isConquered());
         assert(v->vertex_degree()>2);
 
         Halfedge_handle h = startH->opposite(), end(h);
@@ -173,7 +173,7 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                 //if the face is not a triangle, cut the corner
                 if(f->facet_degree()>3)
                 {
-                  //loop around the face to find the apropriate other halfedge
+                  //loop around the face to find the appropriate other halfedge
                   Halfedge_handle hSplit(h->next());
                   for(; hSplit->next()->next() != h; hSplit = hSplit->next())
                         ;

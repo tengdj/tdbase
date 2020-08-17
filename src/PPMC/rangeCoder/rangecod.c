@@ -73,6 +73,8 @@
 */
 #define NOWARN
 
+//#define RENORM95
+
 /*
   define EXTRAFAST for increased speed; you loose compression and
   compatibility in exchange.
@@ -97,7 +99,7 @@
 #define inbyte(cod)    *(cod->p_data + (*cod->p_dataOffset)++)
 
 #ifdef RENORM95
-#include "renorm95.c"
+#include "renorm95.h"
 
 #else
 #define SHIFT_BITS (CODE_BITS - 9)
