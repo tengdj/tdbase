@@ -5,6 +5,7 @@ NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I ./ -I /usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/local/cuda/lib64 -L/usr/lib/x86_64-linux-gnu/ \
 -lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lboost_program_options -lstdc++ -lspatialindex
+SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++
 CGALFLAGS	= -lCGAL -Wl,-rpath
 
 ifdef DEBUG
@@ -78,7 +79,7 @@ compress: test/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(RC_OBJ
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 decompress: test/decompress.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
-	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(SLIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 getoff: test/getoff.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@

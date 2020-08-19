@@ -20,6 +20,8 @@
 #ifndef PROGRESSIVEPOLYGONS_MYMESH_H
 #define PROGRESSIVEPOLYGONS_MYMESH_H
 
+//#define CGAL_EIGEN3_ENABLED
+
 #include <iostream>
 #include <fstream>
 #include <stdint.h>
