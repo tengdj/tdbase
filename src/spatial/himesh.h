@@ -115,6 +115,8 @@ public:
 	float get_volume();
 
 	void fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
+	size_t fill_vertices(float *&vertices);
+	size_t fill_topology(unsigned short *&topology);
 	void get_segments();
 	SegTree *get_aabb_tree();
 

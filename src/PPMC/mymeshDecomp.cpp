@@ -205,17 +205,17 @@ void MyMesh::InsertedEdgeDecodingStep()
     }
 
 
-	int added = 0;
-	int original = 0;
-    for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
-    {
-    	if(hit->isAdded()){
-    		added++;
-    	}else{
-    		original++;
-    	}
-    }
-    cout<<added<<" "<<original<<endl;
+//	int added = 0;
+//	int original = 0;
+//    for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
+//    {
+//    	if(hit->isAdded()){
+//    		added++;
+//    	}else{
+//    		original++;
+//    	}
+//    }
+//    cout<<added<<" "<<original<<endl;
 
     // Stop the decoder.
     done_decoding(&rangeCoder);

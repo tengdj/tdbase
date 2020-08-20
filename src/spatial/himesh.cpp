@@ -279,6 +279,53 @@ size_t HiMesh::fill_triangles(float *triangles){
 	return size;
 }
 
+size_t HiMesh::fill_vertices(float *&vertices){
+	size_t size = this->size_of_vertices();
+	if(!vertices){
+		vertices = new float[size*3];
+	}
+
+	float *cur = vertices;
+
+	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+		Point p = vit->point();
+		*cur = p.x();
+		cur++;
+		*cur = p.y();
+		cur++;
+		*cur = p.z();
+		cur++;
+	}
+	return size;
+}
+
+
+size_t HiMesh::fill_topology(unsigned short *&topology){
+	size_t size = this->size_of_facets();
+	if(!topology){
+		topology = new unsigned short[size*3];
+	}
+
+	unsigned short *cur = topology;
+	int inserted = 0;
+	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		cout<<(int)(f->halfedge()->vertex_begin()-vertices_begin())<<endl;
+		*cur = (unsigned short)f->halfedge()->vertex()->getId();
+		cout<<*cur<<endl;
+		cur++;
+		*cur = (unsigned short)f->halfedge()->next()->vertex()->getId();
+		cout<<*cur<<endl;
+		cur++;
+		*cur = (unsigned short)f->halfedge()->next()->next()->vertex()->getId();
+		cout<<*cur<<endl;
+		cur++;
+	}
+	assert(inserted==size);
+	return size;
+
+}
+
+
 
 void HiMesh::advance_to(int lod){
 	if(i_decompPercentage>=lod){

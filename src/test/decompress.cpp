@@ -33,6 +33,7 @@ int main(int argc, char **argv){
 	logt("compress", starttime);
 	log("start decompressing");
 
+	HiMesh *himesh;
 	for(int i=start_lod;i<=end_lod;i++){
 		int lod = 10*i;
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
@@ -40,10 +41,23 @@ int main(int argc, char **argv){
 //		decompressed->writeMeshOff(path);
 		logt("decompress %3d lod %5d vertices %5d edges %5d faces", starttime, lod,
 				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->size_of_facets());
+		if(lod==100){
+			float *vertices;
+			himesh = new HiMesh(decompressed->p_data,decompressed->dataOffset);
+		}
 		delete decompressed;
 	}
-
 	delete compressed;
+
+	float *vertices = NULL;
+	himesh->advance_to(100);
+	logt("decompress", starttime);
+	size_t size = himesh->fill_vertices(vertices);
+	logt("fill vertices %d", starttime, size);
+	unsigned short *topology = NULL;
+	size = himesh->fill_topology(topology);
+	logt("fill topology %d", starttime, size);
+	delete []vertices;
 
 }
 
