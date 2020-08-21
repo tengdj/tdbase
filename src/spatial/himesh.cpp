@@ -309,15 +309,11 @@ size_t HiMesh::fill_topology(unsigned short *&topology){
 	unsigned short *cur = topology;
 	int inserted = 0;
 	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
-		cout<<(int)(f->halfedge()->vertex_begin()-vertices_begin())<<endl;
 		*cur = (unsigned short)f->halfedge()->vertex()->getId();
-		cout<<*cur<<endl;
 		cur++;
 		*cur = (unsigned short)f->halfedge()->next()->vertex()->getId();
-		cout<<*cur<<endl;
 		cur++;
 		*cur = (unsigned short)f->halfedge()->next()->next()->vertex()->getId();
-		cout<<*cur<<endl;
 		cur++;
 	}
 	assert(inserted==size);

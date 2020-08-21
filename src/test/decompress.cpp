@@ -11,6 +11,7 @@
 #include "../spatial/spatial.h"
 #include "../spatial/himesh.h"
 #include <algorithm>
+#include "zlib.h"
 
 using namespace hispeed;
 
@@ -53,10 +54,14 @@ int main(int argc, char **argv){
 	himesh->advance_to(100);
 	logt("decompress", starttime);
 	size_t size = himesh->fill_vertices(vertices);
-	logt("fill vertices %d", starttime, size);
-	unsigned short *topology = NULL;
-	size = himesh->fill_topology(topology);
-	logt("fill topology %d", starttime, size);
+	logt("fill vertices %d with %d bytes (%ld bytes)", starttime, size, size*3*sizeof(float),himesh->dataOffset);
+	char *zcomp = new char[size*3*sizeof(float)];
+	unsigned long compressedsize;
+	for(int i=1;i<10;i++){
+		int nResult = compress2((unsigned char *)zcomp, &compressedsize, (unsigned char *)vertices, size*3*sizeof(float),i);
+		logt("compress %d level %ld bytes",starttime,i,compressedsize);
+	}
+
 	delete []vertices;
 
 }

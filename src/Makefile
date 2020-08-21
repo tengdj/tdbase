@@ -5,7 +5,7 @@ NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I ./ -I /usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/local/cuda/lib64 -L/usr/lib/x86_64-linux-gnu/ \
 -lgmp -lmpfr -lpthread -lcuda -lcudart -lgeos -lboost_program_options -lstdc++ -lspatialindex
-SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++
+SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
 CGALFLAGS	= -lCGAL -Wl,-rpath
 
 ifdef DEBUG

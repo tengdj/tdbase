@@ -62,7 +62,7 @@ inline void flush_mesh_buffer(vector<HiMesh *> &mesh_buffer, vector<vector<Voxel
 	voxels.clear();
 }
 
-void *compress(void *args){
+void *mycompress(void *args){
 	int id = *(int *)args;
 	pthread_mutex_lock(&output_lock);
 	log("thread %d is started", id);
