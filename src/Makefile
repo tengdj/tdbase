@@ -5,7 +5,7 @@ NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I ./ -I /usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lgeos -lboost_program_options -lstdc++ -lspatialindex
 
-CUDALIBS	= -L/usr/local/cuda/lib64 -lcuda -lcudart
+CUDALIBS	= 
 
 SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
 CGALFLAGS	= -Wl,-rpath
@@ -14,6 +14,11 @@ ifdef DEBUG
     CPPFLAGS += -DNDEBUG
 else
     CPPFLAGS += -DNDEBUG
+endif
+
+ifdef USE_GPU
+	CPPFLAGS += -DUSE_GPU
+	CUDALIBS  = -L/usr/local/cuda/lib64 -lcuda -lcudart
 endif
 
 ifdef CGAL_MCFSKEL_DEBUG
@@ -33,11 +38,13 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 %.o: %.cpp
 	$(CXX) $(INCFLAGS) $(CPPFLAGS) -c $? -o $@
 
+ifdef USE_GPU
 #compile all the cu files
-SRCS_CU := $(wildcard geometry/*.cu)
-OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS_CU))
-%_cu.o: %.cu
-	$(NVCC) $(INCFLAGS) $(NVCCFLAGS) -c $? -o $@
+	SRCS_CU := $(wildcard geometry/*.cu)
+	OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS_CU))
+	%_cu.o: %.cu
+		$(NVCC) $(INCFLAGS) $(NVCCFLAGS) -c $? -o $@
+endif
 
 #compile additional range coder .c files
 RC_SRCS := $(wildcard PPMC/rangeCoder/*.c)
@@ -92,13 +99,8 @@ towkt: test/towkt.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 partition: test/partitioner.o $(PARTITION_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-join_gpu: test/joiner.o $(GEOMETRY_OBJS) $(OBJS_CU) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+join: test/joiner.o $(GEOMETRY_OBJS) $(OBJS_CU) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
-
-
-join: test/joiner.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
-	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
-
 
 queryprocessor: ispeed/queryprocessor.o ispeed/mapreduce.o
 	$(CXX) $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
