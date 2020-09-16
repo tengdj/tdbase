@@ -38,12 +38,14 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 %.o: %.cpp
 	$(CXX) $(INCFLAGS) $(CPPFLAGS) -c $? -o $@
 
-ifdef USE_GPU
 #compile all the cu files
-	SRCS_CU := $(wildcard geometry/*.cu)
-	OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS_CU))
-	%_cu.o: %.cu
-		$(NVCC) $(INCFLAGS) $(NVCCFLAGS) -c $? -o $@
+SRCS_CU := $(wildcard geometry/*.cu)
+OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS_CU))
+%_cu.o: %.cu
+	$(NVCC) $(INCFLAGS) $(NVCCFLAGS) -c $? -o $@
+		
+ifndef USE_GPU
+	OBJS_CU = 
 endif
 
 #compile additional range coder .c files
