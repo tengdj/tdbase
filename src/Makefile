@@ -5,8 +5,6 @@ NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I ./ -I /usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lgeos -lboost_program_options -lstdc++ -lspatialindex
 
-CUDALIBS	= 
-
 SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
 CGALFLAGS	= -Wl,-rpath
 
@@ -18,7 +16,7 @@ endif
 
 ifdef USE_GPU
 	CPPFLAGS += -DUSE_GPU
-	CUDALIBS  = -L/usr/local/cuda/lib64 -lcuda -lcudart
+	LIBS  += -L/usr/local/cuda/lib64 -lcuda -lcudart
 endif
 
 ifdef CGAL_MCFSKEL_DEBUG
