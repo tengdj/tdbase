@@ -315,7 +315,7 @@ int main(int argc, char **argv){
 	int num_nuclei_per_vessel = 10000;
 	int num_vessel = 1;
 	float shrink = 20;
-	int voxel_size = 400;
+	int voxel_size = 400000;
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")

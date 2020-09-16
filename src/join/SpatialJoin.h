@@ -127,13 +127,16 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
-	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2);
+	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2, double dist=DBL_MAX);
 	void nearest_neighbor(Tile *tile1, Tile *tile2);
+	vector<candidate_entry> mbb_within(Tile *tile1, Tile *tile2, double dist);
+	void within(Tile *tile1, Tile *tile2, double dist);
 	void nearest_neighbor_aabb(Tile *tile1, Tile *tile2);
 
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
 	void intersect(Tile *tile1, Tile *tile2);
 
+	void within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads, double max_dist);
 	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads, bool ispeed);
 	void intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads);
 

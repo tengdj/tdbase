@@ -113,7 +113,7 @@ void SpatialJoin::report_time(double t){
 //		<<t*(global_total_time-global_decode_time-global_computation_time)/global_total_time<<endl;
 }
 
-vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2){
+vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2, double max_dist){
 	vector<candidate_entry> candidates;
 	vector<pair<int, range>> candidate_ids;
 	OctreeNode *tree = tile2->build_octree(400);
@@ -142,7 +142,10 @@ vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2){
 				for(Voxel *v1:wrapper1->voxels){
 					for(Voxel *v2:wrapper2->voxels){
 						range tmpd = v1->box.distance(v2->box);
-						// no voxel pair in the lists is nearer
+						if(tmpd.closest>max_dist){
+							continue;
+						}
+						// no voxel pair in the list is nearer
 						if(update_voxel_pair_list(ci.voxel_pairs, tmpd) &&
 						   update_candidate_list(candidate_list, tmpd)){
 							ci.voxel_pairs.push_back(voxel_pair(v1, v2, tmpd));
@@ -164,6 +167,186 @@ vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2){
 		candidate_ids.clear();
 	}
 	return candidates;
+}
+
+
+/*
+ * the main function for getting the nearest neighbor
+ *
+ * */
+void SpatialJoin::within(Tile *tile1, Tile *tile2, double max_dist){
+	struct timeval start = get_cur_time();
+	struct timeval very_start = get_cur_time();
+
+	double index_time = 0;
+	double decode_time = 0;
+	double packing_time = 0;
+	double computation_time = 0;
+	double updatelist_time = 0;
+	// filtering with MBBs to get the candidate list
+	vector<candidate_entry> candidates = mbb_distance(tile1, tile2, max_dist);
+	index_time += get_time_elapsed(start, false);
+	logt("comparing mbbs", start);
+
+	// now we start to get the distances with progressive level of details
+	if(lods.size()==0){
+		for(int lod = base_lod;lod<=top_lod;lod+=lod_gap){
+			lods.push_back(lod);
+		}
+		if(lods[lods.size()-1]<top_lod){
+			lods.push_back(top_lod);
+		}
+	}
+
+	for(int lod:lods){
+		struct timeval iter_start = get_cur_time();
+		const int pair_num = get_pair_num(candidates);
+		if(pair_num==0){
+			break;
+		}
+		uint *offset_size = new uint[4*pair_num];
+		float *distances = new float[pair_num];
+		size_t candidate_num = get_candidate_num(candidates);
+		log("%ld polyhedron has %d candidates %f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
+		// retrieve the necessary meshes
+		map<Voxel *, std::pair<uint, uint>> voxel_map;
+		uint segment_num = 0;
+		size_t segment_pair_num = 0;
+
+		int candidate_length = 0;
+		for(candidate_entry &e:candidates){
+			for(candidate_info &i:e.second){
+				candidate_length += i.voxel_pairs.size();
+			}
+		}
+
+		for(candidate_entry &c:candidates){
+			HiMesh_Wrapper *wrapper1 = c.first;
+			for(candidate_info &info:c.second){
+				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
+				for(voxel_pair &vp:info.voxel_pairs){
+					assert(vp.v1&&vp.v2);
+					// not filled yet
+					if(vp.v1->data.find(lod)==vp.v1->data.end()){
+						// ensure the mesh is extracted
+						tile1->decode_to(wrapper1->id, lod);
+						wrapper1->fill_voxels(DT_Segment, lod==lods[lods.size()-1]);
+					}
+					if(vp.v2->data.find(lod)==vp.v2->data.end()){
+						tile2->decode_to(wrapper2->id, lod);
+						wrapper2->fill_voxels(DT_Segment, lod==lods[lods.size()-1]);
+					}
+
+					// update the voxel map
+					for(int i=0;i<2;i++){
+						Voxel *tv = i==0?vp.v1:vp.v2;
+						if(voxel_map.find(tv)==voxel_map.end()){
+							std::pair<uint, uint> p;
+							p.first = segment_num;
+							p.second = tv->size[lod];
+							segment_num += tv->size[lod];
+							voxel_map[tv] = p;
+						}
+					}
+					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
+				}// end for voxel_pairs
+			}// end for distance_candiate list
+		}// end for candidates
+		decode_time += hispeed::get_time_elapsed(start, false);
+		logt("decoded %ld voxels with %d segments %ld segment pairs for lod %d",
+				start, voxel_map.size(), segment_num, segment_pair_num, lod);
+		if(segment_pair_num==0){
+			log("no segments is filled in this round");
+			voxel_map.clear();
+			continue;
+		}
+		tile1->reset_time();
+
+		// now we allocate the space and store the data in a buffer
+		float *data = new float[6*segment_num];
+		for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin();
+				it!=voxel_map.end(); ++it){
+			memcpy(data+it->second.first*6, it->first->data[lod], it->first->size[lod]*6*sizeof(float));
+		}
+		// organize the data for computing
+		int index = 0;
+		for(candidate_entry c:candidates){
+			for(candidate_info info:c.second){
+				for(voxel_pair vp:info.voxel_pairs){
+					assert(vp.v1!=vp.v2);
+					offset_size[4*index] = voxel_map[vp.v1].first;
+					offset_size[4*index+1] = voxel_map[vp.v1].second;
+					offset_size[4*index+2] = voxel_map[vp.v2].first;
+					offset_size[4*index+3] = voxel_map[vp.v2].second;
+					index++;
+				}
+			}
+		}
+		assert(index==pair_num);
+		packing_time += hispeed::get_time_elapsed(start, false);
+		logt("organizing data", start);
+		geometry_param gp;
+		gp.data = data;
+		gp.pair_num = pair_num;
+		gp.offset_size = offset_size;
+		gp.distances = distances;
+		gp.data_size = segment_num;
+		computer->get_distance(gp);
+		computation_time += hispeed::get_time_elapsed(start, false);
+		logt("get distance", start);
+
+		// now update the candidate list with the new meshes
+		index = 0;
+		for(candidate_entry &ce:candidates){
+			bool determined = false;
+			for(vector<candidate_info>::iterator it=ce.second.begin();it!=ce.second.end();){
+				for(voxel_pair &vp:it->voxel_pairs){
+					// update the distance
+					if(!determined&&vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
+						range dist = vp.dist;
+						if(lod==lods[lods.size()-1]){
+							// now we have a precise distance
+							dist.closest = distances[index];
+							dist.farthest = distances[index];
+						}else{
+							dist.farthest = std::min(dist.farthest, distances[index]);
+						}
+						vp.dist = dist;
+						if(dist.farthest<max_dist){
+							determined = true;
+						}
+					}
+					index++;
+				}
+				if(determined){
+					it = ce.second.erase(it);
+				}else{
+					it++;
+				}
+			}
+		}
+		updatelist_time += hispeed::get_time_elapsed(start, false);
+		logt("update candidate list", start);
+
+		delete data;
+		delete offset_size;
+		delete distances;
+		voxel_map.clear();
+		logt("current iteration", iter_start);
+
+		if(lod==lods[lods.size()-1]){
+			break;
+		}
+	}
+	pthread_mutex_lock(&g_lock);
+	global_index_time += index_time;
+	global_decode_time += decode_time;
+	global_packing_time += packing_time;
+	global_computation_time += computation_time;
+	global_updatelist_time += updatelist_time;
+	global_total_time += hispeed::get_time_elapsed(very_start, false);
+	pthread_mutex_unlock(&g_lock);
+
 }
 
 
@@ -358,6 +541,9 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2){
 	pthread_mutex_unlock(&g_lock);
 
 }
+
+
+
 
 void SpatialJoin::nearest_neighbor_aabb(Tile *tile1, Tile *tile2){
 	struct timeval start = get_cur_time();
@@ -681,6 +867,7 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2){
 
 class nn_param{
 public:
+	double max_dist = DBL_MAX;
 	pthread_mutex_t lock;
 	queue<pair<Tile *, Tile *>> tile_queue;
 	SpatialJoin *joiner;
@@ -690,6 +877,47 @@ public:
 	}
 	bool ispeed = false;
 };
+
+void *within_single(void *param){
+	struct nn_param *nnparam = (struct nn_param *)param;
+	while(!nnparam->tile_queue.empty()){
+		pthread_mutex_lock(&nnparam->lock);
+		if(nnparam->tile_queue.empty()){
+			pthread_mutex_unlock(&nnparam->lock);
+			break;
+		}
+		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
+		nnparam->tile_queue.pop();
+		pthread_mutex_unlock(&nnparam->lock);
+		nnparam->joiner->within(p.first, p.second, nnparam->max_dist);
+		if(p.second!=p.first){
+			delete p.second;
+		}
+		delete p.first;
+	}
+	return NULL;
+}
+
+void SpatialJoin::within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads, double max_dist){
+	struct nn_param param;
+	for(pair<Tile *, Tile *> &p:tile_pairs){
+		param.tile_queue.push(p);
+	}
+	param.joiner = this;
+	param.max_dist = max_dist;
+	pthread_t threads[num_threads];
+	for(int i=0;i<num_threads;i++){
+		pthread_create(&threads[i], NULL, within_single, (void *)&param);
+	}
+	while(!param.tile_queue.empty()){
+		usleep(10);
+	}
+	for(int i = 0; i < num_threads; i++){
+		void *status;
+		pthread_join(threads[i], &status);
+	}
+}
+
 
 void *nearest_neighbor_single(void *param){
 	struct nn_param *nnparam = (struct nn_param *)param;

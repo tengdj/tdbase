@@ -21,7 +21,7 @@ int main(int argc, char **argv){
 
 	string tile1_path("nuclei_tmp.dt");
 	string tile2_path("nuclei_tmp.dt");
-	bool intersect = false;
+	string query("intersect");
 	bool ispeed = false;
 	int num_threads = hispeed::get_num_threads();
 	int num_repeat_threads = hispeed::get_num_threads();
@@ -31,12 +31,13 @@ int main(int argc, char **argv){
 	int lod_gap = 50;
 	int top_lod = 100;
 	int repeated = 1;
+	double max_dist = 100;
 
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
 		("gpu,g", "compute with GPU")
-		("intersect,i", "do intersection instead of join")
+		("query,q", po::value<string>(&query),"query type can be intersect|nn|within")
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
@@ -49,6 +50,7 @@ int main(int argc, char **argv){
 		("lod", po::value<std::vector<std::string>>()->multitoken()->
 		        zero_tokens()->composing(), "the lods need be processed")
 		("ispeed", "run in ispeed mode")
+		("max_dist", po::value<double>(&max_dist), "the maximum distance for within query")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -60,11 +62,10 @@ int main(int argc, char **argv){
 
 	geometry_computer *gc = new geometry_computer();
 	if(vm.count("gpu")){
+#ifdef USE_GPU
 		initialize();
 		gc->init_gpus();
-	}
-	if(vm.count("intersect")){
-		intersect = true;
+#endif
 	}
 	if(vm.count("ispeed")){
 		ispeed = true;
@@ -104,10 +105,15 @@ int main(int argc, char **argv){
 	}
 	logt("load tiles", start);
 
-	if(intersect){
+	if(query=="intersect"){
 		joiner->intersect_batch(tile_pairs, num_repeat_threads);
-	}else{
+	}else if(query=="nn"){
 		joiner->nearest_neighbor_batch(tile_pairs, num_repeat_threads, ispeed);
+	}else if(query=="within"){
+		joiner->within_batch(tile_pairs, num_repeat_threads, max_dist);
+	}else{
+		cout <<"error query type"<<endl<< desc << "\n";
+		return 0;
 	}
 	double join_time = hispeed::get_time_elapsed(start,false);
 	logt("join", start);

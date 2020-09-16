@@ -38,6 +38,9 @@ void geometry_computer::release_cpu(){
 	cpu_busy = false;
 	pthread_mutex_unlock(&cpu_lock);
 }
+
+#ifdef USE_GPU
+
 gpu_info *geometry_computer::request_gpu(int min_size, bool force){
 	do{
 		for(gpu_info *info:gpus){
@@ -59,13 +62,6 @@ void geometry_computer::release_gpu(gpu_info *info){
 	info->busy = false;
 }
 
-geometry_computer::~geometry_computer(){
-	for(gpu_info *info:gpus){
-		clean_gpu(info);
-		delete info;
-	}
-}
-
 bool geometry_computer::init_gpus(){
 	gpus = get_gpus();
 	for(gpu_info *info:gpus){
@@ -74,6 +70,24 @@ bool geometry_computer::init_gpus(){
 	return true;
 }
 
+void geometry_computer::get_distance_gpu(geometry_param &cc){
+	gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024, true);
+	assert(gpu);
+	log("GPU %d started to get distance", gpu->device_id);
+	hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
+	release_gpu(gpu);
+}
+
+#endif
+
+geometry_computer::~geometry_computer(){
+#ifdef USE_GPU
+	for(gpu_info *info:gpus){
+		clean_gpu(info);
+		delete info;
+	}
+#endif
+}
 void geometry_computer::get_distance_cpu(geometry_param &cc){
 	while(!request_cpu()){
 		usleep(10);
@@ -102,17 +116,13 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 	release_cpu();
 }
 
-void geometry_computer::get_distance_gpu(geometry_param &cc){
-	gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024, true);
-	assert(gpu);
-	log("GPU %d started to get distance", gpu->device_id);
-	hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
-	release_gpu(gpu);
-}
+
 
 void geometry_computer::get_distance(geometry_param &cc){
 	if(gpus.size()>0){
+#ifdef USE_GPU
 		get_distance_gpu(cc);
+#endif
 	}else{
 		get_distance_cpu(cc);
 	}
