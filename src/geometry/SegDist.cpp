@@ -80,6 +80,7 @@ float SegDist(const float *seg1, const float *seg2,
 // of segments and return the minimum distance
 float SegDist_single(const float *data1, const float *data2,
 		size_t size1, size_t size2){
+	assert(size1<=10000&&size2<=10000);
 	if(size1>10000){
 		size1=10000;
 	}

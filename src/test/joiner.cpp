@@ -24,7 +24,8 @@ int main(int argc, char **argv){
 	string query("intersect");
 
 	query_context ctx;
-	size_t max_objects = LONG_MAX;
+	size_t max_objects1 = LONG_MAX;
+	size_t max_objects2 = LONG_MAX;
 	int base_lod = 0;
 	int lod_gap = 50;
 	int top_lod = 100;
@@ -40,7 +41,8 @@ int main(int argc, char **argv){
 		("threads,n", po::value<int>(&ctx.num_thread), "number of threads")
 		("rn", po::value<int>(&ctx.num_repeated_thread), "number of threads for repeating jobs")
 		("repeat,r", po::value<int>(&ctx.repeated_times), "repeat tiles")
-		("max_objects,m", po::value<size_t>(&max_objects), "max number of objects in a tile")
+		("max_objects1", po::value<size_t>(&max_objects1), "max number of objects in tile 1")
+		("max_objects2", po::value<size_t>(&max_objects2), "max number of objects in tile 2")
 		("base_lod", po::value<int>(&base_lod), "the base lod for progressive decoding polyhedral")
 		("top_lod", po::value<int>(&top_lod), "the top lod for progressive decoding polyhedral")
 		("lod_gap", po::value<int>(&lod_gap), "the lod gap for progressive decoding polyhedral")
@@ -88,19 +90,13 @@ int main(int argc, char **argv){
 
 	vector<pair<Tile *, Tile *>> tile_pairs;
 	for(int i=0;i<ctx.repeated_times;i++){
-		Tile *tile1 = new Tile(tile1_path.c_str(), max_objects);
+		Tile *tile1 = new Tile(tile1_path.c_str(), max_objects1);
 		Tile *tile2 = tile1;
 		if(vm.count("tile2")){
-			tile2 = new Tile(tile2_path.c_str(), max_objects);
+			tile2 = new Tile(tile2_path.c_str(), max_objects2);
 		}
 		assert(tile1&&tile2);
 		tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
-		tile2->retrieve_all();
-		tile2->advance_all(100);
-		for(int i=0;i<tile2->num_objects();i++){
-			tile2->get_mesh_wrapper(i)->writeMeshOff();
-		}
-
 	}
 	logt("load tiles", start);
 

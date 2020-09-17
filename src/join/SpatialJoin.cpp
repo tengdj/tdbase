@@ -141,115 +141,12 @@ vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2, quer
 	return candidates;
 }
 
-
-/*
- * the main function for getting the nearest neighbor
- *
- * */
-void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context &ctx){
-	struct timeval start = get_cur_time();
-	struct timeval very_start = get_cur_time();
-
-	// filtering with MBBs to get the candidate list
-	vector<candidate_entry> candidates = mbb_distance(tile1, tile2, ctx);
-	ctx.index_time += get_time_elapsed(start, false);
-	logt("comparing mbbs", start);
-
-	// now we start to get the distances with progressive level of details
-	for(int lod:ctx.lods){
-		struct timeval iter_start = get_cur_time();
-		const int pair_num = get_pair_num(candidates);
-		if(pair_num==0){
-			break;
-		}
-		float *distances = new float[pair_num];
-		size_t candidate_num = get_candidate_num(candidates);
-		log("%ld polyhedron has %d candidates %f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
-		// retrieve the necessary meshes
-		size_t segment_pair_num = 0;
-
-		for(candidate_entry &c:candidates){
-			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info &info:c.second){
-				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
-				for(voxel_pair &vp:info.voxel_pairs){
-					assert(vp.v1&&vp.v2);
-					// not filled yet
-					if(vp.v1->data.find(lod)==vp.v1->data.end()){
-						// ensure the mesh is extracted
-						tile1->decode_to(wrapper1->id, lod);
-						wrapper1->fill_voxels(DT_Segment);
-					}
-					if(vp.v2->data.find(lod)==vp.v2->data.end()){
-						tile2->decode_to(wrapper2->id, lod);
-						wrapper2->fill_voxels(DT_Segment);
-					}
-					vp.dist.print();
-					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
-				}// end for voxel_pairs
-			}// end for distance_candiate list
-		}// end for candidates
-		ctx.decode_time += hispeed::get_time_elapsed(start, false);
-		logt("decoded %ld segment pairs for lod %d", start, segment_pair_num, lod);
-		if(segment_pair_num==0){
-			log("no segments is filled in this round");
-			continue;
-		}
-		tile1->reset_time();
-
-		float *distance = this->calculate_distance(candidates, ctx, lod);
-
-		ctx.computation_time += hispeed::get_time_elapsed(start, false);
-		logt("get distance", start);
-
-		// now update the candidate list with the new distance information
-		int index = 0;
-		for(candidate_entry &ce:candidates){
-			bool determined = false;
-			for(vector<candidate_info>::iterator it=ce.second.begin();it!=ce.second.end();){
-				for(voxel_pair &vp:it->voxel_pairs){
-					// update the distance
-					if(!determined&&vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
-						range dist = vp.dist;
-						if(lod==ctx.highest_lod()){
-							// now we have a precise distance
-							dist.closest = distances[index];
-							dist.farthest = distances[index];
-						}else{
-							dist.farthest = std::min(dist.farthest, distances[index]);
-						}
-						vp.dist = dist;
-						if(dist.farthest<ctx.max_dist){
-							determined = true;
-						}
-					}
-					index++;
-				}
-				if(determined){
-					it = ce.second.erase(it);
-				}else{
-					it++;
-				}
-			}
-		}
-		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
-		logt("update candidate list", start);
-
-		delete distances;
-		logt("current iteration", iter_start);
-
-	}
-	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
-	pthread_mutex_lock(&g_lock);
-	global_ctx.merge(ctx);
-	pthread_mutex_unlock(&g_lock);
-
-}
-
-
 float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, int lod){
 	const int pair_num = get_pair_num(candidates);
 	float *distances = new float[pair_num];
+	for(int i=0;i<pair_num;i++){
+		distances[i] = 0;
+	}
 
 	struct timeval start = hispeed::get_cur_time();
 
@@ -271,11 +168,10 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 			if(c.second.size()<=1){
 				continue;
 			}
-			HiMesh_Wrapper *wrapper1 = c.first;
-			double min_dist = DBL_MAX;
 			vector<Point> vertices;
-			wrapper1->mesh->get_vertices(vertices);
+			c.first->mesh->get_vertices(vertices);
 			for(candidate_info info:c.second){
+				double min_dist = DBL_MAX;
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(Point &p:vertices){
 					FT sqd = wrapper2->mesh->get_aabb_tree()->squared_distance(p);
@@ -354,10 +250,118 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		computer->get_distance(gp);
 		delete data;
 		delete offset_size;
+
 	}
 
 	return distances;
 }
+
+
+/*
+ * the main function for getting the objecst within a specified distance
+ *
+ * */
+void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context &ctx){
+	struct timeval start = get_cur_time();
+	struct timeval very_start = get_cur_time();
+
+	// filtering with MBBs to get the candidate list
+	vector<candidate_entry> candidates = mbb_distance(tile1, tile2, ctx);
+	ctx.index_time += get_time_elapsed(start, false);
+	logt("comparing mbbs", start);
+
+	// now we start to get the distances with progressive level of details
+	for(int lod:ctx.lods){
+		struct timeval iter_start = get_cur_time();
+		const int pair_num = get_pair_num(candidates);
+		if(pair_num==0){
+			break;
+		}
+		float *distances = new float[pair_num];
+		size_t candidate_num = get_candidate_num(candidates);
+		log("%ld polyhedron has %d candidates %f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
+		// retrieve the necessary meshes
+		size_t segment_pair_num = 0;
+
+		for(candidate_entry &c:candidates){
+			HiMesh_Wrapper *wrapper1 = c.first;
+			for(candidate_info &info:c.second){
+				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
+				for(voxel_pair &vp:info.voxel_pairs){
+					assert(vp.v1&&vp.v2);
+					// not filled yet
+					if(vp.v1->data.find(lod)==vp.v1->data.end()){
+						// ensure the mesh is extracted
+						tile1->decode_to(wrapper1->id, lod);
+						wrapper1->fill_voxels(DT_Segment);
+					}
+					if(vp.v2->data.find(lod)==vp.v2->data.end()){
+						tile2->decode_to(wrapper2->id, lod);
+						wrapper2->fill_voxels(DT_Segment);
+					}
+					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
+				}// end for voxel_pairs
+			}// end for distance_candiate list
+		}// end for candidates
+		ctx.decode_time += hispeed::get_time_elapsed(start, false);
+		logt("decoded %ld segment pairs for lod %d", start, segment_pair_num, lod);
+		if(segment_pair_num==0){
+			log("no segments is filled in this round");
+			continue;
+		}
+		tile1->reset_time();
+
+		float *distance = this->calculate_distance(candidates, ctx, lod);
+
+		ctx.computation_time += hispeed::get_time_elapsed(start, false);
+		logt("get distance", start);
+
+		// now update the candidate list with the new distance information
+		int index = 0;
+		for(candidate_entry &ce:candidates){
+			bool determined = false;
+			for(vector<candidate_info>::iterator it=ce.second.begin();it!=ce.second.end();){
+				for(voxel_pair &vp:it->voxel_pairs){
+					// update the distance
+					if(!determined&&vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
+						range dist = vp.dist;
+						if(lod==ctx.highest_lod()){
+							// now we have a precise distance
+							dist.closest = distances[index];
+							dist.farthest = distances[index];
+						}else{
+							dist.farthest = std::min(dist.farthest, distances[index]);
+						}
+						vp.dist = dist;
+						if(dist.farthest<ctx.max_dist){
+							determined = true;
+						}
+					}
+					index++;
+				}
+				if(determined){
+					it = ce.second.erase(it);
+				}else{
+					it++;
+				}
+			}
+		}
+		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
+		logt("update candidate list", start);
+
+		delete distances;
+		logt("current iteration", iter_start);
+
+	}
+	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
+	pthread_mutex_lock(&g_lock);
+	global_ctx.merge(ctx);
+	pthread_mutex_unlock(&g_lock);
+
+}
+
+
+
 
 /*
  * the main function for getting the nearest neighbor
@@ -421,14 +425,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context &ctx)
 			log("no segments is filled in this round");
 			continue;
 		}
-//		cerr<<"\ndecoding time\t"<<tile1->decode_time
-//			<<"\n\tretrieve time\t"<< tile1->retrieve_time
-//			<<"\n\t\tdisk time\t" << tile1->disk_time
-//			<<"\n\t\tmalloc time\t"<<tile1->malloc_time
-//			<<"\n\t\tnewmesh time\t"<<tile1->newmesh_time
-//			<<"\n\tadvance time\t"<< tile1->advance_time
-//			<<"\nfilling time\t"<<fill_time
-//			<<endl<<endl;
+
 		tile1->reset_time();
 
 
@@ -439,10 +436,10 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context &ctx)
 
 		// now update the distance range with the new distances
 		int index = 0;
-		for(candidate_entry &ce:candidates){
+		for(candidate_entry &c:candidates){
 			range min_candidate;
 			min_candidate.farthest = DBL_MAX;
-			for(candidate_info &ci:ce.second){
+			for(candidate_info &ci:c.second){
 				for(voxel_pair &vp:ci.voxel_pairs){
 					// update the distance
 					if(vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
@@ -461,8 +458,9 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context &ctx)
 					}
 					index++;
 				}
+
 			}
-			update_candidate_list(ce.second, min_candidate);
+			update_candidate_list(c.second, min_candidate);
 		}
 		for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
 			if(it->second.size()<=1){
@@ -485,84 +483,6 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context &ctx)
 }
 
 
-
-
-//void SpatialJoin::nearest_neighbor_aabb(Tile *tile1, Tile *tile2, query_context &ctx){
-//	struct timeval start = get_cur_time();
-//	struct timeval very_start = get_cur_time();
-//	double index_time = 0;
-//	double decode_time = 0;
-//	double packing_time = 0;
-//	double computation_time = 0;
-//	// filtering with MBBs to get the candidate list
-//	vector<candidate_entry> candidates = mbb_distance(tile1, tile2, ctx);
-//	index_time += hispeed::get_time_elapsed(start, false);
-//	logt("comparing mbbs", start);
-//
-//
-//	// generate the aabb tree for all the referred polyhedrons
-//	int candidate_size = 0;
-//	for(candidate_entry c:candidates){
-//		if(c.second.size()<=1){
-//			continue;
-//		}
-//		for(candidate_info info:c.second){
-//			HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
-//			tile2->decode_to(wrapper2->id,ctx.lods[0]);
-//		}
-//		tile1->decode_to(c.first->id, ctx.lods[0]);
-//		candidate_size += c.second.size();
-//	}
-//	decode_time += hispeed::get_time_elapsed(start, false);
-//	logt("decode data",start);
-//	log("%ld polyhedron has %d candidates", candidates.size(), candidate_size);
-//
-//	for(candidate_entry c:candidates){
-//		if(c.second.size()<=1){
-//			continue;
-//		}
-//		for(candidate_info info:c.second){
-//			HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
-//			wrapper2->mesh->get_aabb_tree();
-//		}
-//	}
-//	packing_time += hispeed::get_time_elapsed(start, false);
-//	logt("build aabb tree",start);
-//
-//	for(candidate_entry c:candidates){
-//		// the nearest neighbor is found
-//		if(c.second.size()<=1){
-//			continue;
-//		}
-//		HiMesh_Wrapper *wrapper1 = c.first;
-//		double min_dist = DBL_MAX;
-//		vector<Point> vertices;
-//		wrapper1->mesh->get_vertices(vertices);
-//		for(candidate_info info:c.second){
-//			HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
-//			int index = 0;
-//			for(Point &p:vertices){
-//				FT sqd = wrapper2->mesh->get_aabb_tree()->squared_distance(p);
-//				double distance = (double)CGAL::to_double(sqd);
-//				if(min_dist>distance){
-//					min_dist = distance;
-//				}
-//			}
-//		}// end for distance_candiate list
-//		vertices.clear();
-//	}// end for candidates
-//	computation_time += hispeed::get_time_elapsed(start, false);
-//	logt("getting distance", start);
-//
-//	pthread_mutex_lock(&g_lock);
-//	global_index_time += index_time;
-//	global_decode_time += decode_time;
-//	global_packing_time += packing_time;
-//	global_computation_time += computation_time;
-//	global_total_time += hispeed::get_time_elapsed(very_start, false);
-//	pthread_mutex_unlock(&g_lock);
-//
-//}
 
 /*
  *

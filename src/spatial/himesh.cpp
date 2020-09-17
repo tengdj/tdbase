@@ -164,6 +164,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	timeval start = hispeed::get_cur_time();
 	vector<Voxel *> voxels;
 	int lod = i_decompPercentage;
+	this->computeBoundingBox();
 	if(size_of_vertices()<voxel_size*3){
 		Voxel *v = new Voxel();
 		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);

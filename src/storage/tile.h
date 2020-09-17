@@ -53,6 +53,16 @@ public:
 		newmesh_time = 0;
 	}
 
+	void print_time(){
+		cerr<<"\ndecoding time\t"<<decode_time
+			<<"\n\tretrieve time\t"<< retrieve_time
+			<<"\n\t\tdisk time\t" << disk_time
+			<<"\n\t\tmalloc time\t"<< malloc_time
+			<<"\n\t\tnewmesh time\t"<< newmesh_time
+			<<"\n\tadvance time\t"<< advance_time
+			<<endl<<endl;
+	}
+
 	void decode_to(int id, int lod);
 	HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
