@@ -98,10 +98,7 @@ public:
 	HiMesh(char *data, long length);
 	~HiMesh(){
 		//release_buffer();
-		if(aabb_tree){
-			delete aabb_tree;
-			segments.clear();
-		}
+		this->clear_aabb_tree();
 		for(std::map<int, Skeleton *>::iterator it=skeletons.begin();it!=skeletons.end();it++){
 			delete it->second;
 		}
@@ -119,6 +116,7 @@ public:
 	size_t fill_topology(unsigned short *&topology);
 	void get_segments();
 	SegTree *get_aabb_tree();
+	void clear_aabb_tree();
 
 	inline void get_vertices(std::vector<Point> &points){
 		for(MyMesh::Vertex_iterator v = vertices_begin();
@@ -177,7 +175,7 @@ public:
 	}
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle
-	void fill_voxels(enum data_type seg_tri, bool release_mesh);
+	void fill_voxels(enum data_type seg_tri);
 
 	void reset(){
 		pthread_mutex_lock(&lock);

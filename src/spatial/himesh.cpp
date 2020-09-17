@@ -466,9 +466,17 @@ void HiMesh::to_wkt(){
 	cout<<")"<<endl;
 }
 
+void HiMesh::clear_aabb_tree(){
+	if(aabb_tree){
+		delete aabb_tree;
+		aabb_tree = NULL;
+	}
+	segments.clear();
+}
+
 SegTree *HiMesh::get_aabb_tree(){
-	advance_to(100);
-	if(aabb_tree==NULL){
+
+	if(aabb_tree == NULL){
 		get_segments();
 		aabb_tree = new SegTree(segments.begin(), segments.end());
 		aabb_tree->accelerate_distance_queries();
@@ -524,16 +532,11 @@ TriangleTree *get_aabb_tree(Polyhedron *p){
 	return tree;
 }
 
-void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri, bool release_mesh){
+void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
 	pthread_mutex_lock(&lock);
 	// mesh could be NULL when multiple threads compete
 	if(mesh){
 		mesh->fill_voxel(voxels, seg_tri);
-		// filled the maximum LOD, release the mesh
-		if(release_mesh){
-			delete mesh;
-			mesh = NULL;
-		}
 	}
 	pthread_mutex_unlock(&lock);
 }

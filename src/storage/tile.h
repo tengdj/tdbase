@@ -62,6 +62,9 @@ public:
 		assert(id>=0&&id<objects.size());
 		return objects[id]->box.box;
 	}
+	HiMesh *get_mesh(int id){
+		return get_mesh_wrapper(id)->mesh;
+	}
 	int num_objects(){
 		return objects.size();
 	}
@@ -76,6 +79,7 @@ public:
 	}
 
 	void advance_all(int lod){
+		retrieve_all();
 		for(HiMesh_Wrapper *w:objects){
 			w->advance_to(lod);
 		}

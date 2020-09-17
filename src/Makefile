@@ -43,7 +43,7 @@ OBJS_CU := $(patsubst %.cu,%_cu.o,$(SRCS_CU))
 	$(NVCC) $(INCFLAGS) $(NVCCFLAGS) -c $? -o $@
 		
 ifndef USE_GPU
-	OBJS_CU = 
+OBJS_CU = 
 endif
 
 #compile additional range coder .c files

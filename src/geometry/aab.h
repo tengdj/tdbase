@@ -43,6 +43,9 @@ public:
 		closest = max(closest, r.closest);
 		farthest = min(farthest, r.farthest);
 	}
+	void print(){
+		printf("[%f,%f]\n",closest,farthest);
+	}
 }range;
 
 class aab{
@@ -113,6 +116,7 @@ public:
 				return false;
 			}
 		}
+		return true;
 	}
 
 	bool contains(float *point){

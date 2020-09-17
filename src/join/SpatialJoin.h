@@ -16,6 +16,63 @@ using namespace std;
 
 namespace hispeed{
 
+
+class query_context{
+public:
+
+	//time
+	double index_time = 0;
+	double decode_time = 0;
+	double packing_time = 0;
+	double computation_time = 0;
+	double updatelist_time = 0;
+	double overall_time = 0;
+
+	//parameters
+	double max_dist = DBL_MAX;
+	int num_repeated_thread = 0;
+	int num_thread = 0;
+	int repeated_times = 1;
+	bool use_aabb = false;
+	bool use_gpu = false;
+	vector<int> lods;
+
+	int highest_lod(){
+		if(lods.size()==0){
+			return 0;
+		}else {
+			return lods[lods.size()-1];
+		}
+	}
+
+	query_context(){
+		num_thread = hispeed::get_num_threads();
+		num_repeated_thread = hispeed::get_num_threads();
+	}
+
+	void merge(query_context ctx){
+		index_time += ctx.index_time;
+		decode_time += ctx.decode_time;
+		packing_time += ctx.packing_time;
+		computation_time += ctx.packing_time;
+		updatelist_time += ctx.updatelist_time;
+		overall_time += ctx.overall_time;
+	}
+
+	void report(double t){
+		cout<<"total, index, decode, packing, computation, updatelist, other"<<endl;
+		cout<<t<<","
+			<<t*index_time/overall_time<<","
+			<<t*decode_time/overall_time<<","
+			<<t*packing_time/overall_time<<","
+			<<t*computation_time/overall_time<<","
+			<<t*updatelist_time/overall_time<<","
+			<<t*(overall_time-decode_time-computation_time-index_time)/overall_time<<endl;
+	}
+
+};
+
+
 class voxel_pair{
 public:
 	Voxel *v1;
@@ -77,47 +134,21 @@ const static long VOXEL_BUFFER_SIZE = 1<<30;
 class SpatialJoin{
 
 	geometry_computer *computer = NULL;
-	int base_lod = 0;
-	int lod_gap = 50;
-	int top_lod = 100;
-	vector<int> lods;
-	double global_total_time = 0;
-	double global_index_time = 0;
-	double global_decode_time = 0;
-	double global_packing_time = 0;
-	double global_computation_time = 0;
-	double global_updatelist_time = 0;
+
+	query_context global_ctx;
 	pthread_mutex_t g_lock;
 
 public:
-	void set_lods(vector<int> &ls){
-		sort(ls.begin(), ls.end());
-		for(int l:ls){
-			assert(l>=100&&l>=0);
-			lods.push_back(l);
-		}
-	}
-	void set_base_lod(int v){
-		assert(v>=0&&v<=100);
-		base_lod = v;
-	}
-	void set_top_lod(int v){
-		assert(v>=0&&v<=100);
-		top_lod = v;
-	}
-	void set_lod_gap(int v){
-		assert(v>0&&v<=100);
-		lod_gap = v;
-	}
+
 	SpatialJoin(geometry_computer *c){
 		assert(c);
 		pthread_mutex_init(&g_lock, NULL);
 		computer = c;
 	}
-	~SpatialJoin(){
+	~SpatialJoin(){}
+	void report_time(double t){
+		global_ctx.report(t);
 	}
-	void report_time(double t);
-
 	/*
 	 *
 	 * the main entry function to conduct next round of computation
@@ -127,18 +158,18 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
-	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2, double dist=DBL_MAX);
-	void nearest_neighbor(Tile *tile1, Tile *tile2);
-	vector<candidate_entry> mbb_within(Tile *tile1, Tile *tile2, double dist);
-	void within(Tile *tile1, Tile *tile2, double dist);
-	void nearest_neighbor_aabb(Tile *tile1, Tile *tile2);
+	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2, query_context &ctx);
+	float *calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, int lod);
+	void nearest_neighbor(Tile *tile1, Tile *tile2, query_context &ctx);
+	void within(Tile *tile1, Tile *tile2, query_context &ctx);
+	void nearest_neighbor_aabb(Tile *tile1, Tile *tile2, query_context &ctx);
 
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
-	void intersect(Tile *tile1, Tile *tile2);
+	void intersect(Tile *tile1, Tile *tile2, query_context &ctx);
 
-	void within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads, double max_dist);
-	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads, bool ispeed);
-	void intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, int num_threads);
+	void within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
+	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
+	void intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
 
 	/*
 	 *
@@ -167,6 +198,7 @@ public:
 
 
 };
+
 
 }
 
