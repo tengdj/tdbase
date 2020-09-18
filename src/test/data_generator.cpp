@@ -120,6 +120,22 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 
 	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	vessel_taken = new bool[total_slots];
+	for(Voxel *v:vessel_voxels){
+		int xstart = v->box.min[0]/nuclei_num[0];
+		int xend = v->box.max[0]/nuclei_num[0];
+		int ystart = v->box.min[1]/nuclei_num[1];
+		int yend = v->box.max[1]/nuclei_num[1];
+		int zstart = v->box.min[2]/nuclei_num[2];
+		int zend = v->box.max[2]/nuclei_num[2];
+		for(int z=zstart;z<=zend;z++){
+			for(int y=ystart;y<=yend;y++){
+				for(int x=xstart;x<=xend;x++){
+					vessel_taken[z*nuclei_num[0]*nuclei_num[1]+y*nuclei_num[0]+x] = true;
+				}
+			}
+		}
+
+	}
 
 	nfile.close();
 	vfile.close();
@@ -141,9 +157,12 @@ Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
 /*
  * generate the binary data for a polyhedron and its voxels
  * */
+
+int ids = 0;
 inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
 		float shift[3], char *data, size_t &offset){
 	Polyhedron shifted = shift_polyhedron(shift, poly);
+	//hispeed::write_polyhedron(&shifted, ids++);
 	MyMesh *mesh = poly_to_mesh(shifted);
 	memcpy(data+offset, (char *)&mesh->dataOffset, sizeof(size_t));
 	offset += sizeof(size_t);
@@ -200,13 +219,13 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 		}
 		taken[idx] = true;
 
-		int i = idx/(nuclei_num[1]*nuclei_num[2]);
-		int j = (idx%(nuclei_num[1]*nuclei_num[2]))/nuclei_num[1];
-		int k = (idx%(nuclei_num[1]*nuclei_num[2]))%nuclei_num[1];
+		int z = idx/(nuclei_num[0]*nuclei_num[1]);
+		int y = (idx%(nuclei_num[0]*nuclei_num[1]))/nuclei_num[0];
+		int x = (idx%(nuclei_num[0]*nuclei_num[1]))%nuclei_num[0];
 
-		shift[0] = i*nuclei_box.max[0]+base[0];
-		shift[1] = j*nuclei_box.max[1]+base[1];
-		shift[2] = k*nuclei_box.max[2]+base[2];
+		shift[0] = x*nuclei_box.max[0]+base[0];
+		shift[1] = y*nuclei_box.max[1]+base[1];
+		shift[2] = z*nuclei_box.max[2]+base[2];
 
 		int polyid = hispeed::get_rand_number(nucleis.size()-1);
 		organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);

@@ -844,6 +844,7 @@ void SpatialJoin::intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, quer
 		void *status;
 		pthread_join(threads[i], &status);
 	}
+
 }
 
 
