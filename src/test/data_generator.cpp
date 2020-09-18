@@ -21,11 +21,16 @@ namespace po = boost::program_options;
 const int buffer_size = 50*(1<<20);
 vector<Polyhedron> nucleis;
 vector<vector<Voxel *>> nucleis_voxels;
+bool *vessel_taken;
 Polyhedron vessel;
 aab nuclei_box;
 aab vessel_box;
 
-float *possibility;
+
+int num_nuclei_per_vessel = 10000;
+int num_vessel = 1;
+float shrink = 20;
+int voxel_size = 400000;
 
 HiMesh *poly_to_himesh(Polyhedron &poly){
 	stringstream ss;
@@ -43,7 +48,7 @@ MyMesh *poly_to_mesh(Polyhedron poly){
 	return hispeed::get_mesh(ss.str(), true);
 }
 
-void load_prototype(const char *nuclei_path, const char *vessel_path, float shrink, int num_nuclei_per_vessel){
+void load_prototype(const char *nuclei_path, const char *vessel_path){
 	std::ifstream nfile(nuclei_path);
 	std::ifstream vfile(vessel_path);
 	string input_line;
@@ -71,6 +76,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 		vessel_box.update(tmpb);
 		HiMesh *himesh = poly_to_himesh(vessel);
 		vessel_voxels = himesh->generate_voxels(100);
+
 		delete himesh;
 	}else{
 		assert(false&&"error reading the vessel file");
@@ -106,64 +112,18 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 		delete himesh;
 	}
 
-	nfile.close();
-	vfile.close();
-	// update the distance
+
 	int nuclei_num[3];
 	for(int i=0;i<3;i++){
 		nuclei_num[i] = (int)(vessel_box.max[i]/nuclei_box.max[i]);
 	}
-	int total_nuclei_num = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
-	float pos_adjust = (float)num_nuclei_per_vessel/total_nuclei_num*1.5;
 
-	possibility = new float[total_nuclei_num];
-	float max_distance = DBL_MIN;
-	int zero_num = 0;
-	for(int i=0;i<nuclei_num[0];i++){
-		for(int j=0;j<nuclei_num[1];j++){
-			for(int k=0;k<nuclei_num[2];k++){
-				float min_dist = DBL_MAX;
-				aab cur_box;
-				cur_box.min[0] = nuclei_box.max[0]*i;
-				cur_box.max[0] = nuclei_box.max[0]*(i+1);
-				cur_box.min[1] = nuclei_box.max[1]*j;
-				cur_box.max[1] = nuclei_box.max[1]*(j+1);
-				cur_box.min[2] = nuclei_box.max[2]*k;
-				cur_box.max[2] = nuclei_box.max[2]*(k+1);
-				for(Voxel *v:vessel_voxels){
-					range r = v->box.distance(cur_box);
-					if(min_dist>r.closest){
-						min_dist = r.closest;
-						if(min_dist == 0){
-							zero_num++;
-							break;
-						}
-					}
-				}
-				possibility[i*nuclei_num[1]*nuclei_num[2]+j*nuclei_num[2]+k] = min_dist;
-				if(max_distance<min_dist){
-					max_distance = min_dist;
-				}
-			}
-		}
-	}
-	// update the possibility for each voxel
-	for(int i=0;i<nuclei_num[0];i++){
-		for(int j=0;j<nuclei_num[1];j++){
-			for(int k=0;k<nuclei_num[2];k++){
-				float cur_possibility = possibility[i*nuclei_num[1]*nuclei_num[2]+j*nuclei_num[2]+k];
-				if(cur_possibility!=0){
-					// here we control the distribution of the nucleis around vessels
-					cur_possibility = (1-cur_possibility/max_distance)*pos_adjust;
-					possibility[i*nuclei_num[1]*nuclei_num[2]+j*nuclei_num[2]+k] = cur_possibility;
-				}
-			}
-		}
-	}
-	for(Voxel *v:vessel_voxels){
-		delete v;
-	}
-	vessel_voxels.clear();
+	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
+	vessel_taken = new bool[total_slots];
+
+	nfile.close();
+	vfile.close();
+
 }
 
 Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
@@ -228,24 +188,31 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 	}
 	float shift[3];
 	int generated = 0;
-	for(int i=0;i<nuclei_num[0];i++){
-		for(int j=0;j<nuclei_num[1];j++){
-			for(int k=0;k<nuclei_num[2];k++){
-				float cur_possibility = possibility[i*nuclei_num[1]*nuclei_num[2]+j*nuclei_num[2]+k];
-				if(!hispeed::get_rand_sample(cur_possibility)){
-					continue;
-				}
-				shift[0] = i*nuclei_box.max[0]+base[0];
-				shift[1] = j*nuclei_box.max[1]+base[1];
-				shift[2] = k*nuclei_box.max[2]+base[2];
-				int polyid = hispeed::get_rand_number(nucleis.size()-1);
-				organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
-				{
-					int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
-					organize_data(nucleis[polyid], nucleis_voxels[polyid2], shift, data2, offset2);
-				}
-				generated++;
-			}
+	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
+	bool *taken = new bool[total_slots];
+
+	assert(total_slots>num_nuclei_per_vessel);
+
+	while(++generated<num_nuclei_per_vessel){
+		int idx = hispeed::get_rand_number(total_slots);
+		while(taken[idx]||vessel_taken[idx]){
+			idx = hispeed::get_rand_number(total_slots);
+		}
+		taken[idx] = true;
+
+		int i = idx/(nuclei_num[1]*nuclei_num[2]);
+		int j = (idx%(nuclei_num[1]*nuclei_num[2]))/nuclei_num[1];
+		int k = (idx%(nuclei_num[1]*nuclei_num[2]))%nuclei_num[1];
+
+		shift[0] = i*nuclei_box.max[0]+base[0];
+		shift[1] = j*nuclei_box.max[1]+base[1];
+		shift[2] = k*nuclei_box.max[2]+base[2];
+
+		int polyid = hispeed::get_rand_number(nucleis.size()-1);
+		organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
+		{
+			int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
+			organize_data(nucleis[polyid], nucleis_voxels[polyid2], shift, data2, offset2);
 		}
 	}
 	return generated;
@@ -285,7 +252,7 @@ void *generate_unit(void *arg){
 	return NULL;
 }
 
-void generate_vessel(const char *path, vector<tuple<float, float, float>> &vessel_shifts, int voxel_size){
+void generate_vessel(const char *path, vector<tuple<float, float, float>> &vessel_shifts){
 	char *data = new char[vessel_shifts.size()*100000*2];
 	size_t offset = 0;
 	HiMesh *himesh = poly_to_himesh(vessel);
@@ -312,10 +279,7 @@ int main(int argc, char **argv){
 	string vessel_pt;
 	string output_path;
 	int num_threads = hispeed::get_num_threads();
-	int num_nuclei_per_vessel = 10000;
-	int num_vessel = 1;
-	float shrink = 20;
-	int voxel_size = 400000;
+
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
@@ -356,7 +320,7 @@ int main(int argc, char **argv){
 	int y_dim = x_dim;
 	int z_dim = num_vessel/(x_dim*y_dim);
 	num_nuclei_per_vessel = (num_nuclei_per_vessel*num_vessel)/(x_dim*y_dim*z_dim);
-	load_prototype(nuclei_pt.c_str(), vessel_pt.c_str(), shrink, num_nuclei_per_vessel);
+	load_prototype(nuclei_pt.c_str(), vessel_pt.c_str());
 	logt("load prototype files", start);
 	vector<tuple<float, float, float>> vessel_shifts;
 	for(int i=0;i<x_dim;i++){
@@ -376,7 +340,7 @@ int main(int argc, char **argv){
 		pthread_create(&threads[i], NULL, generate_unit, NULL);
 	}
 
-	generate_vessel(vessel_output, vessel_shifts, voxel_size);
+	generate_vessel(vessel_output, vessel_shifts);
 	vessel_shifts.clear();
 
 	for(int i = 0; i < num_threads; i++ ){

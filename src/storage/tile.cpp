@@ -23,7 +23,6 @@ namespace hispeed{
 // tile->mesh->voxels->triangle/edges
 Tile::Tile(std::string path, size_t capacity){
 	struct timeval start = get_cur_time();
-	this->capacity = capacity;
 	if(!hispeed::file_exist(path.c_str())){
 		log("%s does not exist", path.c_str());
 		exit(-1);
@@ -39,7 +38,7 @@ Tile::Tile(std::string path, size_t capacity){
 		parse_raw();
 		persist(meta_path);
 	}else{
-		load(meta_path);
+		load(meta_path, capacity);
 	}
 	pthread_mutex_init(&read_lock, NULL);
 	logt("loaded %ld polyhedra in tile %s", start, objects.size(), path.c_str());
@@ -94,7 +93,7 @@ bool Tile::persist(string path){
 }
 
 // load from the cached data
-bool Tile::load(string path){
+bool Tile::load(string path, int capacity){
 	FILE *mt_fs = fopen(path.c_str(), "r");
 	assert(mt_fs);
 	size_t dsize = 0;
@@ -129,7 +128,7 @@ bool Tile::parse_raw(){
 	long offset = 0;
 	size_t index = 0;
 	fseek(dt_fs, 0, SEEK_SET);
-	while(index<capacity&&fread((void *)&dsize, sizeof(size_t), 1, dt_fs)>0){
+	while(fread((void *)&dsize, sizeof(size_t), 1, dt_fs)>0){
 		fseek(dt_fs, dsize, SEEK_CUR);
 		HiMesh_Wrapper *w = new HiMesh_Wrapper();
 		offset += sizeof(size_t);

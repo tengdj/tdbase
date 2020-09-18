@@ -19,11 +19,10 @@ namespace hispeed{
 
 class Tile{
 	pthread_mutex_t read_lock;
-	size_t capacity = LONG_MAX;
 	aab box;
 	std::vector<HiMesh_Wrapper *> objects;
 	FILE *dt_fs = NULL;
-	bool load(string path);
+	bool load(string path, int max_objects=INT_MAX);
 	bool persist(string path);
 	bool parse_raw();
 	// retrieve the data of the mesh with ID id on demand
@@ -77,9 +76,6 @@ public:
 	}
 	int num_objects(){
 		return objects.size();
-	}
-	void set_capacity(size_t max_num_objects){
-		capacity = max_num_objects;
 	}
 
 	void retrieve_all(){
