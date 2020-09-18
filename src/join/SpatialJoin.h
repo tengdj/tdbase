@@ -54,20 +54,20 @@ public:
 		index_time += ctx.index_time;
 		decode_time += ctx.decode_time;
 		packing_time += ctx.packing_time;
-		computation_time += ctx.packing_time;
+		computation_time += ctx.computation_time;
 		updatelist_time += ctx.updatelist_time;
 		overall_time += ctx.overall_time;
 	}
 
 	void report(double t){
-		cout<<"total, index, decode, packing, computation, updatelist, other"<<endl;
-		cout<<t<<","
-			<<t*index_time/overall_time<<","
-			<<t*decode_time/overall_time<<","
-			<<t*packing_time/overall_time<<","
-			<<t*computation_time/overall_time<<","
-			<<t*updatelist_time/overall_time<<","
-			<<t*(overall_time-decode_time-computation_time-index_time)/overall_time<<endl;
+
+		cout<<"total:\t"<<t<<endl;
+		cout<<"index:\t"<<t*index_time/overall_time<<endl;
+		cout<<"decode:\t"<<t*decode_time/overall_time<<endl;
+		cout<<"packing:\t"<<t*packing_time/overall_time<<endl;
+		cout<<"computation:\t"<<t*computation_time/overall_time<<endl;
+		cout<<"updatelist:\t"<<t*updatelist_time/overall_time<<endl;
+		cout<<"other:\t"<<t*(overall_time-decode_time-computation_time-index_time)/overall_time<<endl;
 	}
 
 };
@@ -160,12 +160,11 @@ public:
 	 * */
 	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2, query_context &ctx);
 	float *calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, int lod);
-	void nearest_neighbor(Tile *tile1, Tile *tile2, query_context &ctx);
-	void within(Tile *tile1, Tile *tile2, query_context &ctx);
-	void nearest_neighbor_aabb(Tile *tile1, Tile *tile2, query_context &ctx);
+	void nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx);
+	void within(Tile *tile1, Tile *tile2, query_context ctx);
 
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
-	void intersect(Tile *tile1, Tile *tile2, query_context &ctx);
+	void intersect(Tile *tile1, Tile *tile2, query_context ctx);
 
 	void within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
 	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);

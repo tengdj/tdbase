@@ -121,7 +121,6 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		pthread_join(threads[i-1], &status);
 	}
 	release_cpu();
-	log("computing complete");
 }
 
 

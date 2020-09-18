@@ -160,6 +160,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 				info.mesh_wrapper->mesh->get_aabb_tree();
 			}
 		}
+		ctx.packing_time += hispeed::get_time_elapsed(start, false);
 		logt("building aabb tree", start);
 
 		int index = 0;
@@ -261,7 +262,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
  * the main function for getting the objecst within a specified distance
  *
  * */
-void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context &ctx){
+void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 
@@ -367,7 +368,7 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context &ctx){
  * the main function for getting the nearest neighbor
  *
  * */
-void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context &ctx){
+void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 
@@ -567,7 +568,7 @@ vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
  * relationship among polyhedra in the tile
  *
  * */
-void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context &ctx){
+void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 
@@ -632,14 +633,6 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context &ctx){
 		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d",
 				start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
 
-//		cerr<<"\ndecoding time\t"<<tile1->decode_time+tile2->decode_time
-//			<<"\n\tretrieve time\t"<< tile1->retrieve_time+tile2->retrieve_time
-//			<<"\n\t\tdisk time\t" << tile1->disk_time+tile2->disk_time
-//			<<"\n\t\tmalloc time\t"<<tile1->malloc_time+tile2->malloc_time
-//			<<"\n\t\tnewmesh time\t"<<tile1->newmesh_time+tile2->newmesh_time
-//			<<"\n\tadvance time\t"<< tile1->advance_time+tile2->advance_time
-//			<<"\nfilling time\t"<<fill_time
-//			<<endl<<endl;
 		tile1->reset_time();
 		tile2->reset_time();
 		// now we allocate the space and store the data in a buffer
