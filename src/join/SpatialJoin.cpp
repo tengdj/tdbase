@@ -319,34 +319,38 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 
 		// now update the candidate list with the new distance information
 		int index = 0;
-		for(candidate_entry &ce:candidates){
+		for(vector<candidate_entry>::iterator it_ce=candidates.begin();it_ce!=candidates.end();){
 			bool determined = false;
-			for(vector<candidate_info>::iterator it=ce.second.begin();it!=ce.second.end();){
-				for(voxel_pair &vp:it->voxel_pairs){
-					// update the distance
-					if(!determined&&vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
-						range dist = vp.dist;
-						if(lod==ctx.highest_lod()){
-							// now we have a precise distance
-							dist.closest = distances[index];
-							dist.farthest = distances[index];
-						}else{
-							dist.farthest = std::min(dist.farthest, distances[index]);
+			for(vector<candidate_info>::iterator it=it_ce->second.begin();it!=it_ce->second.end();it++){
+				if(!determined){
+					for(voxel_pair &vp:it->voxel_pairs){
+						// update the distance
+						if(!determined&&vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
+							range dist = vp.dist;
+							if(lod==ctx.highest_lod()){
+								// now we have a precise distance
+								dist.closest = distances[index];
+								dist.farthest = distances[index];
+							}else{
+								dist.farthest = std::min(dist.farthest, distances[index]);
+							}
+							vp.dist = dist;
+							if(dist.farthest<ctx.max_dist){
+								determined = true;
+							}
 						}
-						vp.dist = dist;
-						if(dist.farthest<ctx.max_dist){
-							determined = true;
-						}
+						index++;
 					}
-					index++;
-				}
-				if(determined){
-					it = ce.second.erase(it);
-				}else{
-					it++;
 				}
 			}
+			if(determined){
+				it_ce->second.clear();
+				candidates.erase(it_ce);
+			}else{
+				it_ce++;
+			}
 		}
+
 		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
 		logt("update candidate list", start);
 
