@@ -230,8 +230,13 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 		int polyid = hispeed::get_rand_number(nucleis.size()-1);
 		organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
 		{
+			float shift2[3];
+			shift2[0] = shift[0]+nuclei_box.max[0]*(hispeed::get_rand_number(100)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[1] = shift[1]+nuclei_box.max[1]*(hispeed::get_rand_number(100)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[2] = shift[2]+nuclei_box.max[2]*(hispeed::get_rand_number(100)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+
 			int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
-			organize_data(nucleis[polyid], nucleis_voxels[polyid2], shift, data2, offset2);
+			organize_data(nucleis[polyid2], nucleis_voxels[polyid2], shift2, data2, offset2);
 		}
 	}
 	return generated;

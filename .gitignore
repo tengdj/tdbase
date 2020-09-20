@@ -6,5 +6,6 @@
 *.wkt
 *.o
 *.off
+*.out
 build/
 /Default/
