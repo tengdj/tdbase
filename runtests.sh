@@ -32,5 +32,5 @@ build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt -r 1000 --query within --lo
 build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt -r 1000 --query within --lod 50 100 --aabb >within_nn_50_100_aabb.out 2>&1
 
 #intersect	100	50 100
-build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile1 src/tmp_n2_nv50_nu200_s10_vs100.dt -r 1000 --query intersect --lod 100 >intersect_nn_100.out 2>&1
-build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile1 src/tmp_n2_nv50_nu200_s10_vs100.dt -r 1000 --query intersect --lod 50 100 >intersect_nn_50_100.out 2>&1
+build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_n2_nv50_nu200_s10_vs100.dt -r 1000 --query intersect --lod 100 >intersect_nn_100.out 2>&1
+build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_n2_nv50_nu200_s10_vs100.dt -r 1000 --query intersect --lod 50 100 >intersect_nn_50_100.out 2>&1

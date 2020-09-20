@@ -747,9 +747,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
 		gp.intersect = intersect_status;
-		computer->get_intersect(gp);
+		float timewaited = computer->get_intersect(gp);
 		ctx.computation_time += hispeed::get_time_elapsed(start, false);
-		logt("checking intersection", start);
+		logt("checking intersection time waited %f", start,timewaited);
 
 		// now update the intersection status and update the all candidate list
 		// report results if necessary
@@ -907,11 +907,11 @@ void SpatialJoin::intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, quer
 	}
 	param.joiner = this;
 	param.ctx = ctx;
-	pthread_t threads[ctx.num_thread];
-	for(int i=0;i<ctx.num_thread;i++){
+	pthread_t threads[ctx.num_repeated_thread];
+	for(int i=0;i<ctx.num_repeated_thread;i++){
 		pthread_create(&threads[i], NULL, intersect_single, (void *)&param);
 	}
-	for(int i = 0; i < ctx.num_thread; i++){
+	for(int i = 0; i < ctx.num_repeated_thread; i++){
 		void *status;
 		pthread_join(threads[i], &status);
 	}

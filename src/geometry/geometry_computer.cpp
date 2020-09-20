@@ -146,10 +146,12 @@ void *TriInt_unit(void *params_void){
 	return NULL;
 }
 
-void geometry_computer::get_intersect(geometry_param &cc){
-	while(!request_cpu()){
-		usleep(10);;
-	}
+float geometry_computer::get_intersect(geometry_param &cc){
+	struct timeval start = hispeed::get_cur_time();
+//	while(!request_cpu()){
+//		usleep(10);;
+//	}
+	double time_waited = hispeed::get_time_elapsed(start);
 
 	// compute the minimum distance of segment pairs with multiple threads
 	pthread_t threads[max_thread_num];
@@ -172,7 +174,8 @@ void geometry_computer::get_intersect(geometry_param &cc){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
-	release_cpu();
+	//release_cpu();
+	return time_waited;
 }
 
 }
