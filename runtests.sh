@@ -4,7 +4,7 @@
 
 build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_v_nv50_nu200_s10_vs100.dt -r 1000 --query nn --lod 100 --gpu >nn_nv_100_gpu 2>&1
 build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_v_nv50_nu200_s10_vs100.dt -r 1000 --query nn --lod 50 100 --gpu >nn_nv_50_100_gpu 2>&1
-build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_v_nv50_nu200_s10_vs100.dt -r 1000 --query nn --lod 100 --aabb >nn_nv_100_aabb 2>&1
+build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_v_nv50_nu200_s10_vs100.dt -r 100 --query nn --lod 100 --aabb >nn_nv_100_aabb 2>&1
 build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_v_nv50_nu200_s10_vs100.dt -r 1000 --query nn --lod 50 100 --aabb >nn_nv_50_100_aabb 2>&1
 build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_v_nv50_nu200_s10_vs100.dt -r 1000 --query nn --lod 100 --multiple_mbb >nn_nv_100_multibbb 2>&1
 build/join --tile1 src/tmp_n_nv50_nu200_s10_vs100.dt --tile2 src/tmp_v_nv50_nu200_s10_vs100.dt -r 1000 --query nn --lod 50 100 --multiple_mbb >nn_nv_50_100_multibbb 2>&1
