@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
 	assert(total_filesize>0);
 
 	for(int i=0;i<num_threads;i++){
-		pthread_create(&threads[i], NULL, compress, (void *)&id[i]);
+		pthread_create(&threads[i], NULL, mycompress, (void *)&id[i]);
 	}
 	struct timeval start_time = get_cur_time();
 	std::string input_line;
