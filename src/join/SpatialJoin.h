@@ -35,6 +35,7 @@ public:
 	int repeated_times = 1;
 	bool use_aabb = false;
 	bool use_gpu = false;
+	bool use_multimbb = false;
 	vector<int> lods;
 
 	int highest_lod(){

@@ -24,6 +24,7 @@ int main(int argc, char **argv){
 	string query("intersect");
 
 	query_context ctx;
+	ctx.max_dist = 1000;
 	size_t max_objects1 = LONG_MAX;
 	size_t max_objects2 = LONG_MAX;
 	int base_lod = 0;
@@ -34,7 +35,6 @@ int main(int argc, char **argv){
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
-		("gpu,g", "compute with GPU")
 		("query,q", po::value<string>(&query),"query type can be intersect|nn|within")
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
@@ -49,6 +49,8 @@ int main(int argc, char **argv){
 		("lod", po::value<std::vector<std::string>>()->multitoken()->
 		        zero_tokens()->composing(), "the lods need be processed")
 		("aabb", "calculate distance with aabb")
+		("gpu,g", "compute with GPU")
+		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
 		;
 	po::variables_map vm;
@@ -68,6 +70,9 @@ int main(int argc, char **argv){
 	}
 	if(vm.count("aabb")){
 		ctx.use_aabb = true;
+	}
+	if(vm.count("multiple_mbb")){
+		ctx.use_multimbb = true;
 	}
 	if(vm.count("threads")&&ctx.num_thread>0){
 		gc->set_thread_num(ctx.num_thread);
@@ -96,6 +101,10 @@ int main(int argc, char **argv){
 			tile2 = new Tile(tile2_path.c_str(), max_objects2);
 		}
 		assert(tile1&&tile2);
+		if(!ctx.use_multimbb){
+			tile1->disable_innerpart();
+			tile2->disable_innerpart();
+		}
 		tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
 	}
 	logt("load tiles", start);
