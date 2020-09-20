@@ -108,7 +108,7 @@ public:
 	Skeleton *extract_skeleton();
 	vector<Point> get_skeleton_points(int num_skeleton_points);
 	vector<Voxel *> generate_voxels(int voxel_size);
-	void to_wkt();
+	string to_wkt();
 	float get_volume();
 
 	void fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle);

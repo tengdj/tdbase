@@ -437,34 +437,36 @@ void HiMesh::get_segments(){
 	}
 }
 
-void HiMesh::to_wkt(){
-	cout<<"POLYHEDRALSURFACE Z (";
+string HiMesh::to_wkt(){
+	std::stringstream ss;
+	ss<<"POLYHEDRALSURFACE Z (";
 	bool lfirst = true;
 	for ( Facet_const_iterator fit = facets_begin(); fit != facets_end(); ++fit){
 		if(lfirst){
 			lfirst = false;
 		}else{
-			cout<<",";
+			ss<<",";
 		}
-		cout<<"((";
+		ss<<"((";
 		bool first = true;
 		Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
 		Point firstpoint;
 		do {
 			Point p = hit->vertex()->point();
 			if(!first){
-				cout<<",";
+				ss<<",";
 			}else{
 				firstpoint = p;
 			}
 			first = false;
-			cout<<p[0]<<" "<<p[1]<<" "<<p[2];
+			ss<<p[0]<<" "<<p[1]<<" "<<p[2];
 			// Write the current vertex id.
 		} while(++hit != end);
-		cout<<","<<firstpoint[0]<<" "<<firstpoint[1]<<" "<<firstpoint[2];
-		cout<<"))";
+		ss<<","<<firstpoint[0]<<" "<<firstpoint[1]<<" "<<firstpoint[2];
+		ss<<"))";
 	}
-	cout<<")"<<endl;
+	ss<<")";
+	return ss.str();
 }
 
 void HiMesh::clear_aabb_tree(){

@@ -747,9 +747,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
 		gp.intersect = intersect_status;
-		float timewaited = computer->get_intersect(gp);
+		computer->get_intersect(gp);
 		ctx.computation_time += hispeed::get_time_elapsed(start, false);
-		logt("checking intersection time waited %f", start,timewaited);
+		logt("checking intersection", start);
 
 		// now update the intersection status and update the all candidate list
 		// report results if necessary

@@ -144,7 +144,7 @@ public:
 	void get_distance_cpu(geometry_param &param);
 	void get_distance(geometry_param &param);
 
-	float get_intersect(geometry_param &param);
+	void get_intersect(geometry_param &param);
 	void set_thread_num(uint num){
 		max_thread_num = num;
 	}
