@@ -663,14 +663,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 	vector<candidate_entry> candidates = mbb_intersect(tile1, tile2);
 	ctx.index_time += hispeed::get_time_elapsed(start,false);
 	logt("comparing mbbs", start);
-	// evaluate the candidate list, report and remove the results confirmed
-	update_candidate_list_intersect(candidates);
-	ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
-	logt("update candidate list", start);
 
 	// now we start to ensure the intersection with progressive level of details
 	size_t triangle_pair_num = 0;
-	double fill_time = 0;
 
 	for(int lod:ctx.lods){
 		struct timeval iter_start = start;
@@ -690,15 +685,11 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						tile1->decode_to(wrapper1->id, lod);
-						timeval cur = hispeed::get_cur_time();
 						wrapper1->fill_voxels(DT_Triangle);
-						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(wrapper2->id, lod);
-						timeval cur = hispeed::get_cur_time();
 						wrapper2->fill_voxels(DT_Triangle);
-						fill_time += hispeed::get_time_elapsed(cur, true);
 					}
 
 					// update the voxel map
