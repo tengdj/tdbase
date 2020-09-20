@@ -17,7 +17,7 @@ int main(int argc, char **argv){
 	tile->retrieve_all();
 	tile->advance_all(100);
 	for(int i=0;i<tile->num_objects();i++){
-		cout<<i<<",\""<<tile->get_mesh(i)->to_wkt()<<"\""<<endl;
+		cout<<i<<"|"<<tile->get_mesh(i)->to_wkt()<<endl;
 	}
 	delete tile;
 }
