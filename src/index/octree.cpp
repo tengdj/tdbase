@@ -129,28 +129,56 @@ inline bool update_distance_list(range &d, vector<pair<int, range>> &results){
 	return keep;
 }
 
-void OctreeNode::query_distance(weighted_aab *box, vector<pair<int, range>> &results,
-		float min_farthest){
-	if(node_voxel.intersect(*box)){
+void OctreeNode::query_nn(weighted_aab *box, vector<pair<int, range>> &candidates, float & min_maxdist){
+	range dis = node_voxel.distance(*box);
+
+	//current node possibly covers nearest objects dis.mindist<=min_maxdist
+	if(dis.mindist<=min_maxdist){
 		if(isLeaf){
 			for(weighted_aab *obj:objectList){
 				if(obj==box){// avoid self comparing
 					continue;
 				}
-				range dis = obj->distance(*box);
-				if(dis.closest>min_farthest){
+				range objdis = obj->distance(*box);
+				if(objdis.mindist<=min_maxdist){
+
+					// check each candidate in results list to see if this one
+					// can be kept, or some candidates need be removed from list
+					if(update_distance_list(objdis, candidates)){
+						candidates.push_back(pair<int, range>(obj->id, objdis));
+						// update MINMAXDIST if encountered
+						if(min_maxdist>objdis.maxdist){
+							min_maxdist=objdis.maxdist;
+						}
+					}
+				}
+
+			}
+		}else{
+			for(OctreeNode *c:this->children){
+				c->query_nn(box, candidates, min_maxdist);
+			}
+		}
+	}
+}
+
+void OctreeNode::query_within(weighted_aab *box, vector<pair<int, range>> &results, const float max_dist){
+	range dis = node_voxel.distance(*box);
+
+	if(dis.mindist<=max_dist){
+		if(isLeaf){
+			for(weighted_aab *obj:objectList){
+				if(obj==box){// avoid self comparing
 					continue;
 				}
-				if(update_distance_list(dis, results)){
-					results.push_back(pair<int, range>(obj->id, dis));
-					if(min_farthest>dis.farthest){
-						min_farthest=dis.farthest;
-					}
+				range objdis = obj->distance(*box);
+				if(objdis.mindist<=max_dist){
+					results.push_back(pair<int, range>(obj->id, objdis));
 				}
 			}
 		}else{
 			for(OctreeNode *c:this->children){
-				c->query_distance(box, results);
+				c->query_within(box, results, max_dist);
 			}
 		}
 	}

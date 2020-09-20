@@ -132,8 +132,8 @@ void load_prototype(const char *nuclei_path, const char *vessel_path, float shri
 				cur_box.max[2] = nuclei_box.max[2]*(k+1);
 				for(Voxel *v:vessel_voxels){
 					range r = v->box.distance(cur_box);
-					if(min_dist>r.closest){
-						min_dist = r.closest;
+					if(min_dist>r.mindist){
+						min_dist = r.mindist;
 						if(min_dist == 0){
 							zero_num++;
 							break;

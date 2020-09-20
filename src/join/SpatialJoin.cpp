@@ -15,13 +15,16 @@ using namespace std;
 namespace hispeed{
 
 
+/*facilitate functions*/
+
+
 inline bool update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, range &d){
 	int voxel_pair_size = voxel_pairs.size();
 	for(int j=0;j<voxel_pair_size;){
 		if(d>voxel_pairs[j].dist){
 			return false;
 		}else if(d<voxel_pairs[j].dist){
-			// evict this voxel pairs
+			// evict this dequalified voxel pairs
 			voxel_pairs.erase(voxel_pairs.begin()+j);
 			voxel_pair_size--;
 		}else{
@@ -39,7 +42,7 @@ inline bool update_candidate_list(vector<candidate_info> &candidate_list, range 
 			// in the candidate list
 			return false;
 		}else if(d<candidate_list[i].distance){
-			// one candidate in the list cannot be the closest
+			// one candidate in the list cannot be the mindist
 			// remove it, together with the voxels, from the candidate list
 			candidate_list[i].voxel_pairs.clear();
 			candidate_list.erase(candidate_list.begin()+i);
@@ -61,6 +64,33 @@ inline bool update_candidate_list(vector<candidate_info> &candidate_list, range 
 	}//end for
 	// the target one should be kept
 	return true;
+}
+
+inline void update_candidate_list_intersect(vector<candidate_entry> &candidates){
+	for(vector<candidate_entry>::iterator it = candidates.begin();it!=candidates.end();){
+		bool intersected = false;
+		for(candidate_info &info:it->second){
+			for(voxel_pair &vp:info.voxel_pairs){
+				// if any voxel pair is ensured to be intersected
+				if(vp.intersect){
+					intersected = true;
+					break;
+				}
+			}
+			if(intersected){
+				break;
+			}
+		}
+		if(intersected){
+			for(candidate_info &info:it->second){
+				info.voxel_pairs.clear();
+			}
+			it->second.clear();
+			it = candidates.erase(it);
+		}else{
+			it++;
+		}
+	}
 }
 
 inline size_t get_pair_num(vector<candidate_entry> &candidates){
@@ -85,14 +115,133 @@ bool compare_pair(pair<int, range> a1, pair<int, range> a2){
 	return a1.first<a2.first;
 }
 
-vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2, query_context &ctx){
+
+/*
+ *
+ * functions for checking indexes
+ *
+ */
+
+vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
+	vector<candidate_entry> candidates;
+	OctreeNode *tree = tile2->build_octree(400);
+	vector<int> candidate_ids;
+	for(int i=0;i<tile1->num_objects();i++){
+		vector<candidate_info> candidate_list;
+		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
+		tree->query_intersect(&(wrapper1->box), candidate_ids);
+		if(candidate_ids.empty()){
+			continue;
+		}
+		std::sort(candidate_ids.begin(), candidate_ids.end());
+		int former = -1;
+		for(int tile2_id:candidate_ids){
+			if(tile2_id==former){
+				// duplicate
+				continue;
+			}
+			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(tile2_id);
+			candidate_info ci;
+			ci.mesh_wrapper = wrapper2;
+			for(Voxel *v1:wrapper1->voxels){
+				for(Voxel *v2:wrapper2->voxels){
+					if(v1->box.intersect(v2->box)){
+						// a candidate not sure
+						ci.voxel_pairs.push_back(voxel_pair(v1, v2));
+					}
+				}
+			}
+			// some voxel pairs need be further evaluated
+			if(ci.voxel_pairs.size()>0){
+				candidate_list.push_back(ci);
+			}
+			former = tile2_id;
+		}
+		candidate_ids.clear();
+		// save the candidate list
+		candidates.push_back(candidate_entry(wrapper1, candidate_list));
+	}
+	delete tree;
+	candidate_ids.clear();
+
+	return candidates;
+}
+
+
+
+vector<candidate_entry> SpatialJoin::mbb_nn(Tile *tile1, Tile *tile2, query_context &ctx){
+	vector<candidate_entry> candidates;
+	vector<pair<int, range>> candidate_ids;
+	OctreeNode *tree = tile2->build_octree(400);
+	for(int i=0;i<tile1->num_objects();i++){
+		// for each object
+		//1. use the distance between the mbbs of objects as a
+		//	 filter to retrieve candidate objects
+		vector<candidate_info> candidate_list;
+		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
+		float min_maxdistance = DBL_MAX;
+		tree->query_nn(&(wrapper1->box), candidate_ids, min_maxdistance);
+		if(candidate_ids.empty()){
+			continue;
+		}
+		//cout<<i<<" tengdj "<<candidate_ids.size()<<endl;
+		std::sort(candidate_ids.begin(), candidate_ids.end(), compare_pair);
+		int former = -1;
+		for(pair<int, range> &p:candidate_ids){
+			if(p.first==former){
+				// duplicate
+				continue;
+			}
+			former = p.first;
+
+			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(p.first);
+			//2. we further go through the voxels in two objects to shrink
+			// 	 the candidate list in a fine grained
+
+			//2.1 first go over the candidate list with current distance range
+			//
+			if(update_candidate_list(candidate_list, p.second)){
+				candidate_info ci;
+				ci.mesh_wrapper = wrapper2;
+				for(Voxel *v1:wrapper1->voxels){
+					for(Voxel *v2:wrapper2->voxels){
+						range tmpd = v1->box.distance(v2->box);
+						// no voxel pair in the list is nearer
+						if(update_voxel_pair_list(ci.voxel_pairs, tmpd) &&
+						   update_candidate_list(candidate_list, tmpd)){
+							ci.voxel_pairs.push_back(voxel_pair(v1, v2, tmpd));
+						}
+					}
+				}
+				// some voxel pairs need be further evaluated
+				if(ci.voxel_pairs.size()>0){
+					ci.distance = ci.voxel_pairs[0].dist;
+					for(voxel_pair &p:ci.voxel_pairs){
+						ci.distance.update(p.dist);
+					}
+					assert(ci.distance.mindist<=ci.distance.maxdist);
+					candidate_list.push_back(ci);
+				}
+			}
+
+		}
+		// save the candidate list
+		if(candidate_list.size()>0){
+			candidates.push_back(candidate_entry(wrapper1, candidate_list));
+		}
+		candidate_ids.clear();
+	}
+	return candidates;
+}
+
+vector<candidate_entry> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_context &ctx){
 	vector<candidate_entry> candidates;
 	vector<pair<int, range>> candidate_ids;
 	OctreeNode *tree = tile2->build_octree(400);
 	for(int i=0;i<tile1->num_objects();i++){
 		vector<candidate_info> candidate_list;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
-		tree->query_distance(&(wrapper1->box), candidate_ids);
+		tree->query_within(&(wrapper1->box), candidate_ids, ctx.max_dist);
 		if(candidate_ids.empty()){
 			continue;
 		}
@@ -104,45 +253,52 @@ vector<candidate_entry> SpatialJoin::mbb_distance(Tile *tile1, Tile *tile2, quer
 				continue;
 			}
 			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(p.first);
-			// we firstly use the distance between the mbbs
-			// of those two objects as a filter to see if this one is
-			// a suitable candidate, and then we further go
-			// through the voxels in two objects to shrink
-			// the candidate list in a fine grained
-			if(update_candidate_list(candidate_list, p.second)){
-				candidate_info ci;
-				for(Voxel *v1:wrapper1->voxels){
-					for(Voxel *v2:wrapper2->voxels){
-						range tmpd = v1->box.distance(v2->box);
-						if(tmpd.closest>ctx.max_dist){
-							continue;
-						}
-						// no voxel pair in the list is nearer
-						if(update_voxel_pair_list(ci.voxel_pairs, tmpd) &&
-						   update_candidate_list(candidate_list, tmpd)){
-							ci.voxel_pairs.push_back(voxel_pair(v1, v2, tmpd));
-							ci.distance.update(tmpd);
-						}
+
+			candidate_info ci;
+			bool determined = false;
+			for(Voxel *v1:wrapper1->voxels){
+				for(Voxel *v2:wrapper2->voxels){
+					range tmpd = v1->box.distance(v2->box);
+					// must not within
+					if(tmpd.mindist>ctx.max_dist){
+						continue;
 					}
+					// must be within
+					if(tmpd.maxdist<=ctx.max_dist){
+						determined = true;
+						//todo report here
+					}
+					if(determined){
+						break;
+					}
+					// no voxel pair in the list is nearer
+					ci.voxel_pairs.push_back(voxel_pair(v1, v2, tmpd));
 				}
-				// some voxel pairs need be further evaluated
-				if(ci.voxel_pairs.size()>0){
-					ci.distance = p.second;
-					ci.mesh_wrapper = wrapper2;
-					candidate_list.push_back(ci);
+				if(determined){
+					ci.voxel_pairs.clear();
+					break;
 				}
 			}
+			// some voxel pairs need be further evaluated
+			if(ci.voxel_pairs.size()>0){
+				ci.mesh_wrapper = wrapper2;
+				candidate_list.push_back(ci);
+			}
+
 			former = p.first;
 		}
 		// save the candidate list
-		candidates.push_back(candidate_entry(wrapper1, candidate_list));
+		if(candidate_list.size()>0){
+			candidates.push_back(candidate_entry(wrapper1, candidate_list));
+		}
 		candidate_ids.clear();
 	}
 	return candidates;
 }
 
-float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, int lod){
+float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, const int lod){
 	const int pair_num = get_pair_num(candidates);
+	const int candidate_num = get_candidate_num(candidates);
 	float *distances = new float[pair_num];
 	for(int i=0;i<pair_num;i++){
 		distances[i] = 0;
@@ -151,6 +307,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 	struct timeval start = hispeed::get_cur_time();
 
 	if(ctx.use_aabb){
+		assert(pair_num==candidate_num && "no shape-aware indexing should be applied in aabb");
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
 			if(c.second.size()<=1){
@@ -194,10 +351,6 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		uint segment_num = 0;
 
 		for(candidate_entry &c:candidates){
-			// the nearest neighbor is found
-			if(c.second.size()<=1){
-				continue;
-			}
 			HiMesh_Wrapper *wrapper1 = c.first;
 			for(candidate_info &info:c.second){
 				for(voxel_pair &vp:info.voxel_pairs){
@@ -216,6 +369,8 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 				}
 			}
 		}
+
+		assert(segment_num>0 && "there should be segments in voxels need be calculated");
 
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[6*segment_num];
@@ -267,7 +422,7 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 	struct timeval very_start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<candidate_entry> candidates = mbb_distance(tile1, tile2, ctx);
+	vector<candidate_entry> candidates = mbb_within(tile1, tile2, ctx);
 	ctx.index_time += get_time_elapsed(start, false);
 	logt("comparing mbbs", start);
 
@@ -278,7 +433,6 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 		if(pair_num==0){
 			break;
 		}
-		float *distances = new float[pair_num];
 		size_t candidate_num = get_candidate_num(candidates);
 		log("%ld polyhedron has %d candidates %f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
 		// retrieve the necessary meshes
@@ -312,44 +466,42 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 		}
 		tile1->reset_time();
 
-		float *distance = this->calculate_distance(candidates, ctx, lod);
+
+		float *distances = this->calculate_distance(candidates, ctx, lod);
 
 		ctx.computation_time += hispeed::get_time_elapsed(start, false);
 		logt("get distance", start);
 
 		// now update the candidate list with the new distance information
 		int index = 0;
-		for(vector<candidate_entry>::iterator it_ce=candidates.begin();it_ce!=candidates.end();){
+		for(candidate_entry &ce:candidates){
 			bool determined = false;
-			for(vector<candidate_info>::iterator it=it_ce->second.begin();it!=it_ce->second.end();it++){
+			for(candidate_info &c:ce.second){
 				if(!determined){
-					for(voxel_pair &vp:it->voxel_pairs){
+					for(voxel_pair &vp:c.voxel_pairs){
 						// update the distance
 						if(!determined&&vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
 							range dist = vp.dist;
+
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
-								dist.closest = distances[index];
-								dist.farthest = distances[index];
+								dist.mindist = distances[index];
+								dist.maxdist = distances[index];
 							}else{
-								dist.farthest = std::min(dist.farthest, distances[index]);
+								dist.maxdist = std::min(dist.maxdist, distances[index]);
 							}
 							vp.dist = dist;
-							if(dist.farthest<ctx.max_dist){
+							if(dist.maxdist<ctx.max_dist){
 								determined = true;
+								vp.intersect = true;
 							}
 						}
 						index++;
 					}
 				}
 			}
-			if(determined){
-				it_ce->second.clear();
-				candidates.erase(it_ce);
-			}else{
-				it_ce++;
-			}
 		}
+		hispeed::update_candidate_list_intersect(candidates);
 
 		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
 		logt("update candidate list", start);
@@ -377,7 +529,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 	struct timeval very_start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<candidate_entry> candidates = mbb_distance(tile1, tile2, ctx);
+	vector<candidate_entry> candidates = mbb_nn(tile1, tile2, ctx);
 	ctx.index_time += get_time_elapsed(start, false);
 	for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
 		if(it->second.size()<=1){
@@ -443,7 +595,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		int index = 0;
 		for(candidate_entry &c:candidates){
 			range min_candidate;
-			min_candidate.farthest = DBL_MAX;
+			min_candidate.maxdist = DBL_MAX;
 			for(candidate_info &ci:c.second){
 				for(voxel_pair &vp:ci.voxel_pairs){
 					// update the distance
@@ -451,13 +603,13 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 						range dist = vp.dist;
 						if(lod==ctx.highest_lod()){
 							// now we have a precise distance
-							dist.closest = distances[index];
-							dist.farthest = distances[index];
+							dist.mindist = distances[index];
+							dist.maxdist = distances[index];
 						}else{
-							dist.farthest = std::min(dist.farthest, distances[index]);
+							dist.maxdist = std::min(dist.maxdist, distances[index]);
 						}
 						vp.dist = dist;
-						if(min_candidate.farthest>dist.farthest){
+						if(min_candidate.maxdist>dist.maxdist){
 							min_candidate = dist;
 						}
 					}
@@ -495,77 +647,8 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
  *
  * */
 
-inline void update_candidate_list_intersect(vector<candidate_entry> &candidates){
-	for(vector<candidate_entry>::iterator it = candidates.begin();it!=candidates.end();){
-		bool intersected = false;
-		for(candidate_info &info:it->second){
-			for(voxel_pair &vp:info.voxel_pairs){
-				// if any voxel pair is ensured to be intersected
-				if(vp.intersect){
-					intersected = true;
-					break;
-				}
-			}
-			if(intersected){
-				break;
-			}
-		}
-		if(intersected){
-			for(candidate_info &info:it->second){
-				info.voxel_pairs.clear();
-			}
-			it->second.clear();
-			it = candidates.erase(it);
-		}else{
-			it++;
-		}
-	}
-}
 
-vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
-	vector<candidate_entry> candidates;
-	OctreeNode *tree = tile2->build_octree(400);
-	vector<int> candidate_ids;
-	for(int i=0;i<tile1->num_objects();i++){
-		vector<candidate_info> candidate_list;
-		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
-		tree->query_intersect(&(wrapper1->box), candidate_ids);
-		if(candidate_ids.empty()){
-			continue;
-		}
-		std::sort(candidate_ids.begin(), candidate_ids.end());
-		int former = -1;
-		for(int tile2_id:candidate_ids){
-			if(tile2_id==former){
-				// duplicate
-				continue;
-			}
-			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(tile2_id);
-			candidate_info ci;
-			ci.mesh_wrapper = wrapper2;
-			for(Voxel *v1:wrapper1->voxels){
-				for(Voxel *v2:wrapper2->voxels){
-					if(v1->box.intersect(v2->box)){
-						// a candidate not sure
-						ci.voxel_pairs.push_back(voxel_pair(v1, v2));
-					}
-				}
-			}
-			// some voxel pairs need be further evaluated
-			if(ci.voxel_pairs.size()>0){
-				candidate_list.push_back(ci);
-			}
-			former = tile2_id;
-		}
-		candidate_ids.clear();
-		// save the candidate list
-		candidates.push_back(candidate_entry(wrapper1, candidate_list));
-	}
-	delete tree;
-	candidate_ids.clear();
 
-	return candidates;
-}
 
 /*
  * the main function for detecting the intersection

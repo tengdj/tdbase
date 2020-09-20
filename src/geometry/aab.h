@@ -23,28 +23,29 @@ namespace hispeed{
 
 typedef struct range{
 public:
-	float closest = 0;
-	float farthest = 0;
+	float mindist = 0;
+	float maxdist = 0;
+
 	bool operator>(range &d){
-		return closest>d.farthest;
+		return mindist>d.maxdist;
 	}
 	bool operator<(range &d){
-		return farthest<d.closest;
+		return maxdist<d.mindist;
 	}
 	bool operator==(range &d){
-		return !(closest>d.farthest||farthest<d.closest);
+		return !(mindist>d.maxdist||maxdist<d.mindist);
 	}
 	friend std::ostream&
 		operator<<(std::ostream& os, const range &d){
-		os<<d.closest<<"->"<<d.farthest;
+		os<<d.mindist<<"->"<<d.maxdist;
 		return os;
 	}
 	void update(range &r){
-		closest = max(closest, r.closest);
-		farthest = min(farthest, r.farthest);
+		mindist = min(mindist, r.mindist);
+		maxdist = min(maxdist, r.maxdist);
 	}
 	void print(){
-		printf("[%f,%f]\n",closest,farthest);
+		printf("[%f,%f]\n",mindist,maxdist);
 	}
 }range;
 
@@ -158,32 +159,34 @@ public:
 
 	// get the possible minimum and maximum distance of
 	// objects with their aabs
-	range distances(const aab &b){
-		range ret;
-		for(int i=0;i<3;i++){
-			if(min[i]>b.max[i]){
-				ret.closest += (min[i]-b.max[i])*(min[i]-b.max[i]);
-			}else if(b.min[i]>max[i]){
-				ret.closest += (b.min[i]-max[i])*(b.min[i]-max[i]);
-			}
-			float tmp = (b.max[i]+b.min[i]-max[i]-min[i])/2;
-			ret.farthest += tmp*tmp;
-		}
-		return ret;
-	}
+//	range distances(const aab &b){
+//		range ret;
+//		for(int i=0;i<3;i++){
+//			if(min[i]>b.max[i]){
+//				ret.mindist += (min[i]-b.max[i])*(min[i]-b.max[i]);
+//			}else if(b.min[i]>max[i]){
+//				ret.mindist += (b.min[i]-max[i])*(b.min[i]-max[i]);
+//			}
+//			float tmp = (b.max[i]+b.min[i]-max[i]-min[i])/2;
+//			ret.maxdist += tmp*tmp;
+//		}
+//		return ret;
+//	}
 
 	range distance(const aab &b){
 		range ret;
+		ret.maxdist = 0;
+		ret.mindist = 0;
 		float tmp1 = 0;
 		float tmp2 = 0;
 		for(int i=0;i<3;i++){
 			tmp1 = min[i]-b.max[i];
 			tmp2 = max[i]-b.min[i];
-			ret.farthest += (tmp1+tmp2)*(tmp1+tmp2)/4;
+			ret.maxdist += (tmp1+tmp2)*(tmp1+tmp2)/4;
 			if(tmp2<0){
-				ret.closest += tmp2*tmp2;
+				ret.mindist += tmp2*tmp2;
 			}else if(tmp1>0){
-				ret.closest += tmp1*tmp1;
+				ret.mindist += tmp1*tmp1;
 			}
 		}
 		return ret;

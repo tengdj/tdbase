@@ -158,8 +158,9 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
-	vector<candidate_entry> mbb_distance(Tile *tile1, Tile *tile2, query_context &ctx);
-	float *calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, int lod);
+	vector<candidate_entry> mbb_nn(Tile *tile1, Tile *tile2, query_context &ctx);
+	vector<candidate_entry> mbb_within(Tile *tile1, Tile *tile2, query_context &ctx);
+	float *calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, const int lod);
 	void nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx);
 	void within(Tile *tile1, Tile *tile2, query_context ctx);
 
