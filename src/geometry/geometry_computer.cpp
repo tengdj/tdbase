@@ -89,9 +89,9 @@ geometry_computer::~geometry_computer(){
 #endif
 }
 void geometry_computer::get_distance_cpu(geometry_param &cc){
-	while(!request_cpu()){
-		usleep(10);
-	}
+//	while(!request_cpu()){
+//		usleep(10);
+//	}
 	int each_thread = cc.pair_num/max_thread_num;
 	int thread_num = max_thread_num;
 	if(each_thread==0){
@@ -120,7 +120,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		void *status;
 		pthread_join(threads[i-1], &status);
 	}
-	release_cpu();
+//	release_cpu();
 }
 
 
