@@ -38,6 +38,9 @@ public:
 	bool use_multimbb = false;
 	vector<int> lods;
 
+	//result
+	float max_nearest_distance = 0.0;
+
 	int highest_lod(){
 		if(lods.size()==0){
 			return 0;
@@ -58,6 +61,7 @@ public:
 		computation_time += ctx.computation_time;
 		updatelist_time += ctx.updatelist_time;
 		overall_time += ctx.overall_time;
+		max_nearest_distance = std::max(max_nearest_distance, ctx.max_nearest_distance);
 	}
 
 	void report(double t){
@@ -69,6 +73,9 @@ public:
 		cout<<"computation:\t"<<t*computation_time/overall_time<<endl;
 		cout<<"updatelist:\t"<<t*updatelist_time/overall_time<<endl;
 		cout<<"other:\t"<<t*(overall_time-decode_time-computation_time-index_time)/overall_time<<endl;
+		if(this->max_nearest_distance>0){
+			cout<<"max min distance:\t"<<this->max_nearest_distance<<endl;
+		}
 	}
 
 };

@@ -615,7 +615,9 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 					}
 					index++;
 				}
-
+			}
+			if(min_candidate.maxdist>ctx.max_nearest_distance){
+				ctx.max_nearest_distance = min_candidate.maxdist;
 			}
 			update_candidate_list(c.second, min_candidate);
 		}
