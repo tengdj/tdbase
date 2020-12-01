@@ -35,9 +35,13 @@ void write_box(aab box, const char *path);
 void write_polyhedron(Polyhedron *mesh, const char *path);
 void write_polyhedron(Polyhedron *mesh, int id);
 string polyhedron_to_wkt(Polyhedron *poly);
+
 // some utility functions to operate mesh polyhedrons
-extern MyMesh *get_mesh(string input, bool complete_compress = false);
+extern MyMesh *get_mesh(string input, bool complete_compress = false, bool replace = true);
 extern MyMesh *read_mesh();
+extern MyMesh *read_off(char *path);
+extern Polyhedron *read_off_polyhedron(char *path);
+
 extern MyMesh *decompress_mesh(MyMesh *compressed, int lod);
 extern MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation = false);
 

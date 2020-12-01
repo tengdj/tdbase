@@ -95,11 +95,13 @@ string polyhedron_to_wkt(Polyhedron *poly){
 	return ss.str();
 }
 
-MyMesh *get_mesh(string input_line, bool complete_compress){
+MyMesh *get_mesh(string input_line, bool complete_compress, bool replace_bar){
 	if(input_line.size()==0){
 		return NULL;
 	}
-	boost::replace_all(input_line, "|", "\n");
+	if(replace_bar){
+		boost::replace_all(input_line, "|", "\n");
+	}
 	char *data = new char[input_line.size()];
 	memcpy(data, input_line.c_str(), input_line.size());
 
@@ -122,6 +124,23 @@ MyMesh *read_mesh(){
 	assert(mesh && "this function must return a valid mesh");
 	return mesh;
 
+}
+
+MyMesh *read_off(char *path){
+
+	string str = read_file(path);
+
+	return get_mesh(str, false, false);
+
+}
+
+Polyhedron *read_off_polyhedron(char *path){
+	string input = read_file(path);
+	stringstream ss;
+	ss<<input;
+	Polyhedron *poly = new Polyhedron();
+	ss>>*poly;
+	return poly;
 }
 
 

@@ -18,6 +18,9 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <time.h>
+#include <string>
+#include <fstream>
+#include <streambuf>
 
 using namespace std;
 
@@ -165,6 +168,14 @@ inline string read_line(){
 	string input_line;
 	getline(std::cin, input_line);
 	return input_line;
+}
+
+inline string read_file(const char *path){
+	std::ifstream t(path);
+	std::string str((std::istreambuf_iterator<char>(t)),
+					 std::istreambuf_iterator<char>());
+	t.close();
+	return str;
 }
 
 
