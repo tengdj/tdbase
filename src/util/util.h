@@ -138,6 +138,7 @@ inline void list_files(const char *path, std::vector<string> &f_list){
 	}
 }
 
+
 inline long file_size(const char *file){
 	struct stat stat_buf;
 	int rc = stat(file, &stat_buf);

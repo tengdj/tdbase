@@ -110,6 +110,10 @@ generator: test/data_generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC
 	
 test: test/test.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
+	
+h5tooff: test/H5ToOFF.o
+	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@
+	
 
 	
 .PHONY: all clean
