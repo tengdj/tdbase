@@ -31,6 +31,7 @@ int num_nuclei_per_vessel = 10000;
 int num_vessel = 1;
 float shrink = 20;
 int voxel_size = 400000;
+int shifted_range = 100;
 
 HiMesh *poly_to_himesh(Polyhedron &poly){
 	stringstream ss;
@@ -231,9 +232,9 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 		organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
 		{
 			float shift2[3];
-			shift2[0] = shift[0]+nuclei_box.max[0]*(hispeed::get_rand_number(100)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
-			shift2[1] = shift[1]+nuclei_box.max[1]*(hispeed::get_rand_number(100)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
-			shift2[2] = shift[2]+nuclei_box.max[2]*(hispeed::get_rand_number(100)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[0] = shift[0]+nuclei_box.max[0]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[1] = shift[1]+nuclei_box.max[1]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[2] = shift[2]+nuclei_box.max[2]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
 
 			int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
 			organize_data(nucleis[polyid2], nucleis_voxels[polyid2], shift2, data2, offset2);
@@ -312,6 +313,7 @@ int main(int argc, char **argv){
 		("output,o", po::value<string>(&output_path)->required(), "initial of the output files")
 		("shrink,s", po::value<float>(&shrink), "shrink the size of nuclei by how many times")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
+		("shifted_range,r", po::value<int>(&shifted_range), "range of the second nucleus can be shifted")
 		("nv", po::value<int>(&num_vessel), "number of vessels")
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
@@ -332,10 +334,10 @@ int main(int argc, char **argv){
 	char nuclei_output2[256];
 
 	char vessel_output[256];
-	sprintf(nuclei_output,"%s_n_nv%d_nu%d_s%d_vs%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size);
-	sprintf(nuclei_output2,"%s_n2_nv%d_nu%d_s%d_vs%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size);
+	sprintf(nuclei_output,"%s_n_nv%d_nu%d_s%d_vs%d_r%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
+	sprintf(nuclei_output2,"%s_n2_nv%d_nu%d_s%d_vs%d_r%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
 
-	sprintf(vessel_output,"%s_v_nv%d_nu%d_s%d_vs%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size);
+	sprintf(vessel_output,"%s_v_nv%d_nu%d_s%d_vs%d_r%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
 	os = new std::ofstream(nuclei_output, std::ios::out | std::ios::binary);
 	os2 = new std::ofstream(nuclei_output2, std::ios::out | std::ios::binary);
 
