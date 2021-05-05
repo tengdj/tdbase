@@ -548,7 +548,8 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 			break;
 		}
 		size_t candidate_num = get_candidate_num(candidates);
-		log("%ld polyhedron has %d candidates %f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
+		log("%ld polyhedron has %d candidates %d voxel pairs %f voxel pairs per candidate",
+				candidates.size(), candidate_num, pair_num, (1.0*pair_num)/candidates.size());
 		// retrieve the necessary meshes
 		size_t segment_pair_num = 0;
 
@@ -620,6 +621,17 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 				ctx.max_nearest_distance = min_candidate.maxdist;
 			}
 			update_candidate_list(c.second, min_candidate);
+		}
+		for(int i=0;i<candidates.size();i++){
+			int target = 0;
+			double min_dist = DBL_MAX;
+			for(int j=0;j<candidates[i].second.size();j++){
+				if(candidates[i].second[j].distance.maxdist<min_dist){
+					min_dist = candidates[i].second[j].distance.maxdist;
+					target = candidates[i].second[j].mesh_wrapper->id;
+				}
+			}
+			printf("%d\t%d\n",i,target);
 		}
 		for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
 			if(it->second.size()<=1){
