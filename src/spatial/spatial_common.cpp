@@ -48,8 +48,10 @@ void write_polyhedron(Polyhedron *mesh, const char *path){
 	myfile.close();
 }
 
-void write_box(aab box, int id){
-	hispeed::write_polyhedron(hispeed::make_cube(box), id);
+void write_box(aab box, int id, string prefix){
+	char path[256];
+	sprintf(path, "%s.%d.off", prefix.c_str(), id);
+	hispeed::write_polyhedron(hispeed::make_cube(box), path);
 }
 
 void write_box(aab box, const char *path){
