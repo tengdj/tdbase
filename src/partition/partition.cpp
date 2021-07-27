@@ -72,6 +72,7 @@ void *get_mbbs_unit(void *arg){
 	arg_val->voxels->insert(arg_val->voxels->end(), local_voxels.begin(), local_voxels.end());
 	local_voxels.clear();
 	pthread_mutex_unlock(&lock);
+	return NULL;
 }
 
 void get_voxels(std::vector<std::string> &input_folders, std::vector<weighted_aab *> &voxels,

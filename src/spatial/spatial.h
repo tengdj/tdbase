@@ -30,7 +30,7 @@ namespace hispeed{
 
 Polyhedron *make_cube(aab box);
 
-void write_box(aab box, int id);
+void write_box(aab box, int id, string prefix="");
 void write_box(aab box, const char *path);
 void write_polyhedron(Polyhedron *mesh, const char *path);
 void write_polyhedron(Polyhedron *mesh, int id);

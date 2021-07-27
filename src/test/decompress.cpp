@@ -35,11 +35,12 @@ int main(int argc, char **argv){
 	log("start decompressing");
 
 	HiMesh *himesh;
+	char path[256];
 	for(int i=start_lod;i<=end_lod;i++){
 		int lod = 10*i;
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
-//		sprintf(path,"lod%d.off", lod);
-//		decompressed->writeMeshOff(path);
+		sprintf(path,"/gisdata/lod.%d.off", lod);
+		decompressed->writeMeshOff(path);
 		logt("decompress %3d lod %5d vertices %5d edges %5d faces", starttime, lod,
 				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->size_of_facets());
 		if(lod==100){
