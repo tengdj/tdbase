@@ -148,7 +148,6 @@ void *TriInt_unit(void *params_void){
 
 void geometry_computer::get_intersect(geometry_param &cc){
 
-	// compute the minimum distance of segment pairs with multiple threads
 	pthread_t threads[max_thread_num];
 	geometry_param params[max_thread_num];
 	int each_thread = cc.pair_num/max_thread_num;
