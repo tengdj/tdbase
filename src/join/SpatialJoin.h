@@ -76,6 +76,10 @@ public:
 		if(this->max_nearest_distance>0){
 			cout<<"max min distance:\t"<<this->max_nearest_distance<<endl;
 		}
+		printf("%f\t%f\t%f\n",
+				(t*index_time/overall_time)/repeated_times,
+				(t*decode_time/overall_time)/repeated_times,
+				(t*(computation_time+packing_time+updatelist_time)/overall_time)/repeated_times);
 	}
 
 };
@@ -148,8 +152,9 @@ class SpatialJoin{
 
 public:
 
-	SpatialJoin(geometry_computer *c){
+	SpatialJoin(geometry_computer *c, query_context &ctx){
 		assert(c);
+		global_ctx = ctx;
 		pthread_mutex_init(&g_lock, NULL);
 		computer = c;
 	}

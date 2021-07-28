@@ -165,7 +165,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	vector<Voxel *> voxels;
 	int lod = i_decompPercentage;
 	this->computeBoundingBox();
-	if(size_of_vertices()<voxel_size*3){
+	if(size_of_vertices()<voxel_size){
 		Voxel *v = new Voxel();
 		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
 		v->size[lod] = size_of_edges();

@@ -79,7 +79,6 @@ int main(int argc, char **argv){
 	}
 
 
-	SpatialJoin *joiner = new SpatialJoin(gc);
 	if(vm.count("lod")){
 		for(string l:vm["lod"].as<std::vector<std::string>>()){
 			ctx.lods.push_back(atoi(l.c_str()));
@@ -109,6 +108,7 @@ int main(int argc, char **argv){
 	}
 	logt("load tiles", start);
 
+	SpatialJoin *joiner = new SpatialJoin(gc,ctx);
 	if(query=="intersect"){
 		joiner->intersect_batch(tile_pairs, ctx);
 	}else if(query=="nn"){

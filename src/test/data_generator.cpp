@@ -76,6 +76,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		tmpb.min[2] = 0;
 		vessel_box.update(tmpb);
 		HiMesh *himesh = poly_to_himesh(vessel);
+		// just for assign nuclei in the sub space around the vessel
 		vessel_voxels = himesh->generate_voxels(100);
 
 		delete himesh;
@@ -109,7 +110,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		nuclei_box.update(tmpb);
 		nucleis.push_back(poly);
 		HiMesh *himesh = poly_to_himesh(poly);
-		nucleis_voxels.push_back(himesh->generate_voxels(500));
+		nucleis_voxels.push_back(himesh->generate_voxels(voxel_size));
 		delete himesh;
 	}
 
