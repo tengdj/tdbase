@@ -38,8 +38,8 @@ int main(int argc, char **argv){
 		("query,q", po::value<string>(&query),"query type can be intersect|nn|within")
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
-		("threads,n", po::value<int>(&ctx.num_thread), "number of threads")
-		("rn", po::value<int>(&ctx.num_repeated_thread), "number of threads for repeating jobs")
+		("cn", po::value<int>(&ctx.num_compute_thread), "number of threads for geometric computation for each tile")
+		("threads,n", po::value<int>(&ctx.num_thread), "number of threads for processing tiles")
 		("repeat,r", po::value<int>(&ctx.repeated_times), "repeat tiles")
 		("max_objects1", po::value<size_t>(&max_objects1), "max number of objects in tile 1")
 		("max_objects2", po::value<size_t>(&max_objects2), "max number of objects in tile 2")
@@ -74,8 +74,8 @@ int main(int argc, char **argv){
 	if(vm.count("multiple_mbb")){
 		ctx.use_multimbb = true;
 	}
-	if(vm.count("threads")&&ctx.num_thread>0){
-		gc->set_thread_num(ctx.num_thread);
+	if(ctx.num_compute_thread>0){
+		gc->set_thread_num(ctx.num_compute_thread);
 	}
 
 

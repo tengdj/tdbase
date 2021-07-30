@@ -29,9 +29,9 @@ public:
 	double overall_time = 0;
 
 	//parameters
-	double max_dist = DBL_MAX;
-	int num_repeated_thread = 0;
+	double max_dist = 1000;
 	int num_thread = 0;
+	int num_compute_thread = 1;
 	int repeated_times = 1;
 	bool use_aabb = false;
 	bool use_gpu = false;
@@ -50,8 +50,8 @@ public:
 	}
 
 	query_context(){
+		num_compute_thread = 1;//hispeed::get_num_threads();
 		num_thread = hispeed::get_num_threads();
-		num_repeated_thread = hispeed::get_num_threads();
 	}
 
 	void merge(query_context ctx){
@@ -76,7 +76,7 @@ public:
 		if(this->max_nearest_distance>0){
 			cout<<"max min distance:\t"<<this->max_nearest_distance<<endl;
 		}
-		printf("%f\t%f\t%f\n",
+		printf("analysis\t%f\t%f\t%f\n",
 				(t*index_time/overall_time)/repeated_times,
 				(t*decode_time/overall_time)/repeated_times,
 				(t*(computation_time+packing_time+updatelist_time)/overall_time)/repeated_times);

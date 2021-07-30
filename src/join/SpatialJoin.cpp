@@ -883,14 +883,14 @@ void SpatialJoin::nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pair
 	}
 	param.joiner = this;
 	param.ctx = ctx;
-	pthread_t threads[ctx.num_repeated_thread];
-	for(int i=0;i<ctx.num_repeated_thread;i++){
+	pthread_t threads[ctx.num_thread];
+	for(int i=0;i<ctx.num_thread;i++){
 		pthread_create(&threads[i], NULL, nearest_neighbor_single, (void *)&param);
 	}
 	while(!param.tile_queue.empty()){
 		usleep(10);
 	}
-	for(int i = 0; i < ctx.num_repeated_thread; i++){
+	for(int i = 0; i < ctx.num_thread; i++){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
@@ -923,11 +923,11 @@ void SpatialJoin::intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, quer
 	}
 	param.joiner = this;
 	param.ctx = ctx;
-	pthread_t threads[ctx.num_repeated_thread];
-	for(int i=0;i<ctx.num_repeated_thread;i++){
+	pthread_t threads[ctx.num_thread];
+	for(int i=0;i<ctx.num_thread;i++){
 		pthread_create(&threads[i], NULL, intersect_single, (void *)&param);
 	}
-	for(int i = 0; i < ctx.num_repeated_thread; i++){
+	for(int i = 0; i < ctx.num_thread; i++){
 		void *status;
 		pthread_join(threads[i], &status);
 	}

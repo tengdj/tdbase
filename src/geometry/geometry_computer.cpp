@@ -89,9 +89,10 @@ geometry_computer::~geometry_computer(){
 #endif
 }
 void geometry_computer::get_distance_cpu(geometry_param &cc){
-	while(!request_cpu()){
-		usleep(10);
-	}
+
+//	while(!request_cpu()){
+//		usleep(10);
+//	}
 	int each_thread = cc.pair_num/max_thread_num;
 	int thread_num = max_thread_num;
 	if(each_thread==0){
@@ -115,12 +116,14 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].distances = cc.distances+start;
 		pthread_create(&threads[i], NULL, SegDist_unit, (void *)&params[i]);
 	}
-	log("%d threads started to get distance", thread_num);
+	if(max_thread_num>1){
+		log("%d threads started to get distance", thread_num);
+	}
 	for(; i > 0; i--){
 		void *status;
 		pthread_join(threads[i-1], &status);
 	}
-	release_cpu();
+//release_cpu();
 }
 
 

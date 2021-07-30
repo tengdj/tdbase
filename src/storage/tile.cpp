@@ -94,8 +94,14 @@ bool Tile::persist(string path){
 
 // load from the cached data
 bool Tile::load(string path, int capacity){
+
 	FILE *mt_fs = fopen(path.c_str(), "r");
+	if(mt_fs==NULL){
+		log("%s cannot be opened, error: %s",path.c_str(),strerror(errno));
+		exit(0);
+	}
 	assert(mt_fs);
+
 	size_t dsize = 0;
 	size_t index = 0;
 	while(index<capacity&&fread((void *)&dsize, sizeof(size_t), 1, mt_fs)>0){
