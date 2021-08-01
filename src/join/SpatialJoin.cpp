@@ -810,7 +810,9 @@ public:
 	}
 };
 
-void *within_single(void *param){
+
+
+void *join_unit(void *param){
 	struct nn_param *nnparam = (struct nn_param *)param;
 	while(!nnparam->tile_queue.empty()){
 		pthread_mutex_lock(&nnparam->lock);
@@ -821,16 +823,24 @@ void *within_single(void *param){
 		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
 		nnparam->tile_queue.pop();
 		pthread_mutex_unlock(&nnparam->lock);
-		nnparam->joiner->within(p.first, p.second, nnparam->ctx);
+		// can only be in one of those three queries for now
+		if(nnparam->ctx.query_type=="intersect"){
+			nnparam->joiner->intersect(p.first, p.second,nnparam->ctx);
+		}else if(nnparam->ctx.query_type=="nn"){
+			nnparam->joiner->nearest_neighbor(p.first, p.second,nnparam->ctx);
+		}else{
+			nnparam->joiner->within(p.first, p.second, nnparam->ctx);
+		}
 		if(p.second!=p.first){
 			delete p.second;
 		}
 		delete p.first;
+		log("%d tile pairs left for processing",nnparam->tile_queue.size());
 	}
 	return NULL;
 }
 
-void SpatialJoin::within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
+void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
 	struct nn_param param;
 	for(pair<Tile *, Tile *> &p:tile_pairs){
 		param.tile_queue.push(p);
@@ -839,7 +849,7 @@ void SpatialJoin::within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_c
 	param.ctx = ctx;
 	pthread_t threads[ctx.num_thread];
 	for(int i=0;i<ctx.num_thread;i++){
-		pthread_create(&threads[i], NULL, within_single, (void *)&param);
+		pthread_create(&threads[i], NULL, join_unit, (void *)&param);
 	}
 	while(!param.tile_queue.empty()){
 		usleep(10);
@@ -848,90 +858,6 @@ void SpatialJoin::within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_c
 		void *status;
 		pthread_join(threads[i], &status);
 	}
-}
-
-
-void *nearest_neighbor_single(void *param){
-	struct nn_param *nnparam = (struct nn_param *)param;
-	while(!nnparam->tile_queue.empty()){
-		pthread_mutex_lock(&nnparam->lock);
-		if(nnparam->tile_queue.empty()){
-			pthread_mutex_unlock(&nnparam->lock);
-			break;
-		}
-		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
-		nnparam->tile_queue.pop();
-		pthread_mutex_unlock(&nnparam->lock);
-		if(nnparam->ctx.use_aabb){
-			p.first->disable_innerpart();
-			p.second->disable_innerpart();
-		}
-		nnparam->joiner->nearest_neighbor(p.first, p.second,nnparam->ctx);
-
-		if(p.second!=p.first){
-			delete p.second;
-		}
-		delete p.first;
-	}
-	return NULL;
-}
-
-void SpatialJoin::nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
-	struct nn_param param;
-	for(pair<Tile *, Tile *> &p:tile_pairs){
-		param.tile_queue.push(p);
-	}
-	param.joiner = this;
-	param.ctx = ctx;
-	pthread_t threads[ctx.num_thread];
-	for(int i=0;i<ctx.num_thread;i++){
-		pthread_create(&threads[i], NULL, nearest_neighbor_single, (void *)&param);
-	}
-	while(!param.tile_queue.empty()){
-		usleep(10);
-	}
-	for(int i = 0; i < ctx.num_thread; i++){
-		void *status;
-		pthread_join(threads[i], &status);
-	}
-}
-
-void *intersect_single(void *param){
-	struct nn_param *nnparam = (struct nn_param *)param;
-	while(!nnparam->tile_queue.empty()){
-		pthread_mutex_lock(&nnparam->lock);
-		if(nnparam->tile_queue.empty()){
-			pthread_mutex_unlock(&nnparam->lock);
-			break;
-		}
-		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
-		nnparam->tile_queue.pop();
-		pthread_mutex_unlock(&nnparam->lock);
-		nnparam->joiner->intersect(p.first, p.second,nnparam->ctx);
-		if(p.second!=p.first){
-			delete p.second;
-		}
-		delete p.first;
-	}
-	return NULL;
-}
-
-void SpatialJoin::intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
-	struct nn_param param;
-	for(pair<Tile *, Tile *> &p:tile_pairs){
-		param.tile_queue.push(p);
-	}
-	param.joiner = this;
-	param.ctx = ctx;
-	pthread_t threads[ctx.num_thread];
-	for(int i=0;i<ctx.num_thread;i++){
-		pthread_create(&threads[i], NULL, intersect_single, (void *)&param);
-	}
-	for(int i = 0; i < ctx.num_thread; i++){
-		void *status;
-		pthread_join(threads[i], &status);
-	}
-
 }
 
 

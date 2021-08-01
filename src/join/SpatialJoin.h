@@ -29,6 +29,7 @@ public:
 	double overall_time = 0;
 
 	//parameters
+	std::string query_type = "intersect";
 	double max_dist = 1000;
 	int num_thread = 0;
 	int num_compute_thread = 1;
@@ -180,9 +181,7 @@ public:
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
 	void intersect(Tile *tile1, Tile *tile2, query_context ctx);
 
-	void within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
-	void nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
-	void intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
+	void join(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
 
 	/*
 	 *
