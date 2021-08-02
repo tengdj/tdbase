@@ -110,7 +110,8 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		nuclei_box.update(tmpb);
 		nucleis.push_back(poly);
 		HiMesh *himesh = poly_to_himesh(poly);
-		nucleis_voxels.push_back(himesh->generate_voxels(voxel_size));
+		vector<Voxel *> vxls = himesh->generate_voxels(voxel_size/2);
+		nucleis_voxels.push_back(vxls);
 		delete himesh;
 	}
 

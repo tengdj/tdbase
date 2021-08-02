@@ -78,6 +78,15 @@ void geometry_computer::get_distance_gpu(geometry_param &cc){
 	release_gpu(gpu);
 }
 
+
+void geometry_computer::get_intersect_gpu(geometry_param &cc){
+	gpu_info *gpu = request_gpu(cc.data_size*9*sizeof(float)/1024/1024, true);
+	assert(gpu);
+	log("GPU %d started to check intersect", gpu->device_id);
+	hispeed::TriInt_batch_gpu(gpu, cc.data, cc.offset_size, cc.intersect, cc.pair_num, cc.data_size);
+	release_gpu(gpu);
+}
+
 #endif
 
 geometry_computer::~geometry_computer(){
@@ -149,7 +158,7 @@ void *TriInt_unit(void *params_void){
 	return NULL;
 }
 
-void geometry_computer::get_intersect(geometry_param &cc){
+void geometry_computer::get_intersect_cpu(geometry_param &cc){
 
 	pthread_t threads[max_thread_num];
 	geometry_param params[max_thread_num];
@@ -166,10 +175,23 @@ void geometry_computer::get_intersect(geometry_param &cc){
 		params[i].intersect = cc.intersect+start;
 		pthread_create(&threads[i], NULL, TriInt_unit, (void *)&params[i]);
 	}
-	log("%d threads started", max_thread_num);
+	if(max_thread_num>1){
+		log("%d threads started", max_thread_num);
+	}
 	for(int i = 0; i < max_thread_num; i++){
 		void *status;
 		pthread_join(threads[i], &status);
+	}
+}
+
+void geometry_computer::get_intersect(geometry_param &cc){
+
+	if(gpus.size()>0){
+#ifdef USE_GPU
+		get_intersect_gpu(cc);
+#endif
+	}else{
+		get_intersect_cpu(cc);
 	}
 }
 

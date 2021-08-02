@@ -310,7 +310,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		assert(pair_num==candidate_num && "no shape-aware indexing should be applied in aabb");
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
-			if(c.second.size()<=1){
+			if(ctx.query_type=="nn"&&c.second.size()<=1){
 				continue;
 			}
 			for(candidate_info &info:c.second){
@@ -739,9 +739,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		}
 		// organize the data for computing
 		uint *offset_size = new uint[4*pair_num];
-		bool *intersect_status = new bool[pair_num];
+		uint *intersect_status = new uint[pair_num];
 		for(int i=0;i<pair_num;i++){
-			intersect_status[i] = false;
+			intersect_status[i] = 0;
 		}
 		int index = 0;
 		for(candidate_entry c:candidates){
@@ -763,6 +763,7 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
 		gp.intersect = intersect_status;
+		gp.data_size = triangle_num;
 		computer->get_intersect(gp);
 		ctx.computation_time += hispeed::get_time_elapsed(start, false);
 		logt("checking intersection", start);

@@ -173,8 +173,9 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		return voxels;
 	}
 	// sample the points of the skeleton with the calculated sample rate
-	int num_cores = size_of_vertices()/voxel_size;
-	assert(num_cores>3);
+	int num_cores = (size_of_vertices()/voxel_size-1)+1;
+	//log("%d %d %d cores",size_of_vertices(), voxel_size, num_cores);
+	//assert(num_cores>3);
 	// this step takes 99 percent of the computation load
 	vector<Point> skeleton_points = get_skeleton_points(num_cores);
 	for(int i=0;i<skeleton_points.size();i++){

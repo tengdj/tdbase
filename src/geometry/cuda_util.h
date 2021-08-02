@@ -72,6 +72,23 @@ VdotV_d(const float V1[3], const float V2[3])
   return (V1[0]*V2[0] + V1[1]*V2[1] + V1[2]*V2[2]);
 }
 
+__device__
+inline
+void
+VcrossV_d(float Vr[3], const float V1[3], const float V2[3])
+{
+  Vr[0] = V1[1]*V2[2] - V1[2]*V2[1];
+  Vr[1] = V1[2]*V2[0] - V1[0]*V2[2];
+  Vr[2] = V1[0]*V2[1] - V1[1]*V2[0];
+}
+
+__device__
+inline
+void sVpsV_2_d(float *Vr, float s1, const float * V1, float s2, const float *V2){
+	Vr[0] = s1*V1[0] + s2*V2[0];
+	Vr[1] = s1*V1[1] + s2*V2[1];
+}
+
 
 inline void check_execution(){
 	cudaError_t err = cudaGetLastError();
