@@ -537,12 +537,12 @@ TriangleTree *get_aabb_tree(Polyhedron *p){
 }
 
 void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
-	pthread_mutex_lock(&lock);
+	//pthread_mutex_lock(&lock);
 	// mesh could be NULL when multiple threads compete
 	if(mesh){
 		mesh->fill_voxel(voxels, seg_tri);
 	}
-	pthread_mutex_unlock(&lock);
+	//pthread_mutex_unlock(&lock);
 }
 
 
