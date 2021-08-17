@@ -25,10 +25,10 @@
 /**
   * Start the next decompression operation.
   */
-int iii = 0;
+//int iii = 0;
 void MyMesh::startNextDecompresssionOp()
 {
-	printf("%d %d %d\n",iii++,this->size_of_vertices(), this->true_triangle_size());
+	//printf("%d %d %d\n",iii++,this->size_of_vertices(), this->true_triangle_size());
     if ((float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 >= i_decompPercentage){
 
     	struct timeval start = get_cur_time();
