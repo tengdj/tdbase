@@ -165,7 +165,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	vector<Voxel *> voxels;
 	int lod = i_decompPercentage;
 	this->computeBoundingBox();
-	if(size_of_vertices()<voxel_size*3){
+	if(size_of_vertices()<voxel_size){
 		Voxel *v = new Voxel();
 		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
 		v->size[lod] = size_of_edges();
@@ -173,8 +173,9 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 		return voxels;
 	}
 	// sample the points of the skeleton with the calculated sample rate
-	int num_cores = size_of_vertices()/voxel_size;
-	assert(num_cores>3);
+	int num_cores = (size_of_vertices()/voxel_size-1)+1;
+	//log("%d %d %d cores",size_of_vertices(), voxel_size, num_cores);
+	//assert(num_cores>3);
 	// this step takes 99 percent of the computation load
 	vector<Point> skeleton_points = get_skeleton_points(num_cores);
 	for(int i=0;i<skeleton_points.size();i++){
@@ -537,12 +538,12 @@ TriangleTree *get_aabb_tree(Polyhedron *p){
 }
 
 void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
-	pthread_mutex_lock(&lock);
+	//pthread_mutex_lock(&lock);
 	// mesh could be NULL when multiple threads compete
 	if(mesh){
 		mesh->fill_voxel(voxels, seg_tri);
 	}
-	pthread_mutex_unlock(&lock);
+	//pthread_mutex_unlock(&lock);
 }
 
 

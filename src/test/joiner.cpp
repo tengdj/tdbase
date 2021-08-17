@@ -21,7 +21,6 @@ int main(int argc, char **argv){
 
 	string tile1_path("nuclei_tmp.dt");
 	string tile2_path("nuclei_tmp.dt");
-	string query("intersect");
 
 	query_context ctx;
 	ctx.max_dist = 1000;
@@ -35,11 +34,11 @@ int main(int argc, char **argv){
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
-		("query,q", po::value<string>(&query),"query type can be intersect|nn|within")
+		("query,q", po::value<string>(&ctx.query_type),"query type can be intersect|nn|within")
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
-		("threads,n", po::value<int>(&ctx.num_thread), "number of threads")
-		("rn", po::value<int>(&ctx.num_repeated_thread), "number of threads for repeating jobs")
+		("cn", po::value<int>(&ctx.num_compute_thread), "number of threads for geometric computation for each tile")
+		("threads,n", po::value<int>(&ctx.num_thread), "number of threads for processing tiles")
 		("repeat,r", po::value<int>(&ctx.repeated_times), "repeat tiles")
 		("max_objects1", po::value<size_t>(&max_objects1), "max number of objects in tile 1")
 		("max_objects2", po::value<size_t>(&max_objects2), "max number of objects in tile 2")
@@ -74,12 +73,16 @@ int main(int argc, char **argv){
 	if(vm.count("multiple_mbb")){
 		ctx.use_multimbb = true;
 	}
-	if(vm.count("threads")&&ctx.num_thread>0){
-		gc->set_thread_num(ctx.num_thread);
+	if(ctx.num_compute_thread>0){
+		gc->set_thread_num(ctx.num_compute_thread);
+	}
+
+	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
+		cout <<"error query type: "<< ctx.query_type <<endl;
+		return 0;
 	}
 
 
-	SpatialJoin *joiner = new SpatialJoin(gc);
 	if(vm.count("lod")){
 		for(string l:vm["lod"].as<std::vector<std::string>>()){
 			ctx.lods.push_back(atoi(l.c_str()));
@@ -92,6 +95,7 @@ int main(int argc, char **argv){
 			ctx.lods.push_back(top_lod);
 		}
 	}
+
 
 	vector<pair<Tile *, Tile *>> tile_pairs;
 	for(int i=0;i<ctx.repeated_times;i++){
@@ -109,16 +113,9 @@ int main(int argc, char **argv){
 	}
 	logt("load tiles", start);
 
-	if(query=="intersect"){
-		joiner->intersect_batch(tile_pairs, ctx);
-	}else if(query=="nn"){
-		joiner->nearest_neighbor_batch(tile_pairs, ctx);
-	}else if(query=="within"){
-		joiner->within_batch(tile_pairs, ctx);
-	}else{
-		cout <<"error query type"<<endl<< desc << "\n";
-		return 0;
-	}
+	SpatialJoin *joiner = new SpatialJoin(gc,ctx);
+	joiner->join(tile_pairs, ctx);
+
 	double join_time = hispeed::get_time_elapsed(start,false);
 	logt("join", start);
 	tile_pairs.clear();

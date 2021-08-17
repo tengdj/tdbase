@@ -170,9 +170,9 @@ public:
 	}
 	void advance_to(int lod){
 		assert(mesh);
-		pthread_mutex_lock(&lock);
+		//pthread_mutex_lock(&lock);
 		mesh->advance_to(lod);
-		pthread_mutex_unlock(&lock);
+		//pthread_mutex_unlock(&lock);
 	}
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle

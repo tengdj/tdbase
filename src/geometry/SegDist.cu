@@ -115,10 +115,10 @@ inline float SegDist_kernel(const float *S, const float *T,
 
 __global__
 void SegDist_cuda(const float *data, const uint *offset_size,
-				  const float *vec, float *dist, uint cur_offset_1){
+				  const float *vec, float *dist, uint cur_offset_1, uint cur_offset_2_start){
 	// which batch
 	int batch_id = blockIdx.x;
-	int cur_offset_2 = threadIdx.x;
+	int cur_offset_2 = threadIdx.x+cur_offset_2_start;
 
 	if(cur_offset_1>=offset_size[batch_id*4+1]){
 		return;
@@ -166,11 +166,11 @@ void get_vector_kernel(float *data, float *vec, int segment_num){
  * data: contains the segments of the meshes mentioned in this join.
  * offset_size:  contains the offset in the data for each batch, and the sizes of two data sets
  * result: for the returned results for each batch
- * batch_num: number of computed batches
+ * pair_num: number of computed batches
  *
  * */
 void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
-		               float *result, const uint batch_num, const uint segment_num){
+		               float *result, const uint pair_num, const uint segment_num){
 
 	assert(gpu);
 	cudaSetDevice(gpu->device_id);
@@ -179,7 +179,7 @@ void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size
 	// profile the input data
 	uint max_size_1 = 0;
 	uint max_size_2 = 0;
-	for(int i=0;i<batch_num;i++){
+	for(int i=0;i<pair_num;i++){
 		if(offset_size[i*4+1]>max_size_1){
 			max_size_1 = offset_size[i*4+1];
 		}
@@ -198,29 +198,31 @@ void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size
 	cur_d_cuda += 3*sizeof(float)*segment_num;
 	// space for the results in GPU
 	float *d_dist = (float *)(cur_d_cuda);
-	cur_d_cuda += sizeof(float)*batch_num;
+	cur_d_cuda += sizeof(float)*pair_num;
 	// space for the offset and size information in GPU
 	uint *d_os = (uint *)(cur_d_cuda);
 
 	CUDA_SAFE_CALL(cudaMemcpy(d_data, data, segment_num*6*sizeof(float), cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, batch_num*4*sizeof(uint), cudaMemcpyHostToDevice));
+	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, pair_num*4*sizeof(uint), cudaMemcpyHostToDevice));
 	//logt("copying data to GPU", start);
 
 	// compute the vectors of segments in data, save to d_vec
 	get_vector_kernel<<<segment_num/1024+1,1024>>>(d_data, d_vec, segment_num);
 	check_execution();
 	// compute the distance in parallel
-	if(max_size_2>1024){
-		max_size_2=1023;
+	for(uint cur_offset_2=0;cur_offset_2<max_size_2;cur_offset_2+=1024){
+		uint dim2 = min(max_size_2-cur_offset_2, 1024);
+		for(uint cur_offset_1=0;cur_offset_1<max_size_1;cur_offset_1++){
+			SegDist_cuda<<<pair_num, dim2>>>(d_data, d_os, d_vec, d_dist, cur_offset_1, cur_offset_2);
+			check_execution();
+		}
+		//cout<<pair_num<<" "<<cur_offset_2<<" "<<dim2<<endl;
 	}
-	for(uint cur_offset_1=0;cur_offset_1<max_size_1;cur_offset_1++){
-		SegDist_cuda<<<batch_num, max_size_2>>>(d_data, d_os, d_vec, d_dist, cur_offset_1);
-		check_execution();
-	}
+
 	cudaDeviceSynchronize();
 	//logt("distances computations", start);
 
-	CUDA_SAFE_CALL(cudaMemcpy(result, d_dist, batch_num*sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_SAFE_CALL(cudaMemcpy(result, d_dist, pair_num*sizeof(float), cudaMemcpyDeviceToHost));
 	//logt("copy data out", start);
 }
 

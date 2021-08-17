@@ -310,7 +310,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		assert(pair_num==candidate_num && "no shape-aware indexing should be applied in aabb");
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
-			if(c.second.size()<=1){
+			if(ctx.query_type=="nn"&&c.second.size()<=1){
 				continue;
 			}
 			for(candidate_info &info:c.second){
@@ -333,9 +333,11 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(Point &p:vertices){
 					FT sqd = wrapper2->mesh->get_aabb_tree()->squared_distance(p);
-					double distance = (double)CGAL::to_double(sqd);
-					if(min_dist>distance){
-						min_dist = distance;
+					double dist = (double)CGAL::to_double(sqd);
+//					Point tp = wrapper2->mesh->get_aabb_tree()->closest_point(p);
+//					double  dist = distance(p,tp);
+					if(min_dist>dist){
+						min_dist = dist;
 					}
 				}
 				assert(info.voxel_pairs.size()==1);
@@ -631,7 +633,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 					target = candidates[i].second[j].mesh_wrapper->id;
 				}
 			}
-			printf("%d\t%d\n",i,target);
+			//printf("%d\t%d\n",i,target);
 		}
 		for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
 			if(it->second.size()<=1){
@@ -737,9 +739,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		}
 		// organize the data for computing
 		uint *offset_size = new uint[4*pair_num];
-		bool *intersect_status = new bool[pair_num];
+		uint *intersect_status = new uint[pair_num];
 		for(int i=0;i<pair_num;i++){
-			intersect_status[i] = false;
+			intersect_status[i] = 0;
 		}
 		int index = 0;
 		for(candidate_entry c:candidates){
@@ -761,6 +763,7 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
 		gp.intersect = intersect_status;
+		gp.data_size = triangle_num;
 		computer->get_intersect(gp);
 		ctx.computation_time += hispeed::get_time_elapsed(start, false);
 		logt("checking intersection", start);
@@ -808,7 +811,9 @@ public:
 	}
 };
 
-void *within_single(void *param){
+
+
+void *join_unit(void *param){
 	struct nn_param *nnparam = (struct nn_param *)param;
 	while(!nnparam->tile_queue.empty()){
 		pthread_mutex_lock(&nnparam->lock);
@@ -819,16 +824,24 @@ void *within_single(void *param){
 		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
 		nnparam->tile_queue.pop();
 		pthread_mutex_unlock(&nnparam->lock);
-		nnparam->joiner->within(p.first, p.second, nnparam->ctx);
+		// can only be in one of those three queries for now
+		if(nnparam->ctx.query_type=="intersect"){
+			nnparam->joiner->intersect(p.first, p.second,nnparam->ctx);
+		}else if(nnparam->ctx.query_type=="nn"){
+			nnparam->joiner->nearest_neighbor(p.first, p.second,nnparam->ctx);
+		}else{
+			nnparam->joiner->within(p.first, p.second, nnparam->ctx);
+		}
 		if(p.second!=p.first){
 			delete p.second;
 		}
 		delete p.first;
+		log("%d tile pairs left for processing",nnparam->tile_queue.size());
 	}
 	return NULL;
 }
 
-void SpatialJoin::within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
+void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
 	struct nn_param param;
 	for(pair<Tile *, Tile *> &p:tile_pairs){
 		param.tile_queue.push(p);
@@ -837,7 +850,7 @@ void SpatialJoin::within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_c
 	param.ctx = ctx;
 	pthread_t threads[ctx.num_thread];
 	for(int i=0;i<ctx.num_thread;i++){
-		pthread_create(&threads[i], NULL, within_single, (void *)&param);
+		pthread_create(&threads[i], NULL, join_unit, (void *)&param);
 	}
 	while(!param.tile_queue.empty()){
 		usleep(10);
@@ -846,90 +859,6 @@ void SpatialJoin::within_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_c
 		void *status;
 		pthread_join(threads[i], &status);
 	}
-}
-
-
-void *nearest_neighbor_single(void *param){
-	struct nn_param *nnparam = (struct nn_param *)param;
-	while(!nnparam->tile_queue.empty()){
-		pthread_mutex_lock(&nnparam->lock);
-		if(nnparam->tile_queue.empty()){
-			pthread_mutex_unlock(&nnparam->lock);
-			break;
-		}
-		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
-		nnparam->tile_queue.pop();
-		pthread_mutex_unlock(&nnparam->lock);
-		if(nnparam->ctx.use_aabb){
-			p.first->disable_innerpart();
-			p.second->disable_innerpart();
-		}
-		nnparam->joiner->nearest_neighbor(p.first, p.second,nnparam->ctx);
-
-		if(p.second!=p.first){
-			delete p.second;
-		}
-		delete p.first;
-	}
-	return NULL;
-}
-
-void SpatialJoin::nearest_neighbor_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
-	struct nn_param param;
-	for(pair<Tile *, Tile *> &p:tile_pairs){
-		param.tile_queue.push(p);
-	}
-	param.joiner = this;
-	param.ctx = ctx;
-	pthread_t threads[ctx.num_thread];
-	for(int i=0;i<ctx.num_thread;i++){
-		pthread_create(&threads[i], NULL, nearest_neighbor_single, (void *)&param);
-	}
-	while(!param.tile_queue.empty()){
-		usleep(10);
-	}
-	for(int i = 0; i < ctx.num_thread; i++){
-		void *status;
-		pthread_join(threads[i], &status);
-	}
-}
-
-void *intersect_single(void *param){
-	struct nn_param *nnparam = (struct nn_param *)param;
-	while(!nnparam->tile_queue.empty()){
-		pthread_mutex_lock(&nnparam->lock);
-		if(nnparam->tile_queue.empty()){
-			pthread_mutex_unlock(&nnparam->lock);
-			break;
-		}
-		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
-		nnparam->tile_queue.pop();
-		pthread_mutex_unlock(&nnparam->lock);
-		nnparam->joiner->intersect(p.first, p.second,nnparam->ctx);
-		if(p.second!=p.first){
-			delete p.second;
-		}
-		delete p.first;
-	}
-	return NULL;
-}
-
-void SpatialJoin::intersect_batch(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
-	struct nn_param param;
-	for(pair<Tile *, Tile *> &p:tile_pairs){
-		param.tile_queue.push(p);
-	}
-	param.joiner = this;
-	param.ctx = ctx;
-	pthread_t threads[ctx.num_repeated_thread];
-	for(int i=0;i<ctx.num_repeated_thread;i++){
-		pthread_create(&threads[i], NULL, intersect_single, (void *)&param);
-	}
-	for(int i = 0; i < ctx.num_repeated_thread; i++){
-		void *status;
-		pthread_join(threads[i], &status);
-	}
-
 }
 
 

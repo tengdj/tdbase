@@ -96,7 +96,7 @@ typedef struct geometry_param_{
 	// the offset and size of the computing pairs
 	const uint *offset_size;
 	float *distances;
-	bool *intersect;
+	uint *intersect;
 	uint pair_num;
 	uint data_size;
 }geometry_param;
@@ -115,8 +115,9 @@ float SegDist_single(const float *data1, const float *data2, size_t size1, size_
 void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 					   float *result, const uint batch_num, const uint segment_num);
 
-bool TriInt(const float *data1, const float *data2);
 bool TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2);
+void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
+		uint *result, const uint batch_num, const uint triangle_num);
 
 class geometry_computer{
 	pthread_mutex_t gpu_lock;
@@ -144,6 +145,8 @@ public:
 	void get_distance_cpu(geometry_param &param);
 	void get_distance(geometry_param &param);
 
+	void get_intersect_gpu(geometry_param &param);
+	void get_intersect_cpu(geometry_param &param);
 	void get_intersect(geometry_param &param);
 	void set_thread_num(uint num){
 		max_thread_num = num;
