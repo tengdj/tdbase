@@ -63,10 +63,24 @@ void MyMesh::beginDecimationConquest()
   operation = DecimationConquest;
 }
 
+size_t MyMesh::true_triangle_size(){
+
+	size_t size = 0;
+	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		Halfedge_const_handle e1 = f->halfedge();
+		Halfedge_const_handle e3 = f->halfedge()->next()->next();
+		while(e3!=e1){
+			size++;
+			e3 = e3->next();
+		}
+	}
+	return size;
+}
 
 // One decimation step.
 void MyMesh::decimationStep()
 {
+
     //choose a halfedge that can be processed:
     while(!gateQueue.empty())
     {
@@ -135,6 +149,8 @@ void MyMesh::decimationStep()
 			if(isRemovable(vit))
 				printf("Still a vertex that can be removed !\n");
 		}
+
+
 		operation = Idle;
 		b_jobCompleted = true;
 		i_curDecimationId--;

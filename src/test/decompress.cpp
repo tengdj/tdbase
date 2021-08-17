@@ -41,8 +41,8 @@ int main(int argc, char **argv){
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
 		sprintf(path,"/gisdata/lod.%d.off", lod);
 		decompressed->writeMeshOff(path);
-		logt("decompress %3d lod %5d vertices %5d edges %5d faces", starttime, lod,
-				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->size_of_facets());
+		logt("decompress %3d lod %5d vertices %5d edges %5d faces %5d triangles", starttime, lod,
+				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->size_of_facets(),decompressed->true_triangle_size());
 		if(lod==100){
 			float *vertices;
 			himesh = new HiMesh(decompressed->p_data,decompressed->dataOffset);

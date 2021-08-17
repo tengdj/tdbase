@@ -382,6 +382,9 @@ public:
 
 	~MyMesh();
 
+
+	size_t true_triangle_size();
+
 	void stepOperation();
 	void batchOperation();
 	void completeOperation();

@@ -253,6 +253,7 @@ size_t HiMesh::fill_segments(float *segments){
 	return size;
 }
 
+
 size_t HiMesh::fill_triangles(float *triangles){
 	assert(triangles);
 	size_t size = size_of_facets();

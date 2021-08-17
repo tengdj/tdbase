@@ -88,6 +88,7 @@ enum data_type{
 class HiMesh:public MyMesh{
 	size_t fill_segments(float *segments);
 	size_t fill_triangles(float *triangles);
+	size_t true_triangle_size();
 	bool own_data = true;
 	SegTree *aabb_tree = NULL;
 	list<Segment> segments;
