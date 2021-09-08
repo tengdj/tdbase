@@ -1,1 +1,2 @@
-# HiSPEED
+# 3DPro
+we propose a novel multi-level progressive 3D compression method, which is designed to satisfy two progressive query conditions, thus supports returning correct result even with compressed data whenever possible. Based on this, we further propose novel progressive refinement which starts from lightweight low resolution representation for possible early return of results, and progresses to higher resolution representation, which can be largely avoided. A system 3DPro is implemented with progressive refinement to support highly efficient and accurate spatial queries for complex three dimensional objects.
