@@ -382,9 +382,6 @@ public:
 
 	~MyMesh();
 
-
-	size_t true_triangle_size();
-
 	void stepOperation();
 	void batchOperation();
 	void completeOperation();
@@ -422,7 +419,7 @@ public:
 	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
 	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
 	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
-
+	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
 	float removalError(Vertex_const_handle v,
 					   const std::vector<Vertex_const_handle> &polygon) const;
 

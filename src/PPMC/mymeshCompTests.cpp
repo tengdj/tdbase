@@ -59,6 +59,57 @@ bool MyMesh::willViolateManifold(const std::vector<Halfedge_const_handle> &polyg
 }
 
 
+/*
+ *
+ * Test whether a vertex is protruding
+ * Core function for 3DPro
+ *
+ * */
+
+bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) const
+{
+	if(polygon.size()<2){
+		return true;
+	}
+	Point top(polygon[0]->opposite()->vertex()->point());
+	vector<Point> rings;
+
+	for(Halfedge_const_handle h:polygon){
+		Point p(h->vertex()->point());
+		rings.push_back(p);
+	}
+
+	// evaluate all the tetrahedrons
+	for(int i=1;i<rings.size()-1;i++){
+		// calculate the normal vector of the bottom triangle
+		printf("3 0 %d %d\n",i+1,i+2);
+
+		// calculate the angle between the normal and vector 1->0
+	}
+
+	// print the removed part into a single polyhedron
+	if(false){
+		printf("OFF\n\n");
+		printf("%ld %ld 0\n",1+rings.size(),1+rings.size());
+		printf("%f %f %f\n",top.x(),top.y(),top.z());
+		for(Point p:rings){
+			printf("%f %f %f\n",p.x(),p.y(),p.z());
+		}
+		for(int i=0;i<rings.size()-1;i++){
+			printf("3 0 %d %d\n",i+1,i+2);
+		}
+		printf("3 0 %d %d\n",rings.size(), 1);
+
+		printf("%ld",rings.size());
+		for(int i=rings.size();i>0;i--){
+			printf(" %d",i);
+		}
+		printf("\n");
+	}
+	// no recessing point
+	return true;
+}
+
 /**
   * Test for the convexity of a polygon
   */
@@ -206,7 +257,7 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 			heh_oneRing.push_back(hit->opposite());
 	  }
 	  while(++hit != end);
-	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing);
+	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing) && isProtruding(heh_oneRing);
 	  return removable;
 	}
 	return false;

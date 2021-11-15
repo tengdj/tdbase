@@ -22,7 +22,10 @@ int main(int argc, char **argv){
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(100);
-	int sample_rate = 150;
+	int sample_rate = 100;
+	if(argc>=2){
+		sample_rate = atoi(argv[1]);
+	}
 	himesh->writeMeshOff("/gisdata/vessel.off");
 
 	vector<Voxel *> voxels = himesh->generate_voxels(sample_rate);
