@@ -66,6 +66,39 @@ bool MyMesh::willViolateManifold(const std::vector<Halfedge_const_handle> &polyg
  *
  * */
 
+void MyMesh::profileProtruding(){
+	int protruding = 0;
+	int recessing = 0;
+	for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+		if(isProtruding(vit)){
+			protruding++;
+		}else{
+			recessing++;
+		}
+	}
+	printf("%d %d %f\n",protruding,recessing,protruding*100.0/(protruding+recessing));
+}
+
+bool MyMesh::isProtruding(Vertex_const_handle v) const
+{
+	  //test convexity
+	  std::vector<Halfedge_const_handle> heh_oneRing;
+	  heh_oneRing.reserve(v->vertex_degree());
+	  //vh_oneRing.push_back(v);
+	  Halfedge_around_vertex_const_circulator hit(v->vertex_begin()), end(hit);
+	  do
+	  {
+		  heh_oneRing.push_back(hit->opposite());
+	  }
+	  while(++hit != end);
+	  return isProtruding(heh_oneRing);
+}
+
+
+
+
+
+#define PI 3.1415926
 bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) const
 {
 	if(polygon.size()<2){
@@ -79,16 +112,48 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 		rings.push_back(p);
 	}
 
-	// evaluate all the tetrahedrons
-	for(int i=1;i<rings.size()-1;i++){
-		// calculate the normal vector of the bottom triangle
-		printf("3 0 %d %d\n",i+1,i+2);
+	// find one possible triangulation which fulfill protruding
+	bool is_recessing = false;
+	for(int t=0;t<rings.size()-1;t++){
+		is_recessing = false;
+		// evaluate all the tetrahedrons
+		for(int i=1;i<rings.size()-2;i++){
+			// the random vector pointing from the bottom triangle to the top vertex
+			double r1 = top.x()-rings[t].x();
+			double r2 = top.y()-rings[t].y();
+			double r3 = top.z()-rings[t].z();
 
-		// calculate the angle between the normal and vector 1->0
+			// calculate the normal vector of the bottom triangle
+			//printf("3 0 %d %d|",i+1,i+2);
+			double a1 = rings[t].x()-rings[(i+t)%rings.size()].x();
+			double a2 = rings[t].y()-rings[(i+t)%rings.size()].y();
+			double a3 = rings[t].z()-rings[(i+t)%rings.size()].z();
+			double b1 = rings[t].x()-rings[(i+t+1)%rings.size()].x();
+			double b2 = rings[t].y()-rings[(i+t+1)%rings.size()].y();
+			double b3 = rings[t].z()-rings[(i+t+1)%rings.size()].z();
+
+			// n*a=0 n*b=0
+			double n1 = a2*b3-a3*b2;
+			double n2 = a3*b1-a1*b3;
+			double n3 = a1*b2-a2*b1;
+
+			// calculate the angle between the normal and vector 1->0
+			double cosvalue = (r1*n1+r2*n2+r3*n3)/(sqrt(r1*r1+r2*r2+r3*r3)*sqrt(n1*n1+n2*n2+n3*n3));
+			double angle = acos(cosvalue)*180/PI;
+			// avoid the border case
+			if(angle>90.5){
+				is_recessing = true;
+			}
+			//printf("%d\tangle: %f %f\n",t,cosvalue,angle);
+		}
+		// this vertex can be protruding
+		if(is_recessing == false){
+			break;
+		}
 	}
 
-	// print the removed part into a single polyhedron
-	if(false){
+	// print the removed part into a single polyhedron for visualization
+	if(is_recessing && false){
 		printf("OFF\n\n");
 		printf("%ld %ld 0\n",1+rings.size(),1+rings.size());
 		printf("%f %f %f\n",top.x(),top.y(),top.z());
@@ -96,18 +161,18 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 			printf("%f %f %f\n",p.x(),p.y(),p.z());
 		}
 		for(int i=0;i<rings.size()-1;i++){
-			printf("3 0 %d %d\n",i+1,i+2);
+			printf("3 %d %d 0 0 255 0\n",i+2,i+1);
 		}
-		printf("3 0 %d %d\n",rings.size(), 1);
+		printf("3 1 %ld 0 0 255 0\n",rings.size());
 
 		printf("%ld",rings.size());
-		for(int i=rings.size();i>0;i--){
+		for(int i=1;i<=rings.size();i++){
 			printf(" %d",i);
 		}
-		printf("\n");
+		printf(" 255 0 0\n\n");
 	}
 	// no recessing point
-	return true;
+	return !is_recessing;
 }
 
 /**
@@ -257,8 +322,11 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 			heh_oneRing.push_back(hit->opposite());
 	  }
 	  while(++hit != end);
-	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing) && isProtruding(heh_oneRing);
+	  //&& isConvex(vh_oneRing)
+	  bool removable = !willViolateManifold(heh_oneRing)  && isProtruding(heh_oneRing);
 	  return removable;
 	}
 	return false;
 }
+
+

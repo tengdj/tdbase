@@ -401,6 +401,8 @@ public:
 	PointInt getQuantizedPos(Point p) const;
 	Point getPos(PointInt p) const;
 
+	size_t true_triangle_size();
+
 	// Compression
 	void startNextCompresssionOp();
 	void beginDecimationConquest();
@@ -419,7 +421,9 @@ public:
 	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
 	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
 	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
+	bool isProtruding(Vertex_const_handle v) const;
 	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
+	void profileProtruding();
 	float removalError(Vertex_const_handle v,
 					   const std::vector<Vertex_const_handle> &polygon) const;
 
