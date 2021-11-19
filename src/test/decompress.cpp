@@ -27,9 +27,10 @@ int main(int argc, char **argv){
 	// Init the random number generator.
 	log("start compressing");
 	struct timeval starttime = get_cur_time();
+
 	MyMesh *compressed = read_mesh();
 	assert(compressed->size_of_border_edges()&&"must be manifold");
-	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->size_of_facets());
+	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->true_triangle_size());
 	compressed->completeOperation();
 	logt("compress", starttime);
 	log("start decompressing");
@@ -42,7 +43,7 @@ int main(int argc, char **argv){
 		sprintf(path,"/google/lod.%d.off", lod);
 		decompressed->writeMeshOff(path);
 		logt("decompress %3d lod %5d vertices %5d edges %5d faces", starttime, lod,
-				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->size_of_facets());
+				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->true_triangle_size());
 		if(lod==100){
 			float *vertices;
 			himesh = new HiMesh(decompressed->p_data,decompressed->dataOffset);

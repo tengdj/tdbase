@@ -118,6 +118,9 @@ protruding: test/protrudingtest.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 
 test: test/test.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
+
+fixer: test/fixer.o
+	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 h5tooff: test/H5ToOFF.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@

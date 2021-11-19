@@ -22,7 +22,7 @@ int main(int argc, char **argv){
 	ss<<*poly;
 
 	timeval start = hispeed::get_cur_time();
-	MyMesh *mesh = hispeed::get_mesh(ss.str(),false);
+	MyMesh *mesh = hispeed::get_mesh(ss.str());
 	logt("get mesh",start);
 	mesh->completeOperation();
 	logt("encoding takes",start);

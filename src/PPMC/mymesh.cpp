@@ -52,7 +52,14 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
         rangeCoder.p_dataOffset = &dataOffset;
 	    std::istringstream is;
 	    is.str(data);
+	    std::istringstream os;
+	    os.str(data);
         is >> *this;
+        if(size_of_facets()==0){
+            std::cerr<<"failed to parse the OFF file into Polyhedron"<<endl;
+            exit(EXIT_FAILURE);
+        }
+
 		if (keep_largest_connected_components(1) != 0){
 			std::cerr << "Can't compress the mesh." << std::endl;
 			std::cerr << "The codec doesn't handle meshes with several connected components." << std::endl;

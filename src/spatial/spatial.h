@@ -14,15 +14,15 @@
 #include "../PPMC/ppmc.h"
 #include "../util/util.h"
 #include "../geometry/aab.h"
-#include <CGAL/OFF_to_nef_3.h>
+//#include <CGAL/OFF_to_nef_3.h>
 
 using namespace CGAL;
 using namespace std;
 
-typedef CGAL::Nef_polyhedron_3<MyKernel> Nef_polyhedron;
+//typedef CGAL::Nef_polyhedron_3<MyKernel> Nef_polyhedron;
 typedef CGAL::Triangulation_3<MyKernel> Triangulation;
 typedef Triangulation::Tetrahedron 	Tetrahedron;
-typedef Nef_polyhedron::Volume_const_iterator Volume_const_iterator;
+//typedef Nef_polyhedron::Volume_const_iterator Volume_const_iterator;
 
 // some local definition
 
@@ -37,7 +37,7 @@ void write_polyhedron(Polyhedron *mesh, int id);
 string polyhedron_to_wkt(Polyhedron *poly);
 
 // some utility functions to operate mesh polyhedrons
-extern MyMesh *get_mesh(string input, bool complete_compress = false, bool replace = true);
+extern MyMesh *get_mesh(string input, bool complete_compress = false);
 extern MyMesh *read_mesh();
 extern MyMesh *read_off(char *path);
 extern Polyhedron *read_off_polyhedron(char *path);
@@ -49,11 +49,6 @@ inline void replace_bar(string &input){
 	boost::replace_all(input, "|", "\n");
 }
 
-inline string read_polyhedron_str(){
-	string input_line = read_line();
-	boost::replace_all(input_line, "|", "\n");
-	return input_line;
-}
 float get_volume(Polyhedron *polyhedron);
 Polyhedron *read_polyhedron();
 
