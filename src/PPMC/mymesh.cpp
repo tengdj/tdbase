@@ -113,6 +113,16 @@ MyMesh::~MyMesh(){
 	}
 }
 
+
+size_t MyMesh::true_triangle_size(){
+
+	size_t size = 0;
+	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		size += count_triangle(f);
+	}
+	return size;
+}
+
 /**
   * Perform one batch of steps of the current operation.
   */

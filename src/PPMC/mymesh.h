@@ -91,102 +91,6 @@ typedef CGAL::Delaunay_triangulation_3<MyKernel, CGAL::Fast_location> Delaunay;
 
 using namespace hispeed;
 
-// My face type has a vertex flag
-template <class Refs>
-class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
-{
-    enum Flag {Unknown=0, Splittable=1, Unsplittable=2};
-    enum ProcessedFlag {NotProcessed, Processed};
-
-  public:
-    MyFace(): flag(Unknown), processedFlag(NotProcessed), box_id(-1){}
-
-	inline void resetState()
-	{
-          flag = Unknown;
-          processedFlag = NotProcessed;
-	}
-
-	inline void resetProcessedFlag()
-	{
-	  processedFlag = NotProcessed;
-	}
-
-	inline bool isConquered() const
-	{
-	  return (flag==Splittable ||flag==Unsplittable) ;
-	}
-
-	inline bool isSplittable() const
-	{
-	  return (flag==Splittable) ;
-	}
-
-	inline bool isUnsplittable() const
-	{
-	  return (flag==Unsplittable) ;
-	}
-
-	inline void setSplittable()
-	{
-	  assert(flag == Unknown);
-	  flag=Splittable;
-	}
-
-	inline void setUnsplittable()
-	{
-	  assert(flag == Unknown);
-	  flag=Unsplittable;
-	}
-
-	inline void setProcessedFlag()
-	{
-		processedFlag = Processed;
-	}
-
-	inline bool isProcessed() const
-	{
-		return (processedFlag == Processed);
-	}
-
-	inline Point getRemovedVertexPos() const
-	{
-		return removedVertexPos;
-	}
-
-	inline void setRemovedVertexPos(Point p)
-	{
-		removedVertexPos = p;
-	}
-
-	inline VectorInt getResidual() const
-	{
-		return residual;
-	}
-
-	inline void setResidual(VectorInt v)
-	{
-		residual = v;
-	}
-
-
-	inline void set_box_id(int id){
-		box_id = id;
-	}
-	inline int get_box_id(){
-		return box_id;
-	}
-
-  private:
-	Flag flag;
-	ProcessedFlag processedFlag;
-
-	Point removedVertexPos;
-	VectorInt residual;
-
-    // contain the box of this edge belongs to
-    int box_id;
-};
 
 // My vertex type has a isConquered flag
 template <class Refs>
@@ -341,6 +245,105 @@ class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 
 };
 
+// My face type has a vertex flag
+template <class Refs>
+class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
+{
+    enum Flag {Unknown=0, Splittable=1, Unsplittable=2};
+    enum ProcessedFlag {NotProcessed, Processed};
+
+  public:
+    MyFace(): flag(Unknown), processedFlag(NotProcessed), box_id(-1){}
+
+	inline void resetState()
+	{
+          flag = Unknown;
+          processedFlag = NotProcessed;
+	}
+
+	inline void resetProcessedFlag()
+	{
+	  processedFlag = NotProcessed;
+	}
+
+	inline bool isConquered() const
+	{
+	  return (flag==Splittable ||flag==Unsplittable) ;
+	}
+
+	inline bool isSplittable() const
+	{
+	  return (flag==Splittable) ;
+	}
+
+	inline bool isUnsplittable() const
+	{
+	  return (flag==Unsplittable) ;
+	}
+
+	inline void setSplittable()
+	{
+	  assert(flag == Unknown);
+	  flag=Splittable;
+	}
+
+	inline void setUnsplittable()
+	{
+	  assert(flag == Unknown);
+	  flag=Unsplittable;
+	}
+
+	inline void setProcessedFlag()
+	{
+		processedFlag = Processed;
+	}
+
+	inline bool isProcessed() const
+	{
+		return (processedFlag == Processed);
+	}
+
+	inline Point getRemovedVertexPos() const
+	{
+		return removedVertexPos;
+	}
+
+	inline void setRemovedVertexPos(Point p)
+	{
+		removedVertexPos = p;
+	}
+
+	inline VectorInt getResidual() const
+	{
+		return residual;
+	}
+
+	inline void setResidual(VectorInt v)
+	{
+		residual = v;
+	}
+
+
+	inline void set_box_id(int id){
+		box_id = id;
+	}
+	inline int get_box_id(){
+		return box_id;
+	}
+
+
+  private:
+	Flag flag;
+	ProcessedFlag processedFlag;
+
+	Point removedVertexPos;
+	VectorInt residual;
+
+    // contain the box of this edge belongs to
+    int box_id;
+};
+
+
 struct MyItems : public CGAL::Polyhedron_items_3
 {
     template <class Refs, class Traits>
@@ -401,6 +404,16 @@ public:
 	PointInt getQuantizedPos(Point p) const;
 	Point getPos(PointInt p) const;
 
+	inline size_t count_triangle(Facet_const_iterator f){
+		size_t size = 0;
+		Halfedge_const_handle e1 = f->halfedge();
+		Halfedge_const_handle e3 = f->halfedge()->next()->next();
+		while(e3!=e1){
+			size++;
+			e3 = e3->next();
+		}
+		return size;
+	}
 	size_t true_triangle_size();
 
 	// Compression

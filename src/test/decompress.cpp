@@ -40,7 +40,7 @@ int main(int argc, char **argv){
 	for(int i=start_lod;i<=end_lod;i++){
 		int lod = 10*i;
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
-		sprintf(path,"/google/lod.%d.off", lod);
+		sprintf(path,"/gisdata/lod.%d.off", lod);
 		decompressed->writeMeshOff(path);
 		logt("decompress %3d lod %5d vertices %5d edges %5d faces", starttime, lod,
 				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->true_triangle_size());
@@ -67,6 +67,3 @@ int main(int argc, char **argv){
 	delete []vertices;
 
 }
-
-
-

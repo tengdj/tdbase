@@ -86,8 +86,6 @@ enum data_type{
  *
  * */
 class HiMesh:public MyMesh{
-	size_t fill_segments(float *segments);
-	size_t fill_triangles(float *triangles);
 	size_t true_triangle_size();
 	bool own_data = true;
 	SegTree *aabb_tree = NULL;
@@ -110,9 +108,11 @@ public:
 	vector<Point> get_skeleton_points(int num_skeleton_points);
 	vector<Voxel *> generate_voxels(int voxel_size);
 	string to_wkt();
-	float get_volume();
+	//float get_volume();
 
-	void fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
+	size_t fill_segments(float *segments);
+	size_t fill_triangles(float *triangles);
+	size_t fill_voxels(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
 	size_t fill_vertices(float *&vertices);
 	size_t fill_topology(unsigned short *&topology);
 	void get_segments();
@@ -176,7 +176,10 @@ public:
 	}
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle
-	void fill_voxels(enum data_type seg_tri);
+	size_t fill_voxels(enum data_type seg_tri);
+	size_t num_vertices(){
+		return mesh->size_of_vertices();
+	}
 
 	void reset(){
 		pthread_mutex_lock(&lock);

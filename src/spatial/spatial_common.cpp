@@ -60,7 +60,7 @@ void write_box(aab box, const char *path){
 
 void write_polyhedron(Polyhedron *mesh, int id){
 	char path[256];
-	sprintf(path, "%d.off", id);
+	sprintf(path, "/gisdata/%d.off", id);
 	write_polyhedron(mesh, path);
 }
 

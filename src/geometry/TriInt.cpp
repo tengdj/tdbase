@@ -289,9 +289,12 @@ bool TriInt(const float *data1, const float *data2){
 }
 
 bool TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2){
+	int counter = 0;
 	for(size_t i=0;i<size1;i++){
 		for(size_t j=0;j<size2;j++){
+			counter++;
 			if(TriInt(data1+9*i, data2+9*j)){
+				//printf("%d\n",counter);
 				return true;
 			}
 		}

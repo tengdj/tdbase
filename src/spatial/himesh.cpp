@@ -256,8 +256,8 @@ size_t HiMesh::fill_segments(float *segments){
 
 
 size_t HiMesh::fill_triangles(float *triangles){
-	assert(triangles);
 	size_t size = size_of_facets();
+	assert(triangles);
 	float *cur_S = triangles;
 	int inserted = 0;
 	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
@@ -339,7 +339,7 @@ void HiMesh::advance_to(int lod){
 
 // the function to generate the segments(0) or triangle(1) and
 // assign each segment(0) or triangle(1) to the proper voxel
-void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle){
+size_t HiMesh::fill_voxels(vector<Voxel *> &voxels, enum data_type seg_or_triangle){
 	assert(voxels.size()>0);
 
 	size_t num_of_data = 0;
@@ -347,9 +347,9 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 	float *data_buffer = NULL;
 	int lod = i_decompPercentage;
 	// the voxel should not be filled
-	if(voxels[0]->data.find(lod)!=voxels[0]->data.end()){
-		return;
-	}
+//	if(voxels[0]->data.find(lod)!=voxels[0]->data.end()){
+//		return;
+//	}
 	if(seg_or_triangle==DT_Segment){
 		num_of_data = size_of_edges();
 		size_of_datum = 6;
@@ -370,7 +370,7 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 			   data_buffer,
 			   num_of_data*size_of_datum*sizeof(float));
 		delete []data_buffer;
-		return;
+		return num_of_data;
 	}
 
 	// now reorganize the data with the voxel information given
@@ -420,6 +420,7 @@ void HiMesh::fill_voxel(vector<Voxel *> &voxels, enum data_type seg_or_triangle)
 	delete groups;
 	delete group_count;
 	delete data_buffer;
+	return num_of_data;
 }
 
 HiMesh::HiMesh(char* data, long length):
@@ -489,47 +490,47 @@ SegTree *HiMesh::get_aabb_tree(){
 	return aabb_tree;
 }
 
-float HiMesh::get_volume() {
-	Nef_polyhedron inputpoly;
-	stringstream ss;
-	ss<<*this;
-	CGAL::OFF_to_nef_3(ss, inputpoly);
-	// to check if the intersected object can be converted to polyhedron or not
-	std::vector<Polyhedron> PList;
-
-	// decompose non-convex volume to convex parts
-	cout<<"teng1"<<endl;
-
-	convex_decomposition_3(inputpoly);
-	cout<<"teng2"<<endl;
-
-	for(Volume_const_iterator ci = ++inputpoly.volumes_begin() ; ci != inputpoly.volumes_end(); ++ci) {
-		if(ci->mark()) {
-			cout<<"teng"<<endl;
-			Polyhedron P;
-			inputpoly.convert_inner_shell_to_polyhedron(ci->shells_begin(), P);
-			PList.push_back(P);
-		}
-	}
-	cout<<PList.size()<<endl;
-
-	double total_volume = 0, hull_volume = 0;
-	for(Polyhedron poly:PList)
-	{
-		std::vector<Point> L;
-		for (Polyhedron::Vertex_const_iterator  it = poly.vertices_begin(); it != poly.vertices_end(); it++) {
-			L.push_back(Point(it->point().x(), it->point().y(), it->point().z()));
-		}
-		Triangulation T(L.begin(), L.end());
-		hull_volume = 0;
-		for(Triangulation::Finite_cells_iterator it = T.finite_cells_begin(); it != T.finite_cells_end(); it++) {
-			Tetrahedron tetr = T.tetrahedron(it);
-			hull_volume += to_double(tetr.volume());
-		}
-		total_volume += hull_volume;
-	}
-	return total_volume;
-}
+//float HiMesh::get_volume() {
+//	Nef_polyhedron inputpoly;
+//	stringstream ss;
+//	ss<<*this;
+//	CGAL::OFF_to_nef_3(ss, inputpoly);
+//	// to check if the intersected object can be converted to polyhedron or not
+//	std::vector<Polyhedron> PList;
+//
+//	// decompose non-convex volume to convex parts
+//	cout<<"teng1"<<endl;
+//
+//	convex_decomposition_3(inputpoly);
+//	cout<<"teng2"<<endl;
+//
+//	for(Volume_const_iterator ci = ++inputpoly.volumes_begin() ; ci != inputpoly.volumes_end(); ++ci) {
+//		if(ci->mark()) {
+//			cout<<"teng"<<endl;
+//			Polyhedron P;
+//			inputpoly.convert_inner_shell_to_polyhedron(ci->shells_begin(), P);
+//			PList.push_back(P);
+//		}
+//	}
+//	cout<<PList.size()<<endl;
+//
+//	double total_volume = 0, hull_volume = 0;
+//	for(Polyhedron poly:PList)
+//	{
+//		std::vector<Point> L;
+//		for (Polyhedron::Vertex_const_iterator  it = poly.vertices_begin(); it != poly.vertices_end(); it++) {
+//			L.push_back(Point(it->point().x(), it->point().y(), it->point().z()));
+//		}
+//		Triangulation T(L.begin(), L.end());
+//		hull_volume = 0;
+//		for(Triangulation::Finite_cells_iterator it = T.finite_cells_begin(); it != T.finite_cells_end(); it++) {
+//			Tetrahedron tetr = T.tetrahedron(it);
+//			hull_volume += to_double(tetr.volume());
+//		}
+//		total_volume += hull_volume;
+//	}
+//	return total_volume;
+//}
 
 TriangleTree *get_aabb_tree(Polyhedron *p){
 	TriangleTree *tree = new TriangleTree(faces(*p).first, faces(*p).second, *p);
@@ -537,13 +538,11 @@ TriangleTree *get_aabb_tree(Polyhedron *p){
 	return tree;
 }
 
-void HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
-	//pthread_mutex_lock(&lock);
-	// mesh could be NULL when multiple threads compete
+size_t HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
 	if(mesh){
-		mesh->fill_voxel(voxels, seg_tri);
+		return mesh->fill_voxels(voxels, seg_tri);
 	}
-	//pthread_mutex_unlock(&lock);
+	return 0;
 }
 
 

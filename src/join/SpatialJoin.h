@@ -81,6 +81,9 @@ public:
 				(t*index_time/overall_time)/repeated_times,
 				(t*decode_time/overall_time)/repeated_times,
 				(t*(computation_time+packing_time+updatelist_time)/overall_time)/repeated_times);
+
+		cout<<"decode:\t"<<decode_time<<endl;
+		cout<<"packing:\t"<<packing_time<<endl;
 	}
 
 };

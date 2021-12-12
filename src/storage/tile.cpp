@@ -162,28 +162,21 @@ bool Tile::parse_raw(){
 
 // retrieve the mesh of the voxel group with ID id on demand
 void Tile::retrieve_mesh(int id){
+
 	assert(id>=0&&id<objects.size());
 	HiMesh_Wrapper *wrapper = objects[id];
-	char *mesh_data = NULL;
-	//pthread_mutex_lock(&read_lock);
 	if(wrapper->mesh==NULL){
 		timeval cur = hispeed::get_cur_time();
-		mesh_data = new char[wrapper->data_size];
+		char *mesh_data = new char[wrapper->data_size];
 		malloc_time += hispeed::get_time_elapsed(cur, true);
 		assert(dt_fs);
 		fseek(dt_fs, wrapper->offset, SEEK_SET);
 		size_t rd = fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs);
 		disk_time += hispeed::get_time_elapsed(cur, true);
 		assert(wrapper->data_size==rd);
-	}
-	//pthread_mutex_unlock(&read_lock);
-	//pthread_mutex_lock(&wrapper->lock);
-	if(wrapper->mesh==NULL){
-		timeval cur = hispeed::get_cur_time();
 		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size, false);
 		newmesh_time += hispeed::get_time_elapsed(cur, true);
 	}
-	//pthread_mutex_unlock(&wrapper->lock);
 }
 
 OctreeNode *Tile::build_octree(size_t leaf_size){

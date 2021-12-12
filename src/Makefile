@@ -115,6 +115,9 @@ boxes: test/get_boxes.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(RC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 protruding: test/protrudingtest.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(SLIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+	
+kidney: test/kidney_query.o $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) $(GEOMETRY_OBJS) 
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(SLIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 test: test/test.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@

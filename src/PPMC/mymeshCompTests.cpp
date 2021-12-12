@@ -399,8 +399,8 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 			heh_oneRing.push_back(hit->opposite());
 	  }
 	  while(++hit != end);
-	  //&& isConvex(vh_oneRing)
-	  bool removable = !willViolateManifold(heh_oneRing)  && isProtruding(heh_oneRing);
+	  //
+	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing) ;//&& isProtruding(heh_oneRing);
 	  return removable;
 	}
 	return false;

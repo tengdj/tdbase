@@ -104,6 +104,10 @@ inline bool get_rand_sample(float possibility){
 	return (rand()*1.0)/RAND_MAX<possibility;
 }
 
+inline double get_rand_double(){
+	return (rand()*1.0)/RAND_MAX;
+}
+
 inline bool is_dir(const char* path) {
     struct stat buf;
     stat(path, &buf);

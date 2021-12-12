@@ -42,8 +42,23 @@ void MyMesh::beginDecimationConquest()
   for(MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
 
+//  int total = 0;
+//  int split = 0;
+//  int nsplit = 0;
+//  for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+//	if(fit->isSplittable()){
+//		split += count_triangle(fit);
+//	}
+//	if(fit->isUnsplittable()){
+//		nsplit += count_triangle(fit);
+//	}
+//  }
+//  total = split+nsplit;
+//  printf("%d,%d,%d\n",total,split,nsplit);
+
   for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
+
 
   // Select the first gate to begin the decimation.
   // teng: we always start from the middle
@@ -63,19 +78,6 @@ void MyMesh::beginDecimationConquest()
   operation = DecimationConquest;
 }
 
-size_t MyMesh::true_triangle_size(){
-
-	size_t size = 0;
-	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
-		Halfedge_const_handle e1 = f->halfedge();
-		Halfedge_const_handle e3 = f->halfedge()->next()->next();
-		while(e3!=e1){
-			size++;
-			e3 = e3->next();
-		}
-	}
-	return size;
-}
 
 // One decimation step.
 void MyMesh::decimationStep()

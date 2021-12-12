@@ -36,12 +36,14 @@ void MyMesh::startNextDecompresssionOp()
         {
         	hit->resetState();
         }
-
         for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
             fit->resetState();
 
         operation = Idle;
         b_jobCompleted = true;
+        //printf("%d %d\n",i_decompPercentage, dataOffset);
+
+
     } else {
         // Start the decoder.
         start_decoding(&rangeCoder);
