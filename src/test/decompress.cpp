@@ -39,7 +39,7 @@ int main(int argc, char **argv){
 	}
 	struct timeval sst = get_cur_time();
 	for(int i=0;i<100;i++){
-		testc[i] = read_mesh();;
+		testc[i]->completeOperation();
 	}
 	log("compress %.4f",get_time_elapsed(sst)/100);
 
