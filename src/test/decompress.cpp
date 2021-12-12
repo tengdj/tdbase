@@ -27,7 +27,9 @@ int main(int argc, char **argv){
 	assert(start_lod>=0&&start_lod<=10);
 	// Init the random number generator.
 	log("start compressing");
-	MyMesh *compressed = read_mesh();
+	string mesh_str = read_off_stdin();
+	MyMesh *compressed = get_mesh(mesh_str);
+
 	struct timeval starttime = get_cur_time();
 	//assert(compressed->size_of_border_edges()&&"must be manifold");
 	compressed->completeOperation();
@@ -35,7 +37,7 @@ int main(int argc, char **argv){
 
 	MyMesh *testc[100];
 	for(int i=0;i<100;i++){
-		testc[i] = read_mesh();;
+		testc[i] = get_mesh(mesh_str);
 	}
 	struct timeval sst = get_cur_time();
 	for(int i=0;i<100;i++){

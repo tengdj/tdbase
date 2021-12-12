@@ -34,6 +34,7 @@ void write_box(aab box, int id, string prefix="");
 void write_box(aab box, const char *path);
 void write_polyhedron(Polyhedron *mesh, const char *path);
 void write_polyhedron(Polyhedron *mesh, int id);
+string read_off_stdin();
 string polyhedron_to_wkt(Polyhedron *poly);
 
 // some utility functions to operate mesh polyhedrons

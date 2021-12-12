@@ -64,7 +64,7 @@ void write_polyhedron(Polyhedron *mesh, int id){
 	write_polyhedron(mesh, path);
 }
 
-inline string read_off_stdin(){
+string read_off_stdin(){
 	string input_line;
 	getline(std::cin, input_line);
 	string whole_mesh = input_line;
