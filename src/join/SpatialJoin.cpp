@@ -414,8 +414,6 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 	return distances;
 }
 
-size_t with_cache = 0;
-size_t without_cache = 0;
 
 /*
  * the main function for getting the objecst within a specified distance
@@ -442,6 +440,11 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 		// retrieve the necessary meshes
 		size_t segment_pair_num = 0;
 
+
+		int o1_counter = 0;
+		int o2_counter = 0;
+		int o2_counter_nocache = 0;
+
 		for(candidate_entry &c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.first;
 			for(candidate_info &info:c.second){
@@ -453,15 +456,14 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 						// ensure the mesh is extracted
 						tile1->decode_to(wrapper1->id, lod);
 						wrapper1->fill_voxels(DT_Segment);
-						with_cache += wrapper1->num_vertices();
-						without_cache += wrapper1->num_vertices();
+						o1_counter++;
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(wrapper2->id, lod);
 						wrapper2->fill_voxels(DT_Segment);
-						with_cache += wrapper2->num_vertices();
+						o2_counter++;
 					}
-					without_cache += wrapper2->num_vertices();
+					o2_counter_nocache++;
 
 					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
 				}// end for voxel_pairs
@@ -474,6 +476,7 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 			continue;
 		}
 		tile1->reset_time();
+		log("%d,%d,%d,%d",lod,o1_counter,o2_counter,o2_counter_nocache);
 
 
 		float *distances = this->calculate_distance(candidates, ctx, lod);
@@ -564,6 +567,9 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		// retrieve the necessary meshes
 		size_t segment_pair_num = 0;
 
+		int o1_counter = 0;
+		int o2_counter = 0;
+		int o2_counter_nocache = 0;
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
 			if(c.second.size()<=1){
@@ -578,16 +584,14 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 						// ensure the mesh is extracted
 						tile1->decode_to(wrapper1->id, lod);
 						wrapper1->fill_voxels(DT_Segment);
-						with_cache += wrapper1->num_vertices();
-						without_cache += wrapper1->num_vertices();
+						o1_counter++;
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(info.mesh_wrapper->id, lod);
 						info.mesh_wrapper->fill_voxels(DT_Segment);
-						with_cache += info.mesh_wrapper->num_vertices();
+						o2_counter++;
 					}
-					//printf("%d\t%d\n",cc++,info.mesh_wrapper->num_vertices());
-					without_cache += info.mesh_wrapper->num_vertices();
+					o2_counter_nocache++;
 
 					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
 				}// end for voxel_pairs
@@ -602,6 +606,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 
 		tile1->reset_time();
 
+		log("%d,%d,%d,%d",lod,o1_counter,o2_counter,o2_counter_nocache);
 
 		float *distances = this->calculate_distance(candidates, ctx, lod);
 
@@ -706,6 +711,11 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		// retrieve the necessary meshes
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		size_t triangle_num = 0;
+
+		int o1_counter = 0;
+		int o2_counter = 0;
+		int o2_counter_nocache = 0;
+
 		for(candidate_entry c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.first;
 			for(candidate_info info:c.second){
@@ -716,16 +726,15 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 					{
 						tile1->decode_to(wrapper1->id, lod);
 						wrapper1->fill_voxels(DT_Triangle);
-						with_cache += wrapper1->num_vertices();
-						without_cache += wrapper1->num_vertices();
+						o1_counter++;
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end())
 					{
 						tile2->decode_to(wrapper2->id, lod);
 						wrapper2->fill_voxels(DT_Triangle);
-						with_cache += wrapper2->num_vertices();
+						o2_counter++;
 					}
-					without_cache += wrapper2->num_vertices();
+					o2_counter_nocache++;
 
 					// update the voxel map
 					for(int i=0;i<2;i++){
@@ -746,6 +755,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		ctx.decode_time += hispeed::get_time_elapsed(start, false);
 		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d",
 				start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
+
+		log("%d,%d,%d,%d",lod,o1_counter,o2_counter,o2_counter_nocache);
+
 
 		tile1->reset_time();
 		tile2->reset_time();
@@ -880,7 +892,6 @@ void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &
 		pthread_join(threads[i], &status);
 	}
 
-	printf("%ld %ld\n",with_cache, without_cache);
 }
 
 
