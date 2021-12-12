@@ -586,7 +586,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 						info.mesh_wrapper->fill_voxels(DT_Segment);
 						with_cache += info.mesh_wrapper->num_vertices();
 					}
-					printf("%d\t%d\n",cc++,info.mesh_wrapper->num_vertices());
+					//printf("%d\t%d\n",cc++,info.mesh_wrapper->num_vertices());
 					without_cache += info.mesh_wrapper->num_vertices();
 
 					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
