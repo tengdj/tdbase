@@ -27,12 +27,13 @@ int main(int argc, char **argv){
 	// Init the random number generator.
 	log("start compressing");
 	struct timeval starttime = get_cur_time();
-
 	MyMesh *compressed = read_mesh();
 	assert(compressed->size_of_border_edges()&&"must be manifold");
-	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->true_triangle_size());
 	compressed->completeOperation();
 	logt("compress", starttime);
+
+	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->true_triangle_size());
+
 	log("start decompressing");
 
 	HiMesh *himesh;
