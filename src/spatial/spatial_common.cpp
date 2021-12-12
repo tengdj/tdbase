@@ -162,11 +162,13 @@ Polyhedron *read_off_polyhedron(char *path){
 }
 
 
-MyMesh *decompress_mesh(MyMesh *compressed, int lod){
+MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation){
 	MyMesh *decompressed = new MyMesh(lod,
 			 DECOMPRESSION_MODE_ID, 12,
 			 compressed->p_data, compressed->dataOffset, true);
-	decompressed->completeOperation();
+	if(complete_operation){
+		decompressed->completeOperation();
+	}
 	return decompressed;
 }
 

@@ -37,13 +37,30 @@ int main(int argc, char **argv){
 
 	HiMesh *himesh;
 	char path[256];
+	int itertime = 100;
 	for(int i=start_lod;i<=end_lod;i++){
 		int lod = 10*i;
+		MyMesh *tested[itertime];
+		for(int t=0;t<itertime;t++){
+			tested[t] = hispeed::decompress_mesh(compressed, lod, false);
+		}
+		starttime = get_cur_time();
+		for(int t=0;t<itertime;t++){
+			tested[t]->completeOperation();
+		}
+		double testedtime = get_time_elapsed(starttime,true);
+
+		for(int t=0;t<itertime;t++){
+			delete tested[t];
+		}
+
+
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
+		decompressed->completeOperation();
+		logt("decompress %3d lod %5d vertices %5d edges %5d faces avg(%.4f)", starttime, lod,
+				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->true_triangle_size(), testedtime/itertime);
 		sprintf(path,"/gisdata/lod.%d.off", lod);
 		decompressed->writeMeshOff(path);
-		logt("decompress %3d lod %5d vertices %5d edges %5d faces", starttime, lod,
-				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->true_triangle_size());
 		if(lod==100){
 			float *vertices;
 			himesh = new HiMesh(decompressed->p_data,decompressed->dataOffset);
@@ -51,7 +68,7 @@ int main(int argc, char **argv){
 		delete decompressed;
 	}
 	delete compressed;
-
+	starttime = get_cur_time();
 	float *vertices = NULL;
 	himesh->advance_to(100);
 	logt("decompress", starttime);

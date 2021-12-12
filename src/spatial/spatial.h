@@ -42,7 +42,7 @@ extern MyMesh *read_mesh();
 extern MyMesh *read_off(char *path);
 extern Polyhedron *read_off_polyhedron(char *path);
 
-extern MyMesh *decompress_mesh(MyMesh *compressed, int lod);
+extern MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation = false);
 extern MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation = false);
 
 inline void replace_bar(string &input){
