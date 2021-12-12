@@ -33,6 +33,16 @@ int main(int argc, char **argv){
 	compressed->completeOperation();
 	logt("compress", starttime);
 
+	MyMesh *testc[100];
+	for(int i=0;i<100;i++){
+		testc[i] = read_mesh();;
+	}
+	struct timeval sst = get_cur_time();
+	for(int i=0;i<100;i++){
+		testc[i] = read_mesh();;
+	}
+	log("compress %.4f",get_time_elapsed(sst)/100);
+
 	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->true_triangle_size());
 
 	log("start decompressing");
