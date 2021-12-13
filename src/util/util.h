@@ -60,6 +60,7 @@ inline string time_string(){
 
 static pthread_mutex_t print_lock;
 inline void logt(const char *format, struct timeval &start, ...){
+
 	pthread_mutex_lock(&print_lock);
 	va_list args;
 	va_start(args, start);
