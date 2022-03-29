@@ -35,10 +35,10 @@ Skeleton *HiMesh::extract_skeleton(){
 	Skeleton *skeleton  = new Skeleton();
 	std::stringstream os;
 	os << *this;
-	logt("dump to stream", start);
+	//logt("dump to stream", start);
 	Triangle_mesh tmesh;
 	os >> tmesh;
-	logt("convert to triangle mesh", start);
+	//logt("convert to triangle mesh", start);
 	assert(CGAL::Polygon_mesh_processing::triangulate_faces(faces(tmesh), tmesh));
 	for(boost::graph_traits<Triangle_mesh>::face_descriptor fit : faces(tmesh))
 	    if (next(next(halfedge(fit, tmesh), tmesh), tmesh)
@@ -49,38 +49,38 @@ Skeleton *HiMesh::extract_skeleton(){
 		log("Input geometry is not triangulated.");
 		exit(-1);
 	}
-	logt("triangulate", start);
+	//logt("triangulate", start);
 
 	try{
 		Skeletonization mcs(tmesh);
-		logt("initialize skeletonization", start);
+		//logt("initialize skeletonization", start);
 
 		// 1. Contract the mesh by mean curvature flow.
 		mcs.contract_geometry();
-		logt("contract geometry", start);
+		//logt("contract geometry", start);
 
 		// 2. Collapse short edges and split bad triangles.
 		mcs.collapse_edges();
-		logt("collapse edges", start);
+		//logt("collapse edges", start);
 
 		mcs.split_faces();
-		logt("split faces", start);
+		//logt("split faces", start);
 
 		// 3. Fix degenerate vertices.
 		//mcs.detect_degeneracies();
 
 		// Perform the above three steps in one iteration.
 		mcs.contract();
-		logt("contract", start);
+		//logt("contract", start);
 
 		// Iteratively apply step 1 to 3 until convergence.
 		mcs.contract_until_convergence();
-		logt("contract until convergence", start);
+		//logt("contract until convergence", start);
 
 		// Convert the contracted mesh into a curve skeleton and
 		// get the correspondent surface points
 		mcs.convert_to_skeleton(*skeleton);
-		logt("convert to skeleton", start);
+		//logt("convert to skeleton", start);
 
 	}catch(std::exception &exc){
 		log(exc.what());
@@ -269,11 +269,11 @@ size_t HiMesh::fill_triangles(float *triangles){
 			cur_S++;
 		}
 		for(int i=0;i<3;i++){
-			*cur_S = p2[i]-p1[i];
+			*cur_S = p2[i];//-p1[i];
 			cur_S++;
 		}
 		for(int i=0;i<3;i++){
-			*cur_S = p3[i]-p1[i];
+			*cur_S = p3[i];//-p1[i];
 			cur_S++;
 		}
 		inserted++;

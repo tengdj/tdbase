@@ -10,7 +10,7 @@
 
 #include <pthread.h>
 #include <vector>
-#include "../util/util.h"
+#include "../include/util.h"
 
 using namespace std;
 

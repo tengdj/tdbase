@@ -11,7 +11,7 @@
 #include <map>
 #include <stack>
 #include <stdlib.h>
-#include "../util/util.h"
+#include "../include/util.h"
 using namespace std;
 
 
@@ -419,7 +419,7 @@ int main(int argc, char **argv){
 			ind[i]->evaluate();
 			ind[i]->remove_redundant();
 			ind[i]->merge_vertex();
-			//ind[i]->fill_holes();
+			ind[i]->fill_holes();
 			//ind[i]->evaluate();
 			//ind[i]->fill_holes();
 			if(argc>2){

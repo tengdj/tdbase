@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>
-#include "../util/util.h"
+#include "../include/util.h"
 
 namespace hispeed{
 

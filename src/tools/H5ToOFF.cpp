@@ -1,7 +1,7 @@
 #include <hdf5.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "util/util.h"
+#include "include/util.h"
 
 
 class MyPolyhedron{

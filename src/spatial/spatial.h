@@ -12,7 +12,7 @@
 #define SPATIAL_CGAL_H_
 
 #include "../PPMC/ppmc.h"
-#include "../util/util.h"
+#include "../include/util.h"
 #include "../geometry/aab.h"
 //#include <CGAL/OFF_to_nef_3.h>
 
@@ -52,6 +52,8 @@ inline void replace_bar(string &input){
 
 float get_volume(Polyhedron *polyhedron);
 Polyhedron *read_polyhedron();
+Polyhedron *read_polyhedron(string &str);
+Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o);
 
 inline float distance(Point p1, Point p2){
 	float dist = 0;

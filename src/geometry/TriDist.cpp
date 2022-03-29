@@ -448,6 +448,12 @@ float TriDist_single(const float *data1, const float *data2, size_t size1, size_
 			if(dist < local_min){
 				local_min = dist;
 			}
+//			const float *tdata1 = data1+i*9;
+//			const float *tdata2 = data2+i*9;
+//			printf("(%f %f %f, %f %f %f, %f %f %f) (%f %f %f, %f %f %f, %f %f %f) %f\n"
+//					,*tdata1,*(tdata1+1),*(tdata1+2),*(tdata1+3),*(tdata1+4),*(tdata1+5),*(tdata1+6),*(tdata1+7),*(tdata1+8)
+//					,*tdata2,*(tdata2+1),*(tdata2+2),*(tdata2+3),*(tdata2+4),*(tdata2+5),*(tdata2+6),*(tdata2+7),*(tdata2+8)
+//					,dist);
 		}
 	}
 	return local_min;

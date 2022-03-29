@@ -12,7 +12,7 @@
 #include <boost/algorithm/string/replace.hpp>
 
 #include "partition.h"
-#include "../util/util.h"
+#include "../include/util.h"
 
 using namespace std;
 

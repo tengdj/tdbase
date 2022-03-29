@@ -6,7 +6,7 @@
 #include <iostream>
 #include <float.h>
 #include "./mygpu.h"
-#include "../util/util.h"
+#include "../include/util.h"
 #include "pthread.h"
 using namespace std;
 
@@ -110,6 +110,8 @@ inline float distance(const float *p1, const float *p2){
 	return cur_dist;
 }
 
+
+float TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
 
 float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
 void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
