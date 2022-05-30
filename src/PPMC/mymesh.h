@@ -78,7 +78,7 @@ typedef MyKernelInt::Point_3 PointInt;
 typedef MyKernelInt::Vector_3 VectorInt;
 
 
-typedef CGAL::Polyhedron_3<MyKernel>	Polyhedron;
+typedef CGAL::Polyhedron_3<MyKernel,CGAL::Polyhedron_items_with_id_3>	Polyhedron;
 typedef CGAL::Surface_mesh<Point>                             Triangle_mesh;
 typedef boost::graph_traits<Triangle_mesh>::vertex_descriptor vertex_descriptor;
 typedef CGAL::Mean_curvature_flow_skeletonization<Triangle_mesh> Skeletonization;

@@ -532,6 +532,33 @@ SegTree *HiMesh::get_aabb_tree(){
 //	return total_volume;
 //}
 
+void cgal_simplification(Polyhedron *poly, float ratio){
+
+
+	  int index = 0 ;
+	  for( Polyhedron::Halfedge_iterator eb = (*poly).halfedges_begin(), ee = (*poly).halfedges_end(); eb != ee; ++ eb){
+		 eb->id() = index++;
+	  }
+
+	  index = 0 ;
+	  for( Polyhedron::Vertex_iterator vb = (*poly).vertices_begin()
+	    , ve = (*poly).vertices_end()
+	    ; vb != ve
+	    ; ++ vb
+	    )
+	    vb->id() = index++;
+	  SMS::Count_ratio_stop_predicate<Polyhedron> stop(ratio);
+	  SMS::Edge_collapse_visitor_base<Polyhedron> vis;
+
+	  int r = SMS::edge_collapse(*poly, stop, CGAL::parameters::visitor(vis));
+
+	  // The index maps are not explicitelty passed as in the previous
+	  // example because the surface mesh items have a proper id() field.
+	  // On the other hand, we pass here explicit cost and placement
+	  // function which differ from the default policies, ommited in
+	  // the previous example.
+}
+
 TriangleTree *get_aabb_tree(Polyhedron *p){
 	TriangleTree *tree = new TriangleTree(faces(*p).first, faces(*p).second, *p);
 	tree->accelerate_distance_queries();
@@ -544,8 +571,5 @@ size_t HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
 	}
 	return 0;
 }
-
-
-
 
 }

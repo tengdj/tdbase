@@ -27,7 +27,7 @@ using namespace std;
 namespace hispeed{
 
 #define TENG_RANDOM_NUMBER 0315
-
+#define INIT_TIME struct timeval start = get_cur_time();
 inline struct timeval get_cur_time(){
 	struct timeval t1;
 	gettimeofday(&t1, NULL);

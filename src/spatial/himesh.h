@@ -22,6 +22,19 @@
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
 
+// includes for the mesh simplification
+#include <CGAL/Surface_mesh_simplification/edge_collapse.h>
+// Visitor base
+#include <CGAL/Surface_mesh_simplification/Edge_collapse_visitor_base.h>
+// Extended polyhedron items which include an id() field
+#include <CGAL/Polyhedron_items_with_id_3.h>
+// Stop-condition policy
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_ratio_stop_predicate.h>
+// Non-default cost and placement policies
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_stop_predicate.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
+
 //CGAL::Polyhedron_3< MyKernel, MyItems > Polyhedron;
 
 typedef MyKernel::FT FT;
@@ -36,7 +49,7 @@ typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> TrianglePrimitive;
 typedef CGAL::AABB_traits<MyKernel, TrianglePrimitive> TriangleTraits;
 typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 
-
+namespace SMS = CGAL::Surface_mesh_simplification ;
 
 
 namespace hispeed{
@@ -131,6 +144,7 @@ public:
 	}
 	void advance_to(int lod);
 };
+void cgal_simplification(Polyhedron *poly, float ratio);
 
 
 /*
