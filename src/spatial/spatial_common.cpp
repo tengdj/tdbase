@@ -41,6 +41,62 @@ Polyhedron *make_cube(aab box) {
     return P;
 }
 
+Polyhedron *make_cubes(vector<aab *> &boxes) {
+
+    // appends a cube of size [0,1]^3 to the polyhedron P.
+	Polyhedron *P = new Polyhedron();
+
+	for(aab *b:boxes){
+		aab box = *b;
+		Polyhedron::Halfedge_handle h =
+	    		P->make_tetrahedron(Point(box.max[0], box.min[1], box.min[2]),
+									Point(box.min[0], box.min[1], box.max[2]),
+									Point(box.min[0], box.min[1], box.min[2]),
+									Point(box.min[0], box.max[1], box.min[2]));
+		Polyhedron::Halfedge_handle g = h->next()->opposite()->next();
+	    P->split_edge( h->next());
+	    P->split_edge( g->next());
+	    P->split_edge( g);
+	    h->next()->vertex()->point()     = Point(box.max[0], box.min[1], box.max[2]);
+	    g->next()->vertex()->point()     = Point(box.min[0], box.max[1], box.max[2]);
+	    g->opposite()->vertex()->point() = Point(box.max[0], box.max[1], box.min[2]);
+	    Polyhedron::Halfedge_handle f = P->split_facet(g->next(),
+	                                      g->next()->next()->next());
+	    Polyhedron::Halfedge_handle e = P->split_edge(f);
+	    e->vertex()->point() = Point(box.max[0], box.max[1], box.max[2]);
+	    P->split_facet( e, f->next()->next());
+	    CGAL_postcondition( P->is_valid());
+	}
+    return P;
+}
+
+Polyhedron *make_cubes(vector<Voxel *> &boxes) {
+	 // appends a cube of size [0,1]^3 to the polyhedron P.
+	Polyhedron *P = new Polyhedron();
+
+	for(Voxel *b:boxes){
+		Polyhedron::Halfedge_handle h =
+				P->make_tetrahedron(Point(b->max[0], b->min[1], b->min[2]),
+									Point(b->min[0], b->min[1], b->max[2]),
+									Point(b->min[0], b->min[1], b->min[2]),
+									Point(b->min[0], b->max[1], b->min[2]));
+		Polyhedron::Halfedge_handle g = h->next()->opposite()->next();
+		P->split_edge( h->next());
+		P->split_edge( g->next());
+		P->split_edge( g);
+		h->next()->vertex()->point()     = Point(b->max[0], b->min[1], b->max[2]);
+		g->next()->vertex()->point()     = Point(b->min[0], b->max[1], b->max[2]);
+		g->opposite()->vertex()->point() = Point(b->max[0], b->max[1], b->min[2]);
+		Polyhedron::Halfedge_handle f = P->split_facet(g->next(),
+										  g->next()->next()->next());
+		Polyhedron::Halfedge_handle e = P->split_edge(f);
+		e->vertex()->point() = Point(b->max[0], b->max[1], b->max[2]);
+		P->split_facet( e, f->next()->next());
+		CGAL_postcondition( P->is_valid());
+	}
+	return P;
+}
+
 void write_polyhedron(Polyhedron *mesh, const char *path){
 	ofstream myfile;
 	myfile.open(path);
@@ -56,6 +112,10 @@ void write_box(aab box, int id, string prefix){
 
 void write_box(aab box, const char *path){
 	hispeed::write_polyhedron(hispeed::make_cube(box), path);
+}
+
+void write_voxels(vector<Voxel *> boxes, const char *path){
+	hispeed::write_polyhedron(hispeed::make_cubes(boxes), path);
 }
 
 void write_polyhedron(Polyhedron *mesh, int id){

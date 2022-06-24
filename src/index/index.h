@@ -33,8 +33,7 @@ namespace hispeed{
 /*
  * OCTree
  * */
-class OctreeNode {
-	weighted_aab node_voxel;
+class OctreeNode: public weighted_aab{
 public:
 	long tile_size;
 	int level;
@@ -48,8 +47,8 @@ public:
 	OctreeNode(aab b, int level, long tsize);
 	~OctreeNode();
 	bool addObject(weighted_aab *object);
+
 	bool intersects(weighted_aab *object);
-	void genTiles(vector<aab> &tiles);
 	void query_nn(weighted_aab *box, vector<pair<int, range>> &results, float &min_farthest);
 	void query_within(weighted_aab *box, vector<pair<int, range>> &results, const float min_farthest);
 	void query_intersect(weighted_aab *box, vector<int> &results);
@@ -73,18 +72,17 @@ public:
 		children.clear();
 	}
 	void add_child(SPNode *child){
-		node_voxel.box.update(child->node_voxel.box);
+		node_voxel.update(child->node_voxel);
 		node_voxel.size += child->node_voxel.size;
 		children.push_back(child);
 		child->parent = this;
 	}
 	void add_object(weighted_aab *obj){
 		node_voxel.size += obj->size;
-		node_voxel.box.update(obj->box);
+		node_voxel.update(*obj);
 	}
 	bool load(const char *path);
 	bool persist(const char *path);
-	void genTiles(vector<aab> &tiles);
 
 };
 

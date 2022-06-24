@@ -69,7 +69,7 @@ public:
 	}
 	aab get_mbb(int id){
 		assert(id>=0&&id<objects.size());
-		return objects[id]->box.box;
+		return objects[id]->box;
 	}
 	HiMesh *get_mesh(int id){
 		return get_mesh_wrapper(id)->mesh;

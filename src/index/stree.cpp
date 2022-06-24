@@ -16,16 +16,6 @@ using namespace std;
 
 namespace hispeed{
 
-void SPNode::genTiles(vector<aab> &tiles){
-	if(children.size()==0){
-		tiles.push_back(node_voxel.box);
-	}else{
-		for(SPNode *c:children){
-			c->genTiles(tiles);
-		}
-	}
-}
-
 bool SPNode::load(const char *path){
 	ifstream is(path, ios::out | ios::binary);
 	if(!is) {
@@ -42,8 +32,8 @@ bool SPNode::load(const char *path){
 			SPNode *cur_y = new SPNode();
 			for(int z=0;z<part_z;z++){
 				SPNode *cur_z = new SPNode();
-				is.read((char *)cur_z->node_voxel.box.min, sizeof(float)*3);
-				is.read((char *)cur_z->node_voxel.box.max, sizeof(float)*3);
+				is.read((char *)cur_z->node_voxel.min, sizeof(float)*3);
+				is.read((char *)cur_z->node_voxel.max, sizeof(float)*3);
 				is.read((char *)&cur_z->node_voxel.size, sizeof(int));
 				cur_y->add_child(cur_z);
 			}
@@ -80,8 +70,8 @@ bool SPNode::persist(const char *path){
 	for(int x=0;x<part_x;x++){
 		for(int y=0;y<part_y;y++){
 			for(int z=0;z<part_z;z++){
-				os.write((char *)children[x]->children[y]->children[z]->node_voxel.box.min, sizeof(float)*3);
-				os.write((char *)children[x]->children[y]->children[z]->node_voxel.box.max, sizeof(float)*3);
+				os.write((char *)children[x]->children[y]->children[z]->node_voxel.min, sizeof(float)*3);
+				os.write((char *)children[x]->children[y]->children[z]->node_voxel.max, sizeof(float)*3);
 				os.write((char *)&children[x]->children[y]->children[z]->node_voxel.size, sizeof(int));
 			}
 		}
@@ -91,13 +81,13 @@ bool SPNode::persist(const char *path){
 }
 
 bool compareAAB_x(weighted_aab *a1, weighted_aab *a2){
-	return a1->box.min[0]<a2->box.min[0];
+	return a1->min[0]<a2->min[0];
 }
 bool compareAAB_y(weighted_aab *a1, weighted_aab *a2){
-	return a1->box.min[1]<a2->box.min[1];
+	return a1->min[1]<a2->min[1];
 }
 bool compareAAB_z(weighted_aab *a1, weighted_aab *a2){
-	return a1->box.min[2]<a2->box.min[2];
+	return a1->min[2]<a2->min[2];
 }
 
 SPNode *build_sort_partition(std::vector<weighted_aab*> &voxels, int num_tiles){

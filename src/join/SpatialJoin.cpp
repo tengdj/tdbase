@@ -145,7 +145,7 @@ vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 			ci.mesh_wrapper = wrapper2;
 			for(Voxel *v1:wrapper1->voxels){
 				for(Voxel *v2:wrapper2->voxels){
-					if(v1->box.intersect(v2->box)){
+					if(v1->intersect(*v2)){
 						// a candidate not sure
 						ci.voxel_pairs.push_back(voxel_pair(v1, v2));
 					}
@@ -205,7 +205,7 @@ vector<candidate_entry> SpatialJoin::mbb_nn(Tile *tile1, Tile *tile2, query_cont
 				ci.mesh_wrapper = wrapper2;
 				for(Voxel *v1:wrapper1->voxels){
 					for(Voxel *v2:wrapper2->voxels){
-						range tmpd = v1->box.distance(v2->box);
+						range tmpd = v1->distance(*v2);
 						// no voxel pair in the list is nearer
 						if(update_voxel_pair_list(ci.voxel_pairs, tmpd) &&
 						   update_candidate_list(candidate_list, tmpd)){
@@ -258,7 +258,7 @@ vector<candidate_entry> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_
 			bool determined = false;
 			for(Voxel *v1:wrapper1->voxels){
 				for(Voxel *v2:wrapper2->voxels){
-					range tmpd = v1->box.distance(v2->box);
+					range tmpd = v1->distance(*v2);
 					// must not within
 					if(tmpd.mindist>ctx.max_dist){
 						continue;

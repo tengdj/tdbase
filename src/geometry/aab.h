@@ -53,6 +53,8 @@ class aab{
 public:
 	float min[3];
 	float max[3];
+
+public:
 	aab(){
 		for(int i=0;i<3;i++){
 			min[i] = DBL_MAX;
@@ -60,6 +62,12 @@ public:
 		}
 	}
 
+	aab(const aab &b){
+		for(int i=0;i<3;i++){
+			min[i] = b.min[i];
+			max[i] = b.max[i];
+		}
+	}
 	aab(float min_x, float min_y, float min_z,
 			float max_x, float max_y, float max_z){
 		min[0] = min_x;
@@ -68,6 +76,14 @@ public:
 		max[0] = max_x;
 		max[1] = max_y;
 		max[2] = max_z;
+	}
+	void set_box(float l0, float l1, float l2, float h0, float h1, float h2){
+		min[0] = l0;
+		min[1] = l1;
+		min[2] = l2;
+		max[0] = h0;
+		max[1] = h1;
+		max[2] = h2;
 	}
 
 	void update(float x, float y, float z){
@@ -91,7 +107,7 @@ public:
 		}
 	}
 
-	void update(aab &p){
+	void update(const aab &p){
 		for(int i=0;i<3;i++){
 			if(min[i]>p.min[i]){
 				min[i] = p.min[i];
@@ -99,6 +115,12 @@ public:
 			if(max[i]<p.max[i]){
 				max[i] = p.max[i];
 			}
+		}
+	}
+	void set_box(const aab &b){
+		for(int i=0;i<3;i++){
+			min[i] = b.min[i];
+			max[i] = b.max[i];
 		}
 	}
 
@@ -159,20 +181,6 @@ public:
 
 	// get the possible minimum and maximum distance of
 	// objects with their aabs
-//	range distances(const aab &b){
-//		range ret;
-//		for(int i=0;i<3;i++){
-//			if(min[i]>b.max[i]){
-//				ret.mindist += (min[i]-b.max[i])*(min[i]-b.max[i]);
-//			}else if(b.min[i]>max[i]){
-//				ret.mindist += (b.min[i]-max[i])*(b.min[i]-max[i]);
-//			}
-//			float tmp = (b.max[i]+b.min[i]-max[i]-min[i])/2;
-//			ret.maxdist += tmp*tmp;
-//		}
-//		return ret;
-//	}
-
 	range distance(const aab &b){
 		range ret;
 		ret.maxdist = 0;
@@ -194,16 +202,38 @@ public:
 };
 
 
-class weighted_aab{
+class weighted_aab:public aab{
 public:
 	int id;
-	aab box;
 	uint size = 1;
-	inline bool intersect(weighted_aab &b){
-		return box.intersect(b.box);
+};
+
+
+/*
+ * each voxel contains the minimum boundary box
+ * of a set of edges or triangles. It is an extension of
+ * AAB with additional elements
+ * */
+class Voxel: public aab{
+public:
+	// point which the segments close with
+	float core[3];
+	// the pointer and size of the segment/triangle data in this voxel
+	map<int, float *> data;
+	map<int, int> size;
+public:
+	~Voxel(){
+		reset();
 	}
-	inline range distance(weighted_aab &b){
-		return box.distance(b.box);
+	void reset(){
+		for(map<int, float *>::iterator it=data.begin();it!=data.end();it++){
+			if(it->second!=NULL){
+				delete []it->second;
+				it->second = NULL;
+			}
+		}
+		data.clear();
+		size.clear();
 	}
 };
 

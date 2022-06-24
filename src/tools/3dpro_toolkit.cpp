@@ -56,58 +56,6 @@ static void profile_protruding(int argc, char **argv){
 }
 
 /*
- * partitioning the objects in the tile
- * */
-static void partition(int argc, char** argv) {
-	if(argc<2){
-		log("usage: parition path/to/folder [num_threads] [sample_rate]");
-		exit(0);
-	}
-	std::vector<aab> tiles;
-
-	// parse mbb
-	std::vector<string> input_folders;
-	input_folders.push_back(argv[1]);
-
-	int num_tiles = hispeed::get_num_threads();
-	if(argc>2){
-		num_tiles = atoi(argv[2]);
-	}
-
-	int sample_rate = 100;
-	if(argc>3){
-		sample_rate = atoi(argv[3]);
-	}
-
-	struct timeval start = get_cur_time();
-
-	SPNode *sp = NULL;
-	const char *partition_path = "tmp.part";
-	if(!hispeed::file_exist(partition_path)){
-		std::vector<weighted_aab *> voxels;
-		hispeed::get_voxels(input_folders, voxels, hispeed::get_num_threads(), sample_rate);
-		logt("getting voxels of objects", start);
-		sp = hispeed::build_sort_partition(voxels, num_tiles);
-		logt("generating partitions", start);
-		for(weighted_aab *v:voxels){
-			delete v;
-		}
-		voxels.clear();
-		sp->persist(partition_path);
-		logt("persist partitions", start);
-	}else{
-		sp = new SPNode();
-		sp->load(partition_path);
-		logt("loading partitions", start);
-	}
-	sp->genTiles(tiles);
-	hispeed::persist_tile(tiles, "tiles_");
-	tiles.clear();
-
-	delete sp;
-}
-
-/*
  * get the voxel boxes
  * */
 static void get_voxel_boxes(int argc, char **argv){
@@ -116,20 +64,34 @@ static void get_voxel_boxes(int argc, char **argv){
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(100);
-	int sample_rate = 100;
+	int voxel_num = 100;
 	if(argc>=2){
-		sample_rate = atoi(argv[1]);
+		voxel_num = atoi(argv[1]);
 	}
 	himesh->writeMeshOff("/gisdata/vessel.off");
 
-	vector<Voxel *> voxels = himesh->generate_voxels(sample_rate);
+	vector<Voxel *> voxels = himesh->generate_voxels(voxel_num);
+	write_voxels(voxels, "/gisdata/skeleton_voxels.off");
+	hispeed::write_box(himesh->get_box(), "/gisdata/aab.off");
+	delete himesh;
+}
 
-	aab b;
-	for(int i=0;i<voxels.size();i++){
-		b.update(voxels[i]->box);
-		hispeed::write_box(voxels[i]->box, i, "/gisdata/boxes");
+/*
+ * get the voxel boxes
+ * */
+static void voxelize(int argc, char **argv){
+	struct timeval start = get_cur_time();
+	MyMesh *mesh = hispeed::read_mesh();
+	mesh->completeOperation();
+	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	himesh->advance_to(100);
+	int voxel_num = 100;
+	if(argc>=2){
+		voxel_num = atoi(argv[1]);
 	}
-	hispeed::write_box(b, "/gisdata/aab.off");
+	himesh->writeMeshOff("/gisdata/vessel.off");
+	vector<Voxel *> voxels = himesh->voxelization(voxel_num);
+	write_voxels(voxels, "/gisdata/voxels.off");
 	delete himesh;
 }
 
@@ -274,8 +236,6 @@ int main(int argc, char **argv){
 		himesh_to_wkt(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_protruding") == 0){
 		profile_protruding(argc-1,argv+1);
-	}else if(strcmp(argv[1],"partition") == 0){
-		partition(argc-1,argv+1);
 	}else if(strcmp(argv[1],"get_voxel_boxes") == 0){
 		get_voxel_boxes(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_distance") == 0){
@@ -286,6 +246,8 @@ int main(int argc, char **argv){
 		profile_decoding(argc-1,argv+1);
 	}else if(strcmp(argv[1],"adjust_polyhedron") == 0){
 		adjust_polyhedron(argc-1,argv+1);
+	}else if(strcmp(argv[1],"voxelize") == 0){
+		voxelize(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro function [args]"<<endl;
 		exit(0);

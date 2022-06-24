@@ -124,12 +124,12 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	vessel_taken = new bool[total_slots];
 	for(Voxel *v:vessel_voxels){
-		int xstart = v->box.min[0]/nuclei_num[0];
-		int xend = v->box.max[0]/nuclei_num[0];
-		int ystart = v->box.min[1]/nuclei_num[1];
-		int yend = v->box.max[1]/nuclei_num[1];
-		int zstart = v->box.min[2]/nuclei_num[2];
-		int zend = v->box.max[2]/nuclei_num[2];
+		int xstart = v->min[0]/nuclei_num[0];
+		int xend = v->max[0]/nuclei_num[0];
+		int ystart = v->min[1]/nuclei_num[1];
+		int yend = v->max[1]/nuclei_num[1];
+		int zstart = v->min[2]/nuclei_num[2];
+		int zend = v->max[2]/nuclei_num[2];
 		for(int z=zstart;z<=zend;z++){
 			for(int y=ystart;y<=yend;y++){
 				for(int x=xstart;x<=xend;x++){
@@ -177,13 +177,13 @@ inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
 	float box_tmp[3];
 	for(Voxel *v:voxels){
 		for(int i=0;i<3;i++){
-			box_tmp[i] = v->box.min[i]+shift[i];
+			box_tmp[i] = v->min[i]+shift[i];
 		}
 		memcpy(data+offset, (char *)box_tmp, 3*sizeof(float));
 		offset += 3*sizeof(float);
 
 		for(int i=0;i<3;i++){
-			box_tmp[i] = v->box.max[i]+shift[i];
+			box_tmp[i] = v->max[i]+shift[i];
 		}
 		memcpy(data+offset, (char *)box_tmp, 3*sizeof(float));
 		offset += 3*sizeof(float);

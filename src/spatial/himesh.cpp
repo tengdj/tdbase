@@ -167,7 +167,7 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	this->computeBoundingBox();
 	if(size_of_vertices()<voxel_size){
 		Voxel *v = new Voxel();
-		v->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
+		v->set_box(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
 		v->size[lod] = size_of_edges();
 		voxels.push_back(v);
 		return voxels;
@@ -193,13 +193,16 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	}
 	// return one single box if less than 2 points are sampled
 	if(voxels.size()==1){
-		voxels[0]->box = aab(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
+		voxels[0]->set_box(bbMin[0],bbMin[1],bbMin[2],bbMax[0],bbMax[1],bbMax[2]);
 		voxels[0]->size[lod] = size_of_edges();
 		return voxels;
 	}
 
-	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
-		Point p = vit->point();
+	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		Point p1 = f->halfedge()->vertex()->point();
+		Point p2 = f->halfedge()->next()->vertex()->point();
+		Point p3 = f->halfedge()->next()->next()->vertex()->point();
+		Point p((p1[0]+p2[0]+p3[0])/3, (p1[1]+p2[1]+p3[1])/3,(p1[2]+p2[2]+p3[2])/3);
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<skeleton_points.size();j++){
@@ -209,7 +212,9 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 				min_dist = cur_dist;
 			}
 		}
-		voxels[gid]->box.update(p.x(),p.y(),p.z());
+		voxels[gid]->update(p1.x(),p1.y(),p1.z());
+		voxels[gid]->update(p2.x(),p2.y(),p2.z());
+		voxels[gid]->update(p3.x(),p3.y(),p3.z());
 		voxels[gid]->size[lod]++;
 	}
 
@@ -225,6 +230,56 @@ vector<Voxel *> HiMesh::generate_voxels(int voxel_size){
 	}
 
 	skeleton_points.clear();
+	return voxels;
+}
+
+vector<Voxel *> HiMesh::voxelization(int voxel_size){
+	vector<Voxel *> voxels;
+	if(voxel_size<=1){
+		Voxel *vox = new Voxel();
+		vox->set_box(get_box());
+		voxels.push_back(vox);
+	}
+
+	aab box = get_box();
+	float min_dim = std::min(box.max[2]-box.min[2], std::min(box.max[1]-box.min[1], box.max[0]-box.min[0]));
+	float div = (box.max[2]-box.min[2])*(box.max[1]-box.min[1])*(box.max[0]-box.min[0])/(min_dim*min_dim*min_dim);
+	float multi = std::pow(1.0*voxel_size/div, 1.0/3);
+
+	int dim[3];
+	for(int i=0;i<3;i++){
+		dim[i] = ((box.max[i]-box.min[i])*multi/min_dim+0.5);
+		assert(dim[i]>0);
+	}
+
+	bool *taken = new bool[dim[0]*dim[1]*dim[2]];
+	for(int i=0;i<dim[0]*dim[1]*dim[2];i++){
+		taken[i] = false;
+	}
+
+//	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+//		Point p1 = f->halfedge()->vertex()->point();
+//		Point p2 = f->halfedge()->next()->vertex()->point();
+//		Point p3 = f->halfedge()->next()->next()->vertex()->point();
+//	}
+	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+		Point p = vit->point();
+		int x = (p.x()-box.min[0])*dim[0]/(box.max[0]-box.min[0]);
+		int y = (p.y()-box.min[1])*dim[1]/(box.max[1]-box.min[1]);
+		int z = (p.z()-box.min[2])*dim[2]/(box.max[2]-box.min[2]);
+		int idx = z*dim[1]*dim[0]+y*dim[0]+x;
+		if(!taken[idx]){
+			Voxel *vox = new Voxel();
+			vox->min[0] = x*(box.max[0]-box.min[0])/dim[0];
+			vox->min[1] = y*(box.max[1]-box.min[1])/dim[1];
+			vox->min[2] = z*(box.max[2]-box.min[2])/dim[2];
+			vox->max[0] = (x+1)*(box.max[0]-box.min[0])/dim[0];
+			vox->max[1] = (y+1)*(box.max[1]-box.min[1])/dim[1];
+			vox->max[2] = (z+1)*(box.max[2]-box.min[2])/dim[2];
+			voxels.push_back(vox);
+		}
+		taken[idx] = true;
+	}
 	return voxels;
 }
 
@@ -429,6 +484,16 @@ HiMesh::HiMesh(char* data, long length):
 HiMesh::HiMesh(char* data, long length, bool od):
 		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length, od){
 }
+
+aab HiMesh::get_box(){
+	aab b;
+	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+		Point p = vit->point();
+		b.update(p.x(), p.y(), p.z());
+	}
+	return b;
+}
+
 void HiMesh::get_segments(){
 	segments.clear();
 	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){

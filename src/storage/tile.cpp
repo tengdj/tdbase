@@ -63,9 +63,9 @@ void Tile::disable_innerpart(){
 			}
 			w->voxels.clear();
 			Voxel *v = new Voxel();
-			v->box = w->box.box;
+			v->set_box(w->box);
 			for(int i=0;i<3;i++){
-				v->core[i] = (v->box.max[i]-v->box.min[i])/2+v->box.min[i];
+				v->core[i] = (v->max[i]-v->min[i])/2+v->min[i];
 			}
 			w->voxels.push_back(v);
 		}
@@ -83,8 +83,8 @@ bool Tile::persist(string path){
 		size_t dsize = w->voxels.size();
 		fwrite((void *)&dsize, sizeof(size_t), 1, mt_fs);
 		for(Voxel *v:w->voxels){
-			fwrite((void *)v->box.min, sizeof(float), 3, mt_fs);
-			fwrite((void *)v->box.max, sizeof(float), 3, mt_fs);
+			fwrite((void *)v->min, sizeof(float), 3, mt_fs);
+			fwrite((void *)v->max, sizeof(float), 3, mt_fs);
 			fwrite((void *)v->core, sizeof(float), 3, mt_fs);
 		}
 	}
@@ -114,14 +114,14 @@ bool Tile::load(string path, int capacity){
 		fread((void *)&dsize, sizeof(size_t), 1, mt_fs);
 		for(int i=0;i<dsize;i++){
 			Voxel *v = new Voxel();
-			fread((void *)v->box.min, sizeof(float), 3, mt_fs);
-			fread((void *)v->box.max, sizeof(float), 3, mt_fs);
+			fread((void *)v->min, sizeof(float), 3, mt_fs);
+			fread((void *)v->max, sizeof(float), 3, mt_fs);
 			fread((void *)v->core, sizeof(float), 3, mt_fs);
 			w->voxels.push_back(v);
-			w->box.box.update(v->box);
+			w->box.update(*v);
 		}
 		objects.push_back(w);
-		box.update(w->box.box);
+		box.update(w->box);
 	}
 	fclose(mt_fs);
 	return true;
@@ -146,14 +146,14 @@ bool Tile::parse_raw(){
 		fread((void *)&dsize, sizeof(size_t), 1, dt_fs);
 		for(int i=0;i<dsize;i++){
 			Voxel *v = new Voxel();
-			fread((void *)v->box.min, sizeof(float), 3, dt_fs);
-			fread((void *)v->box.max, sizeof(float), 3, dt_fs);
+			fread((void *)v->min, sizeof(float), 3, dt_fs);
+			fread((void *)v->max, sizeof(float), 3, dt_fs);
 			fread((void *)v->core, sizeof(float), 3, dt_fs);
 			w->voxels.push_back(v);
-			w->box.box.update(v->box);
+			w->box.update(*v);
 		}
 		objects.push_back(w);
-		box.update(w->box.box);
+		box.update(w->box);
 		// update the offset for next
 		offset += w->data_size+sizeof(size_t)+9*sizeof(float)*dsize;
 	}
@@ -211,16 +211,16 @@ void Tile::add_raw(char *data){
 	HiMesh_Wrapper *hw = new HiMesh_Wrapper();
 	for(size_t i=0;i<size_tmp;i++){
 		Voxel *v = new Voxel();
-		memcpy((char *)v->box.min, data+offset, 3*sizeof(float));
+		memcpy((char *)v->min, data+offset, 3*sizeof(float));
 		offset += 3*sizeof(float);
-		memcpy((char *)v->box.max, data+offset, 3*sizeof(float));
+		memcpy((char *)v->max, data+offset, 3*sizeof(float));
 		offset += 3*sizeof(float);
 		memcpy((char *)v->core, data+offset, 3*sizeof(float));
 		offset += 3*sizeof(float);
 		hw->voxels.push_back(v);
-		hw->box.box.update(v->box);
+		hw->box.update(*v);
 	}
-	this->box.update(hw->box.box);
+	this->box.update(hw->box);
 
 }
 

@@ -29,11 +29,14 @@ typedef Triangulation::Tetrahedron 	Tetrahedron;
 namespace hispeed{
 
 Polyhedron *make_cube(aab box);
+Polyhedron *make_cubes(vector<aab *> &boxes);
 
 void write_box(aab box, int id, string prefix="");
 void write_box(aab box, const char *path);
 void write_polyhedron(Polyhedron *mesh, const char *path);
 void write_polyhedron(Polyhedron *mesh, int id);
+void write_voxels(vector<Voxel *> voxels, const char *path);
+
 string read_off_stdin();
 string polyhedron_to_wkt(Polyhedron *poly);
 

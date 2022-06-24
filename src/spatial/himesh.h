@@ -54,35 +54,6 @@ namespace SMS = CGAL::Surface_mesh_simplification ;
 
 namespace hispeed{
 
-/*
- * each voxel contains the minimum boundary box
- * of a set of edges or triangles. It is an extension of
- * AAB with additional elements
- * */
-class Voxel{
-public:
-	~Voxel(){
-		reset();
-	}
-	// point which the segments close wiht
-	float core[3];
-	// boundary box of the voxel
-	aab box;
-	// the pointer and size of the segment/triangle data in this voxel
-	map<int, float *> data;
-	map<int, int> size;
-	void reset(){
-		for(map<int, float *>::iterator it=data.begin();it!=data.end();it++){
-			if(it->second!=NULL){
-				delete []it->second;
-				it->second = NULL;
-			}
-		}
-		data.clear();
-		size.clear();
-	}
-};
-
 enum data_type{
 	DT_Segment = 0,
 	DT_Triangle
@@ -103,7 +74,6 @@ class HiMesh:public MyMesh{
 	bool own_data = true;
 	SegTree *aabb_tree = NULL;
 	list<Segment> segments;
-
 	std::map<int, Skeleton *> skeletons;
 public:
 	HiMesh(char *data, long length, bool own_data);
@@ -116,10 +86,14 @@ public:
 		}
 		skeletons.clear();
 	}
+
+	aab get_box();
+
 	Polyhedron *to_polyhedron();
 	Skeleton *extract_skeleton();
 	vector<Point> get_skeleton_points(int num_skeleton_points);
 	vector<Voxel *> generate_voxels(int voxel_size);
+	vector<Voxel *> voxelization(int voxel_size);
 	string to_wkt();
 	//float get_volume();
 

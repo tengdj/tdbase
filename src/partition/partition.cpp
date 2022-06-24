@@ -59,8 +59,7 @@ void *get_mbbs_unit(void *arg){
 				continue;
 			}
 			weighted_aab *voxel = new weighted_aab();
-			voxel->box = aab(mesh->bbMin[0], mesh->bbMin[1], mesh->bbMin[2],
-					mesh->bbMax[0], mesh->bbMax[1], mesh->bbMax[2]);
+			voxel->set_box(mesh->bbMin[0], mesh->bbMin[1], mesh->bbMin[2], mesh->bbMax[0], mesh->bbMax[1], mesh->bbMax[2]);
 			voxel->size = mesh->size_of_halfedges()/2;
 			local_voxels.push_back(voxel);
 			delete mesh;
@@ -142,14 +141,6 @@ void get_voxels(std::vector<std::string> &input_folders, std::vector<weighted_aa
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
 		pthread_join(threads[i], &status);
-	}
-}
-void persist_tile(std::vector<aab> &tiles, const char *prefix){
-	for(int i=0;i<tiles.size();i++){
-		Polyhedron *poly = make_cube(tiles[i]);
-		stringstream ss;
-		ss<<prefix<<i<<".off";
-		write_polyhedron(poly, ss.str().c_str());
 	}
 }
 

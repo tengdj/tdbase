@@ -29,9 +29,6 @@ namespace hispeed{
 void get_voxels(std::vector<std::string> &input_folders,
 		std::vector<weighted_aab *> &voxels, const int num_threads, const int sample_rate);
 
-void persist_tile(std::vector<aab> &tiles, const char *space_path);
-void load_space(std::vector<aab> &tiles, const char *space_path);
-void partition_data(std::vector<aab> &tiles, const char *output_folder);
 
 }
 #endif /* PARTITION_H_ */
