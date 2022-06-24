@@ -18,9 +18,8 @@
 #include <algorithm>
 
 #include "../geometry/aab.h"
-#include "../PPMC/mymesh.h"
-#include "../spatial/spatial.h"
 #include "RTree.h"
+#include "util.h"
 
 #define FillFactor 0.9
 #define IndexCapacity 10

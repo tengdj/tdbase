@@ -25,36 +25,15 @@
 #include <iostream>
 #include <fstream>
 #include <stdint.h>
-#include <queue>
-#include <assert.h>
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/circulator.h>
 #include <CGAL/bounding_box.h>
-
-#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-
 #include <CGAL/IO/Polyhedron_iostream.h>
-#include <CGAL/box_intersection_d.h>
-#include <CGAL/Bbox_3.h>
-#include <CGAL/intersections.h>
-#include <CGAL/Nef_polyhedron_3.h>
-#include <CGAL/Triangulation_3.h>
-#include <CGAL/convex_decomposition_3.h>
-#include <CGAL/Tetrahedron_3.h>
-#include <CGAL/Surface_mesh.h>
 
-#include <CGAL/Delaunay_triangulation_3.h>
-#include <CGAL/boost/graph/graph_traits_Polyhedron_3.h>
-#include <CGAL/boost/graph/properties_Polyhedron_3.h>
-#include <CGAL/extract_mean_curvature_flow_skeleton.h>
-#include <CGAL/Delaunay_triangulation_3.h>
-#include <CGAL/boost/graph/split_graph_into_polylines.h>
-#include <CGAL/OFF_to_nef_3.h>
-#include <boost/foreach.hpp>
-
+#include <queue>
+#include <assert.h>
 
 // Range coder includes.
 #include "../PPMC/rangeCoder/qsmodel.h"
@@ -76,18 +55,6 @@ typedef MyKernelDouble::Vector_3 VectorDouble;
 typedef CGAL::Simple_cartesian<int> MyKernelInt;
 typedef MyKernelInt::Point_3 PointInt;
 typedef MyKernelInt::Vector_3 VectorInt;
-
-
-typedef CGAL::Polyhedron_3<MyKernel,CGAL::Polyhedron_items_with_id_3>	Polyhedron;
-typedef CGAL::Surface_mesh<Point>                             Triangle_mesh;
-typedef boost::graph_traits<Triangle_mesh>::vertex_descriptor vertex_descriptor;
-typedef CGAL::Mean_curvature_flow_skeletonization<Triangle_mesh> Skeletonization;
-typedef Skeletonization::Skeleton                             Skeleton;
-typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
-typedef Skeleton::edge_descriptor                             Skeleton_edge;
-
-typedef CGAL::Delaunay_triangulation_3<MyKernel, CGAL::Fast_location> Delaunay;
-
 
 using namespace hispeed;
 

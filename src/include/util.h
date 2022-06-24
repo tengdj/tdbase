@@ -109,6 +109,11 @@ inline double get_rand_double(){
 	return (rand()*1.0)/RAND_MAX;
 }
 
+inline bool tryluck(float possibility){
+	assert(possibility>=0);
+	return possibility>=1.0||(rand()*1.0)/RAND_MAX<possibility;
+}
+
 inline bool is_dir(const char* path) {
     struct stat buf;
     stat(path, &buf);

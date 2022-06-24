@@ -55,7 +55,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	string input_line;
 	vector<Voxel *> vessel_voxels;
 	if(std::getline(vfile, input_line)){
-		hispeed::replace_bar(input_line);
+		boost::replace_all(input_line, "|", "\n");
 		stringstream ss;
 		ss<<input_line;
 		ss >> vessel;
@@ -77,7 +77,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		vessel_box.update(tmpb);
 		HiMesh *himesh = poly_to_himesh(vessel);
 		// just for assign nuclei in the sub space around the vessel
-		vessel_voxels = himesh->generate_voxels(100);
+		vessel_voxels = himesh->generate_voxels_skeleton(1);
 
 		delete himesh;
 	}else{
@@ -85,7 +85,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	}
 
 	while(std::getline(nfile, input_line)){
-		hispeed::replace_bar(input_line);
+		boost::replace_all(input_line, "|", "\n");
 		stringstream ss;
 		ss<<input_line;
 		Polyhedron poly;
@@ -110,7 +110,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		nuclei_box.update(tmpb);
 		nucleis.push_back(poly);
 		HiMesh *himesh = poly_to_himesh(poly);
-		vector<Voxel *> vxls = himesh->generate_voxels(voxel_size/2);
+		vector<Voxel *> vxls = himesh->generate_voxels_skeleton(himesh->size_of_vertices()/voxel_size);
 		nucleis_voxels.push_back(vxls);
 		delete himesh;
 	}
@@ -283,7 +283,7 @@ void generate_vessel(const char *path, vector<tuple<float, float, float>> &vesse
 	char *data = new char[vessel_shifts.size()*100000*2];
 	size_t offset = 0;
 	HiMesh *himesh = poly_to_himesh(vessel);
-	vector<Voxel *> voxels = himesh->generate_voxels(voxel_size);
+	vector<Voxel *> voxels = himesh->generate_voxels_skeleton(voxel_size);
 	for(tuple<float, float, float> tp:vessel_shifts){
 		float shift[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
 		organize_data(vessel, voxels, shift, data, offset);

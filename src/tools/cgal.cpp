@@ -1,6 +1,4 @@
 
-#include "../partition/partition.h"
-#include "../spatial/spatial.h"
 #include "../spatial/himesh.h"
 #include "../storage/tile.h"
 #include "../PPMC/ppmc.h"

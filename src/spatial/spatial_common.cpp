@@ -5,7 +5,7 @@
  *      Author: teng
  */
 
-#include "spatial.h"
+#include "himesh.h"
 #include "../geometry/aab.h"
 
 namespace hispeed{
@@ -114,6 +114,18 @@ void write_box(aab box, const char *path){
 	hispeed::write_polyhedron(hispeed::make_cube(box), path);
 }
 
+void write_points(vector<Point> &skeleton, const char *path){
+	FILE * fp;
+	fp = fopen (path, "w");
+
+	fprintf(fp, "OFF\n");
+	fprintf(fp, "%ld 0 0\n", skeleton.size());
+	for(Point &p:skeleton){
+		fprintf(fp, "%f %f %f\n",p[0],p[1],p[2]);
+	}
+	fclose(fp);
+}
+
 void write_voxels(vector<Voxel *> boxes, const char *path){
 	hispeed::write_polyhedron(hispeed::make_cubes(boxes), path);
 }
@@ -217,6 +229,8 @@ Polyhedron *read_off_polyhedron(char *path){
 	stringstream ss;
 	ss<<input;
 	Polyhedron *poly = new Polyhedron();
+	bool getoff = read_off(ss, *poly);
+	printf("load poly %d\n",getoff);
 	ss>>*poly;
 	return poly;
 }
@@ -297,48 +311,25 @@ Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o){
 	return poly;
 }
 
-//float get_volume(Polyhedron *polyhedron) {
-//	Nef_polyhedron inputpoly;
-//	stringstream ss;
-//	ss<<*polyhedron;
-//	cout<<"teng0"<<endl;
-//	CGAL::OFF_to_nef_3(ss, inputpoly);
-//	// to check if the intersected object can be converted to polyhedron or not
-//	std::vector<Polyhedron> PList;
-//
-//	// decompose non-convex volume to convex parts
-//	cout<<"teng1"<<endl;
-//
-//	convex_decomposition_3(inputpoly);
-//	cout<<"teng2"<<endl;
-//
-//	for(Volume_const_iterator ci = ++inputpoly.volumes_begin() ; ci != inputpoly.volumes_end(); ++ci) {
-//		if(ci->mark()) {
-//			cout<<"teng"<<endl;
-//			Polyhedron P;
-//			inputpoly.convert_inner_shell_to_polyhedron(ci->shells_begin(), P);
-//			PList.push_back(P);
-//		}
-//	}
-//	cout<<PList.size()<<endl;
-//
-//	double total_volume = 0, hull_volume = 0;
-//	for(Polyhedron poly:PList)
-//	{
-//		std::vector<Point> L;
-//		for (Polyhedron::Vertex_const_iterator  it = poly.vertices_begin(); it != poly.vertices_end(); it++) {
-//			L.push_back(Point(it->point().x(), it->point().y(), it->point().z()));
-//		}
-//		Triangulation T(L.begin(), L.end());
-//		hull_volume = 0;
-//		for(Triangulation::Finite_cells_iterator it = T.finite_cells_begin(); it != T.finite_cells_end(); it++) {
-//			Tetrahedron tetr = T.tetrahedron(it);
-//			hull_volume += to_double(tetr.volume());
-//		}
-//		total_volume += hull_volume;
-//	}
-//	return total_volume;
-//}
+void cgal_simplification(Polyhedron *poly, float ratio){
+
+	  int index = 0 ;
+	  for( Polyhedron::Halfedge_iterator eb = (*poly).halfedges_begin(), ee = (*poly).halfedges_end(); eb != ee; ++ eb){
+		 eb->id() = index++;
+	  }
+
+	  index = 0 ;
+	  for( Polyhedron::Vertex_iterator vb = (*poly).vertices_begin()
+	    , ve = (*poly).vertices_end()
+	    ; vb != ve
+	    ; ++ vb
+	    )
+	    vb->id() = index++;
+	  SMS::Count_ratio_stop_predicate<Polyhedron> stop(ratio);
+	  SMS::Edge_collapse_visitor_base<Polyhedron> vis;
+
+	  int r = SMS::edge_collapse(*poly, stop, CGAL::parameters::visitor(vis));
+}
 
 }
 

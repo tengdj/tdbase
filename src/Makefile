@@ -2,7 +2,7 @@ prefix=/usr/local
 
 CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result
 NVCCFLAGS	= -std=c++14 -g -O2
-INCFLAGS	= -I ./ -I /usr/local/cgal/include
+INCFLAGS	= -I ./ -I /usr/include -I ./include
 LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lgeos -lboost_program_options -lstdc++ -lspatialindex -lz
 
 SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
@@ -65,10 +65,6 @@ SPATIAL_OBJS := $(patsubst %.cpp,%.o,$(SPATIAL_SRCS))
 GEOMETRY_SRCS := $(wildcard geometry/*.cpp)
 GEOMETRY_OBJS := $(patsubst %.cpp,%.o,$(GEOMETRY_SRCS))
 
-#PARTITION source and object
-PARTITION_SRCS := $(wildcard partition/*.cpp)
-PARTITION_OBJS := $(patsubst %.cpp,%.o,$(PARTITION_SRCS))
-
 #INDEX source and object
 INDEX_SRCS := $(wildcard index/*.cpp)
 INDEX_OBJS := $(patsubst %.cpp,%.o,$(INDEX_SRCS))
@@ -98,10 +94,10 @@ fixer: tools/fixer.o
 h5tooff: tools/H5ToOFF.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@
 
-3dpro: tools/3dpro_toolkit.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) $(PARTITION_OBJS)
+3dpro: tools/3dpro_toolkit.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-cgal: tools/cgal.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS) $(PARTITION_OBJS)
+cgal: tools/cgal.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 .PHONY: all clean

@@ -10,7 +10,7 @@
 
 #include "../storage/tile.h"
 #include "../include/util.h"
-#include "../spatial/spatial.h"
+#include "../spatial/himesh.h"
 
 using namespace CGAL;
 using namespace std;
@@ -68,7 +68,7 @@ void *mycompress(void *args){
 		MyMesh *mesh = hispeed::get_mesh(processing_line[id], true);
 		HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 		himesh->advance_to(100);
-		voxels.push_back(himesh->generate_voxels(500));
+		voxels.push_back(himesh->generate_voxels_skeleton(500));
 		delete mesh;
 		mesh_buffer.push_back(himesh);
 		// if the buffer is full, write the compressed data into binary file

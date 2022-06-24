@@ -5,15 +5,13 @@
  *      Author: teng
  */
 
+#include <algorithm>
+#include <zlib.h>
 
-#include "../partition/partition.h"
-#include "../spatial/spatial.h"
 #include "../spatial/himesh.h"
 #include "../storage/tile.h"
 #include "../PPMC/ppmc.h"
-#include "../include/util.h"
-#include <algorithm>
-#include "zlib.h"
+#include "util.h"
 
 using namespace hispeed;
 
@@ -68,11 +66,40 @@ static void get_voxel_boxes(int argc, char **argv){
 	if(argc>=2){
 		voxel_num = atoi(argv[1]);
 	}
-	himesh->writeMeshOff("/gisdata/vessel.off");
+	vector<Voxel *> voxels = himesh->generate_voxels_skeleton(voxel_num);
 
-	vector<Voxel *> voxels = himesh->generate_voxels(voxel_num);
+	float vol = 0.0;
+	for(Voxel *v:voxels){
+		vol += v->volume();
+	}
+
+	log("%ld voxels are generated %f volumn", voxels.size(), vol);
 	write_voxels(voxels, "/gisdata/skeleton_voxels.off");
 	hispeed::write_box(himesh->get_box(), "/gisdata/aab.off");
+	delete himesh;
+}
+
+
+/*
+ * get the skeleton points
+ * */
+static void get_skeleton(int argc, char **argv){
+	struct timeval start = get_cur_time();
+	MyMesh *mesh = read_off(argv[1]);
+	mesh->completeOperation();
+	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	himesh->advance_to(100);
+
+	int voxel_num = 100;
+	if(argc>2){
+		voxel_num = atoi(argv[2]);
+	}
+	vector<Point> skeleton = himesh->get_skeleton_points(voxel_num);
+	hispeed::write_points(skeleton, "/gisdata/skeleton.off");
+
+	log("%ld points in the skeleton", skeleton.size());
+	skeleton.clear();
+	delete mesh;
 	delete himesh;
 }
 
@@ -81,16 +108,23 @@ static void get_voxel_boxes(int argc, char **argv){
  * */
 static void voxelize(int argc, char **argv){
 	struct timeval start = get_cur_time();
-	MyMesh *mesh = hispeed::read_mesh();
+	MyMesh *mesh = read_off(argv[1]);
+
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(100);
 	int voxel_num = 100;
-	if(argc>=2){
-		voxel_num = atoi(argv[1]);
+	if(argc>2){
+		voxel_num = atoi(argv[2]);
 	}
-	himesh->writeMeshOff("/gisdata/vessel.off");
 	vector<Voxel *> voxels = himesh->voxelization(voxel_num);
+	float vol = 0.0;
+	for(Voxel *v:voxels){
+		vol += v->volume();
+	}
+
+	log("%ld voxels are generated %f volumn", voxels.size(), vol);
+
 	write_voxels(voxels, "/gisdata/voxels.off");
 	delete himesh;
 }
@@ -134,30 +168,31 @@ void profile_decoding(int argc, char **argv){
 
 	int start_lod = 0;
 	int end_lod = 10;
-	if(argc>1){
-		start_lod = atoi(argv[1]);
+	if(argc>2){
+		start_lod = atoi(argv[2]);
 		end_lod = start_lod;
 	}
 	assert(start_lod>=0&&start_lod<=10);
 	// Init the random number generator.
 	log("start compressing");
-	string mesh_str = read_off_stdin();
-	MyMesh *compressed = get_mesh(mesh_str);
+	MyMesh *compressed = read_off(argv[1]);
 
 	struct timeval starttime = get_cur_time();
 	//assert(compressed->size_of_border_edges()&&"must be manifold");
 	compressed->completeOperation();
 	logt("compress", starttime);
 
-	MyMesh *testc[100];
-	for(int i=0;i<100;i++){
-		testc[i] = get_mesh(mesh_str);
+	const int itertime = 10;
+
+	MyMesh *testc[itertime];
+	for(int i=0;i<itertime;i++){
+		testc[i] = read_off(argv[1]);
 	}
 	struct timeval sst = get_cur_time();
-	for(int i=0;i<100;i++){
+	for(int i=0;i<itertime;i++){
 		testc[i]->completeOperation();
 	}
-	log("compress %.4f",get_time_elapsed(sst)/100);
+	log("compress %.4f",get_time_elapsed(sst)/itertime);
 
 	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->true_triangle_size());
 
@@ -165,7 +200,6 @@ void profile_decoding(int argc, char **argv){
 
 	HiMesh *himesh;
 	char path[256];
-	int itertime = 100;
 	for(int i=start_lod;i<=end_lod;i++){
 		int lod = 10*i;
 		MyMesh *tested[itertime];
@@ -206,6 +240,10 @@ void profile_decoding(int argc, char **argv){
 		logt("compress %d level %ld bytes",starttime,i,compressedsize);
 	}
 
+	aab box = himesh->get_box();
+	hispeed::write_box(box, "/gisdata/box.off");
+
+	delete himesh;
 	delete []vertices;
 
 }
@@ -227,6 +265,53 @@ static void adjust_polyhedron(int argc, char **argv){
 	delete poly;
 }
 
+static void triangulate(int argc, char **argv){
+	MyMesh *mesh = read_off(argv[1]);
+	mesh->completeOperation();
+	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	himesh->advance_to(100);
+
+	Polyhedron *poly = himesh->to_triangulated_polyhedron();
+	hispeed::write_polyhedron(poly, argv[2]);
+
+	delete poly;
+	delete mesh;
+	delete himesh;
+}
+
+static void test(int argc, char **argv){
+	Polyhedron *poly = read_off_polyhedron(argv[1]);
+	cout<<*poly;
+
+
+	MyMesh *mesh = read_off(argv[1]);
+	mesh->completeOperation();
+	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+
+	himesh->advance_to(100);
+
+	Skeleton *skeleton  = new Skeleton();
+	Triangle_mesh tmesh;
+	std::stringstream os;
+
+	if (!CGAL::is_triangle_mesh(tmesh)){
+		os << *himesh;
+	}else{
+		Polyhedron *poly = himesh->to_triangulated_polyhedron();
+		os << *poly;
+		delete poly;
+	}
+	Polyhedron p;
+	os >> p;
+
+	cout<<p;
+
+	assert(CGAL::is_triangle_mesh(tmesh));
+
+	delete mesh;
+	delete himesh;
+}
+
 int main(int argc, char **argv){
 	if(argc==1){
 		cout<<"usage: 3dpro function [args]"<<endl;
@@ -240,16 +325,20 @@ int main(int argc, char **argv){
 		get_voxel_boxes(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_distance") == 0){
 		profile_distance(argc-1,argv+1);
-	}else if(strcmp(argv[1],"profile_protruding") == 0){
-		himesh_to_wkt(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_decoding") == 0){
 		profile_decoding(argc-1,argv+1);
 	}else if(strcmp(argv[1],"adjust_polyhedron") == 0){
 		adjust_polyhedron(argc-1,argv+1);
+	}else if(strcmp(argv[1],"skeleton") == 0){
+		get_skeleton(argc-1,argv+1);
 	}else if(strcmp(argv[1],"voxelize") == 0){
 		voxelize(argc-1,argv+1);
+	}else if(strcmp(argv[1],"test") == 0){
+		test(argc-1,argv+1);
+	}else if(strcmp(argv[1],"triangulate") == 0){
+		triangulate(argc-1,argv+1);
 	}else{
-		cout<<"usage: 3dpro function [args]"<<endl;
+		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);
 	}
 	return 0;
