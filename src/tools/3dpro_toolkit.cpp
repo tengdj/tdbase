@@ -84,6 +84,7 @@ static void get_voxel_boxes(int argc, char **argv){
  * get the skeleton points
  * */
 static void get_skeleton(int argc, char **argv){
+	assert(argc>2);
 	struct timeval start = get_cur_time();
 	MyMesh *mesh = read_off(argv[1]);
 	mesh->completeOperation();
@@ -91,11 +92,11 @@ static void get_skeleton(int argc, char **argv){
 	himesh->advance_to(100);
 
 	int voxel_num = 100;
-	if(argc>2){
-		voxel_num = atoi(argv[2]);
+	if(argc>3){
+		voxel_num = atoi(argv[3]);
 	}
 	vector<Point> skeleton = himesh->get_skeleton_points(voxel_num);
-	hispeed::write_points(skeleton, "/gisdata/skeleton.off");
+	hispeed::write_points(skeleton, argv[2]);
 
 	log("%ld points in the skeleton", skeleton.size());
 	skeleton.clear();
@@ -107,6 +108,7 @@ static void get_skeleton(int argc, char **argv){
  * get the voxel boxes
  * */
 static void voxelize(int argc, char **argv){
+	assert(argv>2);
 	struct timeval start = get_cur_time();
 	MyMesh *mesh = read_off(argv[1]);
 
@@ -114,8 +116,8 @@ static void voxelize(int argc, char **argv){
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(100);
 	int voxel_num = 100;
-	if(argc>2){
-		voxel_num = atoi(argv[2]);
+	if(argc>3){
+		voxel_num = atoi(argv[3]);
 	}
 	vector<Voxel *> voxels = himesh->voxelization(voxel_num);
 	float vol = 0.0;
@@ -125,7 +127,7 @@ static void voxelize(int argc, char **argv){
 
 	log("%ld voxels are generated %f volumn", voxels.size(), vol);
 
-	write_voxels(voxels, "/gisdata/voxels.off");
+	write_voxels(voxels, argv[2]);
 	delete himesh;
 }
 
