@@ -29,6 +29,7 @@
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_segment_primitive.h>
+#include <CGAL/AABB_triangle_primitive.h>
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 
 #include <CGAL/Surface_mesh.h>
@@ -50,17 +51,22 @@
 #include "../PPMC/mymesh.h"
 #include "../PPMC/configuration.h"
 
-//CGAL::Polyhedron_3< MyKernel, MyItems > Polyhedron;
-
+// templates for AABB tree
 typedef MyKernel::FT FT;
 typedef MyKernel::Segment_3 Segment;
-
+typedef MyKernel::Triangle_3 Triangle;
 typedef std::list<Segment>::iterator SegIterator;
 typedef CGAL::AABB_segment_primitive<MyKernel, SegIterator> SegPrimitive;
 typedef CGAL::AABB_traits<MyKernel, SegPrimitive> SegTraits;
 typedef CGAL::AABB_tree<SegTraits> SegTree;
 
-typedef CGAL::Polyhedron_3<MyKernel,CGAL::Polyhedron_items_with_id_3>	Polyhedron;
+typedef std::list<Triangle>::iterator Iterator;
+typedef CGAL::AABB_triangle_primitive<MyKernel, Iterator> TrianglePrimitive;
+typedef CGAL::AABB_traits<MyKernel, TrianglePrimitive> TriangleTraits;
+typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
+
+//
+typedef CGAL::Polyhedron_3<MyKernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
 
 typedef CGAL::Surface_mesh<Point>                             Triangle_mesh;
@@ -70,10 +76,6 @@ typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
 typedef Skeleton::edge_descriptor                             Skeleton_edge;
 
 typedef CGAL::Delaunay_triangulation_3<MyKernel, CGAL::Fast_location> Delaunay;
-
-typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> TrianglePrimitive;
-typedef CGAL::AABB_traits<MyKernel, TrianglePrimitive> TriangleTraits;
-typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 
 typedef CGAL::Triangulation_3<MyKernel> Triangulation;
 typedef Triangulation::Tetrahedron 	Tetrahedron;
@@ -103,8 +105,12 @@ enum data_type{
  * */
 class HiMesh:public MyMesh{
 	size_t true_triangle_size();
-	SegTree *aabb_tree = NULL;
+	SegTree *segment_tree = NULL;
+	TriangleTree *triangle_tree = NULL;
 	list<Segment> segments;
+	list<Triangle> triangles;
+	void get_segments();
+	void get_triangles();
 public:
 	HiMesh(char *data, long length, bool own_data);
 	HiMesh(char *data, long length);
@@ -126,8 +132,7 @@ public:
 	size_t fill_voxels(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
 	size_t fill_vertices(float *&vertices);
 	size_t fill_topology(unsigned short *&topology);
-	void get_segments();
-	SegTree *get_aabb_tree();
+	SegTree *get_aabb_tree_segment();
 	TriangleTree *get_aabb_tree_triangle();
 
 	void clear_aabb_tree();

@@ -21,28 +21,49 @@ void HiMesh::get_segments(){
 }
 
 
-void HiMesh::clear_aabb_tree(){
-	if(aabb_tree){
-		delete aabb_tree;
-		aabb_tree = NULL;
+void HiMesh::get_triangles(){
+	triangles.clear();
+	size_t size = size_of_facets();
+	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		Point p1 = f->halfedge()->vertex()->point();
+		Point p2 = f->halfedge()->next()->vertex()->point();
+		Point p3 = f->halfedge()->next()->next()->vertex()->point();
+		triangles.push_back(Triangle(p1, p2, p3));
 	}
-	segments.clear();
 }
 
-SegTree *HiMesh::get_aabb_tree(){
-
-	if(aabb_tree == NULL){
-		get_segments();
-		aabb_tree = new SegTree(segments.begin(), segments.end());
-		aabb_tree->accelerate_distance_queries();
+void HiMesh::clear_aabb_tree(){
+	if(segment_tree){
+		delete segment_tree;
+		segment_tree = NULL;
 	}
-	return aabb_tree;
+	segments.clear();
+	if(triangle_tree){
+		delete triangle_tree;
+		triangle_tree = NULL;
+	}
+	triangles.clear();
+}
+
+SegTree *HiMesh::get_aabb_tree_segment(){
+	if(segment_tree == NULL){
+		get_segments();
+		segment_tree = new SegTree(segments.begin(), segments.end());
+		segment_tree->build();
+		segment_tree->accelerate_distance_queries();
+	}
+	return segment_tree;
 }
 
 TriangleTree *HiMesh::get_aabb_tree_triangle(){
-	//TriangleTree *tree = new TriangleTree(faces(*this).first, faces(*this).second, *this);
-	//tree->accelerate_distance_queries();
-	//return tree;
-	return NULL;
+	if(triangle_tree == NULL){
+		get_triangles();
+		triangle_tree = new TriangleTree(triangles.begin(), triangles.end());
+		triangle_tree->build();
+		triangle_tree->accelerate_distance_queries();
+	}
+	return triangle_tree;
 }
+
+
 }

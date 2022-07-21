@@ -314,7 +314,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 				continue;
 			}
 			for(candidate_info &info:c.second){
-				info.mesh_wrapper->mesh->get_aabb_tree();
+				info.mesh_wrapper->mesh->get_aabb_tree_segment();
 			}
 		}
 		ctx.packing_time += hispeed::get_time_elapsed(start, false);
@@ -332,7 +332,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 				double min_dist = DBL_MAX;
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(Point &p:vertices){
-					FT sqd = wrapper2->mesh->get_aabb_tree()->squared_distance(p);
+					FT sqd = wrapper2->mesh->get_aabb_tree_segment()->squared_distance(p);
 					double dist = (double)CGAL::to_double(sqd);
 //					Point tp = wrapper2->mesh->get_aabb_tree()->closest_point(p);
 //					double  dist = distance(p,tp);
@@ -763,8 +763,7 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d",
 				start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
 
-		log("%d,%d,%d,%d,%d",lod,o1_counter,o1_counter_nocache,o2_counter,o2_counter_nocache);
-
+		//log("%d,%d,%d,%d,%d",lod,o1_counter,o1_counter_nocache,o2_counter,o2_counter_nocache);
 
 		tile1->reset_time();
 		tile2->reset_time();
@@ -849,8 +848,6 @@ public:
 		joiner = NULL;
 	}
 };
-
-
 
 void *join_unit(void *param){
 	struct nn_param *nnparam = (struct nn_param *)param;
