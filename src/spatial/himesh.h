@@ -8,6 +8,8 @@
 #ifndef HIMESH_H_
 #define HIMESH_H_
 
+#define CGAL_EIGEN3_ENABLED
+
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -214,7 +216,7 @@ inline float distance(Point p1, Point p2){
 inline float mdistance(Point p1, Point p2){
 	float dist = 0;
 	for(int i=0;i<3;i++){
-		dist += abs(p2[i]-p1[i]);
+		dist += abs((float)(p2[i]-p1[i]));
 	}
 	return dist;
 }

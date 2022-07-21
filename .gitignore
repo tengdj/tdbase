@@ -11,3 +11,4 @@ build/
 /Default/
 *.OFF
 *.x
+*.autotools

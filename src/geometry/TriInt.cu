@@ -36,7 +36,7 @@
  *
  */
 
-#include "../util/util.h"
+#include "util.h"
 #include "./geometry.h"
 #include "cuda_util.h"
 
