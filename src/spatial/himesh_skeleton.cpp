@@ -28,7 +28,6 @@ Skeleton *HiMesh::extract_skeleton(){
 	}else{
 		Polyhedron *poly = to_triangulated_polyhedron();
 		os << *poly;
-		cout<<os.str()<<endl;
 		delete poly;
 	}
 	os >> tmesh;

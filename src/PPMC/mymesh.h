@@ -24,8 +24,6 @@
 #define CGAL_EIGEN3_ENABLED
 #endif
 
-#define CGAL_EIGEN3_ENABLED
-
 #include <iostream>
 #include <fstream>
 #include <stdint.h>

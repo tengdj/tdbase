@@ -95,6 +95,7 @@ static void get_skeleton(int argc, char **argv){
 	if(argc>3){
 		voxel_num = atoi(argv[3]);
 	}
+
 	vector<Point> skeleton = himesh->get_skeleton_points(voxel_num);
 	hispeed::write_points(skeleton, argv[2]);
 

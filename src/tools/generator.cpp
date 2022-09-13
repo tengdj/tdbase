@@ -255,14 +255,20 @@ long global_generated = 0;
 void *generate_unit(void *arg){
 	char *data = new char[buffer_size];
 	char *data2 = new char[buffer_size];
-	while(!jobs.empty()){
+	bool complete = false;
+	while(true){
+		tuple<float, float, float> job;
 		pthread_mutex_lock(&mylock);
-
-		tuple<float, float, float> job = jobs.front();
-		jobs.pop();
-		log("%ld jobs left", jobs.size());
-
+		complete = jobs.empty();
+		if(!complete){
+			job = jobs.front();
+			jobs.pop();
+			//log("%ld jobs left", jobs.size());
+		}
 		pthread_mutex_unlock(&mylock);
+		if(complete){
+			break;
+		}
 		size_t offset = 0;
 		size_t offset2 = 0;
 		float base[3] = {get<0>(job),get<1>(job),get<2>(job)};
@@ -280,14 +286,17 @@ void *generate_unit(void *arg){
 }
 
 void generate_vessel(const char *path, vector<tuple<float, float, float>> &vessel_shifts){
+	struct timeval start = get_cur_time();
 	char *data = new char[vessel_shifts.size()*100000*2];
 	size_t offset = 0;
 	HiMesh *himesh = poly_to_himesh(vessel);
 	vector<Voxel *> voxels = himesh->generate_voxels_skeleton(voxel_size);
+	logt("%ld voxels are extracted",start, voxels.size());
 	for(tuple<float, float, float> tp:vessel_shifts){
 		float shift[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
 		organize_data(vessel, voxels, shift, data, offset);
 	}
+	logt("%ld vessels are generated",start,vessel_shifts.size());
 	ofstream *v_os = new std::ofstream(path, std::ios::out | std::ios::binary);
 	v_os->write(data, offset);
 	v_os->close();
@@ -297,6 +306,8 @@ void generate_vessel(const char *path, vector<tuple<float, float, float>> &vesse
 		delete v;
 	}
 	voxels.clear();
+	logt("clear the job",start);
+
 	delete himesh;
 }
 
@@ -358,9 +369,6 @@ int main(int argc, char **argv){
 				vessel_shifts.push_back(std::make_tuple(i*vessel_box.max[0], j*vessel_box.max[1], k*vessel_box.max[2]));
 			}
 		}
-	}
-	if(num_threads>jobs.size()){
-		num_threads = jobs.size();
 	}
 
 	pthread_t threads[num_threads];
