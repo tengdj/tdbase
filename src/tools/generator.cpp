@@ -66,14 +66,14 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		}
 		for(Polyhedron::Vertex_iterator vi=vessel.vertices_begin();vi!=vessel.vertices_end();vi++){
 			Point p = vi->point();
-			vi->point() = Point(p[0]-tmpb.min[0], p[1]-tmpb.min[1], p[2]-tmpb.min[2]);
+			vi->point() = Point(p[0]-tmpb.low[0], p[1]-tmpb.low[1], p[2]-tmpb.low[2]);
 		}
-		tmpb.max[0] -= tmpb.min[0];
-		tmpb.max[1] -= tmpb.min[1];
-		tmpb.max[2] -= tmpb.min[2];
-		tmpb.min[0] = 0;
-		tmpb.min[1] = 0;
-		tmpb.min[2] = 0;
+		tmpb.high[0] -= tmpb.low[0];
+		tmpb.high[1] -= tmpb.low[1];
+		tmpb.high[2] -= tmpb.low[2];
+		tmpb.low[0] = 0;
+		tmpb.low[1] = 0;
+		tmpb.low[2] = 0;
 		vessel_box.update(tmpb);
 		HiMesh *himesh = poly_to_himesh(vessel);
 		// just for assign nuclei in the sub space around the vessel
@@ -99,14 +99,14 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		}
 		for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
 			Point p = vi->point();
-			vi->point() = Point((p[0]-tmpb.min[0]), (p[1]-tmpb.min[1]), p[2]-tmpb.min[2]);
+			vi->point() = Point((p[0]-tmpb.low[0]), (p[1]-tmpb.low[1]), p[2]-tmpb.low[2]);
 		}
-		tmpb.max[0] -= tmpb.min[0];
-		tmpb.max[1] -= tmpb.min[1];
-		tmpb.max[2] -= tmpb.min[2];
-		tmpb.min[2] = 0;
-		tmpb.min[1] = 0;
-		tmpb.min[2] = 0;
+		tmpb.high[0] -= tmpb.low[0];
+		tmpb.high[1] -= tmpb.low[1];
+		tmpb.high[2] -= tmpb.low[2];
+		tmpb.low[2] = 0;
+		tmpb.low[1] = 0;
+		tmpb.low[2] = 0;
 		nuclei_box.update(tmpb);
 		nucleis.push_back(poly);
 		HiMesh *himesh = poly_to_himesh(poly);
@@ -118,18 +118,18 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 
 	int nuclei_num[3];
 	for(int i=0;i<3;i++){
-		nuclei_num[i] = (int)(vessel_box.max[i]/nuclei_box.max[i]);
+		nuclei_num[i] = (int)(vessel_box.high[i]/nuclei_box.high[i]);
 	}
 
 	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	vessel_taken = new bool[total_slots];
 	for(Voxel *v:vessel_voxels){
-		int xstart = v->min[0]/nuclei_num[0];
-		int xend = v->max[0]/nuclei_num[0];
-		int ystart = v->min[1]/nuclei_num[1];
-		int yend = v->max[1]/nuclei_num[1];
-		int zstart = v->min[2]/nuclei_num[2];
-		int zend = v->max[2]/nuclei_num[2];
+		int xstart = v->low[0]/nuclei_num[0];
+		int xend = v->high[0]/nuclei_num[0];
+		int ystart = v->low[1]/nuclei_num[1];
+		int yend = v->high[1]/nuclei_num[1];
+		int zstart = v->low[2]/nuclei_num[2];
+		int zend = v->high[2]/nuclei_num[2];
 		for(int z=zstart;z<=zend;z++){
 			for(int y=ystart;y<=yend;y++){
 				for(int x=xstart;x<=xend;x++){
@@ -177,13 +177,13 @@ inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
 	float box_tmp[3];
 	for(Voxel *v:voxels){
 		for(int i=0;i<3;i++){
-			box_tmp[i] = v->min[i]+shift[i];
+			box_tmp[i] = v->low[i]+shift[i];
 		}
 		memcpy(data+offset, (char *)box_tmp, 3*sizeof(float));
 		offset += 3*sizeof(float);
 
 		for(int i=0;i<3;i++){
-			box_tmp[i] = v->max[i]+shift[i];
+			box_tmp[i] = v->high[i]+shift[i];
 		}
 		memcpy(data+offset, (char *)box_tmp, 3*sizeof(float));
 		offset += 3*sizeof(float);
@@ -206,7 +206,7 @@ inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
 inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data2, size_t &offset2){
 	int nuclei_num[3];
 	for(int i=0;i<3;i++){
-		nuclei_num[i] = (int)(vessel_box.max[i]/nuclei_box.max[i]);
+		nuclei_num[i] = (int)(vessel_box.high[i]/nuclei_box.high[i]);
 	}
 	float shift[3];
 	int generated = 0;
@@ -226,17 +226,17 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 		int y = (idx%(nuclei_num[0]*nuclei_num[1]))/nuclei_num[0];
 		int x = (idx%(nuclei_num[0]*nuclei_num[1]))%nuclei_num[0];
 
-		shift[0] = x*nuclei_box.max[0]+base[0];
-		shift[1] = y*nuclei_box.max[1]+base[1];
-		shift[2] = z*nuclei_box.max[2]+base[2];
+		shift[0] = x*nuclei_box.high[0]+base[0];
+		shift[1] = y*nuclei_box.high[1]+base[1];
+		shift[2] = z*nuclei_box.high[2]+base[2];
 
 		int polyid = hispeed::get_rand_number(nucleis.size()-1);
 		organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
 		{
 			float shift2[3];
-			shift2[0] = shift[0]+nuclei_box.max[0]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
-			shift2[1] = shift[1]+nuclei_box.max[1]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
-			shift2[2] = shift[2]+nuclei_box.max[2]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[0] = shift[0]+nuclei_box.high[0]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[1] = shift[1]+nuclei_box.high[1]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
+			shift2[2] = shift[2]+nuclei_box.high[2]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
 
 			int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
 			organize_data(nucleis[polyid2], nucleis_voxels[polyid2], shift2, data2, offset2);
@@ -365,8 +365,8 @@ int main(int argc, char **argv){
 	for(int i=0;i<x_dim;i++){
 		for(int j=0;j<y_dim;j++){
 			for(int k=0;k<z_dim;k++){
-				jobs.push(std::make_tuple(i*vessel_box.max[0], j*vessel_box.max[1], k*vessel_box.max[2]));
-				vessel_shifts.push_back(std::make_tuple(i*vessel_box.max[0], j*vessel_box.max[1], k*vessel_box.max[2]));
+				jobs.push(std::make_tuple(i*vessel_box.high[0], j*vessel_box.high[1], k*vessel_box.high[2]));
+				vessel_shifts.push_back(std::make_tuple(i*vessel_box.high[0], j*vessel_box.high[1], k*vessel_box.high[2]));
 			}
 		}
 	}

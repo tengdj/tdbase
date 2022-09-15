@@ -29,8 +29,14 @@ public:
 	bool operator>(range &d){
 		return mindist>d.maxdist;
 	}
+	bool operator>=(range &d){
+		return mindist>=d.maxdist;
+	}
 	bool operator<(range &d){
 		return maxdist<d.mindist;
+	}
+	bool operator<=(range &d){
+		return maxdist<=d.mindist;
 	}
 	bool operator==(range &d){
 		return !(mindist>d.maxdist||maxdist<d.mindist);
@@ -51,91 +57,90 @@ public:
 
 class aab{
 public:
-	float min[3];
-	float max[3];
-
+	float low[3];
+	float high[3];
 public:
 	aab(){
 		for(int i=0;i<3;i++){
-			min[i] = DBL_MAX;
-			max[i] = -DBL_MAX;
+			low[i] = DBL_MAX;
+			high[i] = -DBL_MAX;
 		}
 	}
 
 	aab(const aab &b){
 		for(int i=0;i<3;i++){
-			min[i] = b.min[i];
-			max[i] = b.max[i];
+			low[i] = b.low[i];
+			high[i] = b.high[i];
 		}
 	}
 	aab(float min_x, float min_y, float min_z,
 			float max_x, float max_y, float max_z){
-		min[0] = min_x;
-		min[1] = min_y;
-		min[2] = min_z;
-		max[0] = max_x;
-		max[1] = max_y;
-		max[2] = max_z;
+		low[0] = min_x;
+		low[1] = min_y;
+		low[2] = min_z;
+		high[0] = max_x;
+		high[1] = max_y;
+		high[2] = max_z;
 	}
 	void set_box(float l0, float l1, float l2, float h0, float h1, float h2){
-		min[0] = l0;
-		min[1] = l1;
-		min[2] = l2;
-		max[0] = h0;
-		max[1] = h1;
-		max[2] = h2;
+		low[0] = l0;
+		low[1] = l1;
+		low[2] = l2;
+		high[0] = h0;
+		high[1] = h1;
+		high[2] = h2;
 	}
 
 	void update(float x, float y, float z){
-		if(min[0]>x){
-			min[0] = x;
+		if(low[0]>x){
+			low[0] = x;
 		}
-		if(max[0]<x){
-			max[0] = x;
+		if(high[0]<x){
+			high[0] = x;
 		}
-		if(min[1]>y){
-			min[1] = y;
+		if(low[1]>y){
+			low[1] = y;
 		}
-		if(max[1]<y){
-			max[1] = y;
+		if(high[1]<y){
+			high[1] = y;
 		}
-		if(min[2]>z){
-			min[2] = z;
+		if(low[2]>z){
+			low[2] = z;
 		}
-		if(max[2]<z){
-			max[2] = z;
+		if(high[2]<z){
+			high[2] = z;
 		}
 	}
 
 	void update(const aab &p){
 		for(int i=0;i<3;i++){
-			if(min[i]>p.min[i]){
-				min[i] = p.min[i];
+			if(low[i]>p.low[i]){
+				low[i] = p.low[i];
 			}
-			if(max[i]<p.max[i]){
-				max[i] = p.max[i];
+			if(high[i]<p.high[i]){
+				high[i] = p.high[i];
 			}
 		}
 	}
 	void set_box(const aab &b){
 		for(int i=0;i<3;i++){
-			min[i] = b.min[i];
-			max[i] = b.max[i];
+			low[i] = b.low[i];
+			high[i] = b.high[i];
 		}
 	}
 
 
 	bool intersect(aab &object){
-		return !(object.min[0] >= max[0] || object.max[0] <= min[0] ||
-				 object.min[1] >= max[1] || object.max[1] <= min[1] ||
-				 object.min[2] >= max[2] || object.max[2] <= min[2]);
+		return !(object.low[0] >= high[0] || object.high[0] <= low[0] ||
+				 object.low[1] >= high[1] || object.high[1] <= low[1] ||
+				 object.low[2] >= high[2] || object.high[2] <= low[2]);
 	}
 	bool contains(aab *object){
 		for(int i=0;i<3;i++){
-			if(object->min[i]<min[i]){
+			if(object->low[i]<low[i]){
 				return false;
 			}
-			if(object->max[i]>max[i]){
+			if(object->high[i]>high[i]){
 				return false;
 			}
 		}
@@ -144,10 +149,10 @@ public:
 
 	bool contains(float *point){
 		for(int i=0;i<3;i++){
-			if(point[i]<min[i]){
+			if(point[i]<low[i]){
 				return false;
 			}
-			if(point[i]>max[i]){
+			if(point[i]>high[i]){
 				return false;
 			}
 		}
@@ -159,24 +164,24 @@ public:
 		for(int i=0;i<3;i++){
 		}
 		os<<"(";
-		os<<p.min[0]<<",";
-		os<<p.min[1]<<",";
-		os<<p.min[2]<<")";
+		os<<p.low[0]<<",";
+		os<<p.low[1]<<",";
+		os<<p.low[2]<<")";
 		os<<" -> (";
-		os<<p.max[0]<<",";
-		os<<p.max[1]<<",";
-		os<<p.max[2]<<")";
+		os<<p.high[0]<<",";
+		os<<p.high[1]<<",";
+		os<<p.high[2]<<")";
 		return os;
 	}
 	float diagonal_length(){
 		float dl = 0;
 		for(int i=0;i<3;i++){
-			dl += (max[i]-min[i])*(max[i]-min[i]);
+			dl += (high[i]-low[i])*(high[i]-low[i]);
 		}
 		return dl;
 	}
 	float volume(){
-		return (max[0]-min[0])*(max[1]-min[1])*(max[2]-min[2]);
+		return (high[0]-low[0])*(high[1]-low[1])*(high[2]-low[2]);
 	}
 
 	// get the possible minimum and maximum distance of
@@ -188,8 +193,8 @@ public:
 		float tmp1 = 0;
 		float tmp2 = 0;
 		for(int i=0;i<3;i++){
-			tmp1 = min[i]-b.max[i];
-			tmp2 = max[i]-b.min[i];
+			tmp1 = low[i]-b.high[i];
+			tmp2 = high[i]-b.low[i];
 			ret.maxdist += (tmp1+tmp2)*(tmp1+tmp2)/4;
 			if(tmp2<0){
 				ret.mindist += tmp2*tmp2;

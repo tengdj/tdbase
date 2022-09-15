@@ -48,7 +48,7 @@ public:
 	bool addObject(weighted_aab *object);
 
 	bool intersects(weighted_aab *object);
-	void query_nn(weighted_aab *box, vector<pair<int, range>> &results, float &min_farthest);
+	void query_knn(weighted_aab *box, vector<pair<int, range>> &results, float &min_farthest, const int k=1);
 	void query_within(weighted_aab *box, vector<pair<int, range>> &results, const float min_farthest);
 	void query_intersect(weighted_aab *box, vector<int> &results);
 

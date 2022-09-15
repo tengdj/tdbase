@@ -65,7 +65,7 @@ void Tile::disable_innerpart(){
 			Voxel *v = new Voxel();
 			v->set_box(w->box);
 			for(int i=0;i<3;i++){
-				v->core[i] = (v->max[i]-v->min[i])/2+v->min[i];
+				v->core[i] = (v->high[i]-v->low[i])/2+v->low[i];
 			}
 			w->voxels.push_back(v);
 		}
@@ -83,8 +83,8 @@ bool Tile::persist(string path){
 		size_t dsize = w->voxels.size();
 		fwrite((void *)&dsize, sizeof(size_t), 1, mt_fs);
 		for(Voxel *v:w->voxels){
-			fwrite((void *)v->min, sizeof(float), 3, mt_fs);
-			fwrite((void *)v->max, sizeof(float), 3, mt_fs);
+			fwrite((void *)v->low, sizeof(float), 3, mt_fs);
+			fwrite((void *)v->high, sizeof(float), 3, mt_fs);
 			fwrite((void *)v->core, sizeof(float), 3, mt_fs);
 		}
 	}
@@ -114,8 +114,8 @@ bool Tile::load(string path, int capacity){
 		fread((void *)&dsize, sizeof(size_t), 1, mt_fs);
 		for(int i=0;i<dsize;i++){
 			Voxel *v = new Voxel();
-			fread((void *)v->min, sizeof(float), 3, mt_fs);
-			fread((void *)v->max, sizeof(float), 3, mt_fs);
+			fread((void *)v->low, sizeof(float), 3, mt_fs);
+			fread((void *)v->high, sizeof(float), 3, mt_fs);
 			fread((void *)v->core, sizeof(float), 3, mt_fs);
 			w->voxels.push_back(v);
 			w->box.update(*v);
@@ -146,8 +146,8 @@ bool Tile::parse_raw(){
 		fread((void *)&dsize, sizeof(size_t), 1, dt_fs);
 		for(int i=0;i<dsize;i++){
 			Voxel *v = new Voxel();
-			fread((void *)v->min, sizeof(float), 3, dt_fs);
-			fread((void *)v->max, sizeof(float), 3, dt_fs);
+			fread((void *)v->low, sizeof(float), 3, dt_fs);
+			fread((void *)v->high, sizeof(float), 3, dt_fs);
 			fread((void *)v->core, sizeof(float), 3, dt_fs);
 			w->voxels.push_back(v);
 			w->box.update(*v);
@@ -211,9 +211,9 @@ void Tile::add_raw(char *data){
 	HiMesh_Wrapper *hw = new HiMesh_Wrapper();
 	for(size_t i=0;i<size_tmp;i++){
 		Voxel *v = new Voxel();
-		memcpy((char *)v->min, data+offset, 3*sizeof(float));
+		memcpy((char *)v->low, data+offset, 3*sizeof(float));
 		offset += 3*sizeof(float);
-		memcpy((char *)v->max, data+offset, 3*sizeof(float));
+		memcpy((char *)v->high, data+offset, 3*sizeof(float));
 		offset += 3*sizeof(float);
 		memcpy((char *)v->core, data+offset, 3*sizeof(float));
 		offset += 3*sizeof(float);

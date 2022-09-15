@@ -24,8 +24,6 @@ int main(int argc, char **argv){
 
 	query_context ctx;
 	ctx.max_dist = 1000;
-	size_t max_objects1 = LONG_MAX;
-	size_t max_objects2 = LONG_MAX;
 	int base_lod = 0;
 	int lod_gap = 50;
 	int top_lod = 100;
@@ -35,13 +33,14 @@ int main(int argc, char **argv){
 	desc.add_options()
 		("help,h", "produce help message")
 		("query,q", po::value<string>(&ctx.query_type),"query type can be intersect|nn|within")
+		("knn", po::value<int>(&ctx.knn), "the K value for NN query")
 		("tile1", po::value<string>(&tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&tile2_path), "path to tile 2")
 		("cn", po::value<int>(&ctx.num_compute_thread), "number of threads for geometric computation for each tile")
 		("threads,n", po::value<int>(&ctx.num_thread), "number of threads for processing tiles")
 		("repeat,r", po::value<int>(&ctx.repeated_times), "repeat tiles")
-		("max_objects1", po::value<size_t>(&max_objects1), "max number of objects in tile 1")
-		("max_objects2", po::value<size_t>(&max_objects2), "max number of objects in tile 2")
+		("max_objects1", po::value<size_t>(&ctx.max_num_objects1), "max number of objects in tile 1")
+		("max_objects2", po::value<size_t>(&ctx.max_num_objects2), "max number of objects in tile 2")
 		("base_lod", po::value<int>(&base_lod), "the base lod for progressive decoding polyhedral")
 		("top_lod", po::value<int>(&top_lod), "the top lod for progressive decoding polyhedral")
 		("lod_gap", po::value<int>(&lod_gap), "the lod gap for progressive decoding polyhedral")
@@ -96,14 +95,19 @@ int main(int argc, char **argv){
 		}
 	}
 
-
 	vector<pair<Tile *, Tile *>> tile_pairs;
 	for(int i=0;i<ctx.repeated_times;i++){
-		Tile *tile1 = new Tile(tile1_path.c_str(), max_objects1);
-		Tile *tile2 = tile1;
+
+		Tile *tile1, *tile2;
+
 		if(vm.count("tile2")){
-			tile2 = new Tile(tile2_path.c_str(), max_objects2);
+			tile1 = new Tile(tile1_path.c_str(), ctx.max_num_objects1);
+			tile2 = new Tile(tile2_path.c_str(), ctx.max_num_objects2);
+		}else{
+			tile1 = new Tile(tile1_path.c_str(), LONG_MAX);
+			tile2 = tile1;
 		}
+
 		assert(tile1&&tile2);
 		if(!ctx.use_multimbb){
 			tile1->disable_innerpart();

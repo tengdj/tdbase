@@ -43,8 +43,6 @@ bool OctreeNode::addObject(weighted_aab *object) {
 		if (size > tile_size && canBeSplit) {
 			/* Update the center */
 			float mid[3];
-			float *low = min;
-			float *high = max;
 			for (int i = 0; i < 3; i++) {
 				mid[i] = (low[i] + high[i]) / 2;
 			}
@@ -101,23 +99,64 @@ bool OctreeNode::addObject(weighted_aab *object) {
 	return true;
 }
 
-inline bool update_distance_list(range &d, vector<pair<int, range>> &results){
-	bool keep = true;
+inline float get_min_maxdist(vector<pair<int, range>> &results){
+	float minmaxdist = DBL_MAX;
+	for(int i=0;i<results.size();i++){
+		minmaxdist = min(minmaxdist, results[i].second.maxdist);
+	}
+	return minmaxdist;
+
+}
+
+inline bool update_distance_list(int id, range &d, vector<pair<int, range>> &results, int k){
+
+	int fartherthan = 0;
+	for(size_t i=0;i<results.size();i++){
+		// the object already in the candidate list
+		if(results[i].first==id){
+			return false;
+		}
+		// father than this candidate
+		if(results[i].second<=d){
+			fartherthan++;
+		}
+	}
+	// at least K candidates is closer than it.
+	if(fartherthan>=k){
+		return false;
+	}
+
+	// this should be a new candidate
+	results.push_back(pair<int, range>(id, d));
+
+	// check if some objects can be deleted
 	int list_size = results.size();
-	for(int i = 0;i<list_size;i++){
-		if(results[i].second<d){
-			keep = false;
-		}else if(results[i].second>d){
+	for(int i=0;i<list_size&&list_size>k;){
+		// already confirmed should be keep
+		if(results[i].first==id){
+			i++;
+			continue;
+		}
+		// check if this candidate still valid
+		fartherthan = 0;
+		for(int j=0;j<results.size();j++){
+			if(results[i].second>=results[j].second){
+				fartherthan++;
+			}
+		}
+		// not valid anymore, remove it from the candidate list
+		if(fartherthan>=k){
 			results.erase(results.begin()+i);
 			list_size--;
 			continue;
 		}
 		i++;
 	}
-	return keep;
+	return true;
+
 }
 
-void OctreeNode::query_nn(weighted_aab *box, vector<pair<int, range>> &candidates, float & min_maxdist){
+void OctreeNode::query_knn(weighted_aab *box, vector<pair<int, range>> &candidates, float &min_maxdist, const int k){
 	range dis = distance(*box);
 
 	//current node possibly covers nearest objects dis.mindist<=min_maxdist
@@ -129,22 +168,17 @@ void OctreeNode::query_nn(weighted_aab *box, vector<pair<int, range>> &candidate
 				}
 				range objdis = obj->distance(*box);
 				if(objdis.mindist<=min_maxdist){
-
 					// check each candidate in results list to see if this one
-					// can be kept, or some candidates need be removed from list
-					if(update_distance_list(objdis, candidates)){
-						candidates.push_back(pair<int, range>(obj->id, objdis));
+					// can be kept, or some candidates need be evicted from the list
+					if(update_distance_list(obj->id, objdis, candidates, k)&&candidates.size()>k){
 						// update MINMAXDIST if encountered
-						if(min_maxdist>objdis.maxdist){
-							min_maxdist=objdis.maxdist;
-						}
+						min_maxdist = min(min_maxdist, objdis.maxdist);
 					}
 				}
-
 			}
 		}else{
 			for(OctreeNode *c:this->children){
-				c->query_nn(box, candidates, min_maxdist);
+				c->query_knn(box, candidates, min_maxdist, k);
 			}
 		}
 	}

@@ -30,6 +30,7 @@ public:
 
 	//parameters
 	std::string query_type = "intersect";
+	int knn = 1;
 	double max_dist = 1000;
 	int num_thread = 0;
 	int num_compute_thread = 1;
@@ -37,10 +38,12 @@ public:
 	bool use_aabb = false;
 	bool use_gpu = false;
 	bool use_multimbb = false;
+	size_t max_num_objects1 = LONG_MAX;
+	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
 
 	//result
-	float max_nearest_distance = 0.0;
+	double max_nearest_distance = 0.0;
 
 	int highest_lod(){
 		if(lods.size()==0){
@@ -51,7 +54,7 @@ public:
 	}
 
 	query_context(){
-		num_compute_thread = 1;//hispeed::get_num_threads();
+		num_compute_thread = hispeed::get_num_threads();
 		num_thread = hispeed::get_num_threads();
 	}
 
@@ -175,7 +178,7 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
-	vector<candidate_entry> mbb_nn(Tile *tile1, Tile *tile2, query_context &ctx);
+	vector<candidate_entry> mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx);
 	vector<candidate_entry> mbb_within(Tile *tile1, Tile *tile2, query_context &ctx);
 	float *calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, const int lod);
 	void nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx);

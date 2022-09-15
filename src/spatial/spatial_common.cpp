@@ -21,21 +21,21 @@ Polyhedron *make_cube(aab box) {
 	Polyhedron *P = new Polyhedron();
 
 	Polyhedron::Halfedge_handle h =
-    		P->make_tetrahedron(Point(box.max[0], box.min[1], box.min[2]),
-								Point(box.min[0], box.min[1], box.max[2]),
-								Point(box.min[0], box.min[1], box.min[2]),
-								Point(box.min[0], box.max[1], box.min[2]));
+    		P->make_tetrahedron(Point(box.high[0], box.low[1], box.low[2]),
+								Point(box.low[0], box.low[1], box.high[2]),
+								Point(box.low[0], box.low[1], box.low[2]),
+								Point(box.low[0], box.high[1], box.low[2]));
 	Polyhedron::Halfedge_handle g = h->next()->opposite()->next();
     P->split_edge( h->next());
     P->split_edge( g->next());
     P->split_edge( g);
-    h->next()->vertex()->point()     = Point(box.max[0], box.min[1], box.max[2]);
-    g->next()->vertex()->point()     = Point(box.min[0], box.max[1], box.max[2]);
-    g->opposite()->vertex()->point() = Point(box.max[0], box.max[1], box.min[2]);
+    h->next()->vertex()->point()     = Point(box.high[0], box.low[1], box.high[2]);
+    g->next()->vertex()->point()     = Point(box.low[0], box.high[1], box.high[2]);
+    g->opposite()->vertex()->point() = Point(box.high[0], box.high[1], box.low[2]);
     Polyhedron::Halfedge_handle f = P->split_facet(g->next(),
                                       g->next()->next()->next());
     Polyhedron::Halfedge_handle e = P->split_edge(f);
-    e->vertex()->point() = Point(box.max[0], box.max[1], box.max[2]);
+    e->vertex()->point() = Point(box.high[0], box.high[1], box.high[2]);
     P->split_facet( e, f->next()->next());
     CGAL_postcondition( P->is_valid());
     return P;
@@ -49,21 +49,21 @@ Polyhedron *make_cubes(vector<aab *> &boxes) {
 	for(aab *b:boxes){
 		aab box = *b;
 		Polyhedron::Halfedge_handle h =
-	    		P->make_tetrahedron(Point(box.max[0], box.min[1], box.min[2]),
-									Point(box.min[0], box.min[1], box.max[2]),
-									Point(box.min[0], box.min[1], box.min[2]),
-									Point(box.min[0], box.max[1], box.min[2]));
+	    		P->make_tetrahedron(Point(box.high[0], box.low[1], box.low[2]),
+									Point(box.low[0], box.low[1], box.high[2]),
+									Point(box.low[0], box.low[1], box.low[2]),
+									Point(box.low[0], box.high[1], box.low[2]));
 		Polyhedron::Halfedge_handle g = h->next()->opposite()->next();
 	    P->split_edge( h->next());
 	    P->split_edge( g->next());
 	    P->split_edge( g);
-	    h->next()->vertex()->point()     = Point(box.max[0], box.min[1], box.max[2]);
-	    g->next()->vertex()->point()     = Point(box.min[0], box.max[1], box.max[2]);
-	    g->opposite()->vertex()->point() = Point(box.max[0], box.max[1], box.min[2]);
+	    h->next()->vertex()->point()     = Point(box.high[0], box.low[1], box.high[2]);
+	    g->next()->vertex()->point()     = Point(box.low[0], box.high[1], box.high[2]);
+	    g->opposite()->vertex()->point() = Point(box.high[0], box.high[1], box.low[2]);
 	    Polyhedron::Halfedge_handle f = P->split_facet(g->next(),
 	                                      g->next()->next()->next());
 	    Polyhedron::Halfedge_handle e = P->split_edge(f);
-	    e->vertex()->point() = Point(box.max[0], box.max[1], box.max[2]);
+	    e->vertex()->point() = Point(box.high[0], box.high[1], box.high[2]);
 	    P->split_facet( e, f->next()->next());
 	    CGAL_postcondition( P->is_valid());
 	}
@@ -76,21 +76,21 @@ Polyhedron *make_cubes(vector<Voxel *> &boxes) {
 
 	for(Voxel *b:boxes){
 		Polyhedron::Halfedge_handle h =
-				P->make_tetrahedron(Point(b->max[0], b->min[1], b->min[2]),
-									Point(b->min[0], b->min[1], b->max[2]),
-									Point(b->min[0], b->min[1], b->min[2]),
-									Point(b->min[0], b->max[1], b->min[2]));
+				P->make_tetrahedron(Point(b->high[0], b->low[1], b->low[2]),
+									Point(b->low[0], b->low[1], b->high[2]),
+									Point(b->low[0], b->low[1], b->low[2]),
+									Point(b->low[0], b->high[1], b->low[2]));
 		Polyhedron::Halfedge_handle g = h->next()->opposite()->next();
 		P->split_edge( h->next());
 		P->split_edge( g->next());
 		P->split_edge( g);
-		h->next()->vertex()->point()     = Point(b->max[0], b->min[1], b->max[2]);
-		g->next()->vertex()->point()     = Point(b->min[0], b->max[1], b->max[2]);
-		g->opposite()->vertex()->point() = Point(b->max[0], b->max[1], b->min[2]);
+		h->next()->vertex()->point()     = Point(b->high[0], b->low[1], b->high[2]);
+		g->next()->vertex()->point()     = Point(b->low[0], b->high[1], b->high[2]);
+		g->opposite()->vertex()->point() = Point(b->high[0], b->high[1], b->low[2]);
 		Polyhedron::Halfedge_handle f = P->split_facet(g->next(),
 										  g->next()->next()->next());
 		Polyhedron::Halfedge_handle e = P->split_edge(f);
-		e->vertex()->point() = Point(b->max[0], b->max[1], b->max[2]);
+		e->vertex()->point() = Point(b->high[0], b->high[1], b->high[2]);
 		P->split_facet( e, f->next()->next());
 		CGAL_postcondition( P->is_valid());
 	}

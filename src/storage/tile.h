@@ -75,7 +75,7 @@ public:
 		assert(get_mesh_wrapper(id)->mesh && "the mesh must be retrieved before can be returned");
 		return get_mesh_wrapper(id)->mesh;
 	}
-	int num_objects(){
+	size_t num_objects(){
 		return objects.size();
 	}
 

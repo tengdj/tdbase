@@ -184,13 +184,13 @@ vector<Voxel *> HiMesh::voxelization(int voxel_size){
 	}
 
 	aab box = get_box();
-	float min_dim = std::min(box.max[2]-box.min[2], std::min(box.max[1]-box.min[1], box.max[0]-box.min[0]));
-	float div = (box.max[2]-box.min[2])*(box.max[1]-box.min[1])*(box.max[0]-box.min[0])/(min_dim*min_dim*min_dim);
+	float min_dim = std::min(box.high[2]-box.low[2], std::min(box.high[1]-box.low[1], box.high[0]-box.low[0]));
+	float div = (box.high[2]-box.low[2])*(box.high[1]-box.low[1])*(box.high[0]-box.low[0])/(min_dim*min_dim*min_dim);
 	float multi = std::pow(1.0*voxel_size/div, 1.0/3);
 
 	int dim[3];
 	for(int i=0;i<3;i++){
-		dim[i] = ((box.max[i]-box.min[i])*multi/min_dim+0.5);
+		dim[i] = ((box.high[i]-box.low[i])*multi/min_dim+0.5);
 		assert(dim[i]>0);
 	}
 
@@ -206,18 +206,18 @@ vector<Voxel *> HiMesh::voxelization(int voxel_size){
 //	}
 	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
 		Point p = vit->point();
-		int x = (p.x()-box.min[0])*dim[0]/(box.max[0]-box.min[0]);
-		int y = (p.y()-box.min[1])*dim[1]/(box.max[1]-box.min[1]);
-		int z = (p.z()-box.min[2])*dim[2]/(box.max[2]-box.min[2]);
+		int x = (p.x()-box.low[0])*dim[0]/(box.high[0]-box.low[0]);
+		int y = (p.y()-box.low[1])*dim[1]/(box.high[1]-box.low[1]);
+		int z = (p.z()-box.low[2])*dim[2]/(box.high[2]-box.low[2]);
 		int idx = z*dim[1]*dim[0]+y*dim[0]+x;
 		if(!taken[idx]){
 			Voxel *vox = new Voxel();
-			vox->min[0] = x*(box.max[0]-box.min[0])/dim[0];
-			vox->min[1] = y*(box.max[1]-box.min[1])/dim[1];
-			vox->min[2] = z*(box.max[2]-box.min[2])/dim[2];
-			vox->max[0] = (x+1)*(box.max[0]-box.min[0])/dim[0];
-			vox->max[1] = (y+1)*(box.max[1]-box.min[1])/dim[1];
-			vox->max[2] = (z+1)*(box.max[2]-box.min[2])/dim[2];
+			vox->low[0] = x*(box.high[0]-box.low[0])/dim[0];
+			vox->low[1] = y*(box.high[1]-box.low[1])/dim[1];
+			vox->low[2] = z*(box.high[2]-box.low[2])/dim[2];
+			vox->high[0] = (x+1)*(box.high[0]-box.low[0])/dim[0];
+			vox->high[1] = (y+1)*(box.high[1]-box.low[1])/dim[1];
+			vox->high[2] = (z+1)*(box.high[2]-box.low[2])/dim[2];
 			voxels.push_back(vox);
 		}
 		taken[idx] = true;
