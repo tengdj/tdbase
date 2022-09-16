@@ -184,23 +184,23 @@ void OctreeNode::query_knn(weighted_aab *box, vector<pair<int, range>> &candidat
 	}
 }
 
-void OctreeNode::query_within(weighted_aab *box, vector<pair<int, range>> &results, const float max_dist){
+void OctreeNode::query_within(weighted_aab *box, vector<pair<int, range>> &results, const float threshold){
 	range dis = distance(*box);
 
-	if(dis.mindist<=max_dist){
+	if(dis.mindist<=threshold){
 		if(isLeaf){
 			for(weighted_aab *obj:objectList){
 				if(obj==box){// avoid self comparing
 					continue;
 				}
 				range objdis = obj->distance(*box);
-				if(objdis.mindist<=max_dist){
+				if(objdis.mindist<=threshold){
 					results.push_back(pair<int, range>(obj->id, objdis));
 				}
 			}
 		}else{
 			for(OctreeNode *c:this->children){
-				c->query_within(box, results, max_dist);
+				c->query_within(box, results, threshold);
 			}
 		}
 	}

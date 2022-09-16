@@ -26,7 +26,7 @@ class Tile{
 	bool persist(string path);
 	bool parse_raw();
 	// retrieve the data of the mesh with ID id on demand
-	void retrieve_mesh(int id);
+	void retrieve_mesh(size_t id);
 
 public:
 	// for building tile instead of load from file
@@ -62,7 +62,7 @@ public:
 			<<endl<<endl;
 	}
 
-	void decode_to(int id, int lod);
+	void decode_to(size_t id, int lod);
 	HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
 		return objects[id];

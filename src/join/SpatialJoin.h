@@ -97,7 +97,7 @@ public:
 	Voxel *v1;
 	Voxel *v2;
 	range dist;
-	bool intersect = false;
+	bool fulfill = false;
 	voxel_pair(Voxel *v1, Voxel *v2, range dist){
 		this->v1 = v1;
 		this->v2 = v2;
@@ -217,6 +217,11 @@ public:
 
 };
 
+/* some shared functions */
+void report_result(size_t id1, size_t id2);
+size_t get_pair_num(vector<candidate_entry> &candidates);
+size_t get_candidate_num(vector<candidate_entry> &candidates);
+bool compare_pair(pair<int, range> a1, pair<int, range> a2);
 
 }
 

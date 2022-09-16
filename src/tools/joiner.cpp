@@ -23,11 +23,9 @@ int main(int argc, char **argv){
 	string tile2_path("nuclei_tmp.dt");
 
 	query_context ctx;
-	ctx.max_dist = 1000;
 	int base_lod = 0;
 	int lod_gap = 50;
 	int top_lod = 100;
-
 
 	po::options_description desc("joiner usage");
 	desc.add_options()

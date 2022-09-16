@@ -145,22 +145,24 @@ public:
 };
 
 /*
- * a wrapper for describing a mesh.
- * for some cases we may not need to truly
- * parse the mesh out from disk, but use the boundary box
- * is good enough.
+ * a wrapper for describing a mesh. for some cases we may not need to truly
+ * parse the mesh out from disk, but use the bounding box is good enough.
  * */
 class HiMesh_Wrapper{
 public:
 	vector<Voxel *> voxels;
 	bool filled = false;
-	int id = -1;
+	size_t id = -1;
 	HiMesh *mesh = NULL;
 	weighted_aab box;
 	// used for retrieving compressed data from disk
 	size_t offset = 0;
 	size_t data_size = 0;
+
 	pthread_mutex_t lock;
+
+	int candidate_confirmed = 0;
+public:
 	HiMesh_Wrapper();
 	~HiMesh_Wrapper();
 	void writeMeshOff();
