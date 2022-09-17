@@ -9,6 +9,8 @@
 
 namespace hispeed{
 
+//#define VERBAL_3DPRO
+
 inline float get_min_max_dist(vector<voxel_pair> &voxel_pairs){
 	float minmaxdist = DBL_MAX;
 	for(voxel_pair &p:voxel_pairs){
@@ -34,23 +36,47 @@ inline bool update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minma
 	return true;
 }
 
+static void print_candidate(candidate_entry &cand){
+#ifdef VERBAL_3DPRO
+	printf("%ld (%d + %ld)\t\n", cand.first->id, cand.first->candidate_confirmed, cand.second.size());
+	int i=0;
+	for(candidate_info &ci:cand.second){
+		printf("%d:\t%ld\t[%f,%f]\n",i++,ci.mesh_wrapper->id,ci.distance.mindist,ci.distance.maxdist);
+	}
+#endif
+}
+
 inline void update_candidate_list_knn(candidate_entry &cand, int knn){
 	HiMesh_Wrapper *target = cand.first;
 	int list_size = cand.second.size();
 	for(int i=0;i<list_size && knn>target->candidate_confirmed;){
-		// count how many candidates is surely or possibly closer than this one
-		int rank = 0;
+		int sure_closer = 0;
+		int maybe_closer = 0;
 		for(int j=0;j<cand.second.size();j++){
 			if(i==j){
 				continue;
 			}
+			// count how many candidates that are surely closer than this one
+			if(cand.second[i].distance>=cand.second[j].distance) {
+				sure_closer++;
+			}
+			// count how many candidates that are possibly closer than this one
 			if(!(cand.second[i].distance<=cand.second[j].distance)) {
-				rank++;
+				maybe_closer++;
 			}
 		}
-
+		int cand_left = knn-target->candidate_confirmed;
+#ifdef VERBAL_3DPRO
+		log("%3d %5d sure closer %3d maybe closer %3d confirmed %3d rest %3d",
+				i,
+				cand.second[i].mesh_wrapper->id,
+				sure_closer,
+				maybe_closer,
+				target->candidate_confirmed,
+				cand_left);
+#endif
 		// the rank makes sure this one is confirmed
-		if(rank<knn-target->candidate_confirmed){
+		if(maybe_closer < cand_left){
 			report_result(target->id, cand.second[i].mesh_wrapper->id);
 			target->candidate_confirmed++;
 			cand.second.erase(cand.second.begin()+i);
@@ -58,9 +84,28 @@ inline void update_candidate_list_knn(candidate_entry &cand, int knn){
 			//log("ranked %d, %d confirmed", rank, target->candidate_confirmed);
 			continue;
 		}
+
+		// the rank makes sure this one should be removed
+		if(sure_closer >= cand_left){
+			cand.second.erase(cand.second.begin()+i);
+			list_size--;
+			continue;
+		}
 		i++;
 	}//end for
 	// the target one should be kept
+}
+
+void evaluate_candidate_lists(vector<candidate_entry> &candidates, query_context ctx){
+	for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
+		print_candidate(*it);
+		update_candidate_list_knn(*it, ctx.knn);
+		if(it->first->candidate_confirmed==ctx.knn){
+			it = candidates.erase(it);
+		}else{
+			it++;
+		}
+	}
 }
 
 vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx){
@@ -114,24 +159,16 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
 		}
 		candidate_ids.clear();
 	}
-
+	// the candidates list need be evaluated after checking with the mbb
+	// some queries might be answered with only querying the index
+	evaluate_candidate_lists(candidates, ctx);
 	return candidates;
-}
-
-static void print_candidate(candidate_entry &cand){
-	return;
-	printf("%ld\t\n", cand.first->id);
-	for(candidate_info &ci:cand.second){
-		printf("%ld\t[%f,%f]\n",ci.mesh_wrapper->id,ci.distance.mindist,ci.distance.maxdist);
-	}
 }
 
 /*
  * the main function for getting the nearest neighbor
  *
  * */
-
-int cc = 0;
 void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
@@ -139,33 +176,15 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 	// filtering with MBBs to get the candidate list
 	vector<candidate_entry> candidates = mbb_knn(tile1, tile2, ctx);
 	ctx.index_time += get_time_elapsed(start, false);
-	for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
-		if(it->second.size()<=ctx.knn){
-			it = candidates.erase(it);
-		}else{
-			it++;
-		}
-	}
-	logt("comparing mbbs", start);
+	logt("index retrieving", start);
 
 	// now we start to get the distances with progressive level of details
 	for(int lod:ctx.lods){
 		struct timeval iter_start = get_cur_time();
+		start = get_cur_time();
 
 		// update the candidate lists with the newest distance ranges
-		start = get_cur_time();
-		for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
-			print_candidate(*it);
-			update_candidate_list_knn(*it, ctx.knn);
-			if(it->first->candidate_confirmed==ctx.knn){
-				it = candidates.erase(it);
-			}else{
-				it++;
-			}
-		}
 
-		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
-		logt("updating the candidate lists",start);
 
 		const int pair_num = get_pair_num(candidates);
 		if(pair_num==0){
@@ -177,16 +196,10 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		// retrieve the necessary meshes
 		size_t segment_pair_num = 0;
 
-		int o1_counter = 0;
-		int o2_counter = 0;
-		int o2_counter_nocache = 0;
-		int o1_counter_nocache = 0;
-
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
 			assert(c.first->candidate_confirmed+c.second.size()>ctx.knn);
 			print_candidate(c);
-			o1_counter_nocache++;
 			HiMesh_Wrapper *wrapper1 = c.first;
 			for(candidate_info &info:c.second){
 				for(voxel_pair &vp:info.voxel_pairs){
@@ -196,16 +209,12 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 						// ensure the mesh is extracted
 						tile1->decode_to(wrapper1->id, lod);
 						wrapper1->fill_voxels(DT_Segment);
-						o1_counter++;
 					}
 
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(info.mesh_wrapper->id, lod);
 						info.mesh_wrapper->fill_voxels(DT_Segment);
-						o2_counter++;
 					}
-					o2_counter_nocache++;
-
 					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
 				}// end for voxel_pairs
 			}// end for distance_candiate list
@@ -216,10 +225,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 			log("no segments is filled in this round");
 			continue;
 		}
-
 		tile1->reset_time();
-
-		log("%d,%d,%d,%d,%d",lod,o1_counter,o1_counter_nocache,o2_counter,o2_counter_nocache);
 
 		// truly conduct the geometric computations
 		float *distances = calculate_distance(candidates, ctx, lod);
@@ -227,7 +233,6 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		// now update the distance range with the new distances
 		int index = 0;
 		for(candidate_entry &c:candidates){
-			double minmaxdist = DBL_MAX;
 			for(candidate_info &ci:c.second){
 				double vox_minmaxdist = DBL_MAX;
 				for(voxel_pair &vp:ci.voxel_pairs){
@@ -253,29 +258,20 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 					}
 					index++;
 				}
+				// after each round, some voxels need to be evicted
 				update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
-				minmaxdist = min(minmaxdist, vox_minmaxdist);
 			}
-			// for helping knowing the maximum distance between two nearest neighbors,
-			// used for conducting query with PostGIS
-			ctx.max_nearest_distance = max(minmaxdist,ctx.max_nearest_distance);
 		}
-		logt("get distance", start);
+		logt("calculating distance", start);
+
+		// update the list after processing each LOD
+		evaluate_candidate_lists(candidates, ctx);
+		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
+		logt("updating the candidate lists",start);
+
 		delete distances;
-		logt("current iteration", iter_start);
+		logt("evaluating with lod %d", iter_start, lod);
 	}
-	// update the list after processing the highest LOD
-	for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
-		print_candidate(*it);
-		update_candidate_list_knn(*it, ctx.knn);
-		if(it->first->candidate_confirmed==ctx.knn){
-			it = candidates.erase(it);
-		}else{
-			it++;
-		}
-	}
-	ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
-	logt("updating the candidate lists",start);
 
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
 	pthread_mutex_lock(&g_lock);

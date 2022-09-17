@@ -95,9 +95,7 @@ int main(int argc, char **argv){
 
 	vector<pair<Tile *, Tile *>> tile_pairs;
 	for(int i=0;i<ctx.repeated_times;i++){
-
 		Tile *tile1, *tile2;
-
 		if(vm.count("tile2")){
 			tile1 = new Tile(tile1_path.c_str(), ctx.max_num_objects1);
 			tile2 = new Tile(tile2_path.c_str(), ctx.max_num_objects2);

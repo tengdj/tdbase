@@ -39,10 +39,6 @@ size_t get_candidate_num(vector<candidate_entry> &candidates){
 	return candidate_num;
 }
 
-bool compare_pair(pair<int, range> a1, pair<int, range> a2){
-	return a1.first<a2.first;
-}
-
 //utility function to calculate the distances between voxel pairs in batch
 float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, const int lod){
 	const int pair_num = get_pair_num(candidates);

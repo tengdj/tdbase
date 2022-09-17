@@ -42,9 +42,6 @@ public:
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
 
-	//result
-	double max_nearest_distance = 0.0;
-
 	int highest_lod(){
 		if(lods.size()==0){
 			return 0;
@@ -65,7 +62,6 @@ public:
 		computation_time += ctx.computation_time;
 		updatelist_time += ctx.updatelist_time;
 		overall_time += ctx.overall_time;
-		max_nearest_distance = std::max(max_nearest_distance, ctx.max_nearest_distance);
 	}
 
 	void report(double t){
@@ -77,9 +73,6 @@ public:
 		cout<<"computation:\t"<<t*computation_time/overall_time<<endl;
 		cout<<"updatelist:\t"<<t*updatelist_time/overall_time<<endl;
 		cout<<"other:\t"<<t*(overall_time-decode_time-computation_time-index_time)/overall_time<<endl;
-		if(this->max_nearest_distance>0){
-			cout<<"max min distance:\t"<<this->max_nearest_distance<<endl;
-		}
 		printf("analysis\t%f\t%f\t%f\n",
 				(t*index_time/overall_time)/repeated_times,
 				(t*decode_time/overall_time)/repeated_times,
@@ -221,7 +214,6 @@ public:
 void report_result(size_t id1, size_t id2);
 size_t get_pair_num(vector<candidate_entry> &candidates);
 size_t get_candidate_num(vector<candidate_entry> &candidates);
-bool compare_pair(pair<int, range> a1, pair<int, range> a2);
 
 }
 

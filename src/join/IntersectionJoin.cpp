@@ -9,33 +9,6 @@
 
 namespace hispeed{
 
-inline void update_candidate_list_intersect(vector<candidate_entry> &candidates){
-	for(vector<candidate_entry>::iterator it = candidates.begin();it!=candidates.end();){
-		bool intersected = false;
-		for(candidate_info &info:it->second){
-			for(voxel_pair &vp:info.voxel_pairs){
-				// if any voxel pair is ensured to be intersected
-				if(vp.fulfill){
-					intersected = true;
-					break;
-				}
-			}
-			if(intersected){
-				break;
-			}
-		}
-		if(intersected){
-			for(candidate_info &info:it->second){
-				info.voxel_pairs.clear();
-			}
-			it->second.clear();
-			it = candidates.erase(it);
-		}else{
-			it++;
-		}
-	}
-}
-
 vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 	vector<candidate_entry> candidates;
 	OctreeNode *tree = tile2->build_octree(20);
@@ -109,13 +82,8 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		size_t triangle_num = 0;
 
-		int o1_counter = 0;
-		int o2_counter = 0;
-		int o2_counter_nocache = 0;
-		int o1_counter_nocache = 0;
 		for(candidate_entry c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.first;
-			o1_counter_nocache++;
 			for(candidate_info info:c.second){
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(voxel_pair vp:info.voxel_pairs){
@@ -124,15 +92,12 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 					{
 						tile1->decode_to(wrapper1->id, lod);
 						wrapper1->fill_voxels(DT_Triangle);
-						o1_counter++;
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end())
 					{
 						tile2->decode_to(wrapper2->id, lod);
 						wrapper2->fill_voxels(DT_Triangle);
-						o2_counter++;
 					}
-					o2_counter_nocache++;
 
 					// update the voxel map
 					for(int i=0;i<2;i++){
@@ -153,8 +118,6 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		ctx.decode_time += hispeed::get_time_elapsed(start, false);
 		logt("decoded %ld voxels with %ld triangles %ld pairs for lod %d",
 				start, voxel_map.size(), triangle_num, triangle_pair_num, lod);
-
-		//log("%d,%d,%d,%d,%d",lod,o1_counter,o1_counter_nocache,o2_counter,o2_counter_nocache);
 
 		tile1->reset_time();
 		tile2->reset_time();
@@ -200,23 +163,33 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		// now update the intersection status and update the all candidate list
 		// report results if necessary
 		index = 0;
-		for(int i=0;i<candidates.size();i++){
-			for(int j=0;j<candidates[i].second.size();j++){
-				for(int t=0;t<candidates[i].second[j].voxel_pairs.size();t++){
-					// update the status
-					candidates[i].second[j].voxel_pairs[t].fulfill |= intersect_status[index++];
+		for(auto ce_iter=candidates.begin();ce_iter!=candidates.end();){
+			HiMesh_Wrapper *wrapper1 = ce_iter->first;
+			//print_candidate_within(*ce_iter);
+			for(auto ci_iter=ce_iter->second.begin();ci_iter!=ce_iter->second.end();){
+				bool determined = false;
+				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
+				for(voxel_pair &vp:ci_iter->voxel_pairs){
+					determined |= intersect_status[index++];
+				}
+				if(determined){
+					report_result(wrapper1->id, wrapper2->id);
+					ce_iter->second.erase(ci_iter);
+				}else{
+					ci_iter++;
 				}
 			}
+			if(ce_iter->second.size()==0){
+				candidates.erase(ce_iter);
+			}else{
+				ce_iter++;
+			}
 		}
-		update_candidate_list_intersect(candidates);
-		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
-		logt("update candidate list", start);
 
 		delete []data;
 		delete []offset_size;
 		delete []intersect_status;
 		voxel_map.clear();
-
 		logt("current iteration", iter_start);
 	}
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
