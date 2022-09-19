@@ -282,6 +282,16 @@ static void triangulate(int argc, char **argv){
 	delete himesh;
 }
 
+static void compress(int argc, char **argv){
+	MyMesh *mesh = read_off(argv[1]);
+	assert(mesh);
+	mesh->completeOperation();
+	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	himesh->advance_to(100);
+	delete mesh;
+	delete himesh;
+}
+
 static void test(int argc, char **argv){
 	Polyhedron *poly = read_off_polyhedron(argv[1]);
 	cout<<*poly;
@@ -338,6 +348,8 @@ int main(int argc, char **argv){
 		voxelize(argc-1,argv+1);
 	}else if(strcmp(argv[1],"test") == 0){
 		test(argc-1,argv+1);
+	}else if(strcmp(argv[1],"compress") == 0){
+		compress(argc-1,argv+1);
 	}else if(strcmp(argv[1],"triangulate") == 0){
 		triangulate(argc-1,argv+1);
 	}else{

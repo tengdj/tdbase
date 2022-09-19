@@ -25,30 +25,25 @@
 /**
   * Start the next decompression operation.
   */
-//int iii = 0;
 void MyMesh::startNextDecompresssionOp()
 {
-	//printf("%d %d %d\n",iii++,this->size_of_vertices(), this->true_triangle_size());
+	if(i_curDecimationId>0){
+    	curMaximumCut -= maximumCut[i_nbDecimations - i_curDecimationId];
+    	//log("%f %d %f %f %ld", (float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100, i_curDecimationId, maximumCut[i_nbDecimations - i_curDecimationId], curMaximumCut, size_of_vertices());
+	}
     if ((float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 >= i_decompPercentage){
-
-    	struct timeval start = get_cur_time();
         for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
-        {
         	hit->resetState();
-        }
         for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
             fit->resetState();
 
         operation = Idle;
         b_jobCompleted = true;
-        //printf("%d %d\n",i_decompPercentage, dataOffset);
-
-
     } else {
         // Start the decoder.
         start_decoding(&rangeCoder);
-
         beginUndecimationConquest();
+
     }
 }
 
@@ -85,8 +80,6 @@ void MyMesh::beginUndecimationConquest()
 /**
   * One undecimation step.
   */
-int idx = 0;
-
 void MyMesh::undecimationStep()
 {
     while (!gateQueue.empty())
@@ -276,7 +269,12 @@ void MyMesh ::insertRemovedVertices()
         if (f->isSplittable())
         {
             // Insert the vertex.
-            Point p = getPos(getQuantizedPos(barycenter(h)) + f->getResidual());
+        	Point bc = barycenter(h);
+            Point p = getPos(getQuantizedPos(bc) + f->getResidual());
+			float cutdist = (p.x()-bc.x())*(p.x()-bc.x())+
+							(p.y()-bc.y())*(p.y()-bc.y())+
+							(p.z()-bc.z())*(p.z()-bc.z());
+        	//log("%d %d %f",i_curDecimationId, processCount++, cutdist);
             Halfedge_handle hehNewVertex = create_center_vertex(h);
             hehNewVertex->vertex()->point() = p;
 

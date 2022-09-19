@@ -166,6 +166,16 @@ void MyMesh::decimationStep()
         operation = RemovedVertexCoding;
         beginRemovedVertexCodingConquest();
     }
+
+    /*
+     * record the maximum volume change
+     * */
+    if(!b_jobCompleted){
+        //log("%f", tmpMaximumcut);
+    	maximumCut.push_back(tmpMaximumcut);
+    }
+    // reset
+    tmpMaximumcut = 0;
 }
 
 
@@ -276,8 +286,20 @@ void MyMesh::determineResiduals()
         }
         while (hIt != h);
 
-        if (f->isSplittable())
-            f->setResidual(getQuantizedPos(f->getRemovedVertexPos()) - getQuantizedPos(barycenter(h)));
+        // besides keep the residual, also update the maximum cut if needed
+        if (f->isSplittable()){
+        	Point rmved = f->getRemovedVertexPos();
+        	Point bc = barycenter(h);
+        	float cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
+        			(rmved.y()-bc.y())*(rmved.y()-bc.y())+
+					(rmved.z()-bc.z())*(rmved.z()-bc.z());
+        	tmpMaximumcut = max(tmpMaximumcut, cutdist);
+        	//log("%d %f",processCount++, cutdist);
+            f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));
+
+            //f->setResidual(getQuantizedPos(f->getRemovedVertexPos()) - getQuantizedPos(barycenter(h)));
+
+        }
     }
 }
 

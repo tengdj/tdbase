@@ -510,6 +510,11 @@ public:
 
 	int alphaBetaMin;
 
+	// Store the maximum size we cutted in each round of compression
+	vector<float> maximumCut;
+	int processCount = 0;
+	float tmpMaximumcut = 0;
+	float curMaximumCut = 0.0;
 };
 
 // get the Euclid distance of two points

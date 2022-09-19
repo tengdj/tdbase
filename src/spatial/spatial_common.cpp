@@ -214,6 +214,7 @@ MyMesh *get_mesh(string input_line, bool complete_compress){
 
 MyMesh *read_mesh(){
 	string mesh_str = read_off_stdin();
+	cout<<mesh_str<<endl;
 	MyMesh *mesh = get_mesh(mesh_str);
 	assert(mesh && "this function must return a valid mesh");
 	return mesh;

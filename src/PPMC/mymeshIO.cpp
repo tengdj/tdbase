@@ -149,7 +149,7 @@ void MyMesh::writeBaseMesh()
 
     // Write the bounding box min coordinate.
     for (unsigned i = 0; i < 3; ++i)
-        writeFloat(bbMin[i]);
+        writeFloat((float)(bbMin[i]));
     // Write the quantization step.
     writeFloat(f_quantStep);
 
@@ -245,6 +245,11 @@ void MyMesh::writeBaseMesh()
 
     if(i_bitOffset == 0)
         dataOffset--;
+    // hispeed
+    // Write the maximum volume change for each round of decimation
+    for(unsigned i=0;i<i_nbDecimations;i++){
+    	writeFloat(maximumCut[i]);
+    }
 }
 
 
@@ -328,6 +333,12 @@ void MyMesh::readBaseMesh()
     if(i_bitOffset == 0)
         dataOffset--;
 
+    // Read the maximum cutting volume
+    for(unsigned i=0;i<i_nbDecimations;i++){
+    	float maxcut = readFloat();
+    	maximumCut.push_back(maxcut);
+    	curMaximumCut += maxcut;
+    }
 }
 
 void MyMesh::writeMeshOff(const char psz_filePath[]) const
