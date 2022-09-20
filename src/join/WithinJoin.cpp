@@ -150,6 +150,7 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 							dist.maxdist = distances[index];
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
+							dist.mindist = std::max(ci_iter->distance.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
 						}
 						vp.dist = dist;
 						// one voxel pair is close enough
