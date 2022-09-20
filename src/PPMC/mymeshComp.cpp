@@ -290,11 +290,28 @@ void MyMesh::determineResiduals()
         if (f->isSplittable()){
         	Point rmved = f->getRemovedVertexPos();
         	Point bc = barycenter(h);
-        	float cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
-        			(rmved.y()-bc.y())*(rmved.y()-bc.y())+
-					(rmved.z()-bc.z())*(rmved.z()-bc.z());
-        	tmpMaximumcut = max(tmpMaximumcut, cutdist);
-        	//log("%d %f",processCount++, cutdist);
+        	Halfedge_handle heh = h;
+
+        	// TODO: precisely evaluate the maximum cuting size
+        	float cur_cutdist = 0;
+//        	do
+//			{
+//        		Point p = heh->vertex()->point();
+//            	float cutdist = (rmved.x()-p.x())*(rmved.x()-p.x())+
+//								(rmved.y()-p.y())*(rmved.y()-p.y())+
+//								(rmved.z()-p.z())*(rmved.z()-p.z());
+//            	cur_cutdist = max(maxcutdist, cutdist);
+//				heh = heh->next();
+//			}
+//			while (heh != h);
+
+        	cur_cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
+						  (rmved.y()-bc.y())*(rmved.y()-bc.y())+
+						  (rmved.z()-bc.z())*(rmved.z()-bc.z());
+
+        	//log("%d %f",processCount++, cur_cutdist);
+
+        	tmpMaximumcut = max(tmpMaximumcut, cur_cutdist);
             f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));
 
             //f->setResidual(getQuantizedPos(f->getRemovedVertexPos()) - getQuantizedPos(barycenter(h)));

@@ -96,7 +96,7 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 			break;
 		}
 		size_t candidate_num = get_candidate_num(candidates);
-		log("%ld polyhedron has %d candidates %f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
+		log("%ld polyhedron has %d candidates %.2f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
 		// retrieve the necessary meshes
 		size_t segment_pair_num = 0;
 
@@ -139,42 +139,45 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 			//print_candidate_within(*ce_iter);
 			for(auto ci_iter=ce_iter->second.begin();ci_iter!=ce_iter->second.end();){
 				bool determined = false;
+				bool evicted = false;
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
-				for(voxel_pair &vp:ci_iter->voxel_pairs){
+				for(auto vp_iter = ci_iter->voxel_pairs.begin();vp_iter!=ci_iter->voxel_pairs.end();){
 					// update the distance
-					if(!determined&&vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
-						range dist = vp.dist;
+					if(!determined&&!evicted&&vp_iter->v1->size[lod]>0&&vp_iter->v2->size[lod]>0){
+						range dist = vp_iter->dist;
 						if(lod==ctx.highest_lod()){
 							// now we have a precise distance
 							dist.mindist = distances[index];
 							dist.maxdist = distances[index];
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
-							dist.mindist = std::max(ci_iter->distance.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
+							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
+							//log("%f %f %f %f", wrapper1->mesh->curMaximumCut, wrapper2->mesh->curMaximumCut, dist.mindist, dist.maxdist);
 						}
-						vp.dist = dist;
+						vp_iter->dist = dist;
 						// one voxel pair is close enough
 						if(dist.maxdist<=ctx.max_dist){
 							determined = true;
-							vp.fulfill = true;
 						}
-						if(lod==100){
-							if(ci_iter->distance.maxdist>=dist.maxdist){
-								ci_iter->distance = dist;
-							}
-						}else{
-							ci_iter->distance.update(dist);
-						}
+					}
+					// too far, should be removed from the voxel pair list
+					if(vp_iter->dist.mindist>ctx.max_dist){
+						ci_iter->voxel_pairs.erase(vp_iter);
+					}else{
+						vp_iter++;
 					}
 					index++;
 				}
 				if(determined){
 					report_result(wrapper1->id, wrapper2->id);
 					ce_iter->second.erase(ci_iter);
+				}else if(ci_iter->voxel_pairs.size()==0){
+					ce_iter->second.erase(ci_iter);
 				}else{
 					ci_iter++;
 				}
 			}
+			//print_candidate_within(*ce_iter);
 
 			if(ce_iter->second.size()==0){
 				candidates.erase(ce_iter);

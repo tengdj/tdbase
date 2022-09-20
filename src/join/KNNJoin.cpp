@@ -19,8 +19,11 @@ inline float get_min_max_dist(vector<voxel_pair> &voxel_pairs){
 	return minmaxdist;
 }
 
-inline bool update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist){
+inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist){
 
+	range ret;
+	ret.mindist = DBL_MAX;
+	ret.maxdist = minmaxdist;
 	int voxel_pair_size = voxel_pairs.size();
 	// some voxel pair is farther than this one
 	for(int j=0;j<voxel_pair_size;){
@@ -30,10 +33,11 @@ inline bool update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minma
 			voxel_pairs.erase(voxel_pairs.begin()+j);
 			voxel_pair_size--;
 		}else{
+			ret.mindist = min(ret.mindist, voxel_pairs[j].dist.mindist);
 			j++;
 		}
 	}
-	return true;
+	return ret;
 }
 
 static void print_candidate(candidate_entry &cand){
@@ -141,13 +145,9 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
 					min_maxdist = min(min_maxdist, dist_vox.maxdist);
 				}
 			}
-			update_voxel_pair_list(ci.voxel_pairs, min_maxdist);
-			assert(ci.voxel_pairs.size()>0);
 			// form the distance range of objects with the evaluations of voxel pairs
-			ci.distance = ci.voxel_pairs[0].dist;
-			for(voxel_pair &p:ci.voxel_pairs){
-				ci.distance.update(p.dist);
-			}
+			ci.distance = update_voxel_pair_list(ci.voxel_pairs, min_maxdist);
+			assert(ci.voxel_pairs.size()>0);
 			assert(ci.distance.mindist<=ci.distance.maxdist);
 			candidate_list.push_back(ci);
 		}
@@ -191,7 +191,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 			break;
 		}
 		size_t candidate_num = get_candidate_num(candidates);
-		log("%ld polyhedron has %d candidates %d voxel pairs %f voxel pairs per candidate",
+		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per candidate",
 				candidates.size(), candidate_num, pair_num, (1.0*pair_num)/candidates.size());
 		// retrieve the necessary meshes
 		size_t segment_pair_num = 0;
@@ -233,7 +233,9 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		// now update the distance range with the new distances
 		int index = 0;
 		for(candidate_entry &c:candidates){
+			HiMesh_Wrapper *wrapper1 = c.first;
 			for(candidate_info &ci:c.second){
+				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				double vox_minmaxdist = DBL_MAX;
 				for(voxel_pair &vp:ci.voxel_pairs){
 					// update the distance
@@ -245,21 +247,16 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 							dist.maxdist = distances[index];
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
+							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
+							//log("%f %f %f %f", wrapper1->mesh->curMaximumCut, wrapper2->mesh->curMaximumCut, dist.mindist, dist.maxdist);
 						}
 						vp.dist = dist;
-						if(lod==100){
-							if(ci.distance.maxdist>=dist.maxdist){
-								ci.distance = dist;
-							}
-						}else{
-							ci.distance.update(dist);
-						}
 						vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
 					}
 					index++;
 				}
 				// after each round, some voxels need to be evicted
-				update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
+				ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
 			}
 		}
 		logt("calculating distance", start);

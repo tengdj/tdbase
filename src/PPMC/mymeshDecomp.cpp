@@ -27,9 +27,9 @@
   */
 void MyMesh::startNextDecompresssionOp()
 {
-	if(i_curDecimationId>0){
+	if(i_curDecimationId>0 && (float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 < i_decompPercentage){
     	curMaximumCut -= maximumCut[i_nbDecimations - i_curDecimationId];
-    	//log("%f %d %f %f %ld", (float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100, i_curDecimationId, maximumCut[i_nbDecimations - i_curDecimationId], curMaximumCut, size_of_vertices());
+    	//log("%d: %f %d %f %f %ld", i_curDecimationId, (float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100, i_curDecimationId, maximumCut[i_nbDecimations - i_curDecimationId], curMaximumCut, size_of_vertices());
 	}
     if ((float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 >= i_decompPercentage){
         for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
@@ -271,12 +271,13 @@ void MyMesh ::insertRemovedVertices()
             // Insert the vertex.
         	Point bc = barycenter(h);
             Point p = getPos(getQuantizedPos(bc) + f->getResidual());
-			float cutdist = (p.x()-bc.x())*(p.x()-bc.x())+
-							(p.y()-bc.y())*(p.y()-bc.y())+
-							(p.z()-bc.z())*(p.z()-bc.z());
-        	//log("%d %d %f",i_curDecimationId, processCount++, cutdist);
             Halfedge_handle hehNewVertex = create_center_vertex(h);
             hehNewVertex->vertex()->point() = p;
+
+//			float cutdist = (p.x()-bc.x())*(p.x()-bc.x())+
+//							(p.y()-bc.y())*(p.y()-bc.y())+
+//							(p.z()-bc.z())*(p.z()-bc.z());
+        	//log("%d %d %f",i_curDecimationId, processCount++, cutdist);
 
             // Mark all the created edges as new.
             Halfedge_around_vertex_circulator Hvc = hehNewVertex->vertex_begin();
