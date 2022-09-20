@@ -90,7 +90,6 @@ public:
 	Voxel *v1;
 	Voxel *v2;
 	range dist;
-	bool fulfill = false;
 	voxel_pair(Voxel *v1, Voxel *v2, range dist){
 		this->v1 = v1;
 		this->v2 = v2;
