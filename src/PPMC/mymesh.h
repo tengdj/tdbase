@@ -40,9 +40,10 @@
 // Range coder includes.
 #include "../PPMC/rangeCoder/qsmodel.h"
 #include "../PPMC/rangeCoder/rangecod.h"
-#include "../geometry/aab.h"
 #include "configuration.h"
-#include "../include/util.h"
+
+#include "aab.h"
+#include "util.h"
 
 // definition for the CGAL library
 //typedef CGAL::Exact_predicates_exact_constructions_kernel MyKernel;

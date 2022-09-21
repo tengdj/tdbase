@@ -25,6 +25,7 @@ HiMesh_Wrapper::~HiMesh_Wrapper(){
 	if(mesh){
 		delete mesh;
 	}
+	results.clear();
 }
 void HiMesh_Wrapper::writeMeshOff(){
 	assert(mesh);
@@ -55,6 +56,13 @@ void HiMesh_Wrapper::reset(){
 	for(Voxel *v:voxels){
 		v->reset();
 	}
+	results.clear();
+	pthread_mutex_unlock(&lock);
+}
+
+void HiMesh_Wrapper::report_result(HiMesh_Wrapper *result){
+	pthread_mutex_lock(&lock);
+	results.push_back(result);
 	pthread_mutex_unlock(&lock);
 }
 

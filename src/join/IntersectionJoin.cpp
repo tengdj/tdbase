@@ -82,9 +82,9 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		size_t triangle_num = 0;
 
-		for(candidate_entry c:candidates){
-			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info info:c.second){
+		for(candidate_entry &c:candidates){
+			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
+			for(candidate_info &info:c.candidates){
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(voxel_pair vp:info.voxel_pairs){
 					// not filled yet
@@ -137,8 +137,8 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		}
 		int index = 0;
 		for(candidate_entry c:candidates){
-			for(candidate_info info:c.second){
-				for(voxel_pair vp:info.voxel_pairs){
+			for(candidate_info &info:c.candidates){
+				for(voxel_pair &vp:info.voxel_pairs){
 					offset_size[4*index] = voxel_map[vp.v1].first;
 					offset_size[4*index+1] = voxel_map[vp.v1].second;
 					offset_size[4*index+2] = voxel_map[vp.v2].first;
@@ -164,22 +164,22 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 		// report results if necessary
 		index = 0;
 		for(auto ce_iter=candidates.begin();ce_iter!=candidates.end();){
-			HiMesh_Wrapper *wrapper1 = ce_iter->first;
+			HiMesh_Wrapper *wrapper1 = ce_iter->mesh_wrapper;
 			//print_candidate_within(*ce_iter);
-			for(auto ci_iter=ce_iter->second.begin();ci_iter!=ce_iter->second.end();){
+			for(auto ci_iter=ce_iter->candidates.begin();ci_iter!=ce_iter->candidates.end();){
 				bool determined = false;
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
 				for(voxel_pair &vp:ci_iter->voxel_pairs){
 					determined |= intersect_status[index++];
 				}
 				if(determined){
-					report_result(wrapper1->id, wrapper2->id);
-					ce_iter->second.erase(ci_iter);
+					wrapper1->report_result(wrapper2);
+					ce_iter->candidates.erase(ci_iter);
 				}else{
 					ci_iter++;
 				}
 			}
-			if(ce_iter->second.size()==0){
+			if(ce_iter->candidates.size()==0){
 				candidates.erase(ce_iter);
 			}else{
 				ce_iter++;

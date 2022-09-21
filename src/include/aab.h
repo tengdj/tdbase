@@ -17,6 +17,7 @@
 #include <float.h>
 #include <math.h>
 #include <immintrin.h>
+#include <map>
 using namespace std;
 
 namespace hispeed{
@@ -45,10 +46,6 @@ public:
 		operator<<(std::ostream& os, const range &d){
 		os<<d.mindist<<"->"<<d.maxdist;
 		return os;
-	}
-	void update(range &r){
-		mindist = min(mindist, r.mindist);
-		maxdist = min(maxdist, r.maxdist);
 	}
 	void print(){
 		printf("[%f,%f]\n",mindist,maxdist);

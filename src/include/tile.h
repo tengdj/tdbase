@@ -9,8 +9,8 @@
 #define HISPEED_TILE_H_
 #include <stdio.h>
 
-#include "../spatial/himesh.h"
-#include "../index/index.h"
+#include "himesh.h"
+#include "index.h"
 #include <pthread.h>
 
 using namespace std;

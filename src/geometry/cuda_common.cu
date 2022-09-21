@@ -12,7 +12,6 @@ using namespace std;
 
 namespace hispeed{
 
-
 vector<gpu_info *> get_gpus(){
 	vector<gpu_info *> gpus;
 	int num_gpus = 0;

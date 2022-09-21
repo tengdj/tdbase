@@ -26,6 +26,13 @@ namespace hispeed{
 		}																  \
 	} while (0);
 
+inline void check_execution(){
+	cudaError_t err = cudaGetLastError();
+	if (err != cudaSuccess){
+		log(cudaGetErrorString(err));
+	}
+}
+
 // copy
 __device__
 inline void
@@ -87,14 +94,6 @@ inline
 void sVpsV_2_d(float *Vr, float s1, const float * V1, float s2, const float *V2){
 	Vr[0] = s1*V1[0] + s2*V2[0];
 	Vr[1] = s1*V1[1] + s2*V2[1];
-}
-
-
-inline void check_execution(){
-	cudaError_t err = cudaGetLastError();
-	if (err != cudaSuccess){
-		log(cudaGetErrorString(err));
-	}
 }
 
 }

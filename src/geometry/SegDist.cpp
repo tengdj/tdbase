@@ -107,10 +107,10 @@ float SegDist_single(const float *data1, const float *data2,
 			}
 		}
 	}
-	delete A;
-	delete B;
-	delete AdA;
-	delete BdB;
+	delete []A;
+	delete []B;
+	delete []AdA;
+	delete []BdB;
 	return local_min;
 }
 

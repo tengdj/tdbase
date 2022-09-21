@@ -17,7 +17,7 @@
 #include <cstdlib>
 #include <algorithm>
 
-#include "../geometry/aab.h"
+#include "aab.h"
 #include "RTree.h"
 #include "util.h"
 
@@ -86,7 +86,6 @@ public:
 };
 
 SPNode *build_sort_partition(std::vector<weighted_aab*> &mbbs, int num_tiles);
-
 
 }
 #endif /* HISPEED_INDEX_H_ */

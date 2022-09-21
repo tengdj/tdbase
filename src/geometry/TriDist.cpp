@@ -46,8 +46,8 @@
 // segments and TriDist() for finding closest points on a pair of triangles
 //--------------------------------------------------------------------------
 
-#include "geometry.h"
 #include <pthread.h>
+#include "geometry.h"
 
 namespace hispeed{
 

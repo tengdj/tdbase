@@ -37,7 +37,7 @@
  */
 
 #include "util.h"
-#include "./geometry.h"
+#include "geometry.h"
 #include "cuda_util.h"
 
 namespace hispeed{

@@ -8,9 +8,9 @@
 #include <boost/program_options.hpp>
 #include <vector>
 
-#include "../join/SpatialJoin.h"
-#include "../spatial/himesh.h"
-#include "../index/index.h"
+#include "SpatialJoin.h"
+#include "himesh.h"
+#include "index.h"
 
 using namespace std;
 using namespace hispeed;

@@ -6,7 +6,7 @@
  */
 
 #include "himesh.h"
-#include "../geometry/aab.h"
+#include "aab.h"
 
 namespace hispeed{
 
@@ -144,12 +144,7 @@ string read_off_stdin(){
 		whole_mesh += "\n";
 		while(getline(std::cin, input_line)){
 			whole_mesh += input_line+"\n";
-			//printf("%s\n",input_line.c_str());
 		}
-//		whole_mesh += "|";
-//		printf("%s\n",whole_mesh.c_str());
-//		printf("%ld\n",whole_mesh.size());
-//		printf("%s\n",input_line.c_str());
 	}else{
 		boost::replace_all(whole_mesh, "|", "\n");
 	}
@@ -227,15 +222,8 @@ MyMesh *read_off(char *path){
 
 Polyhedron *read_off_polyhedron(char *path){
 	string input = read_file(path);
-	stringstream ss;
-	ss<<input;
-	Polyhedron *poly = new Polyhedron();
-	bool getoff = read_off(ss, *poly);
-	printf("load poly %d\n",getoff);
-	ss>>*poly;
-	return poly;
+	return read_polyhedron(input);
 }
-
 
 MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation){
 	MyMesh *decompressed = new MyMesh(lod,

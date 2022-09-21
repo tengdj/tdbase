@@ -8,6 +8,7 @@
 #include <math.h>
 #include <map>
 #include <tuple>
+#include <string.h>
 #include "SpatialJoin.h"
 
 using namespace std;
@@ -17,14 +18,10 @@ namespace hispeed{
 
 /*facilitate functions*/
 
-void report_result(size_t ref_id, size_t tgt_id){
-
-}
-
 size_t get_pair_num(vector<candidate_entry> &candidates){
 	size_t pair_num = 0;
-	for(candidate_entry p:candidates){
-		for(candidate_info c:p.second){
+	for(candidate_entry &p:candidates){
+		for(candidate_info &c:p.candidates){
 			pair_num += c.voxel_pairs.size();
 		}
 	}
@@ -33,10 +30,25 @@ size_t get_pair_num(vector<candidate_entry> &candidates){
 
 size_t get_candidate_num(vector<candidate_entry> &candidates){
 	size_t candidate_num = 0;
-	for(candidate_entry p:candidates){
-		candidate_num += p.second.size();
+	for(candidate_entry &p:candidates){
+		candidate_num += p.candidates.size();
 	}
 	return candidate_num;
+}
+
+SpatialJoin::SpatialJoin(geometry_computer *c, query_context &ctx){
+	assert(c);
+	global_ctx = ctx;
+	pthread_mutex_init(&g_lock, NULL);
+	computer = c;
+}
+
+SpatialJoin::~SpatialJoin(){
+
+}
+
+void SpatialJoin::report_time(double t){
+	global_ctx.report(t);
 }
 
 //utility function to calculate the distances between voxel pairs in batch
@@ -54,10 +66,10 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		assert(pair_num==candidate_num && "no shape-aware indexing should be applied in aabb");
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
-			if(ctx.query_type=="nn"&&c.second.size()<=1){
+			if(ctx.query_type=="nn"&&c.candidates.size()<=1){
 				continue;
 			}
-			for(candidate_info &info:c.second){
+			for(candidate_info &info:c.candidates){
 				info.mesh_wrapper->mesh->get_aabb_tree_segment();
 			}
 		}
@@ -65,14 +77,14 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		logt("building aabb tree", start);
 
 		int index = 0;
-		for(candidate_entry c:candidates){
+		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
-			if(c.second.size()<=1){
+			if(c.candidates.size()<=1){
 				continue;
 			}
 			vector<Point> vertices;
-			c.first->mesh->get_vertices(vertices);
-			for(candidate_info info:c.second){
+			c.mesh_wrapper->mesh->get_vertices(vertices);
+			for(candidate_info &info:c.candidates){
 				double min_dist = DBL_MAX;
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(Point &p:vertices){
@@ -97,8 +109,8 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		uint segment_num = 0;
 
 		for(candidate_entry &c:candidates){
-			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info &info:c.second){
+			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
+			for(candidate_info &info:c.candidates){
 				for(voxel_pair &vp:info.voxel_pairs){
 					assert(vp.v1&&vp.v2);
 					// update the voxel map
@@ -124,13 +136,15 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 
 		for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin();
 				it!=voxel_map.end(); ++it){
-			memcpy(data+it->second.first*6, it->first->data[lod], it->first->size[lod]*6*sizeof(float));
+			std::memcpy((void *)(data+it->second.first*6),
+					(const void *)(it->first->data[lod]),
+					(size_t)it->first->size[lod]*6*sizeof(float));
 		}
 		// organize the data for computing
 		int index = 0;
-		for(candidate_entry c:candidates){
-			for(candidate_info info:c.second){
-				for(voxel_pair vp:info.voxel_pairs){
+		for(candidate_entry &c:candidates){
+			for(candidate_info &info:c.candidates){
+				for(voxel_pair &vp:info.voxel_pairs){
 					assert(vp.v1!=vp.v2);
 					offset_size[4*index] = voxel_map[vp.v1].first;
 					offset_size[4*index+1] = voxel_map[vp.v1].second;
@@ -150,9 +164,8 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		gp.distances = distances;
 		gp.data_size = segment_num;
 		computer->get_distance(gp);
-		delete data;
-		delete offset_size;
-
+		delete []data;
+		delete []offset_size;
 	}
 
 	return distances;

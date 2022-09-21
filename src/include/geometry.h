@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <iostream>
 #include <float.h>
-#include "./mygpu.h"
-#include "../include/util.h"
+#include "mygpu.h"
+#include "util.h"
 #include "pthread.h"
 using namespace std;
 
@@ -90,6 +90,15 @@ VxS(float Vr[3], const float V[3], float s)
   Vr[2] = V[2] * s;
 }
 
+inline float distance(const float *p1, const float *p2){
+	float cur_dist = 0;
+	for(int t=0;t<3;t++){
+		cur_dist += (p1[t]-p2[t])*(p1[t]-p2[t]);
+	}
+	return cur_dist;
+}
+
+
 typedef struct geometry_param_{
 	int id;
 	const float *data;
@@ -102,13 +111,7 @@ typedef struct geometry_param_{
 }geometry_param;
 
 
-inline float distance(const float *p1, const float *p2){
-	float cur_dist = 0;
-	for(int t=0;t<3;t++){
-		cur_dist += (p1[t]-p2[t])*(p1[t]-p2[t]);
-	}
-	return cur_dist;
-}
+
 
 
 float TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);

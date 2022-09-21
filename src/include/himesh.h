@@ -48,8 +48,8 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
-#include "../geometry/aab.h"
-#include "../geometry/geometry.h"
+#include "aab.h"
+#include "geometry.h"
 #include "../PPMC/mymesh.h"
 #include "../PPMC/configuration.h"
 
@@ -150,18 +150,18 @@ public:
  * */
 class HiMesh_Wrapper{
 public:
-	vector<Voxel *> voxels;
-	bool filled = false;
+	// description of the polyhedron
 	size_t id = -1;
-	HiMesh *mesh = NULL;
 	weighted_aab box;
+	vector<Voxel *> voxels;
+
 	// used for retrieving compressed data from disk
+	HiMesh *mesh = NULL;
 	size_t offset = 0;
 	size_t data_size = 0;
 
 	pthread_mutex_t lock;
-
-	int candidate_confirmed = 0;
+	vector<HiMesh_Wrapper *> results;
 public:
 	HiMesh_Wrapper();
 	~HiMesh_Wrapper();
@@ -173,6 +173,7 @@ public:
 
 	size_t num_vertices();
 	void reset();
+	void report_result(HiMesh_Wrapper *result);
 
 };
 

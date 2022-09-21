@@ -8,9 +8,9 @@
 #include <sys/time.h>
 #include <queue>
 
-#include "../storage/tile.h"
-#include "../include/util.h"
-#include "../spatial/himesh.h"
+#include "tile.h"
+#include "util.h"
+#include "himesh.h"
 
 using namespace CGAL;
 using namespace std;

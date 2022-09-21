@@ -41,8 +41,9 @@
 #include <math.h>
 #include <memory.h>
 #include <time.h>
+
 #include "util.h"
-#include "./geometry.h"
+#include "geometry.h"
 
 namespace hispeed{
 

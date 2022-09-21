@@ -24,17 +24,15 @@ inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minm
 	range ret;
 	ret.mindist = DBL_MAX;
 	ret.maxdist = minmaxdist;
-	int voxel_pair_size = voxel_pairs.size();
 	// some voxel pair is farther than this one
-	for(int j=0;j<voxel_pair_size;){
+	for(auto vp_iter = voxel_pairs.begin();vp_iter!=voxel_pairs.end();){
 		// a closer voxel pair already exist
-		if(voxel_pairs[j].dist.mindist > minmaxdist){
+		if(vp_iter->dist.mindist > minmaxdist){
 			// evict this dequalified voxel pairs
-			voxel_pairs.erase(voxel_pairs.begin()+j);
-			voxel_pair_size--;
+			voxel_pairs.erase(vp_iter);
 		}else{
-			ret.mindist = min(ret.mindist, voxel_pairs[j].dist.mindist);
-			j++;
+			ret.mindist = min(ret.mindist, vp_iter->dist.mindist);
+			vp_iter++;
 		}
 	}
 	return ret;
@@ -42,48 +40,48 @@ inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minm
 
 static void print_candidate(candidate_entry &cand){
 #ifdef VERBAL_3DPRO
-	printf("%ld (%d + %ld)\t\n", cand.first->id, cand.first->candidate_confirmed, cand.second.size());
+	printf("%ld (%d + %ld)\t\n", cand.mesh_wrapper->id, cand.candidate_confirmed, cand.candidates.size());
 	int i=0;
-	for(candidate_info &ci:cand.second){
+	for(candidate_info &ci:cand.candidates){
 		printf("%d:\t%ld\t[%f,%f]\n",i++,ci.mesh_wrapper->id,ci.distance.mindist,ci.distance.maxdist);
 	}
 #endif
 }
 
 inline void update_candidate_list_knn(candidate_entry &cand, int knn){
-	HiMesh_Wrapper *target = cand.first;
-	int list_size = cand.second.size();
-	for(int i=0;i<list_size && knn>target->candidate_confirmed;){
+	HiMesh_Wrapper *target = cand.mesh_wrapper;
+	int list_size = cand.candidates.size();
+	for(int i=0;i<list_size && knn>cand.candidate_confirmed;){
 		int sure_closer = 0;
 		int maybe_closer = 0;
-		for(int j=0;j<cand.second.size();j++){
+		for(int j=0;j<cand.candidates.size();j++){
 			if(i==j){
 				continue;
 			}
 			// count how many candidates that are surely closer than this one
-			if(cand.second[i].distance>=cand.second[j].distance) {
+			if(cand.candidates[i].distance>=cand.candidates[j].distance) {
 				sure_closer++;
 			}
 			// count how many candidates that are possibly closer than this one
-			if(!(cand.second[i].distance<=cand.second[j].distance)) {
+			if(!(cand.candidates[i].distance<=cand.candidates[j].distance)) {
 				maybe_closer++;
 			}
 		}
-		int cand_left = knn-target->candidate_confirmed;
+		int cand_left = knn-cand.candidate_confirmed;
 #ifdef VERBAL_3DPRO
 		log("%3d %5d sure closer %3d maybe closer %3d confirmed %3d rest %3d",
 				i,
-				cand.second[i].mesh_wrapper->id,
+				cand.candidates[i].mesh_wrapper->id,
 				sure_closer,
 				maybe_closer,
-				target->candidate_confirmed,
+				cand.candidate_confirmed,
 				cand_left);
 #endif
 		// the rank makes sure this one is confirmed
 		if(maybe_closer < cand_left){
-			report_result(target->id, cand.second[i].mesh_wrapper->id);
-			target->candidate_confirmed++;
-			cand.second.erase(cand.second.begin()+i);
+			target->report_result(cand.candidates[i].mesh_wrapper);
+			cand.candidate_confirmed++;
+			cand.candidates.erase(cand.candidates.begin()+i);
 			list_size--;
 			//log("ranked %d, %d confirmed", rank, target->candidate_confirmed);
 			continue;
@@ -91,7 +89,7 @@ inline void update_candidate_list_knn(candidate_entry &cand, int knn){
 
 		// the rank makes sure this one should be removed
 		if(sure_closer >= cand_left){
-			cand.second.erase(cand.second.begin()+i);
+			cand.candidates.erase(cand.candidates.begin()+i);
 			list_size--;
 			continue;
 		}
@@ -104,7 +102,7 @@ void evaluate_candidate_lists(vector<candidate_entry> &candidates, query_context
 	for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
 		print_candidate(*it);
 		update_candidate_list_knn(*it, ctx.knn);
-		if(it->first->candidate_confirmed==ctx.knn){
+		if(it->candidate_confirmed==ctx.knn){
 			it = candidates.erase(it);
 		}else{
 			it++;
@@ -162,6 +160,7 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
 	// the candidates list need be evaluated after checking with the mbb
 	// some queries might be answered with only querying the index
 	evaluate_candidate_lists(candidates, ctx);
+	delete tree;
 	return candidates;
 }
 
@@ -183,9 +182,6 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		struct timeval iter_start = get_cur_time();
 		start = get_cur_time();
 
-		// update the candidate lists with the newest distance ranges
-
-
 		const int pair_num = get_pair_num(candidates);
 		if(pair_num==0){
 			break;
@@ -198,10 +194,10 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 
 		for(candidate_entry &c:candidates){
 			// the nearest neighbor is found
-			assert(c.first->candidate_confirmed+c.second.size()>ctx.knn);
+			assert(c.candidate_confirmed+c.candidates.size()>ctx.knn);
 			print_candidate(c);
-			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info &info:c.second){
+			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
+			for(candidate_info &info:c.candidates){
 				for(voxel_pair &vp:info.voxel_pairs){
 					assert(vp.v1&&vp.v2);
 					// not filled yet
@@ -233,8 +229,8 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		// now update the distance range with the new distances
 		int index = 0;
 		for(candidate_entry &c:candidates){
-			HiMesh_Wrapper *wrapper1 = c.first;
-			for(candidate_info &ci:c.second){
+			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
+			for(candidate_info &ci:c.candidates){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				double vox_minmaxdist = DBL_MAX;
 				for(voxel_pair &vp:ci.voxel_pairs){
@@ -247,8 +243,12 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 							dist.maxdist = distances[index];
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
-							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
-							//log("%f %f %f %f", wrapper1->mesh->curMaximumCut, wrapper2->mesh->curMaximumCut, dist.mindist, dist.maxdist);
+							//dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
+							dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
+
+#ifdef VERBAL_3DPRO
+							log("%ld\t%d: %f %f %f %f",wrapper1->id, wrapper2->id,wrapper1->mesh->curMaximumCut, wrapper2->mesh->curMaximumCut, dist.mindist, dist.maxdist);
+#endif
 						}
 						vp.dist = dist;
 						vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
@@ -257,6 +257,8 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 				}
 				// after each round, some voxels need to be evicted
 				ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
+				assert(ci.voxel_pairs.size()>0);
+				assert(ci.distance.mindist<=ci.distance.maxdist);
 			}
 		}
 		logt("calculating distance", start);
@@ -266,7 +268,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
 		logt("updating the candidate lists",start);
 
-		delete distances;
+		delete []distances;
 		logt("evaluating with lod %d", iter_start, lod);
 	}
 

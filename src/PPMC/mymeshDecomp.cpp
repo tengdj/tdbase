@@ -297,7 +297,6 @@ void MyMesh ::insertRemovedVertices()
   */
 void MyMesh::removeInsertedEdges()
 {
-	int index = 0;
     for (MyMesh::Halfedge_iterator hit = halfedges_begin();
          hit!=halfedges_end(); ++hit)
     {

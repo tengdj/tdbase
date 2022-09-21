@@ -8,8 +8,8 @@
 #include <algorithm>
 #include <zlib.h>
 
-#include "../spatial/himesh.h"
-#include "../storage/tile.h"
+#include "himesh.h"
+#include "tile.h"
 #include "../PPMC/ppmc.h"
 #include "util.h"
 

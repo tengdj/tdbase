@@ -1,6 +1,6 @@
 
-#include "../spatial/himesh.h"
-#include "../storage/tile.h"
+#include "himesh.h"
+#include "tile.h"
 #include "../PPMC/ppmc.h"
 #include "../include/util.h"
 #include <algorithm>
