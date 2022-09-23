@@ -5,8 +5,8 @@
  *      Author: teng
  */
 
-#include "./geometry.h"
-#include "./mygpu.h"
+#include "geometry.h"
+#include "mygpu.h"
 
 
 namespace hispeed{

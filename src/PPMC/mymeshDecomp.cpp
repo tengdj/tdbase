@@ -27,18 +27,31 @@
   */
 void MyMesh::startNextDecompresssionOp()
 {
-	if(i_curDecimationId>0 && (float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 < i_decompPercentage){
-    	curMaximumCut -= maximumCut[i_nbDecimations - i_curDecimationId];
-    	//log("%d: %f %d %f %f %ld", i_curDecimationId, (float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100, i_curDecimationId, maximumCut[i_nbDecimations - i_curDecimationId], curMaximumCut, size_of_vertices());
-	}
+//	if(i_curDecimationId>0){
+//    	curMaximumCut -= maximumCut[i_nbDecimations - i_curDecimationId];
+//	}
+
     if ((float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 >= i_decompPercentage){
         for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         	hit->resetState();
         for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
             fit->resetState();
-
         operation = Idle;
         b_jobCompleted = true;
+
+        float prev = curMaximumCut;
+        curMaximumCut = 0;
+        for(unsigned i=i_curDecimationId;i<i_nbDecimations;i++){
+			curMaximumCut += maximumCut[i_nbDecimations - i];
+			//log("%d %f", i, maximumCut[i_nbDecimations - i]);
+		}
+
+    	log("decomp %d(%2.2f):\t%.2f->%.2f",
+    			i_curDecimationId,
+    			(float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100
+    			,prev,
+    			curMaximumCut);
+
     } else {
         // Start the decoder.
         start_decoding(&rangeCoder);

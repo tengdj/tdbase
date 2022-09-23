@@ -171,7 +171,7 @@ void MyMesh::decimationStep()
      * record the maximum volume change
      * */
     if(!b_jobCompleted){
-        //log("%f", tmpMaximumcut);
+        log("%f", tmpMaximumcut);
     	maximumCut.push_back(tmpMaximumcut);
     }
     // reset
@@ -294,22 +294,22 @@ void MyMesh::determineResiduals()
 
         	// TODO: precisely evaluate the maximum cuting size
         	float cur_cutdist = 0;
-//        	do
-//			{
-//        		Point p = heh->vertex()->point();
-//            	float cutdist = (rmved.x()-p.x())*(rmved.x()-p.x())+
-//								(rmved.y()-p.y())*(rmved.y()-p.y())+
-//								(rmved.z()-p.z())*(rmved.z()-p.z());
-//            	cur_cutdist = max(maxcutdist, cutdist);
-//				heh = heh->next();
-//			}
-//			while (heh != h);
+        	do
+			{
+        		Point p = heh->vertex()->point();
+            	float cutdist = (rmved.x()-p.x())*(rmved.x()-p.x())+
+								(rmved.y()-p.y())*(rmved.y()-p.y())+
+								(rmved.z()-p.z())*(rmved.z()-p.z());
+            	cur_cutdist = max(cur_cutdist, cutdist);
+				heh = heh->next();
+			}
+			while (heh != h);
 
-        	cur_cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
-						  (rmved.y()-bc.y())*(rmved.y()-bc.y())+
-						  (rmved.z()-bc.z())*(rmved.z()-bc.z());
+//        	cur_cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
+//						  (rmved.y()-bc.y())*(rmved.y()-bc.y())+
+//						  (rmved.z()-bc.z())*(rmved.z()-bc.z());
 
-        	//log("%d %f",processCount++, cur_cutdist);
+        	log("%d %f %f",processCount++, cur_cutdist, tmpMaximumcut);
 
         	tmpMaximumcut = max(tmpMaximumcut, cur_cutdist);
             f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));

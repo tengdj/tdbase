@@ -287,7 +287,11 @@ static void compress(int argc, char **argv){
 	assert(mesh);
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
-	himesh->advance_to(100);
+	int lod = 100;
+	if(argc>2){
+		lod = atoi(argv[2]);
+	}
+	himesh->advance_to(lod);
 	delete mesh;
 	delete himesh;
 }

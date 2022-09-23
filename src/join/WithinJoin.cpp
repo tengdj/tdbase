@@ -12,7 +12,7 @@ namespace hispeed{
 inline void print_candidate_within(candidate_entry &cand){
 	printf("%ld (%ld candidates)\n", cand.mesh_wrapper->id, cand.candidates.size());
 	for(int i=0;i<cand.candidates.size();i++){
-		printf("%d:\t%ld\n",i++,cand.candidates[i].mesh_wrapper->id);
+		printf("%d:\t%ld\t%ld\n",i,cand.candidates[i].mesh_wrapper->id,cand.candidates[i].voxel_pairs.size());
 		for(auto &vp:cand.candidates[i].voxel_pairs){
 			printf("\t[%f,%f]\n",vp.dist.mindist,vp.dist.maxdist);
 		}
@@ -103,6 +103,9 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(voxel_pair &vp:info.voxel_pairs){
 					assert(vp.v1&&vp.v2);
+
+					// check if in the best case next
+
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						// ensure the mesh is extracted
@@ -136,11 +139,10 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 			//print_candidate_within(*ce_iter);
 			for(auto ci_iter=ce_iter->candidates.begin();ci_iter!=ce_iter->candidates.end();){
 				bool determined = false;
-				bool evicted = false;
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
 				for(auto vp_iter = ci_iter->voxel_pairs.begin();vp_iter!=ci_iter->voxel_pairs.end();){
 					// update the distance
-					if(!determined&&!evicted&&vp_iter->v1->size[lod]>0&&vp_iter->v2->size[lod]>0){
+					if(!determined && vp_iter->v1->size[lod]>0&&vp_iter->v2->size[lod]>0){
 						range dist = vp_iter->dist;
 						if(lod==ctx.highest_lod()){
 							// now we have a precise distance
@@ -148,7 +150,8 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 							dist.maxdist = distances[index];
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
-							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
+							dist.mindist = std::max(dist.mindist,
+									dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
 							//log("%f %f %f %f", wrapper1->mesh->curMaximumCut, wrapper2->mesh->curMaximumCut, dist.mindist, dist.maxdist);
 						}
 						vp_iter->dist = dist;
@@ -166,18 +169,20 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 					index++;
 				}
 				if(determined){
+					// must closer than
 					wrapper1->report_result(wrapper2);
 					ce_iter->candidates.erase(ci_iter);
 				}else if(ci_iter->voxel_pairs.size()==0){
+					// must farther than
 					ce_iter->candidates.erase(ci_iter);
 				}else{
 					ci_iter++;
 				}
 			}
-			print_candidate_within(*ce_iter);
 			if(ce_iter->candidates.size()==0){
 				candidates.erase(ce_iter);
 			}else{
+				print_candidate_within(*ce_iter);
 				ce_iter++;
 			}
 		}
