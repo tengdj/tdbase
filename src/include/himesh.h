@@ -137,6 +137,11 @@ public:
 	SegTree *get_aabb_tree_segment();
 	TriangleTree *get_aabb_tree_triangle();
 
+	// query
+	float distance(HiMesh *target);
+	range distance_range(HiMesh *target);
+	bool intersect(HiMesh *target);
+
 	void clear_aabb_tree();
 
 	void get_vertices(std::vector<Point> &points);
@@ -206,24 +211,6 @@ float get_volume(Polyhedron *polyhedron);
 Polyhedron *read_polyhedron();
 Polyhedron *read_polyhedron(string &str);
 Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o);
-
-inline float distance(Point p1, Point p2){
-	float dist = 0;
-	for(int i=0;i<3;i++){
-		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
-	}
-	return dist;
-}
-
-// manhattan distance
-inline float mdistance(Point p1, Point p2){
-	float dist = 0;
-	for(int i=0;i<3;i++){
-		dist += abs((float)(p2[i]-p1[i]));
-	}
-	return dist;
-}
-
 
 }
 

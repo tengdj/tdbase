@@ -337,7 +337,6 @@ void MyMesh::readBaseMesh()
     for(unsigned i=0;i<i_nbDecimations;i++){
     	float maxcut = readFloat();
     	maximumCut.push_back(maxcut);
-    	curMaximumCut += maxcut;
     }
 }
 

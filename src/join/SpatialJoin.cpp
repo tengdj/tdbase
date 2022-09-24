@@ -36,19 +36,13 @@ size_t get_candidate_num(vector<candidate_entry> &candidates){
 	return candidate_num;
 }
 
-SpatialJoin::SpatialJoin(geometry_computer *c, query_context &ctx){
+SpatialJoin::SpatialJoin(geometry_computer *c){
 	assert(c);
-	global_ctx = ctx;
-	pthread_mutex_init(&g_lock, NULL);
 	computer = c;
 }
 
 SpatialJoin::~SpatialJoin(){
 
-}
-
-void SpatialJoin::report_time(double t){
-	global_ctx.report(t);
 }
 
 //utility function to calculate the distances between voxel pairs in batch
@@ -97,7 +91,7 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 					}
 				}
 				assert(info.voxel_pairs.size()==1);
-				distances[index++] = min_dist;
+				distances[index++] = sqrt(min_dist);
 				wrapper2->mesh->clear_aabb_tree();
 			}// end for distance_candiate list
 			vertices.clear();
@@ -211,25 +205,26 @@ void *join_unit(void *param){
 	return NULL;
 }
 
-void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &ctx){
+void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs){
+	struct timeval start = hispeed::get_cur_time();
 	struct nn_param param;
 	for(pair<Tile *, Tile *> &p:tile_pairs){
 		param.tile_queue.push(p);
 	}
 	param.joiner = this;
-	param.ctx = ctx;
-	pthread_t threads[ctx.num_thread];
-	for(int i=0;i<ctx.num_thread;i++){
+	param.ctx = global_ctx;
+	pthread_t threads[global_ctx.num_thread];
+	for(int i=0;i<global_ctx.num_thread;i++){
 		pthread_create(&threads[i], NULL, join_unit, (void *)&param);
 	}
 	while(!param.tile_queue.empty()){
 		usleep(10);
 	}
-	for(int i = 0; i < ctx.num_thread; i++){
+	for(int i = 0; i < global_ctx.num_thread; i++){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
-
+	global_ctx.report(get_time_elapsed(start));
 }
 
 }

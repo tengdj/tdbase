@@ -20,6 +20,7 @@ namespace hispeed{
 
 class query_context{
 public:
+	pthread_mutex_t lk;
 
 	//time
 	double index_time = 0;
@@ -31,6 +32,8 @@ public:
 
 	//parameters
 	std::string query_type = "intersect";
+	std::string tile1_path;
+	std::string tile2_path;
 	int knn = 1;
 	double max_dist = 1000;
 	int num_thread = 0;
@@ -42,47 +45,22 @@ public:
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
+	bool verbose = false;
 
-	int highest_lod(){
-		if(lods.size()==0){
-			return 0;
-		}else {
-			return lods[lods.size()-1];
-		}
-	}
+	// result
+	size_t obj_count = 0;
+	size_t result_count = 0;
 
-	query_context(){
-		num_compute_thread = hispeed::get_num_threads();
-		num_thread = hispeed::get_num_threads();
-	}
-
-	void merge(query_context ctx){
-		index_time += ctx.index_time;
-		decode_time += ctx.decode_time;
-		packing_time += ctx.packing_time;
-		computation_time += ctx.computation_time;
-		updatelist_time += ctx.updatelist_time;
-		overall_time += ctx.overall_time;
-	}
-
-	void report(double t){
-
-		cout<<"total:\t"<<t<<endl;
-		cout<<"index:\t"<<t*index_time/overall_time<<endl;
-		cout<<"decode:\t"<<t*decode_time/overall_time<<endl;
-		cout<<"packing:\t"<<t*packing_time/overall_time<<endl;
-		cout<<"computation:\t"<<t*computation_time/overall_time<<endl;
-		cout<<"updatelist:\t"<<t*updatelist_time/overall_time<<endl;
-		cout<<"other:\t"<<t*(overall_time-decode_time-computation_time-index_time)/overall_time<<endl;
-		printf("analysis\t%f\t%f\t%f\n",
-				(t*index_time/overall_time)/repeated_times,
-				(t*decode_time/overall_time)/repeated_times,
-				(t*(computation_time+packing_time+updatelist_time)/overall_time)/repeated_times);
-		cout<<"decode:\t"<<decode_time<<endl;
-		cout<<"packing:\t"<<packing_time<<endl;
-	}
-
+	int highest_lod();
+	query_context();
+	void merge(query_context ctx);
+	void report(double t);
+	void lock();
+	void unlock();
 };
+
+extern query_context global_ctx;
+extern query_context parse_args(int argc, char **argv);
 
 }
 

@@ -10,11 +10,13 @@
 namespace hispeed{
 
 inline void print_candidate_within(candidate_entry &cand){
-	printf("%ld (%ld candidates)\n", cand.mesh_wrapper->id, cand.candidates.size());
-	for(int i=0;i<cand.candidates.size();i++){
-		printf("%d:\t%ld\t%ld\n",i,cand.candidates[i].mesh_wrapper->id,cand.candidates[i].voxel_pairs.size());
-		for(auto &vp:cand.candidates[i].voxel_pairs){
-			printf("\t[%f,%f]\n",vp.dist.mindist,vp.dist.maxdist);
+	if(global_ctx.verbose){
+		printf("%ld (%ld candidates)\n", cand.mesh_wrapper->id, cand.candidates.size());
+		for(int i=0;i<cand.candidates.size();i++){
+			printf("%d:\t%ld\t%ld\n",i,cand.candidates[i].mesh_wrapper->id,cand.candidates[i].voxel_pairs.size());
+			for(auto &vp:cand.candidates[i].voxel_pairs){
+				printf("\t[%f,%f]\n",vp.dist.mindist,vp.dist.maxdist);
+			}
 		}
 	}
 }
@@ -103,9 +105,6 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
 				for(voxel_pair &vp:info.voxel_pairs){
 					assert(vp.v1&&vp.v2);
-
-					// check if in the best case next
-
 					// not filled yet
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						// ensure the mesh is extracted
@@ -150,9 +149,10 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 							dist.maxdist = distances[index];
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
-							dist.mindist = std::max(dist.mindist,
-									dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
-							//log("%f %f %f %f", wrapper1->mesh->curMaximumCut, wrapper2->mesh->curMaximumCut, dist.mindist, dist.maxdist);
+							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+							if(global_ctx.verbose){
+								//log("%.2f %.2f %.2f %.2f", wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(), dist.mindist, dist.maxdist);
+							}
 						}
 						vp_iter->dist = dist;
 						// one voxel pair is close enough
@@ -190,9 +190,11 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 		logt("current iteration", iter_start);
 	}
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
-	pthread_mutex_lock(&g_lock);
+	for(int i=0;i<tile1->num_objects();i++){
+		ctx.result_count += tile1->get_mesh_wrapper(i)->results.size();
+	}
+	ctx.obj_count += min(tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
-	pthread_mutex_unlock(&g_lock);
 }
 
 }

@@ -194,10 +194,11 @@ void SpatialJoin::intersect(Tile *tile1, Tile *tile2, query_context ctx){
 	}
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
 
-	pthread_mutex_lock(&g_lock);
+	for(int i=0;i<tile1->num_objects();i++){
+		ctx.result_count += tile1->get_mesh_wrapper(i)->results.size();
+	}
+	ctx.obj_count += min(tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
-	pthread_mutex_unlock(&g_lock);
-
 }
 
 }

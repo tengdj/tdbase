@@ -52,16 +52,11 @@ const static long VOXEL_BUFFER_SIZE = 1<<30;
 */
 
 class SpatialJoin{
-
 	geometry_computer *computer = NULL;
-	query_context global_ctx;
-	pthread_mutex_t g_lock;
-
 public:
 
-	SpatialJoin(geometry_computer *c, query_context &ctx);
+	SpatialJoin(geometry_computer *c);
 	~SpatialJoin();
-	void report_time(double t);
 	/*
 	 *
 	 * the main entry function to conduct next round of computation
@@ -80,7 +75,7 @@ public:
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
 	void intersect(Tile *tile1, Tile *tile2, query_context ctx);
 
-	void join(vector<pair<Tile *, Tile *>> &tile_pairs, query_context &);
+	void join(vector<pair<Tile *, Tile *>> &tile_pairs);
 
 	/*
 	 *

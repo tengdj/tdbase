@@ -148,7 +148,10 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<skeleton_points.size();j++){
-			float cur_dist = distance(skeleton_points[j], p);
+			float cur_dist = 0;
+			for(int i=0;i<3;i++){
+				cur_dist += (skeleton_points[j][i]-p[i])*(skeleton_points[j][i]-p[i]);
+			}
 			if(cur_dist<min_dist){
 				gid = j;
 				min_dist = cur_dist;

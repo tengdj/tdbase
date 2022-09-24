@@ -9,8 +9,6 @@
 
 namespace hispeed{
 
-#define VERBAL_3DPRO
-
 inline float get_min_max_dist(vector<voxel_pair> &voxel_pairs){
 	float minmaxdist = DBL_MAX;
 	for(voxel_pair &p:voxel_pairs){
@@ -39,13 +37,13 @@ inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minm
 }
 
 static void print_candidate(candidate_entry &cand){
-#ifdef VERBAL_3DPRO
-	log("%ld (%d + %ld)", cand.mesh_wrapper->id, cand.candidate_confirmed, cand.candidates.size());
-	int i=0;
-	for(candidate_info &ci:cand.candidates){
-		log("%d\t%ld:\t[%f,%f]",i++,ci.mesh_wrapper->id,ci.distance.mindist,ci.distance.maxdist);
+	if(global_ctx.verbose){
+		log("%ld (%d + %ld)", cand.mesh_wrapper->id, cand.candidate_confirmed, cand.candidates.size());
+		int i=0;
+		for(candidate_info &ci:cand.candidates){
+			log("%d\t%ld:\t[%f,%f]",i++,ci.mesh_wrapper->id,ci.distance.mindist,ci.distance.maxdist);
+		}
 	}
-#endif
 }
 
 inline void update_candidate_list_knn(candidate_entry &cand, int knn){
@@ -68,15 +66,15 @@ inline void update_candidate_list_knn(candidate_entry &cand, int knn){
 			}
 		}
 		int cand_left = knn-cand.candidate_confirmed;
-#ifdef VERBAL_3DPRO
-//		log("%ld\t%5ld sure closer %3d maybe closer %3d (%3d +%3d)",
-//				cand.mesh_wrapper->id,
-//				cand.candidates[i].mesh_wrapper->id,
-//				sure_closer,
-//				maybe_closer,
-//				cand.candidate_confirmed,
-//				cand_left);
-#endif
+		if(global_ctx.verbose){
+			log("%ld\t%5ld sure closer %3d maybe closer %3d (%3d +%3d)",
+					cand.mesh_wrapper->id,
+					cand.candidates[i].mesh_wrapper->id,
+					sure_closer,
+					maybe_closer,
+					cand.candidate_confirmed,
+					cand_left);
+		}
 		// the rank makes sure this one is confirmed
 		if(maybe_closer < cand_left){
 			target->report_result(cand.candidates[i].mesh_wrapper);
@@ -211,7 +209,6 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 						info.mesh_wrapper->fill_voxels(DT_Segment);
 					}
 					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
-					log("%d\t%d",vp.v1->size[lod],vp.v2->size[lod]);
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
@@ -243,16 +240,16 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 							dist.maxdist = distances[index];
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
-							//dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut);
-							dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
+							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+							//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 						}
 
-#ifdef VERBAL_3DPRO
+						if(global_ctx.verbose){
 							log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-									wrapper1->mesh->curMaximumCut, wrapper2->mesh->curMaximumCut,
+									wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
 									vp.dist.mindist, vp.dist.maxdist,
 									dist.mindist, dist.maxdist);
-#endif
+						}
 						vp.dist = dist;
 						vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
 					}
@@ -277,9 +274,11 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 	}
 
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
-	pthread_mutex_lock(&g_lock);
+	for(int i=0;i<tile1->num_objects();i++){
+		ctx.result_count += tile1->get_mesh_wrapper(i)->results.size();
+	}
+	ctx.obj_count += min(tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
-	pthread_mutex_unlock(&g_lock);
 }
 
 }

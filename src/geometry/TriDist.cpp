@@ -456,7 +456,7 @@ float TriDist_single(const float *data1, const float *data2, size_t size1, size_
 //					,dist);
 		}
 	}
-	return local_min;
+	return sqrt(local_min);
 }
 
 }

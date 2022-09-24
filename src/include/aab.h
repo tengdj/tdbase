@@ -199,6 +199,8 @@ public:
 				ret.mindist += tmp1*tmp1;
 			}
 		}
+		ret.mindist = sqrt(ret.mindist);
+		ret.maxdist = sqrt(ret.maxdist);
 		return ret;
 	}
 };

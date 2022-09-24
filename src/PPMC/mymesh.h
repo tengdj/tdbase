@@ -41,6 +41,7 @@
 #include "../PPMC/rangeCoder/qsmodel.h"
 #include "../PPMC/rangeCoder/rangecod.h"
 #include "configuration.h"
+#include "query_context.h"
 
 #include "aab.h"
 #include "util.h"
@@ -75,6 +76,8 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 	inline void resetState()
 	{
 	  flag=Unconquered;
+	  prev_maximumCut = maximumCut;
+	  maximumCut = 0;
 	}
 
 	inline bool isConquered() const
@@ -107,10 +110,18 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 		i_quantCellId = nId;
 	}
 
+	inline void setMaximumCut(float tmp){
+		maximumCut = max(tmp, maximumCut);
+	}
+	inline float getMaximumCut(){
+		return prev_maximumCut + maximumCut;
+	}
   private:
 	Flag flag;
 	size_t id;
 	unsigned i_quantCellId;
+	float prev_maximumCut = 0;
+	float maximumCut = 0;
 };
 
 
@@ -513,9 +524,10 @@ public:
 
 	// Store the maximum size we cutted in each round of compression
 	vector<float> maximumCut;
+	float getmaximumCut(){
+		return i_nbDecimations>i_curDecimationId?maximumCut[i_nbDecimations - i_curDecimationId - 1]:0;
+	}
 	int processCount = 0;
-	float tmpMaximumcut = 0;
-	float curMaximumCut = 0.0;
 };
 
 // get the Euclid distance of two points

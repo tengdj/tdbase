@@ -42,20 +42,6 @@ void MyMesh::beginDecimationConquest()
   for(MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
 
-//  int total = 0;
-//  int split = 0;
-//  int nsplit = 0;
-//  for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-//	if(fit->isSplittable()){
-//		split += count_triangle(fit);
-//	}
-//	if(fit->isUnsplittable()){
-//		nsplit += count_triangle(fit);
-//	}
-//  }
-//  total = split+nsplit;
-//  printf("%d,%d,%d\n",total,split,nsplit);
-
   for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
@@ -171,11 +157,15 @@ void MyMesh::decimationStep()
      * record the maximum volume change
      * */
     if(!b_jobCompleted){
-        log("%f", tmpMaximumcut);
-    	maximumCut.push_back(tmpMaximumcut);
+    	float tmpmax = 0;
+		for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+			tmpmax = max(vit->getMaximumCut(), tmpmax);
+		}
+    	maximumCut.push_back(tmpmax);
+    	if(global_ctx.verbose){
+            log("encode %d:\t%.2f", i_curDecimationId, tmpmax);
+    	}
     }
-    // reset
-    tmpMaximumcut = 0;
 }
 
 
@@ -294,26 +284,34 @@ void MyMesh::determineResiduals()
 
         	// TODO: precisely evaluate the maximum cuting size
         	float cur_cutdist = 0;
-        	do
+//        	do
+//			{
+//        		Point p = heh->vertex()->point();
+//            	float cutdist = (rmved.x()-p.x())*(rmved.x()-p.x())+
+//								(rmved.y()-p.y())*(rmved.y()-p.y())+
+//								(rmved.z()-p.z())*(rmved.z()-p.z());
+//            	cur_cutdist = max(cur_cutdist, cutdist);
+//				heh = heh->next();
+//			}
+//			while (heh != h);
+
+        	cur_cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
+						  (rmved.y()-bc.y())*(rmved.y()-bc.y())+
+						  (rmved.z()-bc.z())*(rmved.z()-bc.z());
+
+        	cur_cutdist = sqrt(cur_cutdist);
+
+			do
 			{
-        		Point p = heh->vertex()->point();
-            	float cutdist = (rmved.x()-p.x())*(rmved.x()-p.x())+
-								(rmved.y()-p.y())*(rmved.y()-p.y())+
-								(rmved.z()-p.z())*(rmved.z()-p.z());
-            	cur_cutdist = max(cur_cutdist, cutdist);
+				auto v = heh->vertex();
+				v->setMaximumCut(cur_cutdist);
 				heh = heh->next();
 			}
 			while (heh != h);
 
-//        	cur_cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
-//						  (rmved.y()-bc.y())*(rmved.y()-bc.y())+
-//						  (rmved.z()-bc.z())*(rmved.z()-bc.z());
+        	//log("%d %f",processCount++, cur_cutdist);
 
-        	log("%d %f %f",processCount++, cur_cutdist, tmpMaximumcut);
-
-        	tmpMaximumcut = max(tmpMaximumcut, cur_cutdist);
             f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));
-
             //f->setResidual(getQuantizedPos(f->getRemovedVertexPos()) - getQuantizedPos(barycenter(h)));
 
         }

@@ -160,7 +160,10 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels, enum data_type seg_or_triang
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<voxels.size();j++){
-			float cur_dist = distance(voxels[j]->core, p1);
+			float cur_dist = 0;
+			for(int t=0;t<3;t++){
+				cur_dist += (p1[t]-voxels[j]->core[t])*(p1[t]-voxels[j]->core[t]);
+			}
 			if(cur_dist<min_dist){
 				gid = j;
 				min_dist = cur_dist;

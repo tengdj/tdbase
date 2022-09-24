@@ -297,39 +297,26 @@ static void compress(int argc, char **argv){
 }
 
 static void test(int argc, char **argv){
-	Polyhedron *poly = read_off_polyhedron(argv[1]);
-	cout<<*poly;
-
-
-	MyMesh *mesh = read_off(argv[1]);
-	mesh->completeOperation();
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
-
-	himesh->advance_to(100);
-
-	Skeleton *skeleton  = new Skeleton();
-	Triangle_mesh tmesh;
-	std::stringstream os;
-
-	if (!CGAL::is_triangle_mesh(tmesh)){
-		os << *himesh;
-	}else{
-		Polyhedron *poly = himesh->to_triangulated_polyhedron();
-		os << *poly;
-		delete poly;
+	Tile *tile = new Tile(argv[1]);
+	tile->retrieve_all();
+	for(int i=0;i<5;i++){
+		log("object %d",i);
+		HiMesh *mesh1 = tile->get_mesh(i);
+		HiMesh *mesh2 = tile->get_mesh(i+1000);
+		range bdist = tile->get_mbb(i).distance(tile->get_mbb(i+1000));
+		log("box\t[%.2f,%.2f]",bdist.mindist,bdist.maxdist);
+		for(int lod=0;lod<=100;lod+=10){
+			mesh1->advance_to(lod);
+			mesh2->advance_to(lod);
+			range dist = mesh1->distance_range(mesh2);
+			log("%ld\t[%.2f,%.2f]",lod,dist.mindist,dist.maxdist);
+		}
 	}
-	Polyhedron p;
-	os >> p;
-
-	cout<<p;
-
-	assert(CGAL::is_triangle_mesh(tmesh));
-
-	delete mesh;
-	delete himesh;
+	delete tile;
 }
 
 int main(int argc, char **argv){
+	global_ctx = parse_args(argc, argv);
 	if(argc==1){
 		cout<<"usage: 3dpro function [args]"<<endl;
 		exit(0);
