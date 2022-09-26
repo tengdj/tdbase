@@ -86,21 +86,21 @@ void MyMesh::decimationStep()
             continue;
         }
         //the face is not processed. Count the number of non conquered vertices that can be split
-        int numSplittableVerts = 0;
+        bool hasRemovable = false;
         Halfedge_handle unconqueredVertexHE;
 
         for(Halfedge_handle hh = h->next(); hh!=h; hh=hh->next())
         {
             if(isRemovable(hh->vertex()))
             {
-                if(numSplittableVerts==0)
-                    unconqueredVertexHE = hh;
-                ++numSplittableVerts;
+            	hasRemovable = true;
+                unconqueredVertexHE = hh;
+                break;
             }
         }
 
         //if all face vertices are conquered, then the current face is a null patch:
-        if(numSplittableVerts==0)
+        if(hasRemovable==0)
         {
             f->setUnsplittable();
             //and add the outer halfedges to the queue. Also mark the vertices of the face conquered
@@ -120,8 +120,7 @@ void MyMesh::decimationStep()
             h->removeFromQueue();
             return;
         }
-        //Is there a unique possible choice among the face vertices ?
-        else //if (numSplittableVerts==1)
+        else
         {
             //in that case, cornerCut that vertex.
             h->removeFromQueue();
@@ -135,7 +134,7 @@ void MyMesh::decimationStep()
 		for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
 		{
 			if(isRemovable(vit))
-				printf("Still a vertex that can be removed !\n");
+				assert(false && "Still a vertex that can be removed !\n");
 		}
 
 
@@ -178,7 +177,7 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         Vertex_handle v = startH->vertex();
 
         //make sure that the center vertex can be removed
-        //assert(!v->isConquered());
+        assert(!v->isConquered());
         assert(v->vertex_degree()>2);
 
         Halfedge_handle h = startH->opposite(), end(h);
@@ -189,6 +188,7 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                 assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
 
                 //if the face is not a triangle, cut the corner
+                int deg_bef = f->facet_degree();
                 if(f->facet_degree()>3)
                 {
                   //loop around the face to find the appropriate other halfedge
@@ -199,8 +199,10 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                   //mark the new halfedges as added
                   hCorner->setAdded();
                   hCorner->opposite()->setAdded();
-                }
 
+//                  int deg_aft = hCorner->opposite()->facet_degree();
+//				  log("%d %d",deg_bef, deg_aft);
+                }
                 //mark the vertex as conquered
                 h->vertex()->setConquered();
         }

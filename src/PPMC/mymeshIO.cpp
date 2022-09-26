@@ -55,7 +55,6 @@ void MyMesh::readCompressedData()
     readBaseMesh();
 }
 
-
 // Write a given number of bits in a buffer.
 void writeBits(uint32_t data, unsigned i_nbBits, char *p_dest,
                unsigned &i_bitOffset, size_t &offset)
@@ -245,7 +244,7 @@ void MyMesh::writeBaseMesh()
 
     if(i_bitOffset == 0)
         dataOffset--;
-    // hispeed
+    // 3dpro
     // Write the maximum volume change for each round of decimation
     for(unsigned i=0;i<i_nbDecimations;i++){
     	writeFloat(maximumCut[i]);
@@ -310,13 +309,10 @@ void MyMesh::readBaseMesh()
     for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
     {
         uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
-
         // Write in the first cell of the array the face degree.
         f[0] = readBits(NB_BITS_FACE_DEGREE_BASE_MESH, p_data + dataOffset - 1, i_bitOffset, dataOffset) + 3;
-
         for (unsigned j = 1; j < f[0] + 1; ++j)
             f[j] = readBits(i_nbBitsPerVertex, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-
         p_faceDeque->push_back(f);
     }
 

@@ -97,61 +97,6 @@ Polyhedron *make_cubes(vector<Voxel *> &boxes) {
 	return P;
 }
 
-void write_polyhedron(Polyhedron *mesh, const char *path){
-	ofstream myfile;
-	myfile.open(path);
-	myfile << *mesh;
-	myfile.close();
-}
-
-void write_box(aab box, int id, string prefix){
-	char path[256];
-	sprintf(path, "%s.%d.off", prefix.c_str(), id);
-	hispeed::write_polyhedron(hispeed::make_cube(box), path);
-}
-
-void write_box(aab box, const char *path){
-	hispeed::write_polyhedron(hispeed::make_cube(box), path);
-}
-
-void write_points(vector<Point> &skeleton, const char *path){
-	FILE * fp;
-	fp = fopen (path, "w");
-
-	fprintf(fp, "OFF\n");
-	fprintf(fp, "%ld 0 0\n", skeleton.size());
-	for(Point &p:skeleton){
-		fprintf(fp, "%f %f %f\n",p[0],p[1],p[2]);
-	}
-	fclose(fp);
-}
-
-void write_voxels(vector<Voxel *> boxes, const char *path){
-	hispeed::write_polyhedron(hispeed::make_cubes(boxes), path);
-}
-
-void write_polyhedron(Polyhedron *mesh, int id){
-	char path[256];
-	sprintf(path, "/gisdata/%d.off", id);
-	write_polyhedron(mesh, path);
-}
-
-string read_off_stdin(){
-	string input_line;
-	getline(std::cin, input_line);
-	string whole_mesh = input_line;
-	if(input_line.find("|") == std::string::npos){
-		whole_mesh += "\n";
-		while(getline(std::cin, input_line)){
-			whole_mesh += input_line+"\n";
-		}
-	}else{
-		boost::replace_all(whole_mesh, "|", "\n");
-	}
-	return whole_mesh;
-}
-
-
 string polyhedron_to_wkt(Polyhedron *poly){
 	stringstream ss;
 	ss.precision(10);
@@ -185,7 +130,69 @@ string polyhedron_to_wkt(Polyhedron *poly){
 	return ss.str();
 }
 
-MyMesh *get_mesh(string input_line, bool complete_compress){
+/*
+ * persistent functions
+ * */
+void write_polyhedron(Polyhedron *mesh, const char *path){
+	ofstream myfile;
+	myfile.open(path);
+	myfile << *mesh;
+	myfile.close();
+}
+
+void write_box(aab box, int id, string prefix){
+	char path[256];
+	sprintf(path, "%s.%d.off", prefix.c_str(), id);
+	write_polyhedron(hispeed::make_cube(box), path);
+}
+
+void write_box(aab box, const char *path){
+	write_polyhedron(hispeed::make_cube(box), path);
+}
+
+void write_points(vector<Point> &skeleton, const char *path){
+	FILE * fp;
+	fp = fopen (path, "w");
+
+	fprintf(fp, "OFF\n");
+	fprintf(fp, "%ld 0 0\n", skeleton.size());
+	for(Point &p:skeleton){
+		fprintf(fp, "%f %f %f\n",p[0],p[1],p[2]);
+	}
+	fclose(fp);
+}
+
+void write_voxels(vector<Voxel *> boxes, const char *path){
+	write_polyhedron(make_cubes(boxes), path);
+}
+
+void write_polyhedron(Polyhedron *mesh, int id){
+	char path[256];
+	sprintf(path, "/gisdata/%d.off", id);
+	write_polyhedron(mesh, path);
+}
+
+
+/*
+ * read polyhedrons or MyMesh
+ * */
+
+string read_off_stdin(){
+	string input_line;
+	getline(std::cin, input_line);
+	string whole_mesh = input_line;
+	if(input_line.find("|") == std::string::npos){
+		whole_mesh += "\n";
+		while(getline(std::cin, input_line)){
+			whole_mesh += input_line+"\n";
+		}
+	}else{
+		boost::replace_all(whole_mesh, "|", "\n");
+	}
+	return whole_mesh;
+}
+
+MyMesh *parse_mesh(string input_line, bool complete_compress){
 	if(input_line.size()==0){
 		return NULL;
 	}
@@ -206,23 +213,18 @@ MyMesh *get_mesh(string input_line, bool complete_compress){
 	return mesh;
 }
 
-
 MyMesh *read_mesh(){
 	string mesh_str = read_off_stdin();
-	cout<<mesh_str<<endl;
-	MyMesh *mesh = get_mesh(mesh_str);
+	MyMesh *mesh = parse_mesh(mesh_str);
 	assert(mesh && "this function must return a valid mesh");
 	return mesh;
 }
 
-MyMesh *read_off(char *path){
+MyMesh *read_mesh(char *path){
 	string str = read_file(path);
-	return get_mesh(str);
-}
-
-Polyhedron *read_off_polyhedron(char *path){
-	string input = read_file(path);
-	return read_polyhedron(input);
+	MyMesh *mesh = parse_mesh(str);
+	assert(mesh && "this function must return a valid mesh");
+	return mesh;
 }
 
 MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation){
@@ -235,27 +237,39 @@ MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation){
 	return decompressed;
 }
 
-MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation){
-	MyMesh *mesh = new MyMesh(100,
-			DECOMPRESSION_MODE_ID, 12,
-			data, length, true);
-	if(complete_operation){
-		mesh->completeOperation();
-	}
-	return mesh;
-}
-
-Polyhedron *read_polyhedron(){
-	string input = read_off_stdin();
-	return read_polyhedron(input);
-}
-
-Polyhedron *read_polyhedron(string &input){
+Polyhedron *parse_polyhedron(string &input){
 	stringstream ss;
 	ss<<input;
 	Polyhedron *poly = new Polyhedron();
 	ss>>*poly;
 	return poly;
+}
+
+Polyhedron *read_polyhedron(const char *path){
+	string input = read_file(path);
+	return parse_polyhedron(input);
+}
+
+Polyhedron *read_polyhedron(){
+	string input = read_off_stdin();
+	return parse_polyhedron(input);
+}
+
+vector<Polyhedron *> read_polyhedrons(const char *path, size_t maxnum){
+	string input_line;
+	std::ifstream vfile(path);
+	vector<Voxel *> vessel_voxels;
+	vector<Polyhedron *> ret;
+	while(std::getline(vfile, input_line)&&ret.size()<maxnum){
+		boost::replace_all(input_line, "|", "\n");
+		stringstream ss;
+		ss<<input_line;
+		Polyhedron *p = new Polyhedron();
+		ss >> *p;
+		ret.push_back(p);
+	}
+	vfile.close();
+	return ret;
 }
 
 Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o){

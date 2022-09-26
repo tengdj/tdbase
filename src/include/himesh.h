@@ -199,17 +199,18 @@ string read_off_stdin();
 string polyhedron_to_wkt(Polyhedron *poly);
 
 // some utility functions to operate mesh polyhedrons
-extern MyMesh *get_mesh(string input, bool complete_compress = false);
+extern MyMesh *parse_mesh(string input, bool complete_compress = false);
 extern MyMesh *read_mesh();
-extern MyMesh *read_off(char *path);
-extern Polyhedron *read_off_polyhedron(char *path);
+extern MyMesh *read_mesh(char *path);
 
 extern MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation = false);
-extern MyMesh *decompress_mesh(char *data, size_t length, bool complete_operation = false);
 
 float get_volume(Polyhedron *polyhedron);
 Polyhedron *read_polyhedron();
-Polyhedron *read_polyhedron(string &str);
+extern Polyhedron *read_polyhedron(const char *path);
+vector<Polyhedron *> read_polyhedrons(const char *path, size_t load_num = LONG_MAX);
+
+Polyhedron *parse_polyhedron(string &str);
 Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o);
 
 }

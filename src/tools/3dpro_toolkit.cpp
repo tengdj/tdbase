@@ -86,7 +86,7 @@ static void get_voxel_boxes(int argc, char **argv){
 static void get_skeleton(int argc, char **argv){
 	assert(argc>2);
 	struct timeval start = get_cur_time();
-	MyMesh *mesh = read_off(argv[1]);
+	MyMesh *mesh = read_mesh(argv[1]);
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(100);
@@ -111,7 +111,7 @@ static void get_skeleton(int argc, char **argv){
 static void voxelize(int argc, char **argv){
 	assert(argv>2);
 	struct timeval start = get_cur_time();
-	MyMesh *mesh = read_off(argv[1]);
+	MyMesh *mesh = read_mesh(argv[1]);
 
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
@@ -178,7 +178,7 @@ void profile_decoding(int argc, char **argv){
 	assert(start_lod>=0&&start_lod<=10);
 	// Init the random number generator.
 	log("start compressing");
-	MyMesh *compressed = read_off(argv[1]);
+	MyMesh *compressed = read_mesh(argv[1]);
 
 	struct timeval starttime = get_cur_time();
 	//assert(compressed->size_of_border_edges()&&"must be manifold");
@@ -189,7 +189,7 @@ void profile_decoding(int argc, char **argv){
 
 	MyMesh *testc[itertime];
 	for(int i=0;i<itertime;i++){
-		testc[i] = read_off(argv[1]);
+		testc[i] = read_mesh(argv[1]);
 	}
 	struct timeval sst = get_cur_time();
 	for(int i=0;i<itertime;i++){
@@ -269,7 +269,7 @@ static void adjust_polyhedron(int argc, char **argv){
 }
 
 static void triangulate(int argc, char **argv){
-	MyMesh *mesh = read_off(argv[1]);
+	MyMesh *mesh = read_mesh(argv[1]);
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(100);
@@ -283,7 +283,7 @@ static void triangulate(int argc, char **argv){
 }
 
 static void compress(int argc, char **argv){
-	MyMesh *mesh = read_off(argv[1]);
+	MyMesh *mesh = read_mesh(argv[1]);
 	assert(mesh);
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
@@ -297,22 +297,26 @@ static void compress(int argc, char **argv){
 }
 
 static void test(int argc, char **argv){
-	Tile *tile = new Tile(argv[1]);
-	tile->retrieve_all();
-	for(int i=0;i<5;i++){
-		log("object %d",i);
-		HiMesh *mesh1 = tile->get_mesh(i);
-		HiMesh *mesh2 = tile->get_mesh(i+1000);
-		range bdist = tile->get_mbb(i).distance(tile->get_mbb(i+1000));
-		log("box\t[%.2f,%.2f]",bdist.mindist,bdist.maxdist);
-		for(int lod=0;lod<=100;lod+=10){
-			mesh1->advance_to(lod);
-			mesh2->advance_to(lod);
-			range dist = mesh1->distance_range(mesh2);
-			log("%ld\t[%.2f,%.2f]",lod,dist.mindist,dist.maxdist);
-		}
-	}
-	delete tile;
+//	Tile *tile = new Tile(argv[1]);
+//	tile->retrieve_all();
+//	for(int i=0;i<5;i++){
+//		log("object %d",i);
+//		HiMesh *mesh1 = tile->get_mesh(i);
+//		HiMesh *mesh2 = tile->get_mesh(i+1000);
+//		range bdist = tile->get_mbb(i).distance(tile->get_mbb(i+1000));
+//		log("box\t[%.2f,%.2f]",bdist.mindist,bdist.maxdist);
+//		for(int lod=0;lod<=100;lod+=10){
+//			mesh1->advance_to(lod);
+//			mesh2->advance_to(lod);
+//			range dist = mesh1->distance_range(mesh2);
+//			log("%ld\t[%.2f,%.2f]",lod,dist.mindist,dist.maxdist);
+//		}
+//	}
+//	delete tile;
+//	vector<Polyhedron *> vessels = read_polyhedrons(argv[1], 1);
+	Polyhedron *vessels = read_polyhedron(argv[1]);
+	log("%ld",vessels->size_of_vertices());
+
 }
 
 int main(int argc, char **argv){

@@ -20,10 +20,10 @@ namespace po = boost::program_options;
 
 // 50M for each vessel and the nucleis around it
 const int buffer_size = 50*(1<<20);
-vector<Polyhedron> nucleis;
+vector<Polyhedron *> nucleis;
 vector<vector<Voxel *>> nucleis_voxels;
 bool *vessel_taken;
-Polyhedron vessel;
+Polyhedron *vessel = NULL;
 aab nuclei_box;
 aab vessel_box;
 
@@ -37,68 +37,60 @@ int shifted_range = 100;
 HiMesh *poly_to_himesh(Polyhedron &poly){
 	stringstream ss;
 	ss<<poly;
-	MyMesh *mesh = hispeed::get_mesh(ss.str(), true);
+	MyMesh *mesh = hispeed::parse_mesh(ss.str(), true);
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	himesh->advance_to(100);
 	delete mesh;
 	return himesh;
 }
 
-MyMesh *poly_to_mesh(Polyhedron poly){
+MyMesh *poly_to_mesh(Polyhedron &poly){
 	stringstream ss;
 	ss<<poly;
-	return hispeed::get_mesh(ss.str(), true);
+	return parse_mesh(ss.str(), true);
 }
 
 void load_prototype(const char *nuclei_path, const char *vessel_path){
-	std::ifstream nfile(nuclei_path);
-	std::ifstream vfile(vessel_path);
-	string input_line;
+
 	vector<Voxel *> vessel_voxels;
-	if(std::getline(vfile, input_line)){
-		boost::replace_all(input_line, "|", "\n");
-		stringstream ss;
-		ss<<input_line;
-		ss >> vessel;
-		aab tmpb;
-		for(Polyhedron::Vertex_iterator vi=vessel.vertices_begin();vi!=vessel.vertices_end();vi++){
-			Point p = vi->point();
-			tmpb.update(p[0], p[1], p[2]);
-		}
-		for(Polyhedron::Vertex_iterator vi=vessel.vertices_begin();vi!=vessel.vertices_end();vi++){
-			Point p = vi->point();
-			vi->point() = Point(p[0]-tmpb.low[0], p[1]-tmpb.low[1], p[2]-tmpb.low[2]);
-		}
-		tmpb.high[0] -= tmpb.low[0];
-		tmpb.high[1] -= tmpb.low[1];
-		tmpb.high[2] -= tmpb.low[2];
-		tmpb.low[0] = 0;
-		tmpb.low[1] = 0;
-		tmpb.low[2] = 0;
-		vessel_box.update(tmpb);
-		HiMesh *himesh = poly_to_himesh(vessel);
-		// just for assign nuclei in the sub space around the vessel
-		vessel_voxels = himesh->generate_voxels_skeleton(1);
-
-		delete himesh;
-	}else{
-		assert(false&&"error reading the vessel file");
+	// load the vessel
+	vector<Polyhedron *> vessels = read_polyhedrons(vessel_path, 1);
+	assert(vessels.size()==1);
+	vessel = vessels[0];
+	vessels.clear();
+	exit(0);
+	aab tmpb;
+	for(Polyhedron::Vertex_iterator vi=vessel->vertices_begin();vi!=vessel->vertices_end();vi++){
+		Point p = vi->point();
+		tmpb.update(p[0], p[1], p[2]);
 	}
+	for(Polyhedron::Vertex_iterator vi=vessel->vertices_begin();vi!=vessel->vertices_end();vi++){
+		Point p = vi->point();
+		vi->point() = Point(p[0]-tmpb.low[0], p[1]-tmpb.low[1], p[2]-tmpb.low[2]);
+	}
+	tmpb.high[0] -= tmpb.low[0];
+	tmpb.high[1] -= tmpb.low[1];
+	tmpb.high[2] -= tmpb.low[2];
+	tmpb.low[0] = 0;
+	tmpb.low[1] = 0;
+	tmpb.low[2] = 0;
+	vessel_box.update(tmpb);
+	HiMesh *himesh = poly_to_himesh(*vessel);
+	// just for assigning nuclei in the sub space around the vessel
+	vessel_voxels = himesh->generate_voxels_skeleton(1);
+	delete himesh;
 
-	while(std::getline(nfile, input_line)){
-		boost::replace_all(input_line, "|", "\n");
-		stringstream ss;
-		ss<<input_line;
-		Polyhedron poly;
-		ss >> poly;
+	// load the nucleis
+	nucleis = read_polyhedrons(nuclei_path);
+	for(Polyhedron *poly:nucleis){
 		aab tmpb;
-		for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
+		for(Polyhedron::Vertex_iterator vi=poly->vertices_begin();vi!=poly->vertices_end();vi++){
 			Point p = vi->point();
 			Point np(p[0]/shrink, p[1]/shrink, p[2]/shrink);
 			vi->point() = np;
 			tmpb.update(np[0], np[1], np[2]);
 		}
-		for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
+		for(Polyhedron::Vertex_iterator vi=poly->vertices_begin();vi!=poly->vertices_end();vi++){
 			Point p = vi->point();
 			vi->point() = Point((p[0]-tmpb.low[0]), (p[1]-tmpb.low[1]), p[2]-tmpb.low[2]);
 		}
@@ -109,13 +101,11 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		tmpb.low[1] = 0;
 		tmpb.low[2] = 0;
 		nuclei_box.update(tmpb);
-		nucleis.push_back(poly);
-		HiMesh *himesh = poly_to_himesh(poly);
+		HiMesh *himesh = poly_to_himesh(*poly);
 		vector<Voxel *> vxls = himesh->generate_voxels_skeleton(himesh->size_of_vertices()/voxel_size);
 		nucleis_voxels.push_back(vxls);
 		delete himesh;
 	}
-
 
 	int nuclei_num[3];
 	for(int i=0;i<3;i++){
@@ -140,10 +130,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		}
 
 	}
-
-	nfile.close();
-	vfile.close();
-
 }
 
 Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
@@ -232,7 +218,7 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 		shift[2] = z*nuclei_box.high[2]+base[2];
 
 		int polyid = hispeed::get_rand_number(nucleis.size()-1);
-		organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
+		organize_data(*nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
 		{
 			float shift2[3];
 			shift2[0] = shift[0]+nuclei_box.high[0]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
@@ -240,7 +226,7 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 			shift2[2] = shift[2]+nuclei_box.high[2]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
 
 			int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
-			organize_data(nucleis[polyid2], nucleis_voxels[polyid2], shift2, data2, offset2);
+			organize_data(*nucleis[polyid2], nucleis_voxels[polyid2], shift2, data2, offset2);
 		}
 	}
 	return generated;
@@ -290,12 +276,12 @@ void generate_vessel(const char *path, vector<tuple<float, float, float>> &vesse
 	struct timeval start = get_cur_time();
 	char *data = new char[vessel_shifts.size()*100000*2];
 	size_t offset = 0;
-	HiMesh *himesh = poly_to_himesh(vessel);
+	HiMesh *himesh = poly_to_himesh(*vessel);
 	vector<Voxel *> voxels = himesh->generate_voxels_skeleton(voxel_size);
 	logt("%ld voxels are extracted",start, voxels.size());
 	for(tuple<float, float, float> tp:vessel_shifts){
 		float shift[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
-		organize_data(vessel, voxels, shift, data, offset);
+		organize_data(*vessel, voxels, shift, data, offset);
 	}
 	logt("%ld vessels are generated",start,vessel_shifts.size());
 	ofstream *v_os = new std::ofstream(path, std::ios::out | std::ios::binary);
@@ -388,5 +374,10 @@ int main(int argc, char **argv){
 	os2->close();
 	logt("%ld nucleis are generated for %d vessels", start, global_generated, x_dim*y_dim*z_dim);
 	delete os;
+	delete vessel;
+	for(Polyhedron *n:nucleis){
+		delete n;
+	}
+	nucleis.clear();
 }
 
