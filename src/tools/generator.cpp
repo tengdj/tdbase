@@ -58,7 +58,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	assert(vessels.size()==1);
 	vessel = vessels[0];
 	vessels.clear();
-	exit(0);
 	aab tmpb;
 	for(Polyhedron::Vertex_iterator vi=vessel->vertices_begin();vi!=vessel->vertices_end();vi++){
 		Point p = vi->point();
@@ -128,7 +127,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 				}
 			}
 		}
-
 	}
 }
 
@@ -203,9 +201,9 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 	assert(total_slots>num_nuclei_per_vessel);
 
 	while(++generated<num_nuclei_per_vessel){
-		int idx = hispeed::get_rand_number(total_slots);
+		int idx = get_rand_number(total_slots);
 		while(taken[idx]||vessel_taken[idx]){
-			idx = hispeed::get_rand_number(total_slots);
+			idx = get_rand_number(total_slots);
 		}
 		taken[idx] = true;
 
@@ -250,7 +248,7 @@ void *generate_unit(void *arg){
 		if(!complete){
 			job = jobs.front();
 			jobs.pop();
-			//log("%ld jobs left", jobs.size());
+			log("%ld jobs left", jobs.size());
 		}
 		pthread_mutex_unlock(&mylock);
 		if(complete){
@@ -278,23 +276,19 @@ void generate_vessel(const char *path, vector<tuple<float, float, float>> &vesse
 	size_t offset = 0;
 	HiMesh *himesh = poly_to_himesh(*vessel);
 	vector<Voxel *> voxels = himesh->generate_voxels_skeleton(voxel_size);
-	logt("%ld voxels are extracted",start, voxels.size());
 	for(tuple<float, float, float> tp:vessel_shifts){
 		float shift[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
 		organize_data(*vessel, voxels, shift, data, offset);
 	}
-	logt("%ld vessels are generated",start,vessel_shifts.size());
 	ofstream *v_os = new std::ofstream(path, std::ios::out | std::ios::binary);
 	v_os->write(data, offset);
 	v_os->close();
 	delete v_os;
-	log("%d voxels are generated for the vessel",voxels.size());
+	logt("%ld vessels are generated with %d voxels",start,vessel_shifts.size(),voxels.size());
 	for(Voxel *v:voxels){
 		delete v;
 	}
 	voxels.clear();
-	logt("clear the job",start);
-
 	delete himesh;
 }
 
@@ -362,10 +356,8 @@ int main(int argc, char **argv){
 	for(int i=0;i<num_threads;i++){
 		pthread_create(&threads[i], NULL, generate_unit, NULL);
 	}
-
 	generate_vessel(vessel_output, vessel_shifts);
 	vessel_shifts.clear();
-
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
 		pthread_join(threads[i], &status);
