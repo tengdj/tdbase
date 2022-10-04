@@ -198,13 +198,20 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	bool *taken = new bool[total_slots];
 
-	assert(total_slots>num_nuclei_per_vessel);
+	size_t taken_count = 0;
+	for(int i=0;i<total_slots;i++){
+		taken_count += vessel_taken[i];
+	}
+	assert(total_slots>num_nuclei_per_vessel+taken_count && "should have enough slots");
 
 	while(++generated<num_nuclei_per_vessel){
 		int idx = get_rand_number(total_slots);
-		while(taken[idx]||vessel_taken[idx]){
-			idx = get_rand_number(total_slots);
-		}
+		for(;taken[idx]||vessel_taken[idx];idx = (idx+1)%total_slots);
+//		size_t tested = 0;
+//		while(taken[idx]||vessel_taken[idx]){
+//			idx = get_rand_number(total_slots);
+//			log("%ld",tested++);
+//		}
 		taken[idx] = true;
 
 		int z = idx/(nuclei_num[0]*nuclei_num[1]);
