@@ -113,6 +113,9 @@ query_context parse_args(int argc, char **argv){
 	if(vm.count("verbose")){
 		ctx.verbose = true;
 	}
+	if(vm.count("gpu")){
+		ctx.use_gpu = true;
+	}
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
 		cout <<"error query type: "<< ctx.query_type <<endl;
 		exit(0);

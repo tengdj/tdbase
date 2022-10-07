@@ -30,9 +30,9 @@ aab vessel_box;
 
 int num_nuclei_per_vessel = 10000;
 int num_vessel = 1;
-float shrink = 20;
-int voxel_size = 400000;
-int shifted_range = 100;
+float shrink = 10;
+int voxel_size = 100;
+int shifted_range = 30;
 
 HiMesh *poly_to_himesh(Polyhedron &poly){
 	stringstream ss;
@@ -301,17 +301,17 @@ void generate_vessel(const char *path, vector<tuple<float, float, float>> &vesse
 
 
 int main(int argc, char **argv){
-	string nuclei_pt;
-	string vessel_pt;
+	string nuclei_pt = "../data/nuclei.pt";
+	string vessel_pt = "../data/vessel.pt";
 	string output_path;
 	int num_threads = hispeed::get_num_threads();
 
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
-		("nuclei,u", po::value<string>(&nuclei_pt)->required(), "path to the nuclei prototype file")
-		("vessel,v", po::value<string>(&vessel_pt)->required(), "path to the vessel prototype file")
-		("output,o", po::value<string>(&output_path)->required(), "initial of the output files")
+		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
+		("vessel,v", po::value<string>(&vessel_pt), "path to the vessel prototype file")
+		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
 		("shrink,s", po::value<float>(&shrink), "shrink the size of nuclei by how many times")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
 		("shifted_range,r", po::value<int>(&shifted_range), "range of the second nucleus can be shifted")

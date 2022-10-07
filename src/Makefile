@@ -65,6 +65,8 @@ SPATIAL_OBJS := $(patsubst %.cpp,%.o,$(SPATIAL_SRCS))
 GEOMETRY_SRCS := $(wildcard geometry/*.cpp)
 GEOMETRY_OBJS := $(patsubst %.cpp,%.o,$(GEOMETRY_SRCS))
 
+GEOMETRY_OBJS += $(OBJS_CU)
+
 #INDEX source and object
 INDEX_SRCS := $(wildcard index/*.cpp)
 INDEX_OBJS := $(patsubst %.cpp,%.o,$(INDEX_SRCS))
@@ -82,13 +84,13 @@ all: compress join generator fixer h5tooff 3dpro
 compress: tools/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-join: tools/joiner.o $(GEOMETRY_OBJS) $(OBJS_CU) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+join: tools/joiner.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 generator: tools/generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) $(GEOMETRY_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
 
-aabb: tools/test_aabb.o $(GEOMETRY_OBJS) $(OBJS_CU) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
+aabb: tools/test_aabb.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 fixer: tools/fixer.o
