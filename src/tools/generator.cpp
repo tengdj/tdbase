@@ -24,9 +24,10 @@ vector<Polyhedron *> nucleis;
 vector<vector<Voxel *>> nucleis_voxels;
 bool *vessel_taken;
 Polyhedron *vessel = NULL;
+vector<Voxel *> voxels;
+
 aab nuclei_box;
 aab vessel_box;
-
 
 int num_nuclei_per_vessel = 10000;
 int num_vessel = 1;
@@ -49,6 +50,42 @@ MyMesh *poly_to_mesh(Polyhedron &poly){
 	ss<<poly;
 	return parse_mesh(ss.str(), true);
 }
+
+
+Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
+	Polyhedron poly;
+	stringstream ss;
+	ss << poly_o;
+	ss >> poly;
+	for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
+		Point p = vi->point();
+		vi->point() = Point((p[0]+shift[0]), (p[1]+shift[1]), p[2]+shift[2]);
+	}
+	return poly;
+}
+
+aab shrink_polyhedron(Polyhedron *poly){
+	aab tmpb;
+	for(Polyhedron::Vertex_iterator vi=poly->vertices_begin();vi!=poly->vertices_end();vi++){
+		Point p = vi->point();
+		Point np(p[0]/shrink, p[1]/shrink, p[2]/shrink);
+		vi->point() = np;
+		tmpb.update(np[0], np[1], np[2]);
+	}
+	for(Polyhedron::Vertex_iterator vi=poly->vertices_begin();vi!=poly->vertices_end();vi++){
+		Point p = vi->point();
+		vi->point() = Point((p[0]-tmpb.low[0]), (p[1]-tmpb.low[1]), p[2]-tmpb.low[2]);
+	}
+	tmpb.high[0] -= tmpb.low[0];
+	tmpb.high[1] -= tmpb.low[1];
+	tmpb.high[2] -= tmpb.low[2];
+	tmpb.low[2] = 0;
+	tmpb.low[1] = 0;
+	tmpb.low[2] = 0;
+	return tmpb;
+}
+
+
 
 void load_prototype(const char *nuclei_path, const char *vessel_path){
 
@@ -82,23 +119,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	// load the nucleis
 	nucleis = read_polyhedrons(nuclei_path);
 	for(Polyhedron *poly:nucleis){
-		aab tmpb;
-		for(Polyhedron::Vertex_iterator vi=poly->vertices_begin();vi!=poly->vertices_end();vi++){
-			Point p = vi->point();
-			Point np(p[0]/shrink, p[1]/shrink, p[2]/shrink);
-			vi->point() = np;
-			tmpb.update(np[0], np[1], np[2]);
-		}
-		for(Polyhedron::Vertex_iterator vi=poly->vertices_begin();vi!=poly->vertices_end();vi++){
-			Point p = vi->point();
-			vi->point() = Point((p[0]-tmpb.low[0]), (p[1]-tmpb.low[1]), p[2]-tmpb.low[2]);
-		}
-		tmpb.high[0] -= tmpb.low[0];
-		tmpb.high[1] -= tmpb.low[1];
-		tmpb.high[2] -= tmpb.low[2];
-		tmpb.low[2] = 0;
-		tmpb.low[1] = 0;
-		tmpb.low[2] = 0;
+		aab tmpb = shrink_polyhedron(poly);
 		nuclei_box.update(tmpb);
 		HiMesh *himesh = poly_to_himesh(*poly);
 		vector<Voxel *> vxls = himesh->generate_voxels_skeleton(himesh->size_of_vertices()/voxel_size);
@@ -128,18 +149,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 			}
 		}
 	}
-}
-
-Polyhedron shift_polyhedron(float shift[3], Polyhedron &poly_o){
-	Polyhedron poly;
-	stringstream ss;
-	ss << poly_o;
-	ss >> poly;
-	for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
-		Point p = vi->point();
-		vi->point() = Point((p[0]+shift[0]), (p[1]+shift[1]), p[2]+shift[2]);
-	}
-	return poly;
 }
 
 /*
@@ -237,14 +246,17 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 	return generated;
 }
 
+ofstream *v_os = NULL;
 ofstream *os = NULL;
 ofstream *os2 = NULL;
 queue<tuple<float, float, float>> jobs;
 pthread_mutex_t mylock;
+
 long global_generated = 0;
 
 
 void *generate_unit(void *arg){
+	char *vessel_data = new char[buffer_size];
 	char *data = new char[buffer_size];
 	char *data2 = new char[buffer_size];
 	bool complete = false;
@@ -263,42 +275,23 @@ void *generate_unit(void *arg){
 		}
 		size_t offset = 0;
 		size_t offset2 = 0;
+		size_t vessel_offset = 0;
 		float base[3] = {get<0>(job),get<1>(job),get<2>(job)};
-		int generated = generate_nuclei(base, data, offset, data2, offset2);
 
+		int generated = generate_nuclei(base, data, offset, data2, offset2);
+		organize_data(*vessel, voxels, base, vessel_data, vessel_offset);
 		pthread_mutex_lock(&mylock);
 		os->write(data, offset);
 		os2->write(data2, offset2);
+		v_os->write(vessel_data, vessel_offset);
 		global_generated += generated;
 		pthread_mutex_unlock(&mylock);
 	}
+	delete vessel_data;
 	delete data;
 	delete data2;
 	return NULL;
 }
-
-void generate_vessel(const char *path, vector<tuple<float, float, float>> &vessel_shifts){
-	struct timeval start = get_cur_time();
-	char *data = new char[vessel_shifts.size()*100000*2];
-	size_t offset = 0;
-	HiMesh *himesh = poly_to_himesh(*vessel);
-	vector<Voxel *> voxels = himesh->generate_voxels_skeleton(voxel_size);
-	for(tuple<float, float, float> tp:vessel_shifts){
-		float shift[3] = {get<0>(tp),get<1>(tp),get<2>(tp)};
-		organize_data(*vessel, voxels, shift, data, offset);
-	}
-	ofstream *v_os = new std::ofstream(path, std::ios::out | std::ios::binary);
-	v_os->write(data, offset);
-	v_os->close();
-	delete v_os;
-	logt("%ld vessels are generated with %d voxels",start,vessel_shifts.size(),voxels.size());
-	for(Voxel *v:voxels){
-		delete v;
-	}
-	voxels.clear();
-	delete himesh;
-}
-
 
 int main(int argc, char **argv){
 	string nuclei_pt = "../data/nuclei.pt";
@@ -318,6 +311,8 @@ int main(int argc, char **argv){
 		("nv", po::value<int>(&num_vessel), "number of vessels")
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
+		("quant_bits", po::value<int>(&global_ctx.quant_bits), "the quantization bits")
+		("verbose", "verbose")
 		;
 
 	po::variables_map vm;
@@ -329,16 +324,21 @@ int main(int argc, char **argv){
 	}
 	po::notify(vm);
 
+	global_ctx.verbose = vm.count("verbose");
+
 	struct timeval start = get_cur_time();
 
+	char vessel_output[256];
 	char nuclei_output[256];
 	char nuclei_output2[256];
+	char config[100];
+	sprintf(config,"v_nv%d_nu%d_s%d_vs%d_r%d_q%d",num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range,global_ctx.quant_bits);
 
-	char vessel_output[256];
-	sprintf(nuclei_output,"%s_n_nv%d_nu%d_s%d_vs%d_r%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
-	sprintf(nuclei_output2,"%s_n2_nv%d_nu%d_s%d_vs%d_r%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
+	sprintf(vessel_output,"%s_v_%s.dt",output_path.c_str(),config);
+	sprintf(nuclei_output,"%s_n_%s.dt",output_path.c_str(),config);
+	sprintf(nuclei_output2,"%s_n2_%s.dt",output_path.c_str(),config);
 
-	sprintf(vessel_output,"%s_v_nv%d_nu%d_s%d_vs%d_r%d.dt",output_path.c_str(),num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
+	v_os = new std::ofstream(vessel_output, std::ios::out | std::ios::binary);
 	os = new std::ofstream(nuclei_output, std::ios::out | std::ios::binary);
 	os2 = new std::ofstream(nuclei_output2, std::ios::out | std::ios::binary);
 
@@ -349,30 +349,38 @@ int main(int argc, char **argv){
 	num_nuclei_per_vessel = (num_nuclei_per_vessel*num_vessel)/(x_dim*y_dim*z_dim);
 	load_prototype(nuclei_pt.c_str(), vessel_pt.c_str());
 	logt("load prototype files", start);
-	vector<tuple<float, float, float>> vessel_shifts;
 	for(int i=0;i<x_dim;i++){
 		for(int j=0;j<y_dim;j++){
 			for(int k=0;k<z_dim;k++){
 				jobs.push(std::make_tuple(i*vessel_box.high[0], j*vessel_box.high[1], k*vessel_box.high[2]));
-				vessel_shifts.push_back(std::make_tuple(i*vessel_box.high[0], j*vessel_box.high[1], k*vessel_box.high[2]));
 			}
 		}
 	}
+	size_t vessel_num = jobs.size();
+
+	HiMesh *himesh = poly_to_himesh(*vessel);
+	voxels = himesh->generate_voxels_skeleton(voxel_size);
+	delete himesh;
 
 	pthread_t threads[num_threads];
 	for(int i=0;i<num_threads;i++){
 		pthread_create(&threads[i], NULL, generate_unit, NULL);
 	}
-	generate_vessel(vessel_output, vessel_shifts);
-	vessel_shifts.clear();
 	for(int i = 0; i < num_threads; i++ ){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
+	logt("%ld vessels with %d voxels %ld nucleis are generated",start,vessel_num,voxels.size(),global_generated);
+	for(Voxel *v:voxels){
+		delete v;
+	}
+	voxels.clear();
+	v_os->close();
 	os->close();
 	os2->close();
-	logt("%ld nucleis are generated for %d vessels", start, global_generated, x_dim*y_dim*z_dim);
+	delete v_os;
 	delete os;
+	delete os2;
 	delete vessel;
 	for(Polyhedron *n:nucleis){
 		delete n;

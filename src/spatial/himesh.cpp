@@ -36,10 +36,10 @@ void HiMesh::advance_to(int lod){
 
 
 HiMesh::HiMesh(char* data, long length):
-		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length, true){
+		MyMesh(0, DECOMPRESSION_MODE_ID, global_ctx.quant_bits, data, length, true){
 }
 HiMesh::HiMesh(char* data, long length, bool od):
-		MyMesh(0, DECOMPRESSION_MODE_ID, 12, data, length, od){
+		MyMesh(0, DECOMPRESSION_MODE_ID, global_ctx.quant_bits, data, length, od){
 }
 
 HiMesh::~HiMesh(){

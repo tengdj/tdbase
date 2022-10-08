@@ -204,7 +204,7 @@ MyMesh *parse_mesh(string input_line, bool complete_compress){
 
 	// Init the random number generator.
 	MyMesh *mesh = new MyMesh(100,
-				 COMPRESSION_MODE_ID, 12,
+				 COMPRESSION_MODE_ID, global_ctx.quant_bits,
 				 data, input_line.size(), false);
 
 	if(complete_compress){
@@ -229,7 +229,7 @@ MyMesh *read_mesh(char *path){
 
 MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation){
 	MyMesh *decompressed = new MyMesh(lod,
-			 DECOMPRESSION_MODE_ID, 12,
+			 DECOMPRESSION_MODE_ID, global_ctx.quant_bits,
 			 compressed->p_data, compressed->dataOffset, true);
 	if(complete_operation){
 		decompressed->completeOperation();

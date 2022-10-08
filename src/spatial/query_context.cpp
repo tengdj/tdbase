@@ -90,9 +90,11 @@ query_context parse_args(int argc, char **argv){
 		("lod_gap", po::value<int>(&lod_gap), "the lod gap for progressive decoding polyhedral")
 		("lod", po::value<std::vector<std::string>>()->multitoken()->
 				zero_tokens()->composing(), "the lods need be processed")
+		("quant_bits", po::value<int>(&ctx.quant_bits), "the quantization bits")
 		("aabb", "calculate distance with aabb")
 		("gpu,g", "compute with GPU")
 		("verbose,v", "verbose")
+		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
 		;
@@ -115,6 +117,9 @@ query_context parse_args(int argc, char **argv){
 	}
 	if(vm.count("gpu")){
 		ctx.use_gpu = true;
+	}
+	if(vm.count("counter_clock")){
+		ctx.counter_clock = true;
 	}
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
 		cout <<"error query type: "<< ctx.query_type <<endl;

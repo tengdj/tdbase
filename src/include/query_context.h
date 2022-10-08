@@ -46,6 +46,8 @@ public:
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
 	bool verbose = false;
+	bool counter_clock = false;
+	int quant_bits = 12;
 
 	// result
 	size_t obj_count = 0;

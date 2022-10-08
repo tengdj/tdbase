@@ -97,7 +97,6 @@ bool MyMesh::isProtruding(Vertex_const_handle v) const
 
 
 #define PI 3.1415926
-bool counter_clock = false;
 bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) const
 {
 	if(polygon.size()<2){
@@ -139,7 +138,7 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 			double n2 = a3*b1-a1*b3;
 			double n3 = a1*b2-a2*b1;
 
-			if(!counter_clock){
+			if(!global_ctx.counter_clock){
 				n1 = -n1;
 				n2 = -n2;
 				n3 = -n3;
@@ -148,7 +147,7 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 			// calculate the angle between the normal and vector t->0
 			double cosvalue = (r1*n1+r2*n2+r3*n3)/(sqrt(r1*r1+r2*r2+r3*r3)*sqrt(n1*n1+n2*n2+n3*n3));
 			double angle = acos(cosvalue)*180/PI;
-			// avoid the border case
+			// avoid some corner case, such that bigger than 90.5 instead of 90, increase the tolerance.
 			if(angle>90.5){
 				is_recessing = true;
 			}
@@ -161,7 +160,7 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 	}
 
 	// print the removed part into a single polyhedron for visualization
-	if(is_recessing&&false){
+	if(is_recessing && false){
 		printf("%d\n",is_recessing);
 		printf("OFF\n");
 		printf("%ld %ld 0\n",1+rings.size(),1+rings.size());
@@ -170,7 +169,7 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 			printf("%f %f %f\n",p.x(),p.y(),p.z());
 		}
 
-		if(counter_clock){
+		if(global_ctx.counter_clock){
 			for(int i=0;i<rings.size()-1;i++){
 				printf("3 0 %d %d 0 255 0\n",i+1,i+2);
 			}
@@ -216,7 +215,7 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 			double n2 = a3*b1-a1*b3;
 			double n3 = a1*b2-a2*b1;
 
-			if(!counter_clock){
+			if(!global_ctx.counter_clock){
 				n1 = -n1;
 				n2 = -n2;
 				n3 = -n3;
@@ -247,6 +246,7 @@ bool MyMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 				printf("3 %d %ld %ld\n",i-1,i-1+rings.size()-2,2*(rings.size()-2));
 			}
 		}
+		exit(0);
 	}
 	// no recessing point
 	return !is_recessing;
@@ -380,7 +380,7 @@ float MyMesh::removalError(Vertex_const_handle v,
 /**
   * Test if a vertex is removable.
   */
-bool MyMesh::isRemovable(Vertex_const_handle v) const
+bool MyMesh::isRemovable(Vertex_handle v) const
 {
 	if (v != vh_departureConquest[0] && v != vh_departureConquest[1] &&
 		!v->isConquered() && v->vertex_degree() > 2 && v->vertex_degree() <= 8)
@@ -400,7 +400,10 @@ bool MyMesh::isRemovable(Vertex_const_handle v) const
 	  }
 	  while(++hit != end);
 	  //
-	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing) ;//&& isProtruding(heh_oneRing);
+	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing);
+	  if(removable && !isProtruding(heh_oneRing)){
+		 v->setRecessing();
+	  }
 	  return removable;
 	}
 	return false;

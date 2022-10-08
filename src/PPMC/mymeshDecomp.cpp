@@ -43,7 +43,6 @@ void MyMesh::startNextDecompresssionOp()
         // Start the decoder.
         start_decoding(&rangeCoder);
         beginUndecimationConquest();
-
     }
 }
 

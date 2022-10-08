@@ -76,8 +76,6 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 	inline void resetState()
 	{
 	  flag=Unconquered;
-	  prev_maximumCut = maximumCut;
-	  maximumCut = 0;
 	}
 
 	inline bool isConquered() const
@@ -110,18 +108,19 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 		i_quantCellId = nId;
 	}
 
-	inline void setMaximumCut(float tmp){
-		maximumCut = max(tmp, maximumCut);
+	inline void setRecessing(){
+		is_protruding = false;
 	}
-	inline float getMaximumCut(){
-		return prev_maximumCut + maximumCut;
+
+	inline bool isProtruding(){
+		return is_protruding;
 	}
+
   private:
 	Flag flag;
 	size_t id;
 	unsigned i_quantCellId;
-	float prev_maximumCut = 0;
-	float maximumCut = 0;
+	bool is_protruding = true;
 };
 
 
@@ -234,12 +233,14 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
     enum ProcessedFlag {NotProcessed, Processed};
 
   public:
-    MyFace(): flag(Unknown), processedFlag(NotProcessed), box_id(-1){}
+    MyFace(): flag(Unknown), processedFlag(NotProcessed){}
 
 	inline void resetState()
 	{
           flag = Unknown;
           processedFlag = NotProcessed;
+    	  prev_maximumCut = maximumCut;
+    	  maximumCut = 0;
 	}
 
 	inline void resetProcessedFlag()
@@ -304,14 +305,12 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 		residual = v;
 	}
 
-
-	inline void set_box_id(int id){
-		box_id = id;
+	inline void setMaximumCut(float tmp){
+		maximumCut = max(tmp, maximumCut);
 	}
-	inline int get_box_id(){
-		return box_id;
+	inline float getMaximumCut(){
+		return prev_maximumCut + maximumCut;
 	}
-
 
   private:
 	Flag flag;
@@ -320,8 +319,8 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	Point removedVertexPos;
 	VectorInt residual;
 
-    // contain the box of this edge belongs to
-    int box_id;
+	float prev_maximumCut = 0;
+	float maximumCut = 0;
 };
 
 
@@ -411,7 +410,7 @@ public:
 	void lift();
 
 	// Compression geometry and connectivity tests.
-	bool isRemovable(Vertex_const_handle v) const;
+	bool isRemovable(Vertex_handle v) const;
 	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
 	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
 	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;

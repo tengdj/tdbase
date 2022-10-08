@@ -16,11 +16,13 @@
 * You should have received a copy of the GNU General Public License
 * along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
 *****************************************************************************/
+#include <CGAL/squared_distance_3.h>
 
 #include "math.h"
 #include "../PPMC/configuration.h"
 #include "../PPMC/frenetRotation.h"
 #include "../PPMC/mymesh.h"
+
 
 
 /**
@@ -100,7 +102,7 @@ void MyMesh::decimationStep()
         }
 
         //if all face vertices are conquered, then the current face is a null patch:
-        if(hasRemovable==0)
+        if(!hasRemovable)
         {
             f->setUnsplittable();
             //and add the outer halfedges to the queue. Also mark the vertices of the face conquered
@@ -137,7 +139,6 @@ void MyMesh::decimationStep()
 				assert(false && "Still a vertex that can be removed !\n");
 		}
 
-
 		operation = Idle;
 		b_jobCompleted = true;
 		i_curDecimationId--;
@@ -157,8 +158,8 @@ void MyMesh::decimationStep()
      * */
     if(!b_jobCompleted){
     	float tmpmax = 0;
-		for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
-			tmpmax = max(vit->getMaximumCut(), tmpmax);
+		for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+			tmpmax = max(fit->getMaximumCut(), tmpmax);
 		}
     	maximumCut.push_back(tmpmax);
     	if(global_ctx.verbose){
@@ -180,12 +181,17 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         assert(!v->isConquered());
         assert(v->vertex_degree()>2);
 
+        float tmpmaxcut = 0;
+        //int i = 0;
         Halfedge_handle h = startH->opposite(), end(h);
         do
         {
                 assert(!h->is_border());
                 Face_handle f = h->facet();
                 assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
+
+                //printf("checkone: %d\t%f\n", i++,f->getMaximumCut());
+                tmpmaxcut = max(f->getMaximumCut(), tmpmaxcut);
 
                 //if the face is not a triangle, cut the corner
                 int deg_bef = f->facet_degree();
@@ -199,14 +205,16 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                   //mark the new halfedges as added
                   hCorner->setAdded();
                   hCorner->opposite()->setAdded();
+                  assert(hCorner->facet()->getMaximumCut()==0.0);
+                  hCorner->facet()->setMaximumCut(f->getMaximumCut());
 
-//                  int deg_aft = hCorner->opposite()->facet_degree();
-//				  log("%d %d",deg_bef, deg_aft);
+				  //log("%d %d",deg_bef, hCorner->opposite()->facet_degree());
                 }
                 //mark the vertex as conquered
                 h->vertex()->setConquered();
         }
         while((h=h->opposite()->next()) != end);
+        //printf("%f\n\n",tmpmaxcut);
 
         //copy the position of the center vertex:
         Point vPos = startH->vertex()->point();
@@ -218,6 +226,8 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         hNewFace->facet()->setSplittable();
         // keep the removed vertex position.
         hNewFace->facet()->setRemovedVertexPos(vPos);
+        //
+        hNewFace->facet()->setMaximumCut(tmpmaxcut);
 
         //scan the outside halfedges of the new face and add them to
         //the queue if the state of its face is unknown. Also mark it as in_queue
@@ -284,34 +294,12 @@ void MyMesh::determineResiduals()
         	Point bc = barycenter(h);
         	Halfedge_handle heh = h;
 
-        	// TODO: precisely evaluate the maximum cuting size
-        	float cur_cutdist = 0;
-//        	do
-//			{
-//        		Point p = heh->vertex()->point();
-//            	float cutdist = (rmved.x()-p.x())*(rmved.x()-p.x())+
-//								(rmved.y()-p.y())*(rmved.y()-p.y())+
-//								(rmved.z()-p.z())*(rmved.z()-p.z());
-//            	cur_cutdist = max(cur_cutdist, cutdist);
-//				heh = heh->next();
-//			}
-//			while (heh != h);
+        	// TODO: precisely evaluate the maximum cutting size
+        	float cur_cutdist = sqrt(CGAL::squared_distance(rmved, bc));
+        	//log("%d %f",processCount++, cur_cutdist,f->getMaximumCut());
 
-        	cur_cutdist = (rmved.x()-bc.x())*(rmved.x()-bc.x())+
-						  (rmved.y()-bc.y())*(rmved.y()-bc.y())+
-						  (rmved.z()-bc.z())*(rmved.z()-bc.z());
-
-        	cur_cutdist = sqrt(cur_cutdist);
-
-			do
-			{
-				auto v = heh->vertex();
-				v->setMaximumCut(cur_cutdist);
-				heh = heh->next();
-			}
-			while (heh != h);
-
-        	//log("%d %f",processCount++, cur_cutdist);
+        	// increment by cur_cutdist
+			f->setMaximumCut(cur_cutdist + f->getMaximumCut());
 
             f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));
             //f->setResidual(getQuantizedPos(f->getRemovedVertexPos()) - getQuantizedPos(barycenter(h)));
