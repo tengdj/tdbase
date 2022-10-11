@@ -400,7 +400,8 @@ bool MyMesh::isRemovable(Vertex_handle v) const
 	  }
 	  while(++hit != end);
 	  //
-	  bool removable = !willViolateManifold(heh_oneRing) && isConvex(vh_oneRing);
+	  bool removable = !willViolateManifold(heh_oneRing);
+	  //&& isConvex(vh_oneRing);
 	  if(removable && !isProtruding(heh_oneRing)){
 		 v->setRecessing();
 	  }

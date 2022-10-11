@@ -22,6 +22,7 @@
 #include "../PPMC/configuration.h"
 #include "../PPMC/frenetRotation.h"
 #include "../PPMC/mymesh.h"
+#include "geometry.h"
 
 
 
@@ -45,8 +46,7 @@ void MyMesh::beginDecimationConquest()
         hit->resetState();
 
   for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
-        fit->resetState();
-
+	  fit->resetState();
 
   // Select the first gate to begin the decimation.
   // teng: we always start from the middle
@@ -157,14 +157,66 @@ void MyMesh::decimationStep()
      * record the maximum volume change
      * */
     if(!b_jobCompleted){
-    	float tmpmax = 0;
+		float triangle[9];
+		float point[3];
+		float tmpmaxcut = 0.0;
 		for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-			tmpmax = max(fit->getMaximumCut(), tmpmax);
+			vector<Point> ps = fit->getImpactPoints();
+			if(ps.size()==0){
+			  continue;
+			}
+			Halfedge_const_handle hd = fit->halfedge();
+
+			//	  printf("%ld", ps.size());
+			//	  printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
+			//	  Halfedge_const_handle t = hd;
+			//	  do{
+			//		  Point pt = t->vertex()->point();
+			//		  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
+			//		  t = t->next();
+			//	  } while(t!=hd);
+			//
+			//	  for(Point &p:ps){
+			//		  printf("%f %f %f\n",p.x(),p.y(),p.z());
+			//	  }
+			//	  printf("%ld ",fit->facet_degree());
+			//	  for(int i=0;i<fit->facet_degree();i++){
+			//		  printf("%d ",i);
+			//	  }
+			//	  printf("\n");
+
+			Halfedge_const_handle h = hd->next();
+			float curtmp = 0;
+			while(h->next()!=hd){
+			  Point p1 = hd->vertex()->point();
+			  Point p2 = h->vertex()->point();
+			  Point p3 = h->next()->vertex()->point();
+			  h = h->next();
+			  triangle[0] = p1.x();
+			  triangle[1] = p1.y();
+			  triangle[2] = p1.z();
+			  triangle[3] = p2.x();
+			  triangle[4] = p2.y();
+			  triangle[5] = p2.z();
+			  triangle[6] = p3.x();
+			  triangle[7] = p3.y();
+			  triangle[8] = p3.z();
+			  for(Point &p:ps){
+				  point[0] = p.x();
+				  point[1] = p.y();
+				  point[2] = p.z();
+				  float dist = PointTriangleDist((const float*)point, (const float*)triangle);
+				  curtmp = max(curtmp, dist);
+			  }
+			}
+			//log("%f",curtmp);
+			tmpmaxcut = max(tmpmaxcut, curtmp);
 		}
-    	maximumCut.push_back(tmpmax);
-    	if(global_ctx.verbose){
-            log("encode %d:\t%.2f", i_curDecimationId, tmpmax);
-    	}
+
+		maximumCut.push_back(tmpmaxcut);
+		if(global_ctx.verbose){
+			log("encode %d:\t%.2f %ld", i_curDecimationId, tmpmaxcut, this->size_of_vertices());
+		}
     }
 }
 
@@ -182,6 +234,7 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         assert(v->vertex_degree()>2);
 
         float tmpmaxcut = 0;
+        vector<Point> impactpoints;
         //int i = 0;
         Halfedge_handle h = startH->opposite(), end(h);
         do
@@ -193,6 +246,10 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                 //printf("checkone: %d\t%f\n", i++,f->getMaximumCut());
                 tmpmaxcut = max(f->getMaximumCut(), tmpmaxcut);
 
+                vector<Point> ips = f->getImpactPoints();
+                if(ips.size()>0){
+                	impactpoints.insert(impactpoints.end(), ips.begin(), ips.end());
+                }
                 //if the face is not a triangle, cut the corner
                 int deg_bef = f->facet_degree();
                 if(f->facet_degree()>3)
@@ -205,8 +262,11 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                   //mark the new halfedges as added
                   hCorner->setAdded();
                   hCorner->opposite()->setAdded();
+                  hCorner->opposite()->facet()->resetImpactPoints();
+                  //log("split: %ld %ld", hCorner->facet()->getImpactPoints().size(), hCorner->opposite()->facet()->getImpactPoints().size());
                   assert(hCorner->facet()->getMaximumCut()==0.0);
                   hCorner->facet()->setMaximumCut(f->getMaximumCut());
+                  //hCorner->facet()->addImpactPoints(ips);
 
 				  //log("%d %d",deg_bef, hCorner->opposite()->facet_degree());
                 }
@@ -228,6 +288,9 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         hNewFace->facet()->setRemovedVertexPos(vPos);
         //
         hNewFace->facet()->setMaximumCut(tmpmaxcut);
+        //hNewFace->facet()->resetImpactPoints();
+        //log("new %ld %ld", hNewFace->facet()->getImpactPoints().size(),impactpoints.size());
+        hNewFace->facet()->addImpactPoints(impactpoints);
 
         //scan the outside halfedges of the new face and add them to
         //the queue if the state of its face is unknown. Also mark it as in_queue
@@ -301,6 +364,7 @@ void MyMesh::determineResiduals()
         	// increment by cur_cutdist
 			f->setMaximumCut(cur_cutdist + f->getMaximumCut());
 
+			f->addImpactPoint(rmved);
             f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));
             //f->setResidual(getQuantizedPos(f->getRemovedVertexPos()) - getQuantizedPos(barycenter(h)));
 

@@ -459,4 +459,216 @@ float TriDist_single(const float *data1, const float *data2, size_t size1, size_
 	return sqrt(local_min);
 }
 
+float PointTriangleDist(const float *point, const float *triangle)
+{
+	// The member result.sqrDistance is set in each block of the
+	// nested if-then-else statements. The remaining members are all
+	// set at the end of the function.
+
+	float const zero = static_cast<float>(0);
+	float const one = static_cast<float>(1);
+	float const two = static_cast<float>(2);
+
+	float diff[3];
+	float edge0[3];
+	float edge1[3];
+	const float *trianglev0 = triangle;
+	const float *trianglev1 = triangle+3;
+	const float *trianglev2 = triangle+6;
+	VmV(diff, trianglev0, point);
+	VmV(edge0, trianglev1, trianglev0);
+	VmV(edge1, trianglev2, trianglev0);
+
+	float a00 = VdotV(edge0, edge0);
+	float a01 = VdotV(edge0, edge1);
+	float a11 = VdotV(edge1, edge1);
+	float b0 = VdotV(diff, edge0);
+	float b1 = VdotV(diff, edge1);
+	float det = std::max(a00 * a11 - a01 * a01, (float)0.0);
+	float s = a01 * b1 - a11 * b0;
+	float t = a01 * b0 - a00 * b1;
+
+	if (s + t <= det)
+	{
+		if (s < 0.0)
+		{
+			if (t < 0.0)  // region 4
+			{
+				if (b0 < 0.0)
+				{
+					t = zero;
+					if (-b0 >= a00)
+					{
+						s = one;
+					}
+					else
+					{
+						s = -b0 / a00;
+					}
+				}
+				else
+				{
+					s = zero;
+					if (b1 >= zero)
+					{
+						t = zero;
+					}
+					else if (-b1 >= a11)
+					{
+						t = one;
+					}
+					else
+					{
+						t = -b1 / a11;
+					}
+				}
+			}
+			else  // region 3
+			{
+				s = zero;
+				if (b1 >= zero)
+				{
+					t = zero;
+				}
+				else if (-b1 >= a11)
+				{
+					t = one;
+				}
+				else
+				{
+					t = -b1 / a11;
+				}
+			}
+		}
+		else if (t < zero)  // region 5
+		{
+			t = zero;
+			if (b0 >= zero)
+			{
+				s = zero;
+			}
+			else if (-b0 >= a00)
+			{
+				s = one;
+			}
+			else
+			{
+				s = -b0 / a00;
+			}
+		}
+		else  // region 0
+		{
+			// minimum at interior point
+			s /= det;
+			t /= det;
+		}
+	}
+	else
+	{
+		float tmp0{}, tmp1{}, numer{}, denom{};
+
+		if (s < zero)  // region 2
+		{
+			tmp0 = a01 + b0;
+			tmp1 = a11 + b1;
+			if (tmp1 > tmp0)
+			{
+				numer = tmp1 - tmp0;
+				denom = a00 - two * a01 + a11;
+				if (numer >= denom)
+				{
+					s = one;
+					t = zero;
+				}
+				else
+				{
+					s = numer / denom;
+					t = one - s;
+				}
+			}
+			else
+			{
+				s = zero;
+				if (tmp1 <= zero)
+				{
+					t = one;
+				}
+				else if (b1 >= zero)
+				{
+					t = zero;
+				}
+				else
+				{
+					t = -b1 / a11;
+				}
+			}
+		}
+		else if (t < zero)  // region 6
+		{
+			tmp0 = a01 + b1;
+			tmp1 = a00 + b0;
+			if (tmp1 > tmp0)
+			{
+				numer = tmp1 - tmp0;
+				denom = a00 - two * a01 + a11;
+				if (numer >= denom)
+				{
+					t = one;
+					s = zero;
+				}
+				else
+				{
+					t = numer / denom;
+					s = one - t;
+				}
+			}
+			else
+			{
+				t = zero;
+				if (tmp1 <= zero)
+				{
+					s = one;
+				}
+				else if (b0 >= zero)
+				{
+					s = zero;
+				}
+				else
+				{
+					s = -b0 / a00;
+				}
+			}
+		}
+		else  // region 1
+		{
+			numer = a11 + b1 - a01 - b0;
+			if (numer <= zero)
+			{
+				s = zero;
+				t = one;
+			}
+			else
+			{
+				denom = a00 - two * a01 + a11;
+				if (numer >= denom)
+				{
+					s = one;
+					t = zero;
+				}
+				else
+				{
+					s = numer / denom;
+					t = one - s;
+				}
+			}
+		}
+	}
+
+	float closest[3];
+	VpVxS(closest, trianglev0, edge0, s);
+	VpVxS(closest, closest, edge1, t);
+	VmV(closest, closest, point);
+	return sqrt(VdotV(closest, closest));
+}
+
 }

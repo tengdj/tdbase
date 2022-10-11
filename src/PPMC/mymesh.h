@@ -312,6 +312,29 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 		return prev_maximumCut + maximumCut;
 	}
 
+	inline void addImpactPoint(Point p){
+		for(Point &ep:impact_points){
+			if(ep==p){
+				return;
+			}
+		}
+		impact_points.push_back(p);
+	}
+
+	inline void addImpactPoints(vector<Point> ps){
+		for(Point p:ps){
+			addImpactPoint(p);
+		}
+	}
+
+	inline vector<Point> getImpactPoints(){
+		return impact_points;
+	}
+
+	inline void resetImpactPoints(){
+		impact_points.clear();
+	}
+
   private:
 	Flag flag;
 	ProcessedFlag processedFlag;
@@ -321,6 +344,7 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 
 	float prev_maximumCut = 0;
 	float maximumCut = 0;
+	vector<Point> impact_points;
 };
 
 

@@ -284,38 +284,30 @@ static void triangulate(int argc, char **argv){
 
 static void compress(int argc, char **argv){
 	MyMesh *mesh = read_mesh(argv[1]);
+	mesh->writeMeshOff("/gisdata/origin.off");
 	assert(mesh);
 	mesh->completeOperation();
+
+	mesh->writeMeshOff("/gisdata/compressed.off");
+
 	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
 	int lod = 100;
 	if(argc>2){
 		lod = atoi(argv[2]);
 	}
-	himesh->advance_to(lod);
+	for(int i=0;i<=lod;i+=10){
+		himesh->advance_to(lod);
+		himesh->writeCurrentOperationMesh("/gisdata/compressed", i);
+	}
 	delete mesh;
 	delete himesh;
 }
 
 static void test(int argc, char **argv){
-//	Tile *tile = new Tile(argv[1]);
-//	tile->retrieve_all();
-//	for(int i=0;i<5;i++){
-//		log("object %d",i);
-//		HiMesh *mesh1 = tile->get_mesh(i);
-//		HiMesh *mesh2 = tile->get_mesh(i+1000);
-//		range bdist = tile->get_mbb(i).distance(tile->get_mbb(i+1000));
-//		log("box\t[%.2f,%.2f]",bdist.mindist,bdist.maxdist);
-//		for(int lod=0;lod<=100;lod+=10){
-//			mesh1->advance_to(lod);
-//			mesh2->advance_to(lod);
-//			range dist = mesh1->distance_range(mesh2);
-//			log("%ld\t[%.2f,%.2f]",lod,dist.mindist,dist.maxdist);
-//		}
-//	}
-//	delete tile;
-//	vector<Polyhedron *> vessels = read_polyhedrons(argv[1], 1);
-	Polyhedron *vessels = read_polyhedron(argv[1]);
-	log("%ld",vessels->size_of_vertices());
+
+	float point[3] = {0,0,0};
+	float triangle[9] = {1,0,0,0,1,0,2,0,0};
+	log("%f", PointTriangleDist(point, triangle));
 
 }
 
