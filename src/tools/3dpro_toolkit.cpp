@@ -22,10 +22,13 @@ using namespace hispeed;
 static void himesh_to_wkt(int argc, char **argv){
 
 	Tile *tile = new Tile(argv[1]);
+	const char *prefix = argv[2];
 	tile->retrieve_all();
 	tile->advance_all(100);
+	char path[256];
 	for(int i=0;i<tile->num_objects();i++){
-		cout<<i<<"|"<<tile->get_mesh(i)->to_wkt()<<endl;
+		sprintf(path, "%s_%d.OFF", prefix, i);
+		tile->get_mesh(i)->writeMeshOff(path);
 	}
 	delete tile;
 }
@@ -109,7 +112,7 @@ static void get_skeleton(int argc, char **argv){
  * get the voxel boxes
  * */
 static void voxelize(int argc, char **argv){
-	assert(argv>2);
+	assert(argc>2);
 	struct timeval start = get_cur_time();
 	MyMesh *mesh = read_mesh(argv[1]);
 
@@ -305,9 +308,9 @@ static void compress(int argc, char **argv){
 
 static void test(int argc, char **argv){
 
-	float point[3] = {0,0,0};
-	float triangle[9] = {1,0,0,0,1,0,2,0,0};
-	log("%f", PointTriangleDist(point, triangle));
+	for(int i=0;i<100;i++){
+		log("%d", rand());
+	}
 
 }
 

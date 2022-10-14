@@ -159,63 +159,70 @@ void MyMesh::decimationStep()
     if(!b_jobCompleted){
 		float triangle[9];
 		float point[3];
-		float tmpmaxcut = 0.0;
+		float hdist = 0.0;
 		for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 			vector<Point> ps = fit->getImpactPoints();
 			if(ps.size()==0){
 			  continue;
 			}
-			Halfedge_const_handle hd = fit->halfedge();
+			// go check all the triangles for this facet
+			for(Point &p:ps){
+				point[0] = p.x();
+				point[1] = p.y();
+				point[2] = p.z();
+				// for each point, go check all the associated faces and get the closest one
+				float curtmp = DBL_MAX;
 
-			//	  printf("%ld", ps.size());
-			//	  printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
-			//	  Halfedge_const_handle t = hd;
-			//	  do{
-			//		  Point pt = t->vertex()->point();
-			//		  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
-			//		  t = t->next();
-			//	  } while(t!=hd);
-			//
-			//	  for(Point &p:ps){
-			//		  printf("%f %f %f\n",p.x(),p.y(),p.z());
-			//	  }
-			//	  printf("%ld ",fit->facet_degree());
-			//	  for(int i=0;i<fit->facet_degree();i++){
-			//		  printf("%d ",i);
-			//	  }
-			//	  printf("\n");
-
-			Halfedge_const_handle h = hd->next();
-			float curtmp = 0;
-			while(h->next()!=hd){
-			  Point p1 = hd->vertex()->point();
-			  Point p2 = h->vertex()->point();
-			  Point p3 = h->next()->vertex()->point();
-			  h = h->next();
-			  triangle[0] = p1.x();
-			  triangle[1] = p1.y();
-			  triangle[2] = p1.z();
-			  triangle[3] = p2.x();
-			  triangle[4] = p2.y();
-			  triangle[5] = p2.z();
-			  triangle[6] = p3.x();
-			  triangle[7] = p3.y();
-			  triangle[8] = p3.z();
-			  for(Point &p:ps){
-				  point[0] = p.x();
-				  point[1] = p.y();
-				  point[2] = p.z();
-				  float dist = PointTriangleDist((const float*)point, (const float*)triangle);
-				  curtmp = max(curtmp, dist);
-			  }
+				Halfedge_const_handle hd = fit->halfedge();
+				Halfedge_const_handle h = hd->next();
+				while(h->next()!=hd){
+					Point p1 = hd->vertex()->point();
+					Point p2 = h->vertex()->point();
+					Point p3 = h->next()->vertex()->point();
+					h = h->next();
+					triangle[0] = p1.x();
+					triangle[1] = p1.y();
+					triangle[2] = p1.z();
+					triangle[3] = p2.x();
+					triangle[4] = p2.y();
+					triangle[5] = p2.z();
+					triangle[6] = p3.x();
+					triangle[7] = p3.y();
+					triangle[8] = p3.z();
+					float dist = PointTriangleDist((const float*)point, (const float*)triangle);
+					curtmp = min(curtmp, dist);
+				}
+				// haussdorf distance, max of the min
+				hdist = max(hdist, curtmp);
 			}
-			//log("%f",curtmp);
-			tmpmaxcut = max(tmpmaxcut, curtmp);
+
+
+			//if(ps.size()<20&&ps.size()>10)
+//			{
+//				printf("%ld\n", ps.size());
+//				printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
+//				Halfedge_const_handle t = hd;
+//				do{
+//				  Point pt = t->vertex()->point();
+//				  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
+//				  t = t->next();
+//				} while(t!=hd);
+//
+//				for(Point &p:ps){
+//				  printf("%f %f %f\n",p.x(),p.y(),p.z());
+//				}
+//				printf("%ld ",fit->facet_degree());
+//				for(int i=0;i<fit->facet_degree();i++){
+//				  printf("%d ",i);
+//				}
+//				printf("\n");
+//			}
+
 		}
 
-		maximumCut.push_back(tmpmaxcut);
+		maximumCut.push_back(hdist);
 		if(global_ctx.verbose){
-			log("encode %d:\t%.2f %ld", i_curDecimationId, tmpmaxcut, this->size_of_vertices());
+			log("encode %d:\t%.2f %ld (%.2f %.2f %.2f)", i_curDecimationId, hdist, this->size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
 		}
     }
 }
@@ -243,9 +250,6 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                 Face_handle f = h->facet();
                 assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
 
-                //printf("checkone: %d\t%f\n", i++,f->getMaximumCut());
-                tmpmaxcut = max(f->getMaximumCut(), tmpmaxcut);
-
                 vector<Point> ips = f->getImpactPoints();
                 if(ips.size()>0){
                 	impactpoints.insert(impactpoints.end(), ips.begin(), ips.end());
@@ -262,10 +266,10 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
                   //mark the new halfedges as added
                   hCorner->setAdded();
                   hCorner->opposite()->setAdded();
-                  hCorner->opposite()->facet()->resetImpactPoints();
+
+                  //hCorner->opposite()->facet()->resetImpactPoints();
+                  //log("addr: %ld %ld %ld", f, hCorner->facet(), hCorner->opposite()->facet());
                   //log("split: %ld %ld", hCorner->facet()->getImpactPoints().size(), hCorner->opposite()->facet()->getImpactPoints().size());
-                  assert(hCorner->facet()->getMaximumCut()==0.0);
-                  hCorner->facet()->setMaximumCut(f->getMaximumCut());
                   //hCorner->facet()->addImpactPoints(ips);
 
 				  //log("%d %d",deg_bef, hCorner->opposite()->facet_degree());
@@ -286,10 +290,6 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         hNewFace->facet()->setSplittable();
         // keep the removed vertex position.
         hNewFace->facet()->setRemovedVertexPos(vPos);
-        //
-        hNewFace->facet()->setMaximumCut(tmpmaxcut);
-        //hNewFace->facet()->resetImpactPoints();
-        //log("new %ld %ld", hNewFace->facet()->getImpactPoints().size(),impactpoints.size());
         hNewFace->facet()->addImpactPoints(impactpoints);
 
         //scan the outside halfedges of the new face and add them to
@@ -356,13 +356,6 @@ void MyMesh::determineResiduals()
         	Point rmved = f->getRemovedVertexPos();
         	Point bc = barycenter(h);
         	Halfedge_handle heh = h;
-
-        	// TODO: precisely evaluate the maximum cutting size
-        	float cur_cutdist = sqrt(CGAL::squared_distance(rmved, bc));
-        	//log("%d %f",processCount++, cur_cutdist,f->getMaximumCut());
-
-        	// increment by cur_cutdist
-			f->setMaximumCut(cur_cutdist + f->getMaximumCut());
 
 			f->addImpactPoint(rmved);
             f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));

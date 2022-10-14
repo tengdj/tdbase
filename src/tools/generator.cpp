@@ -85,16 +85,13 @@ aab shrink_polyhedron(Polyhedron *poly){
 	return tmpb;
 }
 
-
-
 void load_prototype(const char *nuclei_path, const char *vessel_path){
 
-	vector<Voxel *> vessel_voxels;
+
 	// load the vessel
 	vector<Polyhedron *> vessels = read_polyhedrons(vessel_path, 1);
 	assert(vessels.size()==1);
 	vessel = vessels[0];
-	vessels.clear();
 	aab tmpb;
 	for(Polyhedron::Vertex_iterator vi=vessel->vertices_begin();vi!=vessel->vertices_end();vi++){
 		Point p = vi->point();
@@ -111,9 +108,9 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	tmpb.low[1] = 0;
 	tmpb.low[2] = 0;
 	vessel_box.update(tmpb);
-	HiMesh *himesh = poly_to_himesh(*vessel);
 	// just for assigning nuclei in the sub space around the vessel
-	vessel_voxels = himesh->generate_voxels_skeleton(1);
+	HiMesh *himesh = poly_to_himesh(*vessel);
+	vector<Voxel *> vessel_voxels = himesh->generate_voxels_skeleton(1000);
 	delete himesh;
 
 	// load the nucleis
@@ -134,13 +131,22 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 
 	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	vessel_taken = new bool[total_slots];
+	for(int i=0;i<total_slots;i++){
+		vessel_taken[i] = false;
+	}
+
+	hispeed::write_voxels(vessel_voxels, "/gisdata/3dpro/generated/voxels.OFF");
+
 	for(Voxel *v:vessel_voxels){
-		int xstart = v->low[0]/nuclei_num[0];
-		int xend = v->high[0]/nuclei_num[0];
-		int ystart = v->low[1]/nuclei_num[1];
-		int yend = v->high[1]/nuclei_num[1];
-		int zstart = v->low[2]/nuclei_num[2];
-		int zend = v->high[2]/nuclei_num[2];
+
+		int xstart = v->low[0]/vessel_box.high[0]*nuclei_num[0];
+		int xend = v->high[0]/vessel_box.high[0]*nuclei_num[0];
+		int ystart = v->low[1]/vessel_box.high[1]*nuclei_num[1];
+		int yend = v->high[1]/vessel_box.high[1]*nuclei_num[1];
+		int zstart = v->low[2]/vessel_box.high[2]*nuclei_num[2];
+		int zend = v->high[2]/vessel_box.high[2]*nuclei_num[2];
+
+		//log("%d %d, %d %d, %d %d", xstart, xend, ystart, yend, zstart, zend);
 		for(int z=zstart;z<=zend;z++){
 			for(int y=ystart;y<=yend;y++){
 				for(int x=xstart;x<=xend;x++){
@@ -149,13 +155,34 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 			}
 		}
 	}
+
+//	vector<Voxel *> takenvoxels;
+//	for(int z=0;z<nuclei_num[2];z++){
+//		for(int y=0;y<nuclei_num[1];y++){
+//			for(int x=0;x<nuclei_num[0];x++){
+//				if(vessel_taken[z*nuclei_num[0]*nuclei_num[1]+y*nuclei_num[0]+x]){
+//					Voxel *v = new Voxel();
+//					v->low[0] = nuclei_box.high[0]*x;
+//					v->high[0] = nuclei_box.high[0]*(x+1);
+//					v->low[1] = nuclei_box.high[1]*y;
+//					v->high[1] = nuclei_box.high[1]*(y+1);
+//					v->low[2] = nuclei_box.high[2]*z;
+//					v->high[2] = nuclei_box.high[2]*(z+1);
+//					takenvoxels.push_back(v);
+//					//log("%d %d %d", x, y, z);
+//				}
+//			}
+//		}
+//	}
+//	log("%ld", takenvoxels.size());
+//	hispeed::write_voxels(takenvoxels, "/gisdata/3dpro/generated/taken.OFF");
+//	log("generated");
 }
 
 /*
  * generate the binary data for a polyhedron and its voxels
  * */
 
-int ids = 0;
 inline void organize_data(Polyhedron &poly, vector<Voxel *> voxels,
 		float shift[3], char *data, size_t &offset){
 	Polyhedron shifted = shift_polyhedron(shift, poly);
@@ -206,16 +233,19 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 	int generated = 0;
 	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	bool *taken = new bool[total_slots];
+	memcpy(taken, vessel_taken, total_slots*sizeof(bool));
 
-	size_t taken_count = 0;
+	int taken_count = 0;
 	for(int i=0;i<total_slots;i++){
-		taken_count += vessel_taken[i];
+		if(vessel_taken[i]){
+			taken_count++;
+		}
 	}
 	assert(total_slots>num_nuclei_per_vessel+taken_count && "should have enough slots");
-
 	while(++generated<num_nuclei_per_vessel){
 		int idx = get_rand_number(total_slots);
-		for(;taken[idx]||vessel_taken[idx];idx = (idx+1)%total_slots);
+		int oidx = idx;
+		for(;taken[idx];idx = (idx+1)%total_slots);
 //		size_t tested = 0;
 //		while(taken[idx]||vessel_taken[idx]){
 //			idx = get_rand_number(total_slots);
@@ -231,17 +261,20 @@ inline int generate_nuclei(float base[3], char *data, size_t &offset, char *data
 		shift[1] = y*nuclei_box.high[1]+base[1];
 		shift[2] = z*nuclei_box.high[2]+base[2];
 
-		int polyid = hispeed::get_rand_number(nucleis.size()-1);
+		int polyid = get_rand_number(nucleis.size()-1);
 		organize_data(*nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
-		{
-			float shift2[3];
-			shift2[0] = shift[0]+nuclei_box.high[0]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
-			shift2[1] = shift[1]+nuclei_box.high[1]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
-			shift2[2] = shift[2]+nuclei_box.high[2]*(hispeed::get_rand_number(shifted_range)*1.0)/100.0*(hispeed::get_rand_sample(50)?1:-1);
 
-			int polyid2 = hispeed::get_rand_number(nucleis.size()-1);
-			organize_data(*nucleis[polyid2], nucleis_voxels[polyid2], shift2, data2, offset2);
-		}
+		float shift2[3];
+		shift2[0] = shift[0]+nuclei_box.high[0]*(get_rand_number(shifted_range)*1.0)/100.0*(flip_coin()?1:-1);
+		shift2[1] = shift[1]+nuclei_box.high[1]*(get_rand_number(shifted_range)*1.0)/100.0*(flip_coin()?1:-1);
+		shift2[2] = shift[2]+nuclei_box.high[2]*(get_rand_number(shifted_range)*1.0)/100.0*(flip_coin()?1:-1);
+
+		int polyid2 = get_rand_number(nucleis.size()-1);
+		organize_data(*nucleis[polyid2], nucleis_voxels[polyid2], shift2, data2, offset2);
+
+
+		//log("%d %d %d %d",idx,oidx,polyid,polyid2);
+
 	}
 	return generated;
 }
@@ -253,7 +286,6 @@ queue<tuple<float, float, float>> jobs;
 pthread_mutex_t mylock;
 
 long global_generated = 0;
-
 
 void *generate_unit(void *arg){
 	char *vessel_data = new char[buffer_size];
@@ -332,7 +364,14 @@ int main(int argc, char **argv){
 	char nuclei_output[256];
 	char nuclei_output2[256];
 	char config[100];
-	sprintf(config,"v_nv%d_nu%d_s%d_vs%d_r%d_q%d",num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range,global_ctx.quant_bits);
+	sprintf(config,"nv%d_nu%d_s%d_vs%d_r%d_q%d",num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range,global_ctx.quant_bits);
+
+	sprintf(vessel_output,"%s_v_%s.mt",output_path.c_str(),config);
+	remove(vessel_output);
+	sprintf(nuclei_output,"%s_n_%s.mt",output_path.c_str(),config);
+	remove(nuclei_output);
+	sprintf(nuclei_output2,"%s_n2_%s.mt",output_path.c_str(),config);
+	remove(nuclei_output2);
 
 	sprintf(vessel_output,"%s_v_%s.dt",output_path.c_str(),config);
 	sprintf(nuclei_output,"%s_n_%s.dt",output_path.c_str(),config);

@@ -21,11 +21,15 @@
 #include <string>
 #include <fstream>
 #include <streambuf>
+#include <random>
 
 using namespace std;
 
 namespace hispeed{
 
+/*
+ * timer functions
+ * */
 #define TENG_RANDOM_NUMBER 0315
 #define INIT_TIME struct timeval start = get_cur_time();
 inline struct timeval get_cur_time(){
@@ -57,6 +61,10 @@ inline string time_string(){
 	sprintf(buf,"%s.%04ld", tmbuf, tv.tv_usec/1000);
 	return string(buf);
 }
+
+/*
+ * log functions
+ * */
 
 static pthread_mutex_t print_lock;
 inline void logt(const char *format, struct timeval &start, ...){
@@ -92,28 +100,42 @@ inline void log(const char *format, ...){
 	pthread_mutex_unlock(&print_lock);
 }
 
+
+inline int get_num_threads(){
+	return std::thread::hardware_concurrency();
+}
+
+/*
+ * some random number based functions
+ *
+ * */
+
+// get an integer between 0 and max_value
 inline int get_rand_number(int max_value){
-	return rand()%max_value+1;
+	std::random_device dev;
+	std::mt19937 rng(dev());
+	std::uniform_int_distribution<std::mt19937::result_type> dist(0, max_value);
+	return dist(rng);
 }
 
-inline bool get_rand_sample(int rate){
-	return rand()%100<rate;
-}
-
-inline bool get_rand_sample(float possibility){
-	assert(possibility<=1&&possibility>=0);
-	return (rand()*1.0)/RAND_MAX<possibility;
-}
-
+// get a double number between 0 and 1
 inline double get_rand_double(){
-	return (rand()*1.0)/RAND_MAX;
+	return get_rand_number(RAND_MAX)*1.0/RAND_MAX;
 }
 
+// try luck with a given possibility
 inline bool tryluck(float possibility){
 	assert(possibility>=0);
-	return possibility>=1.0||(rand()*1.0)/RAND_MAX<possibility;
+	return possibility>=1.0||get_rand_double()<=possibility;
 }
 
+inline bool flip_coin(){
+	return tryluck(0.5);
+}
+
+/*
+ * file or folder operations
+ * */
 inline bool is_dir(const char* path) {
     struct stat buf;
     stat(path, &buf);
@@ -169,10 +191,6 @@ inline long file_size(std::vector<string> &f_list){
 inline bool file_exist(const char *path) {
   struct stat buffer;
   return (stat(path, &buffer) == 0);
-}
-
-inline int get_num_threads(){
-	return std::thread::hardware_concurrency();
 }
 
 inline string read_line(){

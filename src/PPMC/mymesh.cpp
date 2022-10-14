@@ -142,7 +142,6 @@ void MyMesh::batchOperation()
         }
         break;
     case DecimationConquest:
-    	//printf("%ld %ld\n",this->size_of_vertices(), this->true_triangle_size());
         while(operation == DecimationConquest)
             decimationStep();
         break;

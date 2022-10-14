@@ -98,6 +98,11 @@ inline float distance(const float *p1, const float *p2){
 	return cur_dist;
 }
 
+typedef struct{
+	float distance;
+	uint p1;
+	uint p2;
+}result_container;
 
 typedef struct geometry_param_{
 	int id;

@@ -36,7 +36,7 @@ inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minm
 	return ret;
 }
 
-static void print_candidate(candidate_entry &cand){
+void print_candidate(candidate_entry &cand){
 	if(global_ctx.verbose){
 		log("%ld (%d + %ld)", cand.mesh_wrapper->id, cand.candidate_confirmed, cand.candidates.size());
 		int i=0;
@@ -120,7 +120,7 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
 		float min_maxdistance = DBL_MAX;
 		tree->query_knn(&(wrapper1->box), candidate_ids, min_maxdistance, ctx.knn);
-		assert(!candidate_ids.size()>=ctx.knn);
+		assert(candidate_ids.size()>=ctx.knn);
 
 		//2. we further go through the voxels in two objects to shrink
 		// 	 the candidate list in a finer grain
@@ -241,6 +241,7 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 						}else{
 							dist.maxdist = std::min(dist.maxdist, distances[index]);
 							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+							dist.mindist = std::min(dist.mindist, dist.maxdist);
 							//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 						}
 

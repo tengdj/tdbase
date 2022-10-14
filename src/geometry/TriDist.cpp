@@ -488,6 +488,25 @@ float PointTriangleDist(const float *point, const float *triangle)
 	float s = a01 * b1 - a11 * b0;
 	float t = a01 * b0 - a00 * b1;
 
+	// some bad triangles
+	if(a00==0.0||a01==0.0||a11==0.0||det==0.0){
+		return sqrt(VdotV(diff, diff));
+	}
+
+	if(a00==0.0||a01==0.0||a11==0.0||det==0.0){
+		printf("%f %f %f, %f %f %f, %f %f %f\n",
+				*(triangle+0)
+				,*(triangle+1)
+				,*(triangle+2)
+				,*(triangle+3)
+				,*(triangle+4)
+				,*(triangle+5)
+				,*(triangle+6)
+				,*(triangle+7)
+				,*(triangle+8));
+		printf("%f %f %f %f\n", a00, a01, a11, a00 * a11 - a01 * a01);
+	}
+
 	if (s + t <= det)
 	{
 		if (s < 0.0)
@@ -575,6 +594,7 @@ float PointTriangleDist(const float *point, const float *triangle)
 			{
 				numer = tmp1 - tmp0;
 				denom = a00 - two * a01 + a11;
+				assert(denom!=0.0);
 				if (numer >= denom)
 				{
 					s = one;
@@ -582,6 +602,7 @@ float PointTriangleDist(const float *point, const float *triangle)
 				}
 				else
 				{
+					assert(denom>0);
 					s = numer / denom;
 					t = one - s;
 				}
@@ -618,6 +639,7 @@ float PointTriangleDist(const float *point, const float *triangle)
 				}
 				else
 				{
+					assert(denom>0);
 					t = numer / denom;
 					s = one - t;
 				}
@@ -657,6 +679,7 @@ float PointTriangleDist(const float *point, const float *triangle)
 				}
 				else
 				{
+					assert(denom!=0.0);
 					s = numer / denom;
 					t = one - s;
 				}

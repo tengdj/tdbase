@@ -56,7 +56,4 @@ int main(int argc, char **argv){
 	tile_pairs.clear();
 	delete joiner;
 	delete gc;
-	logt("cleaning", start);
-
-
 }

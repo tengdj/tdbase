@@ -8,9 +8,7 @@ LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthrea
 SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
 CGALFLAGS	= -Wl,-rpath
 
-ifdef DEBUG
-    CPPFLAGS += -DNDEBUG
-else
+ifndef DEBUG
     CPPFLAGS += -DNDEBUG
 endif
 

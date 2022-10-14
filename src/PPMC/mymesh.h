@@ -239,8 +239,6 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	{
           flag = Unknown;
           processedFlag = NotProcessed;
-    	  prev_maximumCut = maximumCut;
-    	  maximumCut = 0;
 	}
 
 	inline void resetProcessedFlag()
@@ -305,13 +303,6 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 		residual = v;
 	}
 
-	inline void setMaximumCut(float tmp){
-		maximumCut = max(tmp, maximumCut);
-	}
-	inline float getMaximumCut(){
-		return prev_maximumCut + maximumCut;
-	}
-
 	inline void addImpactPoint(Point p){
 		for(Point &ep:impact_points){
 			if(ep==p){
@@ -342,8 +333,6 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	Point removedVertexPos;
 	VectorInt residual;
 
-	float prev_maximumCut = 0;
-	float maximumCut = 0;
 	vector<Point> impact_points;
 };
 
