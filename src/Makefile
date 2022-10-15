@@ -2,7 +2,7 @@ prefix=/usr/local
 
 CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result
 NVCCFLAGS	= -std=c++14 -g -O2
-INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include -I/usr/local/include/eigen3
+INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include -I/usr/local/include/eigen3 -I/usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
 
 SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
@@ -87,9 +87,6 @@ join: tools/joiner.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS)
 	
 generator: tools/generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(RC_OBJS) $(PPMC_OBJS) $(GEOMETRY_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
-
-aabb: tools/test_aabb.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
-	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 fixer: tools/fixer.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -100,9 +97,6 @@ h5tooff: tools/H5ToOFF.o
 3dpro: tools/3dpro_toolkit.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-cgal: tools/cgal.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(RC_OBJS) $(PPMC_OBJS)
-	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
-
 .PHONY: all clean
 
 clean:
