@@ -37,9 +37,6 @@
 #include <queue>
 #include <assert.h>
 
-// Range coder includes.
-#include "../PPMC/rangeCoder/qsmodel.h"
-#include "../PPMC/rangeCoder/rangecod.h"
 #include "configuration.h"
 #include "query_context.h"
 
