@@ -456,7 +456,7 @@ float TriDist_single(const float *data1, const float *data2, size_t size1, size_
 //					,dist);
 		}
 	}
-	return sqrt(local_min);
+	return local_min;
 }
 
 float PointTriangleDist(const float *point, const float *triangle)

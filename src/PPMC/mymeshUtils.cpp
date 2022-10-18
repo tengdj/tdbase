@@ -177,7 +177,7 @@ float MyMesh::edgeLen(Halfedge_const_handle heh) const
 
 
 /**
-  * Returns a face perimter.
+  * Returns a face perimeter.
   */
 float MyMesh::facePerimeter(const Face_handle fh) const
 {

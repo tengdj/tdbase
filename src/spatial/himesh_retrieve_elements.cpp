@@ -108,7 +108,7 @@ size_t HiMesh::fill_topology(unsigned short *&topology){
 }
 
 // assign each segment(0) or triangle(1) to the proper voxel
-size_t HiMesh::fill_voxels(vector<Voxel *> &voxels, enum data_type seg_or_triangle){
+size_t HiMesh::fill_voxels(vector<Voxel *> &voxels, element_type seg_or_triangle){
 	assert(voxels.size()>0);
 
 	size_t num_of_data = 0;

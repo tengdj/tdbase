@@ -19,8 +19,6 @@
 
 #include "PPMC/mymesh.h"
 #include "PPMC/configuration.h"
-#include "PPMC/frenetRotation.h"
-
 #include <algorithm>
 
 

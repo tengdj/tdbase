@@ -90,11 +90,6 @@ namespace SMS = CGAL::Surface_mesh_simplification ;
 
 namespace hispeed{
 
-enum data_type{
-	DT_Segment = 0,
-	DT_Triangle
-};
-
 /*
  *
  * each voxel group is mapped to an independent polyhedron
@@ -131,7 +126,7 @@ public:
 
 	size_t fill_segments(float *segments);
 	size_t fill_triangles(float *triangles);
-	size_t fill_voxels(vector<Voxel *> &voxels, enum data_type seg_or_triangle);
+	size_t fill_voxels(vector<Voxel *> &voxels, element_type seg_or_triangle);
 	size_t fill_vertices(float *&vertices);
 	size_t fill_topology(unsigned short *&topology);
 	SegTree *get_aabb_tree_segment();
@@ -139,6 +134,7 @@ public:
 
 	// query
 	float distance(HiMesh *target);
+	float distance_tree(HiMesh *target);
 	range distance_range(HiMesh *target);
 	bool intersect(HiMesh *target);
 
@@ -177,7 +173,7 @@ public:
 	void advance_to(int lod);
 	// fill the segments into voxels
 	// seg_tri: 0 for segments, 1 for triangle
-	size_t fill_voxels(enum data_type seg_tri);
+	size_t fill_voxels(element_type seg_tri);
 
 	size_t num_vertices();
 	void reset();

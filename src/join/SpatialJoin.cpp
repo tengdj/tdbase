@@ -55,16 +55,21 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 	}
 
 	struct timeval start = hispeed::get_cur_time();
-
 	if(ctx.use_aabb){
 		assert(pair_num==candidate_num && "no shape-aware indexing should be applied in aabb");
+		// build the AABB tree
 		for(candidate_entry &c:candidates){
-			// the nearest neighbor is found
-			if(ctx.query_type=="nn"&&c.candidates.size()<=1){
-				continue;
-			}
 			for(candidate_info &info:c.candidates){
-				info.mesh_wrapper->mesh->get_aabb_tree_segment();
+				if(global_ctx.etype==DT_Segment){
+					info.mesh_wrapper->mesh->get_aabb_tree_segment();
+				}else{
+					info.mesh_wrapper->mesh->get_aabb_tree_triangle();
+				}
+			}
+			if(global_ctx.etype==DT_Segment){
+				c.mesh_wrapper->mesh->get_aabb_tree_segment();
+			}else{
+				c.mesh_wrapper->mesh->get_aabb_tree_triangle();
 			}
 		}
 		ctx.packing_time += hispeed::get_time_elapsed(start, false);
@@ -72,35 +77,22 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 
 		int index = 0;
 		for(candidate_entry &c:candidates){
-			// the nearest neighbor is found
-			if(c.candidates.size()<=1){
-				continue;
-			}
-			vector<Point> vertices;
-			c.mesh_wrapper->mesh->get_vertices(vertices);
 			for(candidate_info &info:c.candidates){
-				double min_dist = DBL_MAX;
-				HiMesh_Wrapper *wrapper2 = info.mesh_wrapper;
-				for(Point &p:vertices){
-					FT sqd = wrapper2->mesh->get_aabb_tree_segment()->squared_distance(p);
-					double dist = (double)CGAL::to_double(sqd);
-//					Point tp = wrapper2->mesh->get_aabb_tree()->closest_point(p);
-//					double  dist = distance(p,tp);
-					if(min_dist>dist){
-						min_dist = dist;
-					}
-				}
 				assert(info.voxel_pairs.size()==1);
-				distances[index++] = sqrt(min_dist);
-				wrapper2->mesh->clear_aabb_tree();
+				distances[index++] = c.mesh_wrapper->mesh->distance_tree(info.mesh_wrapper->mesh);
 			}// end for distance_candiate list
-			vertices.clear();
 		}// end for candidates
-
+		// clear the trees for current LOD
+		for(candidate_entry &c:candidates){
+			for(candidate_info &info:c.candidates){
+				info.mesh_wrapper->mesh->clear_aabb_tree();
+			}
+			c.mesh_wrapper->mesh->clear_aabb_tree();
+		}
 	}else{
 
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
-		uint segment_num = 0;
+		uint element_num = 0;
 
 		for(candidate_entry &c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
@@ -112,9 +104,9 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 						Voxel *tv = i==0?vp.v1:vp.v2;
 						if(voxel_map.find(tv)==voxel_map.end()){
 							std::pair<uint, uint> p;
-							p.first = segment_num;
+							p.first = element_num;
 							p.second = tv->size[lod];
-							segment_num += tv->size[lod];
+							element_num += tv->size[lod];
 							voxel_map[tv] = p;
 						}
 					}
@@ -122,17 +114,18 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 			}
 		}
 
-		assert(segment_num>0 && "there should be segments in voxels need be calculated");
+		assert(element_num>0 && "there should be elements in voxels need be calculated");
 
+		int element_size = global_ctx.etype==DT_Segment?6:9;
 		// now we allocate the space and store the data in a buffer
-		float *data = new float[6*segment_num];
+		float *data = new float[element_size*element_num];
 		uint *offset_size = new uint[4*pair_num];
 
 		for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin();
 				it!=voxel_map.end(); ++it){
-			std::memcpy((void *)(data+it->second.first*6),
+			std::memcpy((void *)(data+it->second.first*element_size),
 					(const void *)(it->first->data[lod]),
-					(size_t)it->first->size[lod]*6*sizeof(float));
+					(size_t)it->first->size[lod]*element_size*sizeof(float));
 		}
 		// organize the data for computing
 		int index = 0;
@@ -156,12 +149,11 @@ float *SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, quer
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
 		gp.distances = distances;
-		gp.data_size = segment_num;
+		gp.data_size = element_num;
 		computer->get_distance(gp);
 		delete []data;
 		delete []offset_size;
 	}
-
 	return distances;
 }
 

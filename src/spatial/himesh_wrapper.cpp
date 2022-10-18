@@ -41,7 +41,7 @@ void HiMesh_Wrapper::advance_to(int lod){
 }
 // fill the segments into voxels
 // seg_tri: 0 for segments, 1 for triangle
-size_t HiMesh_Wrapper::fill_voxels(enum data_type seg_tri){
+size_t HiMesh_Wrapper::fill_voxels(element_type seg_tri){
 	if(mesh){
 		return mesh->fill_voxels(voxels, seg_tri);
 	}

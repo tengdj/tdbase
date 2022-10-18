@@ -97,8 +97,7 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 		size_t candidate_num = get_candidate_num(candidates);
 		log("%ld polyhedron has %d candidates %.2f voxel pairs per candidate", candidates.size(), candidate_num, (1.0*pair_num)/candidates.size());
 		// retrieve the necessary meshes
-		size_t segment_pair_num = 0;
-
+		size_t element_pair_num = 0;
 		for(candidate_entry &c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
 			for(candidate_info &info:c.candidates){
@@ -109,20 +108,20 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 					if(vp.v1->data.find(lod)==vp.v1->data.end()){
 						// ensure the mesh is extracted
 						tile1->decode_to(wrapper1->id, lod);
-						wrapper1->fill_voxels(DT_Segment);
+						wrapper1->fill_voxels(global_ctx.etype);
 					}
 					if(vp.v2->data.find(lod)==vp.v2->data.end()){
 						tile2->decode_to(wrapper2->id, lod);
-						wrapper2->fill_voxels(DT_Segment);
+						wrapper2->fill_voxels(global_ctx.etype);
 					}
-					segment_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
+					element_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
 				}// end for voxel_pairs
 			}// end for distance_candiate list
 		}// end for candidates
 		ctx.decode_time += hispeed::get_time_elapsed(start, false);
-		logt("decoded %ld segment pairs for lod %d", start, segment_pair_num, lod);
-		if(segment_pair_num==0){
-			log("no segments is filled in this round");
+		logt("decoded %ld element pairs for lod %d", start, element_pair_num, lod);
+		if(element_pair_num==0){
+			log("no element is filled in this round");
 			continue;
 		}
 		tile1->reset_time();
@@ -188,6 +187,7 @@ void SpatialJoin::within(Tile *tile1, Tile *tile2, query_context ctx){
 		}
 		delete []distances;
 		logt("current iteration", iter_start);
+		log("");
 	}
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
 	for(int i=0;i<tile1->num_objects();i++){

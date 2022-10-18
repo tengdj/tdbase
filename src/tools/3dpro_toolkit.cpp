@@ -305,6 +305,17 @@ static void compress(int argc, char **argv){
 	delete himesh;
 }
 
+static void distance(int argc, char **argv){
+	Tile *tile = new Tile(argv[1],2);
+	assert(tile->num_objects()==2);
+	tile->advance_all(100);
+	HiMesh *mesh1 = tile->get_mesh(0);
+	HiMesh *mesh2 = tile->get_mesh(1);
+	log("%f %f", mesh1->distance_tree(mesh2), mesh1->distance(mesh2));
+
+	delete tile;
+}
+
 static void test(int argc, char **argv){
 
 	for(int i=0;i<100;i++){
@@ -341,6 +352,8 @@ int main(int argc, char **argv){
 		compress(argc-1,argv+1);
 	}else if(strcmp(argv[1],"triangulate") == 0){
 		triangulate(argc-1,argv+1);
+	}else if(strcmp(argv[1],"distance") == 0){
+		distance(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);

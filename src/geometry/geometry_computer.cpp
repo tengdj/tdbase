@@ -7,6 +7,7 @@
 
 #include "geometry.h"
 #include "mygpu.h"
+#include "query_context.h"
 
 
 namespace hispeed{
@@ -21,6 +22,18 @@ void *SegDist_unit(void *params_void){
 	}
 	return NULL;
 }
+
+void *TriDist_unit(void *params_void){
+	geometry_param *param = (geometry_param *)params_void;
+	for(int i=0;i<param->pair_num;i++){
+		param->distances[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
+									    param->data+param->offset_size[4*i+2]*9,
+									    param->offset_size[4*i+1],
+									    param->offset_size[4*i+3]);
+	}
+	return NULL;
+}
+
 bool geometry_computer::request_cpu(){
 	if(cpu_busy==false){
 		pthread_mutex_lock(&cpu_lock);
@@ -129,10 +142,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].data = cc.data;
 		params[i].id = i+1;
 		params[i].distances = cc.distances+start;
-		if(thread_num==1){
-			SegDist_unit((void *)&params[i]);
-		}
-		pthread_create(&threads[i], NULL, SegDist_unit, (void *)&params[i]);
+		pthread_create(&threads[i], NULL, global_ctx.etype==DT_Segment?SegDist_unit:TriDist_unit, (void *)&params[i]);
 	}
 	if(max_thread_num>1){
 		log("%d threads started to get distance", thread_num);

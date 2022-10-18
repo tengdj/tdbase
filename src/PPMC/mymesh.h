@@ -33,6 +33,7 @@
 #include <CGAL/circulator.h>
 #include <CGAL/bounding_box.h>
 #include <CGAL/IO/Polyhedron_iostream.h>
+#include <CGAL/Polyhedron_incremental_builder_3.h>
 
 #include <queue>
 #include <assert.h>
@@ -59,6 +60,42 @@ typedef MyKernelInt::Vector_3 VectorInt;
 
 using namespace hispeed;
 
+
+// the builder for reading the base mesh
+template <class HDS> class MyMeshBaseBuilder : public CGAL::Modifier_base<HDS>
+{
+public:
+    MyMeshBaseBuilder(std::deque<Point> *p_pointDeque, std::deque<uint32_t *> *p_faceDeque)
+        : p_pointDeque(p_pointDeque), p_faceDeque(p_faceDeque) {}
+
+    void operator()(HDS& hds)
+    {
+        CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+
+        size_t nbVertices = p_pointDeque->size();
+        size_t nbFaces = p_faceDeque->size();
+
+        B.begin_surface(nbVertices, nbFaces);
+
+        for (unsigned i = 0; i < nbVertices; ++i)
+            B.add_vertex(p_pointDeque->at(i));
+
+        for (unsigned i = 0; i < nbFaces; ++i)
+        {
+            B.begin_facet();
+            uint32_t *f = p_faceDeque->at(i);
+            for (unsigned j = 1; j < f[0] + 1; ++j)
+                B.add_vertex_to_facet(f[j]);
+            B.end_facet();
+        }
+
+        B.end_surface();
+    }
+
+private:
+    std::deque<Point> *p_pointDeque;
+    std::deque<uint32_t *> *p_faceDeque;
+};
 
 // My vertex type has a isConquered flag
 template <class Refs>

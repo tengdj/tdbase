@@ -408,6 +408,7 @@ bool MyMesh::isRemovable(Vertex_handle v) const
 	  if(removable && !isProtruding(heh_oneRing)){
 		 v->setRecessing();
 	  }
+
 	  return removable;
 	}
 	return false;

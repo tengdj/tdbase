@@ -23,7 +23,6 @@
 
 #include "../PPMC/configuration.h"
 #include "../PPMC/mymesh.h"
-#include "../PPMC/mymeshBaseBuilder.h"
 /**
   * Write the compressed data to the buffer.
   */

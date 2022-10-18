@@ -20,7 +20,6 @@
 
 #include "math.h"
 #include "../PPMC/configuration.h"
-#include "../PPMC/frenetRotation.h"
 #include "../PPMC/mymesh.h"
 #include "geometry.h"
 

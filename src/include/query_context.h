@@ -18,6 +18,11 @@ using namespace std;
 
 namespace hispeed{
 
+typedef enum element_type_{
+	DT_Segment = 0,
+	DT_Triangle
+}element_type;
+
 class query_context{
 public:
 	pthread_mutex_t lk;
@@ -47,6 +52,8 @@ public:
 	vector<int> lods;
 	bool verbose = false;
 	bool counter_clock = false;
+	// the element type used for calculating distance, segment or triangle
+	element_type etype = DT_Segment;
 
 	// result
 	size_t obj_count = 0;
