@@ -66,7 +66,7 @@ void *mycompress(void *args){
 			continue;
 		}
 		MyMesh *mesh = hispeed::parse_mesh(processing_line[id], true);
-		HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+		HiMesh *himesh = new HiMesh(mesh);
 		himesh->advance_to(100);
 		voxels.push_back(himesh->generate_voxels_skeleton(500));
 		delete mesh;

@@ -293,16 +293,6 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 		removedVertexPos = p;
 	}
 
-	inline VectorInt getResidual() const
-	{
-		return residual;
-	}
-
-	inline void setResidual(VectorInt v)
-	{
-		residual = v;
-	}
-
 	inline void addImpactPoint(Point p){
 		for(Point &ep:impact_points){
 			if(ep==p){
@@ -371,10 +361,8 @@ class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 public:
 	MyMesh(unsigned i_decompPercentage,
 		   const int i_mode,
-		   unsigned i_quantBits,
-		   char* data,
-		   long length,
-		   bool copy_data);
+		   const char* data,
+		   long length);
 
 	~MyMesh();
 
@@ -392,10 +380,6 @@ public:
 
 	// General
 	void computeBoundingBox();
-	void determineQuantStep();
-	void quantizeVertexPositions();
-	PointInt getQuantizedPos(Point p) const;
-	Point getPos(PointInt p) const;
 
 	inline size_t count_triangle(Facet_const_iterator f){
 		size_t size = 0;
@@ -427,9 +411,6 @@ public:
 	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
 	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
 	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
-	bool isProtruding(Vertex_const_handle v) const;
-	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
-	void profileProtruding();
 	float removalError(Vertex_const_handle v,
 					   const std::vector<Vertex_const_handle> &polygon) const;
 
@@ -445,7 +426,6 @@ public:
 	void beginRemovedVertexCodingConquest();
 	void determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh);
 
-
 	// Utils
 	Vector computeNormal(Halfedge_const_handle heh_gate) const;
 	Vector computeNormal(const std::vector<Vertex_const_handle> & polygon) const;
@@ -453,7 +433,6 @@ public:
 	Point barycenter(Halfedge_handle heh_gate) const;
 	Point barycenter(const std::vector<Vertex_const_handle> &polygon) const;
 	unsigned vertexDegreeNotNew(Vertex_const_handle vh) const;
-	VectorInt avgLaplacianVect(Halfedge_handle heh_gate) const;
 	float triangleSurface(const Point p[]) const;
 	float edgeLen(Halfedge_const_handle heh) const;
 	float facePerimeter(const Face_handle fh) const;
@@ -467,10 +446,21 @@ public:
 	float readFloat();
 	void writeInt16(int16_t i);
 	int16_t readInt16();
+	void writeInt(int i);
+	int readInt();
+	char readChar();
+	void writeChar(char ch);
+
 	void writeBaseMesh();
 	void readBaseMesh();
 	void writeMeshOff(const char psz_filePath[]) const;
 	void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const;
+
+	//3dpro
+	void computeImpactedFactors();
+	bool isProtruding(Vertex_const_handle v) const;
+	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
+	void profileProtruding();
 
 	// Variables.
 
@@ -485,25 +475,15 @@ public:
 	Operation operation;
 	unsigned i_curDecimationId;
 	unsigned i_nbDecimations;
-	unsigned i_curQuantizationId;
-	unsigned i_nbQuantizations;
-	unsigned i_curOperationId;
-
-	unsigned i_levelNotConvexId;
 
 	// The vertices of the edge that is the departure of the coding and decoding conquests.
 	Vertex_handle vh_departureConquest[2];
 	// Geometry symbol list.
-	std::deque<std::deque<VectorInt> > geometrySym;
-	std::deque<std::deque<unsigned> > adaptiveQuantSym;
+	std::deque<std::deque<Point> > geometrySym;
 
 	// Connectivity symbol list.
 	std::deque<std::deque<unsigned> > connectFaceSym;
 	std::deque<std::deque<unsigned> > connectEdgeSym;
-
-	// Size used for the encoding.
-	size_t connectivitySize;
-	size_t geometrySize;
 
 	// Number of vertices removed during current conquest.
 	unsigned i_nbRemovedVertices;
@@ -512,10 +492,6 @@ public:
 	Point bbMax;
 	float f_bbVolume;
 
-	unsigned i_quantBits;
-	float f_quantStep;
-	float f_adaptQuantRescaling;
-
 	// Initial number of vertices and faces.
 	size_t i_nbVerticesInit;
 	size_t i_nbFacetsInit;
@@ -523,16 +499,9 @@ public:
 	// The compressed data;
 	char *p_data;
 	size_t dataOffset; // the offset to read and write.
+	size_t d_capacity;
 
 	unsigned i_decompPercentage;
-
-	// Compression and decompression variables.
-	rangecoder rangeCoder;
-
-	// Range coder data model.
-	qsmodel alphaBetaModel, quantModel, connectModel;
-
-	int alphaBetaMin;
 
 	// Store the maximum size we cutted in each round of compression
 	vector<float> maximumCut;

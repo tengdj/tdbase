@@ -63,7 +63,7 @@ static void get_voxel_boxes(int argc, char **argv){
 	struct timeval start = get_cur_time();
 	MyMesh *mesh = hispeed::read_mesh();
 	mesh->completeOperation();
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
 	int voxel_num = 100;
 	if(argc>=2){
@@ -91,14 +91,13 @@ static void get_skeleton(int argc, char **argv){
 	struct timeval start = get_cur_time();
 	MyMesh *mesh = read_mesh(argv[1]);
 	mesh->completeOperation();
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
 
 	int voxel_num = 100;
 	if(argc>3){
 		voxel_num = atoi(argv[3]);
 	}
-
 	vector<Point> skeleton = himesh->get_skeleton_points(voxel_num);
 	hispeed::write_points(skeleton, argv[2]);
 
@@ -117,7 +116,7 @@ static void voxelize(int argc, char **argv){
 	MyMesh *mesh = read_mesh(argv[1]);
 
 	mesh->completeOperation();
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
 	int voxel_num = 100;
 	if(argc>3){
@@ -228,7 +227,7 @@ void profile_decoding(int argc, char **argv){
 		sprintf(path,"/gisdata/lod.%d.off", lod);
 		decompressed->writeMeshOff(path);
 		if(lod==100){
-			himesh = new HiMesh(decompressed->p_data,decompressed->dataOffset);
+			himesh = new HiMesh(decompressed);
 		}
 		delete decompressed;
 	}
@@ -274,7 +273,7 @@ static void adjust_polyhedron(int argc, char **argv){
 static void triangulate(int argc, char **argv){
 	MyMesh *mesh = read_mesh(argv[1]);
 	mesh->completeOperation();
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
 
 	Polyhedron *poly = himesh->to_triangulated_polyhedron();
@@ -293,13 +292,13 @@ static void compress(int argc, char **argv){
 
 	mesh->writeMeshOff("/gisdata/compressed.off");
 
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	HiMesh *himesh = new HiMesh(mesh);
 	int lod = 100;
 	if(argc>2){
 		lod = atoi(argv[2]);
 	}
 	for(int i=0;i<=lod;i+=10){
-		himesh->advance_to(lod);
+		himesh->advance_to(i);
 		himesh->writeCurrentOperationMesh("/gisdata/compressed", i);
 	}
 	delete mesh;

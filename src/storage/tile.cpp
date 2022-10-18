@@ -174,7 +174,8 @@ void Tile::retrieve_mesh(size_t id){
 		size_t rd = fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs);
 		disk_time += hispeed::get_time_elapsed(cur, true);
 		assert(wrapper->data_size==rd);
-		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size, false);
+		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size);
+		delete mesh_data;
 		newmesh_time += hispeed::get_time_elapsed(cur, true);
 	}
 }
@@ -204,7 +205,7 @@ void Tile::add_raw(char *data){
 	size_t size_tmp = 0;
 	memcpy((char *)&size_tmp, data+offset, sizeof(size_t));
 	offset += sizeof(size_t);
-	HiMesh *mesh = new HiMesh(data+offset, size_tmp, true);
+	HiMesh *mesh = new HiMesh(data+offset, size_tmp);
 	offset += size_tmp;
 	memcpy((char *)&size_tmp, data+offset, sizeof(size_t));
 	offset += sizeof(size_t);

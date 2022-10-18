@@ -199,13 +199,8 @@ MyMesh *parse_mesh(string input_line, bool complete_compress){
 	if(input_line.find("|") != std::string::npos){
 		boost::replace_all(input_line, "|", "\n");
 	}
-	char *data = new char[input_line.size()];
-	memcpy(data, input_line.c_str(), input_line.size());
 
-	// Init the random number generator.
-	MyMesh *mesh = new MyMesh(100,
-				 COMPRESSION_MODE_ID, global_ctx.quant_bits,
-				 data, input_line.size(), false);
+	MyMesh *mesh = new MyMesh(100, COMPRESSION_MODE_ID, input_line.c_str(), input_line.size());
 
 	if(complete_compress){
 		mesh->completeOperation();
@@ -229,8 +224,8 @@ MyMesh *read_mesh(char *path){
 
 MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation){
 	MyMesh *decompressed = new MyMesh(lod,
-			 DECOMPRESSION_MODE_ID, global_ctx.quant_bits,
-			 compressed->p_data, compressed->dataOffset, true);
+			 DECOMPRESSION_MODE_ID,
+			 compressed->p_data, compressed->dataOffset);
 	if(complete_operation){
 		decompressed->completeOperation();
 	}

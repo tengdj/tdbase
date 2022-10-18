@@ -66,11 +66,92 @@ void MyMesh::beginDecimationConquest()
   operation = DecimationConquest;
 }
 
+void MyMesh::computeImpactedFactors(){
+	float triangle[9];
+	float point[3];
+	float hdist = 0.0;
+
+	unordered_map<Point, vector<MyMesh::Face_const_iterator>> vertices_map;
+	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		vector<Point> ps = fit->getImpactPoints();
+		if(ps.size()==0){
+		  continue;
+		}
+		// go check all the triangles for this facet
+		for(Point &p:ps){
+			if(vertices_map.find(p)==vertices_map.end()){
+				vector<MyMesh::Face_const_iterator> flist;
+			}
+			vertices_map[p].push_back(fit);
+		}
+		//if(ps.size()<20&&ps.size()>10)
+//			{
+//				printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
+//				Halfedge_const_handle hd = fit->halfedge();
+//				Halfedge_const_handle t = hd;
+//				do{
+//				  Point pt = t->vertex()->point();
+//				  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
+//				  t = t->next();
+//				} while(t!=hd);
+//
+//				for(Point &p:ps){
+//				  printf("%f %f %f\n",p.x(),p.y(),p.z());
+//				}
+//				printf("%ld ",fit->facet_degree());
+//				for(int i=0;i<fit->facet_degree();i++){
+//				  printf("%d ",i);
+//				}
+//				printf("\n");
+//			}
+
+	}
+
+
+	for(auto &flist:vertices_map){
+		// for each point, go check all the associated faces and get the closest one
+		float curtmp = DBL_MAX;
+
+		Point p = flist.first;
+		point[0] = p.x();
+		point[1] = p.y();
+		point[2] = p.z();
+		for(auto &fit:flist.second){
+			Halfedge_const_handle hd = fit->halfedge();
+			Halfedge_const_handle h = hd->next();
+			while(h->next()!=hd){
+				Point p1 = hd->vertex()->point();
+				Point p2 = h->vertex()->point();
+				Point p3 = h->next()->vertex()->point();
+				h = h->next();
+				triangle[0] = p1.x();
+				triangle[1] = p1.y();
+				triangle[2] = p1.z();
+				triangle[3] = p2.x();
+				triangle[4] = p2.y();
+				triangle[5] = p2.z();
+				triangle[6] = p3.x();
+				triangle[7] = p3.y();
+				triangle[8] = p3.z();
+				float dist = PointTriangleDist((const float*)point, (const float*)triangle);
+				curtmp = min(curtmp, dist);
+			}
+			// haussdorf distance, max of the min
+			hdist = max(hdist, curtmp);
+		}
+		flist.second.clear();
+	}
+	vertices_map.clear();
+	maximumCut.push_back(hdist);
+	if(global_ctx.verbose){
+		log("encode %d:\t%.2f\t%ld\t(%.2f %.2f %.2f)", i_curDecimationId, hdist, size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
+	}
+}
+
 
 // One decimation step.
 void MyMesh::decimationStep()
 {
-
     //choose a halfedge that can be processed:
     while(!gateQueue.empty())
     {
@@ -133,12 +214,6 @@ void MyMesh::decimationStep()
 
     if (i_nbRemovedVertices == 0)
     {
-		for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
-		{
-			if(isRemovable(vit))
-				assert(false && "Still a vertex that can be removed !\n");
-		}
-
 		operation = Idle;
 		b_jobCompleted = true;
 		i_curDecimationId--;
@@ -151,79 +226,9 @@ void MyMesh::decimationStep()
 
         operation = RemovedVertexCoding;
         beginRemovedVertexCodingConquest();
-    }
 
-    /*
-     * record the maximum volume change
-     * */
-    if(!b_jobCompleted){
-		float triangle[9];
-		float point[3];
-		float hdist = 0.0;
-		for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-			vector<Point> ps = fit->getImpactPoints();
-			if(ps.size()==0){
-			  continue;
-			}
-			// go check all the triangles for this facet
-			for(Point &p:ps){
-				point[0] = p.x();
-				point[1] = p.y();
-				point[2] = p.z();
-				// for each point, go check all the associated faces and get the closest one
-				float curtmp = DBL_MAX;
-
-				Halfedge_const_handle hd = fit->halfedge();
-				Halfedge_const_handle h = hd->next();
-				while(h->next()!=hd){
-					Point p1 = hd->vertex()->point();
-					Point p2 = h->vertex()->point();
-					Point p3 = h->next()->vertex()->point();
-					h = h->next();
-					triangle[0] = p1.x();
-					triangle[1] = p1.y();
-					triangle[2] = p1.z();
-					triangle[3] = p2.x();
-					triangle[4] = p2.y();
-					triangle[5] = p2.z();
-					triangle[6] = p3.x();
-					triangle[7] = p3.y();
-					triangle[8] = p3.z();
-					float dist = PointTriangleDist((const float*)point, (const float*)triangle);
-					curtmp = min(curtmp, dist);
-				}
-				// haussdorf distance, max of the min
-				hdist = max(hdist, curtmp);
-			}
-
-
-			//if(ps.size()<20&&ps.size()>10)
-//			{
-//				printf("%ld\n", ps.size());
-//				printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
-//				Halfedge_const_handle t = hd;
-//				do{
-//				  Point pt = t->vertex()->point();
-//				  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
-//				  t = t->next();
-//				} while(t!=hd);
-//
-//				for(Point &p:ps){
-//				  printf("%f %f %f\n",p.x(),p.y(),p.z());
-//				}
-//				printf("%ld ",fit->facet_degree());
-//				for(int i=0;i<fit->facet_degree();i++){
-//				  printf("%d ",i);
-//				}
-//				printf("\n");
-//			}
-
-		}
-
-		maximumCut.push_back(hdist);
-		if(global_ctx.verbose){
-			log("encode %d:\t%.2f %ld (%.2f %.2f %.2f)", i_curDecimationId, hdist, this->size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
-		}
+        // 3dpro: compute the impacted factors for all the faces
+        computeImpactedFactors();
     }
 }
 
@@ -240,7 +245,6 @@ MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
         assert(!v->isConquered());
         assert(v->vertex_degree()>2);
 
-        float tmpmaxcut = 0;
         vector<Point> impactpoints;
         //int i = 0;
         Halfedge_handle h = startH->opposite(), end(h);
@@ -354,13 +358,7 @@ void MyMesh::determineResiduals()
         // besides keep the residual, also update the maximum cut if needed
         if (f->isSplittable()){
         	Point rmved = f->getRemovedVertexPos();
-        	Point bc = barycenter(h);
-        	Halfedge_handle heh = h;
-
 			f->addImpactPoint(rmved);
-            f->setResidual(getQuantizedPos(rmved) - getQuantizedPos(bc));
-            //f->setResidual(getQuantizedPos(f->getRemovedVertexPos()) - getQuantizedPos(barycenter(h)));
-
         }
     }
 }
@@ -378,7 +376,7 @@ void MyMesh::beginRemovedVertexCodingConquest()
     pushHehInit();
 
     // Resize the vectors to add the current conquest symbols.
-    geometrySym.push_back(std::deque<VectorInt>());
+    geometrySym.push_back(std::deque<Point>());
     connectFaceSym.push_back(std::deque<unsigned>());
 
     operation = RemovedVertexCoding;
@@ -443,8 +441,8 @@ void MyMesh::RemovedVertexCodingStep()
   */
 void MyMesh::determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh)
 {
-    VectorInt distQuant = fh->getResidual();
-    geometrySym[i_curDecimationId].push_back(distQuant);
+    Point rmved = fh->getRemovedVertexPos();
+    geometrySym[i_curDecimationId].push_back(rmved);
 }
 
 
@@ -467,6 +465,7 @@ void MyMesh::beginInsertedEdgeCoding()
   */
 void MyMesh::InsertedEdgeCodingStep()
 {
+
     while (!gateQueue.empty())
     {
         Halfedge_handle h = gateQueue.front();
@@ -489,7 +488,7 @@ void MyMesh::InsertedEdgeCodingStep()
             hIt = hIt->opposite()->next();
         }
 
-        // Don't write a symbol if the two faces of an egde are unsplitable.
+        // Don't write a symbol if the two faces of an edgde are unsplitable.
         // this can help to save some space, since it is guaranteed that the edge is not inserted
         bool b_toCode = h->facet()->isUnsplittable()
                         && h->opposite()->facet()->isUnsplittable()
@@ -510,7 +509,6 @@ void MyMesh::InsertedEdgeCodingStep()
     }
 
     i_curDecimationId++; // Increment the current decimation operation id.
-    i_curOperationId++;
     operation = Idle;
 }
 
@@ -520,33 +518,15 @@ void MyMesh::InsertedEdgeCodingStep()
   */
 void MyMesh::encodeInsertedEdges(unsigned i_operationId)
 {
-    // Start the encoder.
-    start_encoding(&rangeCoder, 0, 0);
 
     std::deque<unsigned> &symbols = connectEdgeSym[i_operationId];
-
     assert(symbols.size() > 0);
-
-    // Init the connectivity range coder.
-    initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 1);
 
     unsigned i_len = symbols.size();
     for (unsigned i = 0; i < i_len; ++i)
     {
-        unsigned sym = symbols[i];
-
-        // Encode the symbol.
-        int syfreq, ltfreq;
-        qsgetfreq(&connectModel, sym, &syfreq, &ltfreq);
-        encode_shift(&rangeCoder, syfreq, ltfreq, 10);
-        qsupdate(&connectModel, sym);
+        writeChar(symbols[i]);
     }
-
-    unsigned i_size = done_encoding(&rangeCoder);
-
-    connectivitySize += i_size * 8;
-    // Destroy the model.
-    deleteqsmodel(&connectModel);
 }
 
 
@@ -555,107 +535,29 @@ void MyMesh::encodeInsertedEdges(unsigned i_operationId)
   */
 void MyMesh::encodeRemovedVertices(unsigned i_operationId)
 {
-    // Start the encoder.
-    start_encoding(&rangeCoder, 0, 0);
-    
     std::deque<unsigned> &connSym = connectFaceSym[i_operationId];
-    std::deque<VectorInt> &geomSym = geometrySym[i_operationId];
+    std::deque<Point> &geomSym = geometrySym[i_operationId];
 
     unsigned i_lenGeom = geomSym.size();
     unsigned i_lenConn = connSym.size();
     assert(i_lenGeom > 0);
     assert(i_lenConn > 0);
 
-    // Determine the min and max values for the geometry coding.
-    alphaBetaMin = geomSym[0].x();
-    int alphaBetaMax = geomSym[0].x();
-
-    for (unsigned i = 0; i < i_lenGeom; ++i)
-    {
-        VectorInt v = geomSym[i];
-
-        if(v.x() < alphaBetaMin)
-            alphaBetaMin = v.x();
-        if(v.y() < alphaBetaMin)
-            alphaBetaMin = v.y();
-        if(v.z() < alphaBetaMin)
-            alphaBetaMin = v.z();
-
-        if(v.x() > alphaBetaMax)
-            alphaBetaMax = v.x();
-        if(v.y() > alphaBetaMax)
-            alphaBetaMax = v.y();
-        if(v.z() > alphaBetaMax)
-            alphaBetaMax = v.z();
-    }
-
-    // Check that we have at least two geometry symbols.
-    unsigned alphaBetaRange = std::max(alphaBetaMax - alphaBetaMin + 1, 2);
-
-    // Write the min value and the range.
-    int16_t i16_min;
-    assert(alphaBetaMin >= -(1 << 14) && alphaBetaMin <= (1 << 14));
-    i16_min = alphaBetaMin;
-    encode_short(&rangeCoder, *(uint16_t *)&i16_min);
-    assert(alphaBetaRange < (1 << 14));
-    encode_short(&rangeCoder, alphaBetaRange);
-
-    // Range coder to only measure the size of the connectivity data.
-    size_t *p_dataOffsetMes = new size_t;
-    *p_dataOffsetMes = 0;
-    char *p_dataMes = new char[BUFFER_SIZE];
-    rangecoder rangeCoderMes;
-    rangeCoderMes.p_data = p_dataMes;
-    rangeCoderMes.p_dataOffset = p_dataOffsetMes;
-    start_encoding(&rangeCoderMes, 0, 0);
-
-    // Init the models.
-    initqsmodel(&alphaBetaModel, alphaBetaRange, 18, 1 << 17, NULL, 1);
-    initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 1);
-
     unsigned k = 0;
     for (unsigned i = 0; i < i_lenConn; ++i)
     {
         // Encode the connectivity.
         unsigned sym = connSym[i];
-        bool b_split = connSym[i];
-
-        int syfreq, ltfreq;
-        // Encode the symbol.
-        qsgetfreq(&connectModel, sym, &syfreq, &ltfreq);
-        encode_shift(&rangeCoder, syfreq, ltfreq, 10);
-        encode_shift(&rangeCoderMes, syfreq, ltfreq, 10);
-        // Update the model.
-        qsupdate(&connectModel, sym);
-
+        writeChar(sym);
         // Encode the geometry if necessary.
-        if (b_split)
+        if (sym)
         {
-            VectorInt v = geomSym[k];
+            Point p = geomSym[k];
             for (unsigned j = 0; j < 3; ++j)
             {
-
-                    sym = v[j] - alphaBetaMin;
-                    // Encode the alpha and beta symbols.
-                    qsgetfreq(&alphaBetaModel, sym, &syfreq, &ltfreq);
-                    encode_shift(&rangeCoder, syfreq, ltfreq, 18);
-                    // Update the alpha and beta model.
-                    qsupdate(&alphaBetaModel, sym);
+            	writeFloat(p[j]);
             }
             k++;
         }
     }
-
-    unsigned i_size = done_encoding(&rangeCoder);
-    unsigned i_sizeConn = done_encoding(&rangeCoderMes);
-
-    geometrySize += (i_size - i_sizeConn) * 8;
-    connectivitySize += i_sizeConn * 8;
-
-    // Destroy the models.
-    deleteqsmodel(&alphaBetaModel);
-    deleteqsmodel(&connectModel);
-
-    delete[] p_dataMes;
-    delete p_dataOffsetMes;
 }

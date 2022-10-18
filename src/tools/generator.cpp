@@ -39,7 +39,7 @@ HiMesh *poly_to_himesh(Polyhedron &poly){
 	stringstream ss;
 	ss<<poly;
 	MyMesh *mesh = hispeed::parse_mesh(ss.str(), true);
-	HiMesh *himesh = new HiMesh(mesh->p_data, mesh->dataOffset);
+	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
 	delete mesh;
 	return himesh;
@@ -112,7 +112,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	HiMesh *himesh = poly_to_himesh(*vessel);
 	vector<Voxel *> vessel_voxels = himesh->generate_voxels_skeleton(1000);
 	delete himesh;
-
 	// load the nucleis
 	nucleis = read_polyhedrons(nuclei_path);
 	for(Polyhedron *poly:nucleis){
@@ -343,7 +342,6 @@ int main(int argc, char **argv){
 		("nv", po::value<int>(&num_vessel), "number of vessels")
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
-		("quant_bits", po::value<int>(&global_ctx.quant_bits), "the quantization bits")
 		("verbose", "verbose")
 		;
 
@@ -364,7 +362,7 @@ int main(int argc, char **argv){
 	char nuclei_output[256];
 	char nuclei_output2[256];
 	char config[100];
-	sprintf(config,"nv%d_nu%d_s%d_vs%d_r%d_q%d",num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range,global_ctx.quant_bits);
+	sprintf(config,"nv%d_nu%d_s%d_vs%d_r%d",num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
 
 	sprintf(vessel_output,"%s_v_%s.mt",output_path.c_str(),config);
 	remove(vessel_output);

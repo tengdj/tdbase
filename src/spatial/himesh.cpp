@@ -35,11 +35,11 @@ void HiMesh::advance_to(int lod){
 }
 
 
-HiMesh::HiMesh(char* data, long length):
-		MyMesh(0, DECOMPRESSION_MODE_ID, global_ctx.quant_bits, data, length, true){
+HiMesh::HiMesh(MyMesh *mesh):
+		MyMesh(0, DECOMPRESSION_MODE_ID, mesh->p_data, mesh->dataOffset){
 }
-HiMesh::HiMesh(char* data, long length, bool od):
-		MyMesh(0, DECOMPRESSION_MODE_ID, global_ctx.quant_bits, data, length, od){
+HiMesh::HiMesh(char *data, size_t dsize):
+		MyMesh(0, DECOMPRESSION_MODE_ID, data, dsize){
 }
 
 HiMesh::~HiMesh(){
@@ -89,6 +89,7 @@ string HiMesh::to_wkt(){
 }
 
 void HiMesh::get_vertices(std::vector<Point> &points){
+	points.reserve(size_of_vertices());
 	for(MyMesh::Vertex_iterator v = vertices_begin();
 			v != vertices_end(); ++v){
 		points.push_back(v->point());
@@ -104,6 +105,10 @@ float HiMesh::get_volume() {
 	float volume = CGAL::Polygon_mesh_processing::volume(*poly);
 	delete poly;
 	return volume;
+}
+
+bool HiMesh::has_same_vertices(){
+	return true;
 }
 
 }

@@ -32,7 +32,7 @@ void MyMesh::startNextDecompresssionOp()
     			i_curDecimationId,
 				getmaximumCut());
     }
-    if ((float)i_curOperationId / (i_nbQuantizations + i_nbDecimations) * 100 >= i_decompPercentage){
+    if ((float)i_curDecimationId / i_nbDecimations * 100 >= i_decompPercentage){
         for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         	hit->resetState();
         for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
@@ -40,8 +40,6 @@ void MyMesh::startNextDecompresssionOp()
         operation = Idle;
         b_jobCompleted = true;
     } else {
-        // Start the decoder.
-        start_decoding(&rangeCoder);
         beginUndecimationConquest();
     }
 }
@@ -60,16 +58,6 @@ void MyMesh::beginUndecimationConquest()
 
     // Add the first halfedge to the queue.
     pushHehInit();
-
-    // Read the min values and the ranges.
-    uint16_t i16_min;
-    i16_min = decode_short(&rangeCoder);
-    alphaBetaMin = *(int16_t *)&i16_min;
-    unsigned alphaBetaRange = decode_short(&rangeCoder);
-
-    // Init the range coder models.
-    initqsmodel(&alphaBetaModel, alphaBetaRange, 18, 1 << 17, NULL, 0);
-    initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 0);
 
     // Set the current operation.
     operation = UndecimationConquest;
@@ -93,12 +81,7 @@ void MyMesh::undecimationStep()
             continue;
 
         // Decode the face symbol.
-        int syfreq, ltfreq;
-        ltfreq = decode_culshift(&rangeCoder, 10);
-        unsigned sym = qsgetsym(&connectModel, ltfreq);
-        qsgetfreq(&connectModel, sym, &syfreq, &ltfreq);
-        decode_update(&rangeCoder, syfreq, ltfreq, 1 << 10);
-        qsupdate(&connectModel, sym);
+        unsigned sym = readChar();
 
         // Add the other halfedges to the queue
         Halfedge_handle hIt = h;
@@ -118,14 +101,6 @@ void MyMesh::undecimationStep()
         else
             f->setUnsplittable();
     }
-
-    // Stop the decoder.
-    done_decoding(&rangeCoder);
-
-    // Delete the models.
-    deleteqsmodel(&connectModel);
-    deleteqsmodel(&alphaBetaModel);
-
     beginInsertedEdgeDecoding();
 }
 
@@ -137,14 +112,7 @@ void MyMesh::beginInsertedEdgeDecoding()
 {
     // Add the first halfedge to the queue.
     pushHehInit();
-
-    // Init the range coder models.
-    initqsmodel(&connectModel, 2, 10, 1 << 9, NULL, 0);
-
-    // Start the decoder.
-    start_decoding(&rangeCoder);
     operation = InsertedEdgeDecoding;
-
 }
 
 
@@ -183,14 +151,7 @@ void MyMesh::InsertedEdgeDecodingStep()
             || h->opposite()->facet()->isSplittable())
         {
             // Decode the edge symbol.
-            int syfreq, ltfreq;
-            ltfreq = decode_culshift(&rangeCoder, 10);
-            unsigned sym = qsgetsym(&connectModel, ltfreq);
-            qsgetfreq(&connectModel, sym, &syfreq, &ltfreq);
-            decode_update(&rangeCoder, syfreq, ltfreq, 1 << 10);
-            // Update the model.
-            qsupdate(&connectModel, sym);
-
+            unsigned sym = readChar();
             // Determine if the edge is original or not.
             // Mark the edge to be removed.
             if (sym != 0)
@@ -200,30 +161,10 @@ void MyMesh::InsertedEdgeDecodingStep()
         return;
     }
 
-
-//	int added = 0;
-//	int original = 0;
-//    for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
-//    {
-//    	if(hit->isAdded()){
-//    		added++;
-//    	}else{
-//    		original++;
-//    	}
-//    }
-//    cout<<added<<" "<<original<<endl;
-
-    // Stop the decoder.
-    done_decoding(&rangeCoder);
-
-    // Delete the models.
-    deleteqsmodel(&connectModel);
-
     insertRemovedVertices();
     removeInsertedEdges();
 
     i_curDecimationId++; // Increment the current decimation operation id.
-    i_curOperationId++;
     operation = Idle;
 
 }
@@ -268,15 +209,8 @@ void MyMesh ::insertRemovedVertices()
         if (f->isSplittable())
         {
             // Insert the vertex.
-        	Point bc = barycenter(h);
-            Point p = getPos(getQuantizedPos(bc) + f->getResidual());
             Halfedge_handle hehNewVertex = create_center_vertex(h);
-            hehNewVertex->vertex()->point() = p;
-
-//			float cutdist = (p.x()-bc.x())*(p.x()-bc.x())+
-//							(p.y()-bc.y())*(p.y()-bc.y())+
-//							(p.z()-bc.z())*(p.z()-bc.z());
-        	//log("%d %d %f",i_curDecimationId, processCount++, cutdist);
+            hehNewVertex->vertex()->point() = f->getRemovedVertexPos();
 
             // Mark all the created edges as new.
             Halfedge_around_vertex_circulator Hvc = hehNewVertex->vertex_begin();
@@ -312,23 +246,14 @@ void MyMesh::removeInsertedEdges()
 void MyMesh::decodeGeometrySym(Face_handle fh)
 {
 
-    int coord[3];
+    float coord[3];
     for (unsigned i = 0; i < 3; ++i)
     {
-		// Decode the alpha and beta symbols.
-        int syfreq, ltfreq;
-		ltfreq = decode_culshift(&rangeCoder, 18);
-		unsigned sym = qsgetsym(&alphaBetaModel, ltfreq);
-		qsgetfreq(&alphaBetaModel, sym, &syfreq, &ltfreq);
-		decode_update(&rangeCoder, syfreq, ltfreq, 1 << 18);
-		qsupdate(&alphaBetaModel, sym);
-
 		// Store the value.
-		coord[i] = alphaBetaMin + sym;
+		coord[i] = readFloat();
     }
 
-    VectorInt correction(coord[0], coord[1], coord[2]);
-
+    Point rmved(coord[0], coord[1], coord[2]);
     fh->setSplittable();
-    fh->setResidual(correction);
+    fh->setRemovedVertexPos(rmved);
 }

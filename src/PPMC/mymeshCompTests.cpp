@@ -382,6 +382,9 @@ float MyMesh::removalError(Vertex_const_handle v,
   */
 bool MyMesh::isRemovable(Vertex_handle v) const
 {
+	if(size_of_vertices()<10){
+		return false;
+	}
 	if (v != vh_departureConquest[0] && v != vh_departureConquest[1] &&
 		!v->isConquered() && v->vertex_degree() > 2 && v->vertex_degree() <= 8)
 	{

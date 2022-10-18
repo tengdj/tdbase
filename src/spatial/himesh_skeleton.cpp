@@ -21,55 +21,75 @@ Skeleton *HiMesh::extract_skeleton(){
 	Triangle_mesh tmesh;
 	std::stringstream os;
 
-	//logt("dump to stream", start);
-	//logt("convert to triangle mesh", start);
-	if (!CGAL::is_triangle_mesh(tmesh)){
-		os << *this;
-	}else{
-		Polyhedron *poly = to_triangulated_polyhedron();
-		os << *poly;
-		delete poly;
+	Polyhedron *poly = this->to_polyhedron();
+	if (!CGAL::is_triangle_mesh(*poly)){
+		CGAL::Polygon_mesh_processing::triangulate_faces(*poly);
+		if(global_ctx.verbose){
+			logt("convert to triangle mesh", start);
+		}
 	}
+	os << *poly;
+	delete poly;
+	if(global_ctx.verbose){
+		logt("dump to stream", start);
+	}
+
 	os >> tmesh;
 	assert(CGAL::is_triangle_mesh(tmesh));
 
-	//logt("triangulate", start);
-
-	try{
-		Skeletonization mcs(tmesh);
-		//logt("initialize skeletonization", start);
-
-		// 1. Contract the mesh by mean curvature flow.
-		mcs.contract_geometry();
-		//logt("contract geometry", start);
-
-		// 2. Collapse short edges and split bad triangles.
-		mcs.collapse_edges();
-		//logt("collapse edges", start);
-
-		mcs.split_faces();
-		//logt("split faces", start);
-
-		// 3. Fix degenerate vertices.
-		//mcs.detect_degeneracies();
-
-		// Perform the above three steps in one iteration.
-		mcs.contract();
-		//logt("contract", start);
-
-		// Iteratively apply step 1 to 3 until convergence.
-		mcs.contract_until_convergence();
-		//logt("contract until convergence", start);
-
-		// Convert the contracted mesh into a curve skeleton and
-		// get the correspondent surface points
-		mcs.convert_to_skeleton(*skeleton);
-		//logt("convert to skeleton", start);
-
-	}catch(std::exception &exc){
-		log(exc.what());
-		exit(-1);
+	if(global_ctx.verbose){
+		logt("triangulate", start);
 	}
+	CGAL::extract_mean_curvature_flow_skeleton(tmesh, *skeleton);
+
+//	try{
+//		Skeletonization mcs(tmesh);
+//		if(global_ctx.verbose){
+//			logt("initialize skeletonization", start);
+//		}
+//
+//		// 1. Contract the mesh by mean curvature flow.
+//		mcs.contract_geometry();
+//		if(global_ctx.verbose){
+//			logt("contract geometry", start);
+//		}
+//
+//		// 2. Collapse short edges and split bad triangles.
+//		mcs.collapse_edges();
+//		if(global_ctx.verbose){
+//			logt("collapse edges", start);
+//		}
+//
+//		mcs.split_faces();
+//		if(global_ctx.verbose){
+//			logt("split faces", start);
+//		}
+//
+//		// 3. Fix degenerate vertices.
+//		//mcs.detect_degeneracies();
+//
+//		// Perform the above three steps in one iteration.
+//		mcs.contract();
+//		if(global_ctx.verbose){
+//			logt("contract", start);
+//		}
+//
+//		// Iteratively apply step 1 to 3 until convergence.
+//		mcs.contract_until_convergence();
+//		if(global_ctx.verbose){
+//			logt("contract until convergence", start);
+//		}
+//
+//		// Convert the contracted mesh into a curve skeleton and
+//		// get the correspondent surface points
+//		mcs.convert_to_skeleton(*skeleton);
+//		if(global_ctx.verbose){
+//			logt("convert to skeleton", start);
+//		}
+//
+//	}catch(std::exception &exc){
+//		log(exc.what());
+//	}
 	return skeleton;
 }
 

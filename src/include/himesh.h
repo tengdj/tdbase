@@ -114,8 +114,8 @@ class HiMesh:public MyMesh{
 	void get_segments();
 	void get_triangles();
 public:
-	HiMesh(char *data, long length, bool own_data);
-	HiMesh(char *data, long length);
+	HiMesh(char *data, size_t dsize);
+	HiMesh(MyMesh *mesh);
 	~HiMesh();
 
 	aab get_box();
@@ -147,6 +147,9 @@ public:
 	void get_vertices(std::vector<Point> &points);
 	size_t size_of_edges();
 	void advance_to(int lod);
+
+	// validation
+	bool has_same_vertices();
 };
 
 /*

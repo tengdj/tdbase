@@ -26,15 +26,11 @@
 
 MyMesh::MyMesh(unsigned i_decompPercentage,
                const int i_mode,
-               unsigned i_quantBits,
-			   char* data,
-			   long length,
-			   bool copy_data) :
+			   const char* data,
+			   long length) :
     CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(), i_mode(i_mode),
     b_jobCompleted(false), operation(Idle),
-    i_curDecimationId(0), i_curQuantizationId(0), i_curOperationId(0),
-    i_levelNotConvexId(0), connectivitySize(0),
-    geometrySize(0), i_quantBits(i_quantBits), dataOffset(0),
+    i_curDecimationId(0), dataOffset(0),
     i_decompPercentage(i_decompPercentage)
 {
 	assert(length>0);
@@ -42,14 +38,12 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
 	srand(PPMC_RANDOM_CONSTANT);
     if (i_mode == COMPRESSION_MODE_ID) {
         // Create the compressed data buffer.
-        p_data = new char[length];
+        d_capacity = 3*length;
+        p_data = new char[d_capacity];
         // Fill the buffer with 0.
-        for (size_t i = 0; i < length; ++i) {
+        for (size_t i = 0; i < d_capacity; ++i) {
            p_data[i] = 0;
         }
-        // Initialize the range coder structure.
-        rangeCoder.p_data = p_data;
-        rangeCoder.p_dataOffset = &dataOffset;
 	    std::istringstream is;
 	    is.str(data);
 	    std::istringstream os;
@@ -73,34 +67,17 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
 		}
 
 		computeBoundingBox();
-		determineQuantStep();
-		quantizeVertexPositions();
 
 		// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 		vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 		vh_departureConquest[1] = halfedges_begin()->vertex();
     } else {
-    	if(copy_data){
-            p_data = new char[length];
-    		memcpy(p_data, data, length);
-    	}else{
-    		p_data = data;
-    	}
-        // Initialize the range coder structure.
-        rangeCoder.p_data = p_data;
-        rangeCoder.p_dataOffset = &dataOffset;
+		p_data = new char[length];
+		memcpy(p_data, data, length);
     	readCompressedData();
         // Set the vertices of the edge that is the departure of the coding and decoding conquests.
         vh_departureConquest[0] = vertices_begin();
         vh_departureConquest[1] = ++vertices_begin();
-
-        if (i_levelNotConvexId < i_nbDecimations){
-            // Decompress until the first convex LOD is reached.
-            while (i_curDecimationId < i_levelNotConvexId) {
-                batchOperation();
-            }
-            batchOperation();
-        }
     }
     i_nbVerticesInit = size_of_vertices();
     i_nbFacetsInit = size_of_facets();
@@ -164,7 +141,9 @@ void MyMesh::batchOperation()
     default:
         break;
     }
-    //logt("operation %s",start,operation_str[oo]);
+    if(global_ctx.verbose){
+    	//log("operation %s",operation_str[oo]);
+    }
 }
 
 
@@ -210,69 +189,4 @@ Vector MyMesh::getBBoxCenter() const
 {
     return ((bbMax - CGAL::ORIGIN)
             + (bbMin - CGAL::ORIGIN)) / 2;
-}
-
-
-/**
-  * Determine the quantization step.
-  */
-void MyMesh::determineQuantStep()
-{
-    float f_maxRange = 0;
-    for (unsigned i = 0; i < 3; ++i)
-    {
-        float range = bbMax[i] - bbMin[i];
-        if (range > f_maxRange)
-            f_maxRange = range;
-    }
-    f_quantStep = f_maxRange / (1 << i_quantBits);
-}
-
-
-// Compute and store the quantized positions of the mesh vertices.
-void MyMesh::quantizeVertexPositions()
-{
-    unsigned i_maxCoord = 1 << i_quantBits;
-
-    // Update the positions to fit the quantization.
-    for (MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
-    {
-        Point p = vit->point();
-        PointInt quantPoint = getQuantizedPos(p);
-
-		// Make sure the last value is in the range.
-		assert(quantPoint.x() <= i_maxCoord);
-		assert(quantPoint.y() <= i_maxCoord);
-		assert(quantPoint.z() <= i_maxCoord);
-		/* The max value is the unique that have to to be reassigned
-		   because else it would get out the range. */
-		quantPoint = PointInt(quantPoint.x() == i_maxCoord ? i_maxCoord - 1 : quantPoint.x(),
-							  quantPoint.y() == i_maxCoord ? i_maxCoord - 1 : quantPoint.y(),
-							  quantPoint.z() == i_maxCoord ? i_maxCoord - 1 : quantPoint.z());
-
-        Point newPos = getPos(quantPoint);
-        vit->point() = newPos;
-    }
-}
-
-
-/**
-  * Quantize a position
-  */
-PointInt MyMesh::getQuantizedPos(Point p) const
-{
-    return PointInt((p.x() - bbMin.x()) / (f_quantStep * (1 << i_curQuantizationId)),
-                    (p.y() - bbMin.y()) / (f_quantStep * (1 << i_curQuantizationId)),
-                    (p.z() - bbMin.z()) / (f_quantStep * (1 << i_curQuantizationId)));
-}
-
-
-/**
-  * Get a position from the quantized coordinates.
-  */
-Point MyMesh::getPos(PointInt p) const
-{
-    return Point((p.x() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.x(),
-                 (p.y() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.y(),
-                 (p.z() + 0.5) * f_quantStep * (1 << i_curQuantizationId) + bbMin.z());
 }

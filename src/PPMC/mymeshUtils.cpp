@@ -151,45 +151,6 @@ unsigned MyMesh::vertexDegreeNotNew(Vertex_const_handle vh) const
     return i_degree;
 }
 
-
-/**
-  * Return the average laplacian vector of the vertices of a face.
-  */
-VectorInt MyMesh::avgLaplacianVect(Halfedge_handle heh_gate) const
-{
-    Halfedge_handle heh = heh_gate;
-    VectorInt sumLaplacian = CGAL::NULL_VECTOR;
-
-    do
-    {
-        VectorInt laplacian = CGAL::NULL_VECTOR;
-
-        Halfedge_handle heh_next = heh->next();
-        Halfedge_handle heh2 = heh_next;
-        do
-        {
-            assert(!heh2->isNew() && !heh->isNew());
-            laplacian = laplacian + (getQuantizedPos(heh2->vertex()->point())
-                                     - getQuantizedPos(heh->vertex()->point()));
-
-            // Move to next neighbor vertex not new.
-            do
-                heh2 = heh2->prev()->opposite();
-            while (heh2->isNew());
-        }
-        while(heh2 != heh_next);
-
-        sumLaplacian = sumLaplacian + laplacian / vertexDegreeNotNew(heh->vertex());
-
-        // Move to next vertex of the face.
-        heh = heh->next();
-    }
-    while (heh != heh_gate);
-
-    return sumLaplacian / heh_gate->facet_degree();
-}
-
-
 /**
   * Compute the surface of a triangle using Heron's formula.
   */

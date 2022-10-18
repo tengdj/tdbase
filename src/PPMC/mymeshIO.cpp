@@ -31,7 +31,6 @@ void MyMesh::writeCompressedData()
 {
 
     i_nbDecimations = i_curDecimationId + 1;
-    i_nbQuantizations = i_curQuantizationId;
 
     // Write the base mesh.
     writeBaseMesh();
@@ -122,14 +121,22 @@ float MyMesh::readFloat()
     return f;
 }
 
-
-// Write a 16 bits integer in the data buffer
-void MyMesh::writeInt16(int16_t i)
+/**
+  * Read an integer in the data buffer.
+  */
+int MyMesh::readInt()
 {
-    *(int16_t *)(p_data + dataOffset) = i;
-    dataOffset += sizeof(int16_t);
+    int i = *(int *)(p_data + dataOffset);
+    dataOffset += sizeof(int);
+    return i;
 }
 
+// Write an integer in the data buffer
+void MyMesh::writeInt(int i)
+{
+    *(int *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(int);
+}
 
 /**
   * Read a 16 bits integer in the data buffer.
@@ -142,6 +149,33 @@ int16_t MyMesh::readInt16()
 }
 
 
+// Write a 16 bits integer in the data buffer
+void MyMesh::writeInt16(int16_t i)
+{
+    *(int16_t *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(int16_t);
+}
+
+
+/**
+  * Read a byte in the data buffer.
+  */
+char MyMesh::readChar()
+{
+    char i = *(char *)(p_data + dataOffset);
+    dataOffset += sizeof(char);
+    return i;
+}
+
+// Write a byte in the data buffer
+void MyMesh::writeChar(char i)
+{
+    *(char *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(char);
+}
+
+
+
 // Write the base mesh.
 void MyMesh::writeBaseMesh()
 {
@@ -149,41 +183,20 @@ void MyMesh::writeBaseMesh()
     // Write the bounding box min coordinate.
     for (unsigned i = 0; i < 3; ++i)
         writeFloat((float)(bbMin[i]));
+    for (unsigned i = 0; i < 3; ++i)
+        writeFloat((float)(bbMax[i]));
     // Write the quantization step.
-    writeFloat(f_quantStep);
-
-    geometrySize += 4 * sizeof(float) * 8;
 
     unsigned i_nbVerticesBaseMesh = size_of_vertices();
     unsigned i_nbFacesBaseMesh = size_of_facets();
     unsigned i_nbBitsPerVertex = ceil(log(i_nbVerticesBaseMesh) / log(2));
 
-    unsigned i_bitOffset = 0;
-    dataOffset++;
-
-    // Write the geometry quantization of the mesh.
-    assert(i_quantBits - 1 < 1 << 4);
-    writeBits(i_quantBits - 1, 4, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    geometrySize += 4;
-
     // Write the number of level of decimations.
-    assert(i_nbDecimations < 1 << 6);
-    writeBits(i_nbDecimations, 6, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    connectivitySize += 6;
-
-    // Write the number of adaptive quantizations.
-    assert(i_nbQuantizations < 1 << 6);
-    writeBits(i_nbQuantizations, 6, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    connectivitySize += 6;
-
-    // Write the number of non-convex level of details.
-    writeBits(i_nbDecimations - i_levelNotConvexId, 6, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    connectivitySize += 6;
+    writeInt16(i_nbDecimations);
 
     // Write the number of vertices and faces on 16 bits.
-    writeBits(i_nbVerticesBaseMesh, 16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    writeBits(i_nbFacesBaseMesh, 16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    connectivitySize += 32;
+    writeInt(i_nbVerticesBaseMesh);
+    writeInt(i_nbFacesBaseMesh);
 
     // Write the base mesh vertex coordinates.
     unsigned i_nbAdditionalBitsGeometry = 0;
@@ -191,59 +204,45 @@ void MyMesh::writeBaseMesh()
     // Write the vertices of the edge that is the departure of the coding conquests.
     for (unsigned j = 0; j < 2; ++j)
     {
-        PointInt p = getQuantizedPos(vh_departureConquest[j]->point());
+        Point p = vh_departureConquest[j]->point();
         for (unsigned i = 0; i < 3; ++i)
         {
-            assert(p[i] < 1 << i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry);
-            writeBits(p[i], i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry,
-                      p_data + dataOffset - 1, i_bitOffset, dataOffset);
+        	writeFloat(p[i]);
         }
         vh_departureConquest[j]->setId(j);
     }
 
     // Write the other vertices.
     size_t id = 2;
-    for (MyMesh::Vertex_iterator vit = vertices_begin();
-         vit != vertices_end(); ++vit)
+    for (MyMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit)
     {
         if (vit == vh_departureConquest[0] || vit == vh_departureConquest[1])
             continue;
-
-        PointInt p = getQuantizedPos(vit->point());
-
+        Point p = vit->point();
         // Write the coordinates.
         for (unsigned i = 0; i < 3; ++i)
         {
-            assert(p[i] < 1 << i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry);
-            writeBits(p[i], i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry, p_data + dataOffset - 1, i_bitOffset, dataOffset);
+        	writeFloat(p[i]);
         }
         // Set an id to the vertex.
         vit->setId(id++);
     }
-    geometrySize += i_nbVerticesBaseMesh * 3 * (i_quantBits - i_curQuantizationId);
 
     // Write the base mesh face vertex indices.
     for (MyMesh::Facet_iterator fit = facets_begin();
          fit != facets_end(); ++fit)
     {
         unsigned i_faceDegree = fit->facet_degree();
-        unsigned i_code = i_faceDegree - 3;
-        assert(i_code < 1 << NB_BITS_FACE_DEGREE_BASE_MESH);
-        writeBits(i_code, NB_BITS_FACE_DEGREE_BASE_MESH, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-
+        writeInt(i_faceDegree);
         Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
         do
         {
             // Write the current vertex id.
-            writeBits(hit->vertex()->getId(), i_nbBitsPerVertex, p_data + dataOffset - 1, i_bitOffset, dataOffset);
+        	writeInt(hit->vertex()->getId());
         }
         while(++hit != end);
-
-        connectivitySize += i_nbBitsPerVertex * i_faceDegree + NB_BITS_FACE_DEGREE_BASE_MESH;
     }
 
-    if(i_bitOffset == 0)
-        dataOffset--;
     // 3dpro
     // Write the maximum volume change for each round of decimation
     for(unsigned i=0;i<i_nbDecimations;i++){
@@ -261,32 +260,17 @@ void MyMesh::readBaseMesh()
         coord[i] = readFloat();
     bbMin = Point(coord[0], coord[1], coord[2]);
 
-    // Read the quantization step.
-    f_quantStep = readFloat();
-
-    unsigned i_bitOffset = 0;
-    dataOffset++;
-
-    // Read the geometry quantization of the mesh.
-    i_quantBits = readBits(4, p_data + dataOffset - 1, i_bitOffset, dataOffset) + 1;
+    for (unsigned i = 0; i < 3; ++i)
+        coord[i] = readFloat();
+    bbMax = Point(coord[0], coord[1], coord[2]);
 
     // Read the number of level of detail.
-    i_nbDecimations = readBits(6, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-
-    // Read the number of quantization operations.
-    i_nbQuantizations = i_curQuantizationId = readBits(6, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-
-    // Read the number of non convex level of details.
-    i_levelNotConvexId = readBits(6, p_data + dataOffset - 1, i_bitOffset, dataOffset);
+    i_nbDecimations = readInt16();
 
     // Set the mesh bounding box.
-    unsigned i_nbQuantStep = 1 << i_quantBits;
-    bbMax = bbMin + Vector(i_nbQuantStep * f_quantStep,
-                           i_nbQuantStep * f_quantStep,
-                           i_nbQuantStep * f_quantStep);
 
-    unsigned i_nbVerticesBaseMesh = readBits(16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
-    unsigned i_nbFacesBaseMesh = readBits(16, p_data + dataOffset - 1, i_bitOffset, dataOffset);
+    unsigned i_nbVerticesBaseMesh = readInt();
+    unsigned i_nbFacesBaseMesh = readInt();
     unsigned i_nbBitsPerVertex = ceil(log(i_nbVerticesBaseMesh) / log(2));
 
     std::deque<Point> *p_pointDeque = new std::deque<Point>();
@@ -298,10 +282,8 @@ void MyMesh::readBaseMesh()
     {
         uint32_t p[3];
         for (unsigned j = 0; j < 3; ++j)
-            p[j] = readBits(i_quantBits - i_curQuantizationId + i_nbAdditionalBitsGeometry,
-                            p_data + dataOffset - 1, i_bitOffset, dataOffset);
-        PointInt posInt(p[0], p[1], p[2]);
-        Point pos = getPos(posInt);
+            p[j] = readFloat();
+        Point pos(p[0], p[1], p[2]);
         p_pointDeque->push_back(pos);
     }
 
@@ -310,9 +292,10 @@ void MyMesh::readBaseMesh()
     {
         uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
         // Write in the first cell of the array the face degree.
-        f[0] = readBits(NB_BITS_FACE_DEGREE_BASE_MESH, p_data + dataOffset - 1, i_bitOffset, dataOffset) + 3;
-        for (unsigned j = 1; j < f[0] + 1; ++j)
-            f[j] = readBits(i_nbBitsPerVertex, p_data + dataOffset - 1, i_bitOffset, dataOffset);
+        f[0] = readInt();
+        for (unsigned j = 1; j < f[0] + 1; ++j){
+        	f[j] = readInt();
+        }
         p_faceDeque->push_back(f);
     }
 
@@ -325,9 +308,6 @@ void MyMesh::readBaseMesh()
         delete[] p_faceDeque->at(i);
     delete p_faceDeque;
     delete p_pointDeque;
-
-    if(i_bitOffset == 0)
-        dataOffset--;
 
     // Read the maximum cutting volume
     for(unsigned i=0;i<i_nbDecimations;i++){

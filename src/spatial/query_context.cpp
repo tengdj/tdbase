@@ -90,7 +90,6 @@ query_context parse_args(int argc, char **argv){
 		("lod_gap", po::value<int>(&lod_gap), "the lod gap for progressive decoding polyhedral")
 		("lod", po::value<std::vector<std::string>>()->multitoken()->
 				zero_tokens()->composing(), "the lods need be processed")
-		("quant_bits", po::value<int>(&ctx.quant_bits), "the quantization bits")
 		("aabb", "calculate distance with aabb")
 		("gpu,g", "compute with GPU")
 		("verbose,v", "verbose")
