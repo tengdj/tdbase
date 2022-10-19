@@ -101,13 +101,11 @@ namespace hispeed{
  *
  * */
 class HiMesh:public MyMesh{
-	size_t true_triangle_size();
 	SegTree *segment_tree = NULL;
 	TriangleTree *triangle_tree = NULL;
 	list<Segment> segments;
 	list<Triangle> triangles;
-	void get_segments();
-	void get_triangles();
+	list<Point> vertices;
 public:
 	HiMesh(char *data, size_t dsize);
 	HiMesh(MyMesh *mesh);
@@ -124,24 +122,28 @@ public:
 	string to_wkt();
 	float get_volume();
 
-	size_t fill_segments(float *segments);
-	size_t fill_triangles(float *triangles);
+	// get the elements
+	size_t fill_segments(float *&segments);
+	size_t fill_triangles(float *&triangles);
 	size_t fill_voxels(vector<Voxel *> &voxels, element_type seg_or_triangle);
 	size_t fill_vertices(float *&vertices);
-	size_t fill_topology(unsigned short *&topology);
-	SegTree *get_aabb_tree_segment();
-	TriangleTree *get_aabb_tree_triangle();
+	list<Segment> get_segments();
+	list<Triangle> get_triangles();
+	list<Point> get_vertices();
 
 	// query
+	SegTree *get_aabb_tree_segment();
+	TriangleTree *get_aabb_tree_triangle();
 	float distance(HiMesh *target);
 	float distance_tree(HiMesh *target);
 	range distance_range(HiMesh *target);
 	bool intersect(HiMesh *target);
+	bool intersect_tree(HiMesh *target);
 
 	void clear_aabb_tree();
 
-	void get_vertices(std::vector<Point> &points);
 	size_t size_of_edges();
+
 	void advance_to(int lod);
 
 	// validation

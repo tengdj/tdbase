@@ -50,8 +50,7 @@ int main(int argc, char **argv){
 	tile2->retrieve_all();
 	tile2->advance_all(100);
 	HiMesh *nuc = tile2->get_mesh(0);
-	vector<Point> vertices;
-	nuc->get_vertices(vertices);
+	list<Point> vertices = nuc->get_vertices();
 	double mdist = DBL_MAX;
 	for(int i=0;i<tile1->num_objects();i++){
 		HiMesh *mesh = tile1->get_mesh(i);

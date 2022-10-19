@@ -9,29 +9,6 @@
 
 namespace hispeed{
 
-void HiMesh::get_segments(){
-	segments.clear();
-	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
-		Point p1 = eit->vertex()->point();
-		Point p2 = eit->opposite()->vertex()->point();
-		if(p1!=p2){
-			segments.push_back(Segment(p1, p2));
-		}
-	}
-}
-
-
-void HiMesh::get_triangles(){
-	triangles.clear();
-	size_t size = size_of_facets();
-	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
-		Point p1 = f->halfedge()->vertex()->point();
-		Point p2 = f->halfedge()->next()->vertex()->point();
-		Point p3 = f->halfedge()->next()->next()->vertex()->point();
-		triangles.push_back(Triangle(p1, p2, p3));
-	}
-}
-
 void HiMesh::clear_aabb_tree(){
 	if(segment_tree){
 		delete segment_tree;
@@ -64,6 +41,5 @@ TriangleTree *HiMesh::get_aabb_tree_triangle(){
 	}
 	return triangle_tree;
 }
-
 
 }

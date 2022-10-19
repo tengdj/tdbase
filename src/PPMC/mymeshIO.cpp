@@ -279,7 +279,7 @@ void MyMesh::readBaseMesh()
     // Read the vertex positions.
     for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
     {
-        uint32_t p[3];
+        float p[3];
         for (unsigned j = 0; j < 3; ++j)
             p[j] = readFloat();
         Point pos(p[0], p[1], p[2]);

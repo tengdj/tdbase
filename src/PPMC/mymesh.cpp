@@ -88,14 +88,12 @@ MyMesh::~MyMesh(){
 	}
 }
 
-
-size_t MyMesh::true_triangle_size(){
-
-	size_t size = 0;
+size_t MyMesh::size_of_triangles(){
+	int tri_num = 0;
 	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
-		size += count_triangle(f);
+		tri_num += f->facet_degree()-2;
 	}
-	return size;
+	return tri_num;
 }
 
 /**

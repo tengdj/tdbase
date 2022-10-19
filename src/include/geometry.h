@@ -120,6 +120,7 @@ typedef struct geometry_param_{
 
 float PointTriangleDist(const float *point, const float *triangle);
 
+float TriDist(const float *S, const float *T);
 float TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
 
 float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);

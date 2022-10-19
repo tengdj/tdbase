@@ -54,7 +54,7 @@ void query_context::report(double t){
 	cout<<"packing:\t"<<t*packing_time/overall_time<<endl;
 	cout<<"computation:\t"<<t*computation_time/overall_time<<endl;
 	cout<<"updatelist:\t"<<t*updatelist_time/overall_time<<endl;
-	cout<<"other:\t"<<t*(overall_time-decode_time-computation_time-index_time)/overall_time<<endl;
+	cout<<"other:\t"<<t*(overall_time-index_time-decode_time-packing_time-computation_time-updatelist_time)/overall_time<<endl<<endl;
 	printf("analysis\t%f\t%f\t%f\n",
 			(t*index_time/overall_time)/repeated_times,
 			(t*decode_time/overall_time)/repeated_times,

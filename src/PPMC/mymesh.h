@@ -425,7 +425,7 @@ public:
 		}
 		return size;
 	}
-	size_t true_triangle_size();
+	size_t size_of_triangles();
 
 	// Compression
 	void startNextCompresssionOp();

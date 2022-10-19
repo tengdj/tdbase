@@ -26,7 +26,7 @@ inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minm
 	for(auto vp_iter = voxel_pairs.begin();vp_iter!=voxel_pairs.end();){
 		// a closer voxel pair already exist
 		if(vp_iter->dist.mindist > minmaxdist){
-			// evict this dequalified voxel pairs
+			// evict this unqualified voxel pairs
 			voxel_pairs.erase(vp_iter);
 		}else{
 			ret.mindist = min(ret.mindist, vp_iter->dist.mindist);
@@ -165,17 +165,17 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
  * the main function for getting the nearest neighbor
  *
  * */
-void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
+void SpatialJoin::nearest_neighbor(query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<candidate_entry> candidates = mbb_knn(tile1, tile2, ctx);
-	ctx.index_time += get_time_elapsed(start, false);
-	logt("index retrieving", start);
+	vector<candidate_entry> candidates = mbb_knn(ctx.tile1, ctx.tile2, ctx);
+	ctx.index_time += logt("index retrieving", start);
 
 	// now we start to get the distances with progressive level of details
 	for(int lod:ctx.lods){
+		ctx.cur_lod = lod;
 		struct timeval iter_start = get_cur_time();
 		start = get_cur_time();
 
@@ -187,98 +187,86 @@ void SpatialJoin::nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx){
 		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per candidate",
 				candidates.size(), candidate_num, pair_num, (1.0*pair_num)/candidates.size());
 
-		// retrieve the necessary meshes
-		size_t element_pair_num = 0;
-		for(candidate_entry &c:candidates){
-			// the nearest neighbor is found
-			assert(c.candidate_confirmed+c.candidates.size()>ctx.knn);
-			//print_candidate(c);
-			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
-			for(candidate_info &info:c.candidates){
-				for(voxel_pair &vp:info.voxel_pairs){
-					assert(vp.v1&&vp.v2);
-					// not filled yet
-					if(vp.v1->data.find(lod)==vp.v1->data.end()){
-						// ensure the mesh is extracted
-						tile1->decode_to(wrapper1->id, lod);
-						wrapper1->fill_voxels(global_ctx.etype);
-					}
-
-					if(vp.v2->data.find(lod)==vp.v2->data.end()){
-						tile2->decode_to(info.mesh_wrapper->id, lod);
-						info.mesh_wrapper->fill_voxels(global_ctx.etype);
-					}
-					element_pair_num += vp.v1->size[lod]*vp.v2->size[lod];
-				}// end for voxel_pairs
-			}// end for distance_candiate list
-		}// end for candidates
-		ctx.decode_time += hispeed::get_time_elapsed(start, false);
-		logt("decoded with %ld element pairs for lod %d", start, element_pair_num, lod);
-		if(element_pair_num==0){
-			log("no element is filled in this round");
-			continue;
-		}
-		tile1->reset_time();
-
 		// truly conduct the geometric computations
-		float *distances = calculate_distance(candidates, ctx, lod);
-		ctx.computation_time += hispeed::get_time_elapsed(start, false);
+		calculate_distance(candidates, ctx);
+
 		// now update the distance range with the new distances
 		int index = 0;
+		start = get_cur_time();
 		for(candidate_entry &c:candidates){
 			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
 			for(candidate_info &ci:c.candidates){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
-				double vox_minmaxdist = DBL_MAX;
-				for(voxel_pair &vp:ci.voxel_pairs){
-					// update the distance
-					if(vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
-						range dist = vp.dist;
-						if(lod==ctx.highest_lod()){
-							// now we have a precise distance
-							dist.mindist = distances[index];
-							dist.maxdist = distances[index];
-						}else{
-							dist.maxdist = std::min(dist.maxdist, distances[index]);
-							dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
-							dist.mindist = std::min(dist.mindist, dist.maxdist);
-							//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
-						}
-
-						if(global_ctx.verbose){
-							log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-									wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
-									vp.dist.mindist, vp.dist.maxdist,
-									dist.mindist, dist.maxdist);
-						}
-						vp.dist = dist;
-						vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
+				if(ctx.use_aabb){
+					range dist = ci.distance;
+					if(lod==ctx.highest_lod()){
+						// now we have a precise distance
+						dist.mindist = ctx.distance[index];
+						dist.maxdist = ctx.distance[index];
+					}else{
+						dist.maxdist = std::min(dist.maxdist, ctx.distance[index]);
+						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+						dist.mindist = std::min(dist.mindist, dist.maxdist);
+						//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 					}
+
+					if(global_ctx.verbose){
+						log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
+								wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
+								ci.distance.mindist, ci.distance.maxdist,
+								dist.mindist, dist.maxdist);
+					}
+					ci.distance = dist;
 					index++;
+				}else{
+					double vox_minmaxdist = DBL_MAX;
+					for(voxel_pair &vp:ci.voxel_pairs){
+						// update the distance
+						if(vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
+							range dist = vp.dist;
+							if(lod==ctx.highest_lod()){
+								// now we have a precise distance
+								dist.mindist = ctx.distance[index];
+								dist.maxdist = ctx.distance[index];
+							}else{
+								dist.maxdist = std::min(dist.maxdist, ctx.distance[index]);
+								dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+								dist.mindist = std::min(dist.mindist, dist.maxdist);
+								//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
+							}
+
+							if(global_ctx.verbose){
+								log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
+										wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
+										vp.dist.mindist, vp.dist.maxdist,
+										dist.mindist, dist.maxdist);
+							}
+							vp.dist = dist;
+							vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
+						}
+						index++;
+					}
+					// after each round, some voxels need to be evicted
+					ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
+					assert(ci.voxel_pairs.size()>0);
+					assert(ci.distance.mindist<=ci.distance.maxdist);
 				}
-				// after each round, some voxels need to be evicted
-				ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
-				assert(ci.voxel_pairs.size()>0);
-				assert(ci.distance.mindist<=ci.distance.maxdist);
 			}
 		}
-		logt("calculating distance", start);
-
 		// update the list after processing each LOD
 		evaluate_candidate_lists(candidates, ctx);
-		ctx.updatelist_time += hispeed::get_time_elapsed(start, false);
-		logt("updating the candidate lists",start);
+		delete []ctx.distance;
+		ctx.updatelist_time += logt("updating the candidate lists",start);
 
-		delete []distances;
 		logt("evaluating with lod %d", iter_start, lod);
 		log("");
 	}
 
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
-	for(int i=0;i<tile1->num_objects();i++){
-		ctx.result_count += tile1->get_mesh_wrapper(i)->results.size();
+	for(int i=0;i<ctx.tile1->num_objects();i++){
+		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
 	}
-	ctx.obj_count += min(tile1->num_objects(),global_ctx.max_num_objects1);
+	ctx.obj_count += min(ctx.tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
 }
 

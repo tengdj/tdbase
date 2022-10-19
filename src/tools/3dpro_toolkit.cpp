@@ -52,7 +52,7 @@ static void profile_protruding(int argc, char **argv){
 	struct timeval starttime = get_cur_time();
 	MyMesh *compressed = read_mesh();
 	assert(compressed->size_of_border_edges()&&"must be manifold");
-	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->size_of_facets());
+	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed);
 	compressed->profileProtruding();
 }
 
@@ -146,14 +146,12 @@ static void profile_distance(int argc, char **argv){
 	for(int i=10;i<=100;i+=10){
 		tile1->advance_all(i);
 		tile2->advance_all(i);
-		float *triangles_v = new float[9*tile1->get_mesh(0)->size_of_facets()];
-		tile1->get_mesh(0)->fill_triangles(triangles_v);
+		float *triangles_v;;
+		size_t s1 = tile1->get_mesh(0)->fill_triangles(triangles_v);
 		double dist = 0;
 		for(int j=0;j<tile2->num_objects();j++) {
-			float *triangles_n = new float[9*tile2->get_mesh(j)->size_of_facets()];
-			tile2->get_mesh(j)->fill_triangles(triangles_n);
-			size_t s1 = tile1->get_mesh(0)->size_of_facets();
-			size_t s2 = tile2->get_mesh(j)->size_of_facets();
+			float *triangles_n;
+			size_t s2 = tile2->get_mesh(j)->fill_triangles(triangles_n);
 			float d = TriDist_single(triangles_v,triangles_n,s1,s2);
 			dist += sqrt(d);
 			delete []triangles_n;
@@ -199,7 +197,7 @@ void profile_decoding(int argc, char **argv){
 	}
 	log("compress %.4f",get_time_elapsed(sst)/itertime);
 
-	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->true_triangle_size());
+	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->size_of_triangles());
 
 	log("start decompressing");
 
@@ -223,7 +221,7 @@ void profile_decoding(int argc, char **argv){
 		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
 		decompressed->completeOperation();
 		logt("decompress %3d lod %5d vertices %5d edges %5d faces avg(%.4f)", starttime, lod,
-				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->true_triangle_size(), testedtime/itertime);
+				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->size_of_triangles(), testedtime/itertime);
 		sprintf(path,"/gisdata/lod.%d.off", lod);
 		decompressed->writeMeshOff(path);
 		if(lod==100){
@@ -306,13 +304,61 @@ static void compress(int argc, char **argv){
 }
 
 static void distance(int argc, char **argv){
-	Tile *tile = new Tile(argv[1],2);
-	assert(tile->num_objects()==2);
-	tile->advance_all(100);
-	HiMesh *mesh1 = tile->get_mesh(0);
-	HiMesh *mesh2 = tile->get_mesh(1);
-	log("%f %f", mesh1->distance_tree(mesh2), mesh1->distance(mesh2));
+	assert(argc>4);
+	int n1 = atoi(argv[3]);
+	int n2 = atoi(argv[4]);
 
+	Tile *tile1 = new Tile(argv[1],n1+1);
+	Tile *tile2 = new Tile(argv[2],n2+1);
+
+	int lod = 100;
+	if(argc>5){
+		lod = atoi(argv[5]);
+	}
+
+	tile1->advance_all(lod);
+	tile2->advance_all(lod);
+
+	HiMesh *mesh1 = tile1->get_mesh(n1);
+	HiMesh *mesh2 = tile2->get_mesh(n2);
+	log("%f %f", mesh1->distance(mesh2), mesh1->distance_tree(mesh2));
+
+	delete tile1;
+	delete tile2;
+}
+
+static void intersect(int argc, char **argv){
+	assert(argc>4);
+	int n1 = atoi(argv[3]);
+	int n2 = atoi(argv[4]);
+
+	Tile *tile1 = new Tile(argv[1],n1+1);
+	Tile *tile2 = new Tile(argv[2],n2+1);
+
+	int lod = 100;
+	if(argc>5){
+		lod = atoi(argv[5]);
+	}
+
+	tile1->advance_all(lod);
+	tile2->advance_all(lod);
+
+	HiMesh *mesh1 = tile1->get_mesh(n1);
+	HiMesh *mesh2 = tile2->get_mesh(n2);
+	mesh1->get_segments();
+	log("%d %d", mesh1->intersect(mesh2), mesh1->intersect_tree(mesh2));
+
+	delete tile1;
+	delete tile2;
+}
+
+static void print(int argc, char **argv){
+	assert(argc>2);
+	Tile *tile = new Tile(argv[1],atoi(argv[2])+1);
+	assert(tile->num_objects()>atoi(argv[2]));
+	int lod = argc>3?atoi(argv[3]):100;
+	tile->get_mesh(atoi(argv[2]))->advance_to(lod);
+	cout<<*tile->get_mesh(atoi(argv[2]));
 	delete tile;
 }
 
@@ -354,6 +400,10 @@ int main(int argc, char **argv){
 		triangulate(argc-1,argv+1);
 	}else if(strcmp(argv[1],"distance") == 0){
 		distance(argc-1,argv+1);
+	}else if(strcmp(argv[1],"print") == 0){
+		print(argc-1,argv+1);
+	}else if(strcmp(argv[1],"intersect") == 0){
+		intersect(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);

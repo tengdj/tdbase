@@ -41,10 +41,9 @@ void HiMesh_Wrapper::advance_to(int lod){
 }
 // fill the segments into voxels
 // seg_tri: 0 for segments, 1 for triangle
-size_t HiMesh_Wrapper::fill_voxels(element_type seg_tri){
-	if(mesh){
-		return mesh->fill_voxels(voxels, seg_tri);
-	}
+size_t HiMesh_Wrapper::fill_voxels(element_type etype){
+	assert(mesh);
+	return mesh->fill_voxels(voxels, etype);
 	return 0;
 }
 size_t HiMesh_Wrapper::num_vertices(){
@@ -64,6 +63,7 @@ void HiMesh_Wrapper::report_result(HiMesh_Wrapper *result){
 	pthread_mutex_lock(&lock);
 	results.push_back(result);
 	pthread_mutex_unlock(&lock);
+	//log("%d find %d", id, result->id);
 }
 
 }

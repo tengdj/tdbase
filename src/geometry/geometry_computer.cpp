@@ -181,24 +181,22 @@ void geometry_computer::get_intersect_cpu(geometry_param &cc){
 
 	pthread_t threads[max_thread_num];
 	geometry_param params[max_thread_num];
-	int each_thread = cc.pair_num/max_thread_num;
-	for(int i=0;i<max_thread_num;i++){
-		int start = each_thread*i;
+	int each_thread = cc.pair_num/max_thread_num+1;
+	int tnum = 0;
+	for(tnum=0;tnum<max_thread_num;tnum++){
+		int start = each_thread*tnum;
 		if(start>=cc.pair_num){
 			break;
 		}
-		params[i].pair_num = min(each_thread, (int)cc.pair_num-start);
-		params[i].offset_size = cc.offset_size+start*4;
-		params[i].data = cc.data;
-		params[i].id = i+1;
-		params[i].intersect = cc.intersect+start;
-		if(max_thread_num==1){
-			TriInt_unit((void *)&params[i]);
-		}
-		pthread_create(&threads[i], NULL, TriInt_unit, (void *)&params[i]);
+		params[tnum].pair_num = min(each_thread, (int)cc.pair_num-start);
+		params[tnum].offset_size = cc.offset_size+start*4;
+		params[tnum].data = cc.data;
+		params[tnum].id = tnum+1;
+		params[tnum].intersect = cc.intersect+start;
+		pthread_create(&threads[tnum], NULL, TriInt_unit, (void *)&params[tnum]);
 	}
 	log("%d threads started", max_thread_num);
-	for(int i = 0; i < max_thread_num; i++){
+	for(int i = 0; i < tnum; i++){
 		void *status;
 		pthread_join(threads[i], &status);
 	}

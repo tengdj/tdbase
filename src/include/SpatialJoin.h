@@ -66,14 +66,20 @@ public:
 	 * of the surface (mostly triangle) of a polyhedron.
 	 *
 	 * */
+
 	vector<candidate_entry> mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx);
 	vector<candidate_entry> mbb_within(Tile *tile1, Tile *tile2, query_context &ctx);
-	float *calculate_distance(vector<candidate_entry> &candidates, query_context &ctx, const int lod);
-	void nearest_neighbor(Tile *tile1, Tile *tile2, query_context ctx);
-	void within(Tile *tile1, Tile *tile2, query_context ctx);
+	range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist);
+
+	void decode_data(vector<candidate_entry> &candidates, query_context &ctx);
+	void fill_voxels(vector<candidate_entry> &candidates, query_context &ctx, element_type etype);
+	void calculate_distance(vector<candidate_entry> &candidates, query_context &ctx);
+	void check_intersection(vector<candidate_entry> &candidates, query_context &ctx);
+	void nearest_neighbor(query_context ctx);
+	void within(query_context ctx);
 
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);
-	void intersect(Tile *tile1, Tile *tile2, query_context ctx);
+	void intersect(query_context ctx);
 
 	void join(vector<pair<Tile *, Tile *>> &tile_pairs);
 

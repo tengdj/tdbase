@@ -88,14 +88,6 @@ string HiMesh::to_wkt(){
 	return ss.str();
 }
 
-void HiMesh::get_vertices(std::vector<Point> &points){
-	points.reserve(size_of_vertices());
-	for(MyMesh::Vertex_iterator v = vertices_begin();
-			v != vertices_end(); ++v){
-		points.push_back(v->point());
-	}
-}
-
 size_t HiMesh::size_of_edges(){
 	return size_of_halfedges()/2;
 }

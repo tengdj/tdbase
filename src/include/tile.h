@@ -72,7 +72,10 @@ public:
 		return objects[id]->box;
 	}
 	HiMesh *get_mesh(int id){
-		assert(get_mesh_wrapper(id)->mesh && "the mesh must be retrieved before can be returned");
+		if(!get_mesh_wrapper(id)->mesh){
+			retrieve_mesh(id);
+		}
+		//assert(get_mesh_wrapper(id)->mesh && "the mesh must be retrieved before can be returned");
 		return get_mesh_wrapper(id)->mesh;
 	}
 	size_t num_objects(){

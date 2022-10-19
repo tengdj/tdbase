@@ -23,6 +23,7 @@ typedef enum element_type_{
 	DT_Triangle
 }element_type;
 
+class Tile;
 class query_context{
 public:
 	pthread_mutex_t lk;
@@ -52,12 +53,20 @@ public:
 	vector<int> lods;
 	bool verbose = false;
 	bool counter_clock = false;
+
 	// the element type used for calculating distance, segment or triangle
 	element_type etype = DT_Segment;
+	int cur_lod = 0;
+	Tile *tile1;
+	Tile *tile2;
 
 	// result
 	size_t obj_count = 0;
 	size_t result_count = 0;
+	float *distance;
+	uint *intersection;
+	uint *closest_reference;
+	uint *closest_target;
 
 	int highest_lod();
 	query_context();
