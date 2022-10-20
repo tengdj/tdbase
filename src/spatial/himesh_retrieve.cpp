@@ -74,9 +74,9 @@ size_t HiMesh::fill_triangles(float *&triangles){
 	return size;
 }
 
-std::pair<float, float> HiMesh::get_triangle_hausdorf(size_t tri_id){
-	if(global_ctx.disable_triangle_hausdorf){
-		return std::pair<float, float>(0, this->getHoasdorfDistance());
+std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
+	if(global_ctx.disable_triangle_hausdorf || tri_id==-1){
+		return std::pair<float, float>(0, this->getHausdorfDistance());
 	}
 	size_t index = 0;
 	for ( Facet_iterator f = facets_begin(); f != facets_end(); ++f){

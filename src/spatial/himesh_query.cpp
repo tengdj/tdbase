@@ -108,7 +108,7 @@ float HiMesh::distance_tree(HiMesh *target){
 range HiMesh::distance_range(HiMesh *target){
 	range dist;
 	dist.maxdist = distance(target);
-	dist.mindist = dist.maxdist - getHoasdorfDistance() - target->getHoasdorfDistance();
+	dist.mindist = dist.maxdist - getHausdorfDistance() - target->getHausdorfDistance();
 	return dist;
 }
 

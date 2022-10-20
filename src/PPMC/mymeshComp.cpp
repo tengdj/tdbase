@@ -94,9 +94,17 @@ float point_to_face_distance(Point p, MyMesh::Face_iterator fit){
 	return mindist;
 }
 
+float MyMesh::getHausdorfDistance(){
+	return i_nbDecimations>i_curDecimationId?maxHausdorfDistance[i_nbDecimations - i_curDecimationId-1]:0;
+}
+
+float MyMesh::getNextHausdorfDistance(){
+	return i_nbDecimations>(i_curDecimationId+1)?maxHausdorfDistance[i_nbDecimations - i_curDecimationId-1-1]:0;
+}
+
 void MyMesh::computeImpactedFactors(){
 
-	current_hoasdorf = 0.0;
+	current_hausdorf = 0.0;
 	float dist = DBL_MAX;
 
 //	unordered_map<Point, pair<vector<MyMesh::Face_iterator>, float>> vertices_map;
@@ -164,12 +172,12 @@ void MyMesh::computeImpactedFactors(){
 		}
 		//log("%f", farthest_point);
 		fit->setProtruding(farthest_point);
-		current_hoasdorf = max(current_hoasdorf, farthest_point);
+		current_hausdorf = max(current_hausdorf, farthest_point);
 		dist = min(dist, farthest_point);
 	}
-	maxHoasdorfDistance.push_back(current_hoasdorf);
+	maxHausdorfDistance.push_back(current_hausdorf);
 	if(global_ctx.verbose){
-		log("encode %d:\t[%.2f %.2f]\t%ld\t(%.2f %.2f %.2f)", i_curDecimationId, dist, current_hoasdorf, size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
+		log("encode %d:\t[%.2f %.2f]\t%ld\t(%.2f %.2f %.2f)", i_curDecimationId, dist, current_hausdorf, size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
 	}
 }
 
@@ -433,8 +441,8 @@ void MyMesh::RemovedVertexCodingStep()
         sym = b_split ? 1 : 0;
 
         // 3dpro, besides the symbol, we also encode the hausdorf distance into it.
-        unsigned hdsym = f->getHausdorfDistance().second/current_hoasdorf*100.0;
-        //log("%f %f %d",f->getHausdorfDistance().second,current_hoasdorf, hdsym);
+        unsigned hdsym = f->getHausdorfDistance().second/current_hausdorf*100.0;
+        //log("%f %f %d",f->getHausdorfDistance().second,current_hausdorf, hdsym);
         sym |= (hdsym*2);
 
         // Push the symbols.

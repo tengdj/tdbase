@@ -251,8 +251,9 @@ void MyMesh::writeBaseMesh()
 
     // 3dpro
     // Write the maximum volume change for each round of decimation
+    assert(maxHausdorfDistance.size()==i_nbDecimations);
     for(unsigned i=0;i<i_nbDecimations;i++){
-    	writeFloat(maxHoasdorfDistance[i]);
+    	writeFloat(maxHausdorfDistance[i]);
     }
 }
 
@@ -325,7 +326,7 @@ void MyMesh::readBaseMesh()
     // Read the maximum cutting volume
     for(unsigned i=0;i<i_nbDecimations;i++){
     	float maxcut = readFloat();
-    	maxHoasdorfDistance.push_back(maxcut);
+    	maxHausdorfDistance.push_back(maxcut);
     }
 }
 

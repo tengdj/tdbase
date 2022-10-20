@@ -116,16 +116,19 @@ void SpatialJoin::within(query_context ctx){
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
 				if(ctx.use_aabb){
 					range dist = ci_iter->distance;
+					result_container res = ctx.results[index++];
+					float hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
+					float hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
-						dist.mindist = ctx.results[index].result.distance;
-						dist.maxdist = ctx.results[index].result.distance;
+						dist.mindist = res.result.distance;
+						dist.maxdist = res.result.distance;
 					}else{
-						dist.maxdist = std::min(dist.maxdist, ctx.results[index].result.distance);
-						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getHoasdorfDistance()-wrapper2->mesh->getHoasdorfDistance());
+						dist.maxdist = std::min(dist.maxdist, res.result.distance);
+						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 						if(global_ctx.verbose){
 							log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-									wrapper1->mesh->getHoasdorfDistance(), wrapper2->mesh->getHoasdorfDistance(),
+									hdist1, hdist2,
 									ci_iter->distance.mindist, ci_iter->distance.maxdist,
 									dist.mindist, dist.maxdist);
 						}
@@ -139,22 +142,25 @@ void SpatialJoin::within(query_context ctx){
 						// not possible
 						determined = true;
 					}
-					index++;
 				}else{
 					for(auto vp_iter = ci_iter->voxel_pairs.begin();vp_iter!=ci_iter->voxel_pairs.end();){
+						result_container res = ctx.results[index++];
+
 						// update the distance
 						if(!determined && vp_iter->v1->size[lod]>0&&vp_iter->v2->size[lod]>0){
 							range dist = vp_iter->dist;
+							float hdist1 = wrapper1->mesh->get_triangle_hausdorf(res.p1).second;
+							float hdist2 = wrapper2->mesh->get_triangle_hausdorf(res.p2).second;
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
-								dist.mindist = ctx.results[index].result.distance;
-								dist.maxdist = ctx.results[index].result.distance;
+								dist.mindist = res.result.distance;
+								dist.maxdist = res.result.distance;
 							}else{
-								dist.maxdist = std::min(dist.maxdist, ctx.results[index].result.distance);
-								dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getHoasdorfDistance()-wrapper2->mesh->getHoasdorfDistance());
+								dist.maxdist = std::min(dist.maxdist, res.result.distance);
+								dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 								if(global_ctx.verbose){
 									log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-											wrapper1->mesh->getHoasdorfDistance(), wrapper2->mesh->getHoasdorfDistance(),
+											hdist1, hdist2,
 											ci_iter->distance.mindist, ci_iter->distance.maxdist,
 											dist.mindist, dist.maxdist);
 								}
@@ -172,7 +178,6 @@ void SpatialJoin::within(query_context ctx){
 						}else{
 							vp_iter++;
 						}
-						index++;
 					}
 				}
 				if(determined || ci_iter->voxel_pairs.size()==0){

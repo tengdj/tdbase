@@ -26,18 +26,24 @@
   */
 void MyMesh::startNextDecompresssionOp()
 {
-    if(global_ctx.verbose && i_nbDecimations>i_curDecimationId){
-    	log("decode %d:\t%.2f",
-    			i_curDecimationId,
-				getHoasdorfDistance());
-    }
     if ((float)i_curDecimationId / i_nbDecimations * 100 >= i_decompPercentage){
         for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         	hit->resetState();
-        for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
-            fit->resetState();
+        for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+        	fit->resetState();
+        }
+    	if(i_curDecimationId == i_nbDecimations){
+    		// reset all the hausdorf distance to 0 for the highest LOD
+    		// as we do not have another round of decoding to set them
+            for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+            	fit->setProtruding(0.0);
+            }
+    	}
         operation = Idle;
         b_jobCompleted = true;
+        if(global_ctx.verbose){
+        	log("decode %d:\t%.3f\t%.2f", i_curDecimationId,	(float)i_curDecimationId / i_nbDecimations * 100, getHausdorfDistance());
+        }
     } else {
         beginUndecimationConquest();
     }
@@ -81,8 +87,8 @@ void MyMesh::undecimationStep()
 
         // Decode the face symbol.
         unsigned sym = readChar();
-        f->setProtruding((sym/2)/100.0 * getHoasdorfDistance());
-        //log("%d %f %f", sym/2,(sym/2)/100.0*getHoasdorfDistance(),getHoasdorfDistance());
+        f->setProtruding((sym/2)/100.0 * getNextHausdorfDistance());
+        //log("%d %f %f", sym/2,(sym/2)/100.0*getHausdorfDistance(),getHausdorfDistance());
 
         // Add the other halfedges to the queue
         Halfedge_handle hIt = h;

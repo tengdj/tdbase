@@ -199,6 +199,8 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				if(ctx.use_aabb){
 					range dist = ci.distance;
+					float hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
+					float hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
 					result_container res = ctx.results[index++];
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
@@ -206,14 +208,14 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 						dist.maxdist = res.result.distance;
 					}else{
 						dist.maxdist = std::min(dist.maxdist, res.result.distance);
-						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getHoasdorfDistance()-wrapper2->mesh->getHoasdorfDistance());
+						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 						dist.mindist = std::min(dist.mindist, dist.maxdist);
 						//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 					}
 
 					if(global_ctx.verbose){
 						log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-								wrapper1->mesh->getHoasdorfDistance(), wrapper2->mesh->getHoasdorfDistance(),
+								hdist1, hdist2,
 								ci.distance.mindist, ci.distance.maxdist,
 								dist.mindist, dist.maxdist);
 					}

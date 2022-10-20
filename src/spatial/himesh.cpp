@@ -26,9 +26,6 @@ Polyhedron *HiMesh::to_triangulated_polyhedron(){
 }
 
 void HiMesh::advance_to(int lod){
-	if(i_decompPercentage>=lod){
-		return;
-	}
 	i_decompPercentage = lod;
 	b_jobCompleted = false;
 	completeOperation();

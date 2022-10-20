@@ -356,6 +356,7 @@ static void compress(int argc, char **argv){
 	}
 	for(int i=0;i<=lod;i+=10){
 		himesh->advance_to(i);
+		//log("%d %f", i, himesh->getHausdorfDistance());
 		himesh->writeCurrentOperationMesh("/gisdata/compressed", i);
 	}
 	delete mesh;

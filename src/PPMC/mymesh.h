@@ -549,11 +549,10 @@ public:
 	unsigned i_decompPercentage;
 
 	// Store the maximum size we cutted in each round of compression
-	vector<float> maxHoasdorfDistance;
-	float current_hoasdorf;
-	float getHoasdorfDistance(){
-		return i_nbDecimations>i_curDecimationId?maxHoasdorfDistance[i_nbDecimations - i_curDecimationId - 1]:0;
-	}
+	vector<float> maxHausdorfDistance;
+	float current_hausdorf;
+	float getHausdorfDistance();
+	float getNextHausdorfDistance();
 	int processCount = 0;
 };
 

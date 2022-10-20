@@ -125,7 +125,7 @@ public:
 	// get the elements
 	size_t fill_segments(float *&segments);
 	size_t fill_triangles(float *&triangles);
-	pair<float, float> get_triangle_hausdorf(size_t tri_id);
+	pair<float, float> get_triangle_hausdorf(int tri_id = -1);
 	size_t fill_voxels(vector<Voxel *> &voxels, element_type seg_or_triangle);
 	size_t fill_vertices(float *&vertices);
 	list<Segment> get_segments();
