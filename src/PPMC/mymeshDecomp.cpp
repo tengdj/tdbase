@@ -29,7 +29,7 @@ void MyMesh::startNextDecompresssionOp()
     if(global_ctx.verbose && i_nbDecimations>i_curDecimationId){
     	log("decode %d:\t%.2f",
     			i_curDecimationId,
-				getmaximumCut());
+				getHoasdorfDistance());
     }
     if ((float)i_curDecimationId / i_nbDecimations * 100 >= i_decompPercentage){
         for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
@@ -81,6 +81,8 @@ void MyMesh::undecimationStep()
 
         // Decode the face symbol.
         unsigned sym = readChar();
+        f->setProtruding((sym/2)/100.0 * getHoasdorfDistance());
+        //log("%d %f %f", sym/2,(sym/2)/100.0*getHoasdorfDistance(),getHoasdorfDistance());
 
         // Add the other halfedges to the queue
         Halfedge_handle hIt = h;
@@ -94,6 +96,7 @@ void MyMesh::undecimationStep()
         }
         while (hIt != h);
 
+        sym &= 1;
         // Decode the geometry symbol.
         if (sym == 1)
             decodeGeometrySym(f);

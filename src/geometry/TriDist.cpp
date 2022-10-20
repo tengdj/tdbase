@@ -438,15 +438,18 @@ float TriDist(const float *S, const float *T)
 	}
 }
 
-float TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2){
-	float local_min = DBL_MAX;
-	for(int i=0;i<size1;i++){
-		for(int j=0;j<size2;j++){
+result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2){
+	result_container ret;
+	ret.result.distance = DBL_MAX;
+	for(size_t i=0;i<size1;i++){
+		for(size_t j=0;j<size2;j++){
 			// get distance of current triangle pair
 			// each triangle contains three points
 			float dist = TriDist(data1+i*9, data2+j*9);
-			if(dist < local_min){
-				local_min = dist;
+			if(dist < ret.result.distance){
+				ret.result.distance = dist;
+				ret.p1 = i;
+				ret.p2 = j;
 			}
 //			const float *tdata1 = data1+i*9;
 //			const float *tdata2 = data2+i*9;
@@ -456,7 +459,7 @@ float TriDist_single(const float *data1, const float *data2, size_t size1, size_
 //					,dist);
 		}
 	}
-	return local_min;
+	return ret;
 }
 
 float PointTriangleDist(const float *point, const float *triangle)

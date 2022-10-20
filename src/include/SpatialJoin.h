@@ -14,6 +14,7 @@
 #include "tile.h"
 #include "geometry.h"
 #include "candidate.h"
+#include "himesh.h"
 using namespace std;
 
 namespace hispeed{

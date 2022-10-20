@@ -37,6 +37,7 @@
 
 #include <queue>
 #include <assert.h>
+#include <utility>
 
 #include "configuration.h"
 #include "query_context.h"
@@ -53,10 +54,6 @@ typedef MyKernel::Vector_3 Vector;
 
 typedef CGAL::Simple_cartesian<double> MyKernelDouble;
 typedef MyKernelDouble::Vector_3 VectorDouble;
-
-typedef CGAL::Simple_cartesian<int> MyKernelInt;
-typedef MyKernelInt::Point_3 PointInt;
-typedef MyKernelInt::Vector_3 VectorInt;
 
 using namespace hispeed;
 
@@ -350,14 +347,28 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 		impact_points.clear();
 	}
 
+	inline pair<float, float> getHausdorfDistance(){
+		return pair<float, float>(recessing_distance, protruding_distance);
+	}
+
+	inline void setRecessing(float rec){
+		recessing_distance = rec;
+	}
+
+	inline void setProtruding(float pro){
+		protruding_distance = pro;
+	}
+
+
   private:
 	Flag flag;
 	ProcessedFlag processedFlag;
 
 	Point removedVertexPos;
-	VectorInt residual;
 
 	vector<Point> impact_points;
+	float recessing_distance = 0.0;
+	float protruding_distance = 0.0;
 };
 
 
@@ -482,8 +493,8 @@ public:
 	int16_t readInt16();
 	void writeInt(int i);
 	int readInt();
-	char readChar();
-	void writeChar(char ch);
+	unsigned char readChar();
+	void writeChar(unsigned char ch);
 
 	void writeBaseMesh();
 	void readBaseMesh();
@@ -538,9 +549,10 @@ public:
 	unsigned i_decompPercentage;
 
 	// Store the maximum size we cutted in each round of compression
-	vector<float> maximumCut;
-	float getmaximumCut(){
-		return i_nbDecimations>i_curDecimationId?maximumCut[i_nbDecimations - i_curDecimationId - 1]:0;
+	vector<float> maxHoasdorfDistance;
+	float current_hoasdorf;
+	float getHoasdorfDistance(){
+		return i_nbDecimations>i_curDecimationId?maxHoasdorfDistance[i_nbDecimations - i_curDecimationId - 1]:0;
 	}
 	int processCount = 0;
 };

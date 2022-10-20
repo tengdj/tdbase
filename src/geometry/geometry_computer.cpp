@@ -15,10 +15,10 @@ namespace hispeed{
 void *SegDist_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
 	for(int i=0;i<param->pair_num;i++){
-		param->distances[i] = SegDist_single(param->data+param->offset_size[4*i]*6,
-									    param->data+param->offset_size[4*i+2]*6,
-									    param->offset_size[4*i+1],
-									    param->offset_size[4*i+3]);
+		param->results[i] = SegDist_single(param->data+param->offset_size[4*i]*6,
+											param->data+param->offset_size[4*i+2]*6,
+											param->offset_size[4*i+1],
+											param->offset_size[4*i+3]);
 	}
 	return NULL;
 }
@@ -26,10 +26,10 @@ void *SegDist_unit(void *params_void){
 void *TriDist_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
 	for(int i=0;i<param->pair_num;i++){
-		param->distances[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
-									    param->data+param->offset_size[4*i+2]*9,
-									    param->offset_size[4*i+1],
-									    param->offset_size[4*i+3]);
+		param->results[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
+											param->data+param->offset_size[4*i+2]*9,
+											param->offset_size[4*i+1],
+											param->offset_size[4*i+3]);
 	}
 	return NULL;
 }
@@ -141,7 +141,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].offset_size = cc.offset_size+start*4;
 		params[i].data = cc.data;
 		params[i].id = i+1;
-		params[i].distances = cc.distances+start;
+		params[i].results = cc.results+start;
 		pthread_create(&threads[i], NULL, global_ctx.etype==DT_Segment?SegDist_unit:TriDist_unit, (void *)&params[i]);
 	}
 	if(max_thread_num>1){
@@ -169,7 +169,7 @@ void geometry_computer::get_distance(geometry_param &cc){
 void *TriInt_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
 	for(int i=0;i<param->pair_num;i++){
-		param->intersect[i] = TriInt_single(param->data+param->offset_size[4*i]*9,
+		param->results[i] = TriInt_single(param->data+param->offset_size[4*i]*9,
 									    param->data+param->offset_size[4*i+2]*9,
 									    param->offset_size[4*i+1],
 									    param->offset_size[4*i+3]);
@@ -192,7 +192,7 @@ void geometry_computer::get_intersect_cpu(geometry_param &cc){
 		params[tnum].offset_size = cc.offset_size+start*4;
 		params[tnum].data = cc.data;
 		params[tnum].id = tnum+1;
-		params[tnum].intersect = cc.intersect+start;
+		params[tnum].results = cc.results+start;
 		pthread_create(&threads[tnum], NULL, TriInt_unit, (void *)&params[tnum]);
 	}
 	log("%d threads started", max_thread_num);

@@ -159,18 +159,18 @@ void MyMesh::writeInt16(int16_t i)
 /**
   * Read a byte in the data buffer.
   */
-char MyMesh::readChar()
+unsigned char MyMesh::readChar()
 {
-    char i = *(char *)(p_data + dataOffset);
-    dataOffset += sizeof(char);
+	unsigned char  i = *(unsigned char  *)(p_data + dataOffset);
+    dataOffset += sizeof(unsigned char );
     return i;
 }
 
 // Write a byte in the data buffer
-void MyMesh::writeChar(char i)
+void MyMesh::writeChar(unsigned char  i)
 {
-    *(char *)(p_data + dataOffset) = i;
-    dataOffset += sizeof(char);
+    *(unsigned char *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(unsigned char );
 }
 
 
@@ -242,10 +242,17 @@ void MyMesh::writeBaseMesh()
         while(++hit != end);
     }
 
+    // Write the hausdorf distance for the base faces
+    for (MyMesh::Facet_iterator fit = facets_begin();
+         fit != facets_end(); ++fit)
+    {
+        writeFloat(fit->getHausdorfDistance().second);
+    }
+
     // 3dpro
     // Write the maximum volume change for each round of decimation
     for(unsigned i=0;i<i_nbDecimations;i++){
-    	writeFloat(maximumCut[i]);
+    	writeFloat(maxHoasdorfDistance[i]);
     }
 }
 
@@ -302,6 +309,13 @@ void MyMesh::readBaseMesh()
     MyMeshBaseBuilder<HalfedgeDS> builder(p_pointDeque, p_faceDeque);
     delegate(builder);
 
+    for (MyMesh::Facet_iterator fit = facets_begin();
+         fit != facets_end(); ++fit)
+    {
+    	float hdist = readFloat();
+    	fit->setProtruding(hdist);
+    }
+
     // Free the memory.
     for (unsigned i = 0; i < p_faceDeque->size(); ++i)
         delete[] p_faceDeque->at(i);
@@ -311,7 +325,7 @@ void MyMesh::readBaseMesh()
     // Read the maximum cutting volume
     for(unsigned i=0;i<i_nbDecimations;i++){
     	float maxcut = readFloat();
-    	maximumCut.push_back(maxcut);
+    	maxHoasdorfDistance.push_back(maxcut);
     }
 }
 

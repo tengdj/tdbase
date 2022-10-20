@@ -146,17 +146,11 @@ static void profile_distance(int argc, char **argv){
 	for(int i=10;i<=100;i+=10){
 		tile1->advance_all(i);
 		tile2->advance_all(i);
-		float *triangles_v;;
-		size_t s1 = tile1->get_mesh(0)->fill_triangles(triangles_v);
 		double dist = 0;
 		for(int j=0;j<tile2->num_objects();j++) {
-			float *triangles_n;
-			size_t s2 = tile2->get_mesh(j)->fill_triangles(triangles_n);
-			float d = TriDist_single(triangles_v,triangles_n,s1,s2);
+			float d = tile1->get_mesh(0)->distance(tile2->get_mesh(j));
 			dist += sqrt(d);
-			delete []triangles_n;
 		}
-		delete []triangles_v;
 		printf("%d %f\n",i,dist/tile2->num_objects());
 	}
 
@@ -250,6 +244,71 @@ void profile_decoding(int argc, char **argv){
 	delete []vertices;
 
 }
+
+static void aabb(int argc, char **argv){
+	struct timeval start = get_cur_time();
+
+	int num = 10000;
+	if(argc>3){
+		num = atoi(argv[3]);
+	}
+
+	Tile *tile1 = new Tile(argv[1], num);
+	Tile *tile2 = new Tile(argv[2],1);
+	tile1->disable_innerpart();
+	tile2->disable_innerpart();
+	tile1->retrieve_all();
+	tile1->advance_all(100);
+	logt("load tiles", start);
+
+	char c;
+	std::cin >> c;
+	start = get_cur_time();
+	for(int i=0;i<tile1->num_objects();i++){
+		HiMesh *mesh = tile1->get_mesh(i);
+		assert(mesh);
+		TriangleTree *tree = mesh->get_aabb_tree_triangle();
+		tree->build();
+		tree->accelerate_distance_queries();
+		//log("indexing %d",i);
+	}
+	logt("indexed %ld objects",start,tile1->num_objects());
+	std::cin >> c;
+	start = get_cur_time();
+
+	tile2->retrieve_all();
+	tile2->advance_all(100);
+	HiMesh *nuc = tile2->get_mesh(0);
+	list<Point> vertices = nuc->get_vertices();
+	double mdist = DBL_MAX;
+	for(int i=0;i<tile1->num_objects();i++){
+		HiMesh *mesh = tile1->get_mesh(i);
+		assert(mesh);
+		TriangleTree *tree = mesh->get_aabb_tree_triangle();
+		for(Point &p:vertices){
+			FT sqd = tree->squared_distance(p);
+			double dist = (double)CGAL::to_double(sqd);
+			mdist = std::min(mdist, dist);
+		}
+	}
+	logt("querying 1 %f", start, mdist);
+	std::cin >> c;
+	start = get_cur_time();
+	for(int i=0;i<tile1->num_objects();i++){
+		HiMesh *mesh = tile1->get_mesh(i);
+		assert(mesh);
+		TriangleTree *tree = mesh->get_aabb_tree_triangle();
+		for(Point &p:vertices){
+			FT sqd = tree->squared_distance(p);
+			double dist = (double)CGAL::to_double(sqd);
+			mdist = std::min(mdist, dist);
+		}
+	}
+	logt("querying 2 %f", start, mdist);
+	std::cin >> c;
+
+}
+
 
 /*
  * adjust the size and the position of a polyhedron
@@ -386,6 +445,8 @@ int main(int argc, char **argv){
 		profile_distance(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_decoding") == 0){
 		profile_decoding(argc-1,argv+1);
+	}else if(strcmp(argv[1],"aabb") == 0){
+		aabb(argc-1,argv+1);
 	}else if(strcmp(argv[1],"adjust_polyhedron") == 0){
 		adjust_polyhedron(argc-1,argv+1);
 	}else if(strcmp(argv[1],"skeleton") == 0){

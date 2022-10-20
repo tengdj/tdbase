@@ -99,20 +99,30 @@ inline float distance(const float *p1, const float *p2){
 }
 
 typedef struct{
+	float point[9];
+	float recessing_distance = 0.0;
+	float protruding_distance = 0.0;
+}MyTriangle;
+
+union result_type{
 	float distance;
+	bool intersected;
+} ;
+
+typedef struct result_container_{
+	result_type result;
 	uint p1;
 	uint p2;
-}result_container;
+} result_container;
 
 typedef struct geometry_param_{
 	int id;
+	uint pair_num;
+	uint data_size;
 	const float *data;
 	// the offset and size of the computing pairs
 	const uint *offset_size;
-	float *distances;
-	uint *intersect;
-	uint pair_num;
-	uint data_size;
+	result_container *results;
 }geometry_param;
 
 
@@ -121,13 +131,13 @@ typedef struct geometry_param_{
 float PointTriangleDist(const float *point, const float *triangle);
 
 float TriDist(const float *S, const float *T);
-float TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
+result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
 
-float SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
+result_container SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
 void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 					   float *result, const uint batch_num, const uint segment_num);
 
-bool TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2);
+result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2);
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 		uint *result, const uint batch_num, const uint triangle_num);
 

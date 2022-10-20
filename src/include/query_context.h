@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <iostream>
 #include "util.h"
+#include "geometry.h"
 
 using namespace std;
 
@@ -48,6 +49,7 @@ public:
 	bool use_aabb = false;
 	bool use_gpu = false;
 	bool use_multimbb = false;
+	bool disable_triangle_hausdorf = false;
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
@@ -55,18 +57,15 @@ public:
 	bool counter_clock = false;
 
 	// the element type used for calculating distance, segment or triangle
-	element_type etype = DT_Segment;
+	element_type etype = DT_Triangle;
 	int cur_lod = 0;
-	Tile *tile1;
-	Tile *tile2;
+	Tile *tile1 = NULL;
+	Tile *tile2 = NULL;
 
 	// result
 	size_t obj_count = 0;
 	size_t result_count = 0;
-	float *distance;
-	uint *intersection;
-	uint *closest_reference;
-	uint *closest_target;
+	result_container *results = NULL;
 
 	int highest_lod();
 	query_context();

@@ -78,11 +78,11 @@ float SegDist(const float *seg1, const float *seg2,
 
 // check the distance of all size1*size2 pairs
 // of segments and return the minimum distance
-float SegDist_single(const float *data1, const float *data2,
+result_container SegDist_single(const float *data1, const float *data2,
 		size_t size1, size_t size2){
 	assert(size1<=10000&&size2<=10000);
-
-	float local_min = DBL_MAX;
+	result_container res;
+	res.result.distance = DBL_MAX;
 	float *A = new float[size1*3];
 	float *B = new float[size2*3];
 	float *AdA = new float[size1];
@@ -95,15 +95,17 @@ float SegDist_single(const float *data1, const float *data2,
 		VmV(B+i*3, data2+i*6+3, data2+i*6);
 		BdB[i] = VdotV(B+i*3, B+i*3);
 	}
-	for(int i=0;i<size1;i++){
-		for(int j=0;j<size2;j++){
+	for(size_t i=0;i<size1;i++){
+		for(size_t j=0;j<size2;j++){
 			const float *cur_S = data1+i*6;
 			const float *cur_T = data2+j*6;
 			const float *cur_A = A+i*3;
 			const float *cur_B = B+j*3;
 			float dist = SegDist(cur_S, cur_T, cur_A, cur_B, AdA[i], BdB[j]);
-			if(dist < local_min){
-				local_min = dist;
+			if(dist < res.result.distance){
+				res.result.distance = dist;
+				res.p1 = i;
+				res.p2 = j;
 			}
 		}
 	}
@@ -111,7 +113,8 @@ float SegDist_single(const float *data1, const float *data2,
 	delete []B;
 	delete []AdA;
 	delete []BdB;
-	return sqrt(local_min);
+	res.result.distance = sqrt(res.result.distance);
+	return res;
 }
 
 }

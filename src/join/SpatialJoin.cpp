@@ -108,9 +108,9 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 
 	const int pair_num = get_pair_num(candidates);
 
-	ctx.intersection = new uint[pair_num];
+	ctx.results = new result_container[pair_num];
 	for(int i=0;i<pair_num;i++){
-		ctx.intersection[i] = 0;
+		ctx.results[i].result.intersected = false;
 	}
 	decode_data(candidates, ctx);
 	ctx.decode_time += logt("decode data", start);
@@ -129,7 +129,7 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 			c.mesh_wrapper->mesh->get_segments();
 			for(candidate_info &info:c.candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.intersection[index++] = c.mesh_wrapper->mesh->intersect_tree(info.mesh_wrapper->mesh);
+				ctx.results[index++].result.intersected = c.mesh_wrapper->mesh->intersect_tree(info.mesh_wrapper->mesh);
 			}// end for candidate list
 		}// end for candidates
 		// clear the trees for current LOD
@@ -172,17 +172,6 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 				it!=voxel_map.end(); ++it){
 			if(it->first->size[ctx.cur_lod]>0){
 				memcpy(data+it->second.first*9, it->first->data[ctx.cur_lod], it->first->size[ctx.cur_lod]*9*sizeof(float));
-
-//				for(int i=0;i<it->first->size[ctx.cur_lod];i++){
-//					for(int j=0;j<9;j++){
-//						if(j==3||j==6){
-//							printf(",");
-//						}
-//						printf("%f ", *(it->first->data[ctx.cur_lod]+i*9+j));
-//					}
-//					printf("\n");
-//				}
-//				printf("\n");
 			}
 		}
 		// organize the data for computing
@@ -207,7 +196,7 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 		gp.data = data;
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
-		gp.intersect = ctx.intersection;
+		gp.results = ctx.results;
 		gp.data_size = element_num;
 		computer->get_intersect(gp);
 
@@ -225,9 +214,9 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 	struct timeval start = hispeed::get_cur_time();
 
 	const int pair_num = get_pair_num(candidates);
-	ctx.distance = new float[pair_num];
+	ctx.results = new result_container[pair_num];
 	for(int i=0;i<pair_num;i++){
-		ctx.distance[i] = 0;
+		ctx.results[i].result.distance = 0;
 	}
 
 	decode_data(candidates, ctx);
@@ -255,7 +244,7 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 		for(candidate_entry &c:candidates){
 			for(candidate_info &info:c.candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.distance[index++] = c.mesh_wrapper->mesh->distance_tree(info.mesh_wrapper->mesh);
+				ctx.results[index++].result.distance = c.mesh_wrapper->mesh->distance_tree(info.mesh_wrapper->mesh);
 			}// end for distance_candiate list
 		}// end for candidates
 		// clear the trees for current LOD
@@ -329,7 +318,7 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 		gp.data = data;
 		gp.pair_num = pair_num;
 		gp.offset_size = offset_size;
-		gp.distances = ctx.distance;
+		gp.results = ctx.results;
 		gp.data_size = element_num;
 		computer->get_distance(gp);
 		delete []data;

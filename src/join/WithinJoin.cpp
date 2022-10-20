@@ -118,14 +118,14 @@ void SpatialJoin::within(query_context ctx){
 					range dist = ci_iter->distance;
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
-						dist.mindist = ctx.distance[index];
-						dist.maxdist = ctx.distance[index];
+						dist.mindist = ctx.results[index].result.distance;
+						dist.maxdist = ctx.results[index].result.distance;
 					}else{
-						dist.maxdist = std::min(dist.maxdist, ctx.distance[index]);
-						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+						dist.maxdist = std::min(dist.maxdist, ctx.results[index].result.distance);
+						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getHoasdorfDistance()-wrapper2->mesh->getHoasdorfDistance());
 						if(global_ctx.verbose){
 							log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-									wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
+									wrapper1->mesh->getHoasdorfDistance(), wrapper2->mesh->getHoasdorfDistance(),
 									ci_iter->distance.mindist, ci_iter->distance.maxdist,
 									dist.mindist, dist.maxdist);
 						}
@@ -147,14 +147,14 @@ void SpatialJoin::within(query_context ctx){
 							range dist = vp_iter->dist;
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
-								dist.mindist = ctx.distance[index];
-								dist.maxdist = ctx.distance[index];
+								dist.mindist = ctx.results[index].result.distance;
+								dist.maxdist = ctx.results[index].result.distance;
 							}else{
-								dist.maxdist = std::min(dist.maxdist, ctx.distance[index]);
-								dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+								dist.maxdist = std::min(dist.maxdist, ctx.results[index].result.distance);
+								dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getHoasdorfDistance()-wrapper2->mesh->getHoasdorfDistance());
 								if(global_ctx.verbose){
 									log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-											wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
+											wrapper1->mesh->getHoasdorfDistance(), wrapper2->mesh->getHoasdorfDistance(),
 											ci_iter->distance.mindist, ci_iter->distance.maxdist,
 											dist.mindist, dist.maxdist);
 								}
@@ -189,7 +189,7 @@ void SpatialJoin::within(query_context ctx){
 				ce_iter++;
 			}
 		}
-		delete []ctx.distance;
+		delete []ctx.results;
 		ctx.updatelist_time += logt("updating the candidate lists",start);
 
 		logt("evaluating with lod %d", iter_start, lod);

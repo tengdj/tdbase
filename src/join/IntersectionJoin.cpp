@@ -93,7 +93,7 @@ void SpatialJoin::intersect(query_context ctx){
 				bool determined = false;
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
 				for(voxel_pair &vp:ci_iter->voxel_pairs){
-					determined |= ctx.intersection[index++];
+					determined |= ctx.results[index++].result.intersected;
 				}
 				//log("%d %d %d",wrapper1->id, wrapper2->id,determined);
 				if(determined){
@@ -109,7 +109,7 @@ void SpatialJoin::intersect(query_context ctx){
 				ce_iter++;
 			}
 		}
-		delete []ctx.intersection;
+		delete []ctx.results;
 		ctx.updatelist_time += logt("update the candidate list", start);
 
 		logt("evaluating with lod %d", iter_start, lod);

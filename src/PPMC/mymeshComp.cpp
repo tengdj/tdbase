@@ -65,85 +65,111 @@ void MyMesh::beginDecimationConquest()
   operation = DecimationConquest;
 }
 
-void MyMesh::computeImpactedFactors(){
+float point_to_face_distance(Point p, MyMesh::Face_iterator fit){
 	float triangle[9];
 	float point[3];
-	float hdist = 0.0;
+	point[0] = p.x();
+	point[1] = p.y();
+	point[2] = p.z();
+	MyMesh::Halfedge_const_handle hd = fit->halfedge();
+	MyMesh::Halfedge_const_handle h = hd->next();
+	float mindist = DBL_MAX;
+	while(h->next()!=hd){
+		Point p1 = hd->vertex()->point();
+		Point p2 = h->vertex()->point();
+		Point p3 = h->next()->vertex()->point();
+		h = h->next();
+		triangle[0] = p1.x();
+		triangle[1] = p1.y();
+		triangle[2] = p1.z();
+		triangle[3] = p2.x();
+		triangle[4] = p2.y();
+		triangle[5] = p2.z();
+		triangle[6] = p3.x();
+		triangle[7] = p3.y();
+		triangle[8] = p3.z();
+		float dist = PointTriangleDist((const float*)point, (const float*)triangle);
+		mindist = min(mindist, dist);
+	}
+	return mindist;
+}
 
-	unordered_map<Point, vector<MyMesh::Face_const_iterator>> vertices_map;
+void MyMesh::computeImpactedFactors(){
+
+	current_hoasdorf = 0.0;
+	float dist = DBL_MAX;
+
+//	unordered_map<Point, pair<vector<MyMesh::Face_iterator>, float>> vertices_map;
+//	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+//		vector<Point> ps = fit->getImpactPoints();
+//		if(ps.size()==0){
+//		  continue;
+//		}
+//		// go check all the triangles for this facet
+//		for(Point &p:ps){
+//			if(vertices_map.find(p)==vertices_map.end()){
+//				pair<vector<MyMesh::Face_iterator>, float> flist;
+//			}
+//			vertices_map[p].first.push_back(fit);
+//		}
+//		//if(ps.size()<20&&ps.size()>10)
+////			{
+////				printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
+////				Halfedge_const_handle hd = fit->halfedge();
+////				Halfedge_const_handle t = hd;
+////				do{
+////				  Point pt = t->vertex()->point();
+////				  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
+////				  t = t->next();
+////				} while(t!=hd);
+////
+////				for(Point &p:ps){
+////				  printf("%f %f %f\n",p.x(),p.y(),p.z());
+////				}
+////				printf("%ld ",fit->facet_degree());
+////				for(int i=0;i<fit->facet_degree();i++){
+////				  printf("%d ",i);
+////				}
+////				printf("\n");
+////			}
+//
+//	}
+//	for(auto &flist:vertices_map){
+//		// for each point, go check all the associated faces and get the closest one
+//		float mindist = DBL_MAX;
+//
+//		Point p = flist.first;
+//		for(auto &fit:flist.second.first){
+//			float dist = point_to_face_distance(p, fit);
+//			mindist = min(dist, mindist);
+//		}
+//		flist.second.second = mindist;
+//		//log("%f", mindist);
+//		// haussdorf distance, max of the min
+//		//hdist = max(hdist, mindist);
+//		//dist = min(dist, mindist);
+//		flist.second.first.clear();
+//	}
+//	vertices_map.clear();
+
 	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		vector<Point> ps = fit->getImpactPoints();
 		if(ps.size()==0){
 		  continue;
 		}
-		// go check all the triangles for this facet
+		float farthest_point = 0.0;
 		for(Point &p:ps){
-			if(vertices_map.find(p)==vertices_map.end()){
-				vector<MyMesh::Face_const_iterator> flist;
-			}
-			vertices_map[p].push_back(fit);
+			float dist = point_to_face_distance(p, fit);
+			farthest_point = max(dist, farthest_point);
 		}
-		//if(ps.size()<20&&ps.size()>10)
-//			{
-//				printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
-//				Halfedge_const_handle hd = fit->halfedge();
-//				Halfedge_const_handle t = hd;
-//				do{
-//				  Point pt = t->vertex()->point();
-//				  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
-//				  t = t->next();
-//				} while(t!=hd);
-//
-//				for(Point &p:ps){
-//				  printf("%f %f %f\n",p.x(),p.y(),p.z());
-//				}
-//				printf("%ld ",fit->facet_degree());
-//				for(int i=0;i<fit->facet_degree();i++){
-//				  printf("%d ",i);
-//				}
-//				printf("\n");
-//			}
-
+		//log("%f", farthest_point);
+		fit->setProtruding(farthest_point);
+		current_hoasdorf = max(current_hoasdorf, farthest_point);
+		dist = min(dist, farthest_point);
 	}
-
-
-	for(auto &flist:vertices_map){
-		// for each point, go check all the associated faces and get the closest one
-		float curtmp = DBL_MAX;
-
-		Point p = flist.first;
-		point[0] = p.x();
-		point[1] = p.y();
-		point[2] = p.z();
-		for(auto &fit:flist.second){
-			Halfedge_const_handle hd = fit->halfedge();
-			Halfedge_const_handle h = hd->next();
-			while(h->next()!=hd){
-				Point p1 = hd->vertex()->point();
-				Point p2 = h->vertex()->point();
-				Point p3 = h->next()->vertex()->point();
-				h = h->next();
-				triangle[0] = p1.x();
-				triangle[1] = p1.y();
-				triangle[2] = p1.z();
-				triangle[3] = p2.x();
-				triangle[4] = p2.y();
-				triangle[5] = p2.z();
-				triangle[6] = p3.x();
-				triangle[7] = p3.y();
-				triangle[8] = p3.z();
-				float dist = PointTriangleDist((const float*)point, (const float*)triangle);
-				curtmp = min(curtmp, dist);
-			}
-			// haussdorf distance, max of the min
-			hdist = max(hdist, curtmp);
-		}
-		flist.second.clear();
-	}
-	vertices_map.clear();
-	maximumCut.push_back(hdist);
+	maxHoasdorfDistance.push_back(current_hoasdorf);
 	if(global_ctx.verbose){
-		log("encode %d:\t%.2f\t%ld\t(%.2f %.2f %.2f)", i_curDecimationId, hdist, size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
+		log("encode %d:\t[%.2f %.2f]\t%ld\t(%.2f %.2f %.2f)", i_curDecimationId, dist, current_hoasdorf, size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
 	}
 }
 
@@ -220,14 +246,15 @@ void MyMesh::decimationStep()
     }
     else
     {
+
         // Determine the residuals.
         determineResiduals();
 
-        operation = RemovedVertexCoding;
-        beginRemovedVertexCodingConquest();
-
         // 3dpro: compute the impacted factors for all the faces
         computeImpactedFactors();
+
+        operation = RemovedVertexCoding;
+        beginRemovedVertexCodingConquest();
     }
 }
 
@@ -405,6 +432,11 @@ void MyMesh::RemovedVertexCodingStep()
         // No connectivity prediction.
         sym = b_split ? 1 : 0;
 
+        // 3dpro, besides the symbol, we also encode the hausdorf distance into it.
+        unsigned hdsym = f->getHausdorfDistance().second/current_hoasdorf*100.0;
+        //log("%f %f %d",f->getHausdorfDistance().second,current_hoasdorf, hdsym);
+        sym |= (hdsym*2);
+
         // Push the symbols.
         connectFaceSym[i_curDecimationId].push_back(sym);
 
@@ -548,6 +580,7 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
         // Encode the connectivity.
         unsigned sym = connSym[i];
         writeChar(sym);
+        sym &= 1;
         // Encode the geometry if necessary.
         if (sym)
         {

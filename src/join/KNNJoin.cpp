@@ -199,52 +199,55 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				if(ctx.use_aabb){
 					range dist = ci.distance;
+					result_container res = ctx.results[index++];
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
-						dist.mindist = ctx.distance[index];
-						dist.maxdist = ctx.distance[index];
+						dist.mindist = res.result.distance;
+						dist.maxdist = res.result.distance;
 					}else{
-						dist.maxdist = std::min(dist.maxdist, ctx.distance[index]);
-						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+						dist.maxdist = std::min(dist.maxdist, res.result.distance);
+						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getHoasdorfDistance()-wrapper2->mesh->getHoasdorfDistance());
 						dist.mindist = std::min(dist.mindist, dist.maxdist);
 						//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 					}
 
 					if(global_ctx.verbose){
 						log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-								wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
+								wrapper1->mesh->getHoasdorfDistance(), wrapper2->mesh->getHoasdorfDistance(),
 								ci.distance.mindist, ci.distance.maxdist,
 								dist.mindist, dist.maxdist);
 					}
 					ci.distance = dist;
-					index++;
 				}else{
 					double vox_minmaxdist = DBL_MAX;
 					for(voxel_pair &vp:ci.voxel_pairs){
+						result_container res = ctx.results[index++];
 						// update the distance
 						if(vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
 							range dist = vp.dist;
+
+							float hdist1 = wrapper1->mesh->get_triangle_hausdorf(res.p1).second;
+							float hdist2 = wrapper2->mesh->get_triangle_hausdorf(res.p2).second;
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
-								dist.mindist = ctx.distance[index];
-								dist.maxdist = ctx.distance[index];
+								dist.mindist = res.result.distance;
+								dist.maxdist = res.result.distance;
 							}else{
-								dist.maxdist = std::min(dist.maxdist, ctx.distance[index]);
-								dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->mesh->getmaximumCut()-wrapper2->mesh->getmaximumCut());
+								dist.maxdist = std::min(dist.maxdist, res.result.distance);
+								dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
+
 								dist.mindist = std::min(dist.mindist, dist.maxdist);
-								//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 							}
 
 							if(global_ctx.verbose){
 								log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-										wrapper1->mesh->getmaximumCut(), wrapper2->mesh->getmaximumCut(),
+										hdist1, hdist2,
 										vp.dist.mindist, vp.dist.maxdist,
 										dist.mindist, dist.maxdist);
 							}
 							vp.dist = dist;
 							vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
 						}
-						index++;
 					}
 					// after each round, some voxels need to be evicted
 					ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
@@ -255,7 +258,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 		}
 		// update the list after processing each LOD
 		evaluate_candidate_lists(candidates, ctx);
-		delete []ctx.distance;
+		delete []ctx.results;
 		ctx.updatelist_time += logt("updating the candidate lists",start);
 
 		logt("evaluating with lod %d", iter_start, lod);
