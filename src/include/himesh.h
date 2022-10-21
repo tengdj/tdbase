@@ -137,7 +137,6 @@ public:
 	TriangleTree *get_aabb_tree_triangle();
 	float distance(HiMesh *target);
 	float distance_tree(HiMesh *target);
-	range distance_range(HiMesh *target);
 	bool intersect(HiMesh *target);
 	bool intersect_tree(HiMesh *target);
 

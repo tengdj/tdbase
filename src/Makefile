@@ -73,7 +73,9 @@ STORAGE_OBJS := $(patsubst %.cpp,%.o,$(STORAGE_SRCS))
 JOIN_SRCS := $(wildcard join/*.cpp)
 JOIN_OBJS := $(patsubst %.cpp,%.o,$(JOIN_SRCS))
 
-all: compress join generator fixer h5tooff 3dpro
+all:  join generator 3dpro
+
+#compress fixer h5tooff
 
 compress: tools/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@

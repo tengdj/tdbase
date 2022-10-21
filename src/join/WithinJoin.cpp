@@ -10,7 +10,7 @@
 namespace hispeed{
 
 inline void print_candidate_within(candidate_entry &cand){
-	if(global_ctx.verbose){
+	if(global_ctx.verbose>=1){
 		printf("%ld (%ld candidates)\n", cand.mesh_wrapper->id, cand.candidates.size());
 		for(int i=0;i<cand.candidates.size();i++){
 			printf("%d:\t%ld\t%ld\n",i,cand.candidates[i].mesh_wrapper->id,cand.candidates[i].voxel_pairs.size());
@@ -126,7 +126,7 @@ void SpatialJoin::within(query_context ctx){
 					}else{
 						dist.maxdist = std::min(dist.maxdist, res.result.distance);
 						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-						if(global_ctx.verbose){
+						if(global_ctx.verbose>=1){
 							log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
 									hdist1, hdist2,
 									ci_iter->distance.mindist, ci_iter->distance.maxdist,
@@ -158,7 +158,7 @@ void SpatialJoin::within(query_context ctx){
 							}else{
 								dist.maxdist = std::min(dist.maxdist, res.result.distance);
 								dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-								if(global_ctx.verbose){
+								if(global_ctx.verbose>=1){
 									log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
 											hdist1, hdist2,
 											ci_iter->distance.mindist, ci_iter->distance.maxdist,

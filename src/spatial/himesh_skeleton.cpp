@@ -24,20 +24,20 @@ Skeleton *HiMesh::extract_skeleton(){
 	Polyhedron *poly = this->to_polyhedron();
 	if (!CGAL::is_triangle_mesh(*poly)){
 		CGAL::Polygon_mesh_processing::triangulate_faces(*poly);
-		if(global_ctx.verbose){
+		if(global_ctx.verbose>=1){
 			logt("convert to triangle mesh", start);
 		}
 	}
 	os << *poly;
 	delete poly;
-	if(global_ctx.verbose){
+	if(global_ctx.verbose>=1){
 		logt("dump to stream", start);
 	}
 
 	os >> tmesh;
 	assert(CGAL::is_triangle_mesh(tmesh));
 
-	if(global_ctx.verbose){
+	if(global_ctx.verbose>=1){
 		logt("triangulate", start);
 	}
 	CGAL::extract_mean_curvature_flow_skeleton(tmesh, *skeleton);

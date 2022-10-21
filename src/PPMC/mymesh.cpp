@@ -27,8 +27,7 @@ MyMesh::MyMesh(unsigned i_decompPercentage,
 			   const char* data,
 			   long length) :
     CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(), i_mode(i_mode),
-    b_jobCompleted(false), operation(Idle),
-    i_curDecimationId(0), dataOffset(0),
+    b_jobCompleted(false), i_curDecimationId(0), dataOffset(0),
     i_decompPercentage(i_decompPercentage)
 {
 	assert(length>0);
@@ -97,60 +96,17 @@ size_t MyMesh::size_of_triangles(){
 }
 
 /**
-  * Perform one batch of steps of the current operation.
-  */
-void MyMesh::batchOperation()
-{
-	//struct timeval start = get_cur_time();
-    if (b_jobCompleted)
-        return;
-    Operation oo = operation;
-    switch (operation)
-    {
-    case Idle:
-        if (i_mode == COMPRESSION_MODE_ID)
-            startNextCompresssionOp();
-        else{
-            startNextDecompresssionOp();
-        }
-        break;
-    case DecimationConquest:
-        while(operation == DecimationConquest)
-            decimationStep();
-        break;
-    case RemovedVertexCoding:
-        while(operation == RemovedVertexCoding)
-            RemovedVertexCodingStep();
-        break;
-    case InsertedEdgeCoding:
-        while(operation == InsertedEdgeCoding)
-            InsertedEdgeCodingStep();
-        break;
-    case UndecimationConquest:
-        while(operation == UndecimationConquest)
-        	undecimationStep();
-        break;
-    case InsertedEdgeDecoding:
-        while(operation == InsertedEdgeDecoding)
-        	InsertedEdgeDecodingStep();
-        break;
-    default:
-        break;
-    }
-    if(global_ctx.verbose){
-    	//log("operation %s",operation_str[oo]);
-    }
-}
-
-
-/**
   * Finish completely the current operation.
   */
 void MyMesh::completeOperation()
 {
     while (!b_jobCompleted)
     {
-    	batchOperation();
+        if (i_mode == COMPRESSION_MODE_ID)
+            startNextCompresssionOp();
+        else{
+            startNextDecompresssionOp();
+        }
     }
 }
 

@@ -342,7 +342,7 @@ int main(int argc, char **argv){
 		("nv", po::value<int>(&num_vessel), "number of vessels")
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
-		("verbose", "verbose")
+		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
 		;
 
 	po::variables_map vm;
@@ -353,8 +353,6 @@ int main(int argc, char **argv){
 		return 0;
 	}
 	po::notify(vm);
-
-	global_ctx.verbose = vm.count("verbose");
 
 	struct timeval start = get_cur_time();
 

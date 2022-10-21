@@ -76,15 +76,21 @@ size_t HiMesh::fill_triangles(float *&triangles){
 
 std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
 	if(global_ctx.disable_triangle_hausdorf || tri_id==-1){
-		return std::pair<float, float>(0, this->getHausdorfDistance());
+		return getHausdorfDistance();
 	}
 	size_t index = 0;
 	for ( Facet_iterator f = facets_begin(); f != facets_end(); ++f){
+		if(index+f->facet_degree()-2<tri_id){
+			index += (f->facet_degree()-2);
+			continue;
+		}
 		//log("%f", f->getHausdorfDistance().second);
 		Halfedge_const_handle e1 = f->halfedge();
 		Halfedge_const_handle e2 = e1->next();
 		do{
 			if(index == tri_id){
+				assert(f->getHausdorfDistance().second <= this->getHausdorfDistance().second);
+				//log("%f %f",f->getHausdorfDistance().second, this->getHausdorfDistance().second);
 				return f->getHausdorfDistance();
 			}
 			index++;
@@ -92,7 +98,7 @@ std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
 		}while(e1!=e2->next());
 	}
 	assert(false && "invalid facet ID");
-	return std::pair<float, float>(0.0,0.0);
+	return getHausdorfDistance();
 }
 
 size_t HiMesh::fill_vertices(float *&vertices){

@@ -53,7 +53,7 @@ public:
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
-	bool verbose = false;
+	int verbose = 0;
 	bool counter_clock = false;
 
 	// the element type used for calculating distance, segment or triangle

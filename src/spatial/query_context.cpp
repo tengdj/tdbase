@@ -92,7 +92,7 @@ query_context parse_args(int argc, char **argv){
 				zero_tokens()->composing(), "the lods need be processed")
 		("aabb", "calculate distance with aabb")
 		("gpu,g", "compute with GPU")
-		("verbose,v", "verbose")
+		("verbose,v", po::value<int>(&ctx.verbose), "verbose level")
 		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
@@ -112,9 +112,6 @@ query_context parse_args(int argc, char **argv){
 	}
 	if(vm.count("multiple_mbb")){
 		ctx.use_multimbb = true;
-	}
-	if(vm.count("verbose")){
-		ctx.verbose = true;
 	}
 	if(vm.count("gpu")){
 		ctx.use_gpu = true;

@@ -37,7 +37,7 @@ inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minm
 }
 
 void print_candidate(candidate_entry &cand){
-	if(global_ctx.verbose){
+	if(global_ctx.verbose>=1){
 		log("%ld (%d + %ld)", cand.mesh_wrapper->id, cand.candidate_confirmed, cand.candidates.size());
 		int i=0;
 		for(candidate_info &ci:cand.candidates){
@@ -66,7 +66,7 @@ inline void update_candidate_list_knn(candidate_entry &cand, int knn){
 			}
 		}
 		int cand_left = knn-cand.candidate_confirmed;
-		if(global_ctx.verbose){
+		if(global_ctx.verbose>=1){
 			log("%ld\t%5ld sure closer %3d maybe closer %3d (%3d +%3d)",
 					cand.mesh_wrapper->id,
 					cand.candidates[i].mesh_wrapper->id,
@@ -213,7 +213,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 						//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 					}
 
-					if(global_ctx.verbose){
+					if(global_ctx.verbose>=1){
 						log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
 								hdist1, hdist2,
 								ci.distance.mindist, ci.distance.maxdist,
@@ -241,8 +241,8 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 								dist.mindist = std::min(dist.mindist, dist.maxdist);
 							}
 
-							if(global_ctx.verbose){
-								log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
+							if(global_ctx.verbose>=1){
+								log("%ld(%d)\t%ld(%d):\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id,res.p1, wrapper2->id,res.p2,
 										hdist1, hdist2,
 										vp.dist.mindist, vp.dist.maxdist,
 										dist.mindist, dist.maxdist);

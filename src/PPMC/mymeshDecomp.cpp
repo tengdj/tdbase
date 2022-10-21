@@ -26,109 +26,106 @@
   */
 void MyMesh::startNextDecompresssionOp()
 {
-    if ((float)i_curDecimationId / i_nbDecimations * 100 >= i_decompPercentage){
-        for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
-        	hit->resetState();
-        for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-        	fit->resetState();
-        }
-    	if(i_curDecimationId == i_nbDecimations){
-    		// reset all the hausdorf distance to 0 for the highest LOD
-    		// as we do not have another round of decoding to set them
-            for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-            	fit->setProtruding(0.0);
-            }
-    	}
-        operation = Idle;
-        b_jobCompleted = true;
-        if(global_ctx.verbose){
-        	log("decode %d:\t%.3f\t%.2f", i_curDecimationId,	(float)i_curDecimationId / i_nbDecimations * 100, getHausdorfDistance());
-        }
-    } else {
-        beginUndecimationConquest();
-    }
-}
-
-
-/**
-  * Begin an undecimation conquest.
-  */
-void MyMesh::beginUndecimationConquest()
-{
+	// reset the states
     for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
 
     for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
-    // Add the first halfedge to the queue.
-    pushHehInit();
+    if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
+    	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorfDistance().first, getHausdorfDistance().second);
+    }
+    if ((float)i_curDecimationId / i_nbDecimations * 100 >= i_decompPercentage){
+    	if(i_curDecimationId == i_nbDecimations){
+    		// reset all the hausdorf distance to 0 for the highest LOD
+    		// as we do not have another round of decoding to set them
+            for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+            	fit->setProgressive(0.0);
+            	fit->setConservative(0.0);
+            }
+    	}
+        b_jobCompleted = true;
+    } else {
 
-    // Set the current operation.
-    operation = UndecimationConquest;
+        undecimationStep();
+		InsertedEdgeDecodingStep();
+		insertRemovedVertices();
+		removeInsertedEdges();
+
+		i_curDecimationId++; // increment the current decimation operation id.
+    }
 }
-
 
 /**
   * One undecimation step.
   */
 void MyMesh::undecimationStep()
 {
-    while (!gateQueue.empty())
-    {
-        Halfedge_handle h = gateQueue.front();
-        gateQueue.pop();
+	// Add the first halfedge to the queue.
+	pushHehInit();
+	while (!gateQueue.empty())
+	{
+		Halfedge_handle h = gateQueue.front();
+		gateQueue.pop();
 
-        Face_handle f = h->facet();
+		Face_handle f = h->facet();
 
-        // If the face is already processed, pick the next halfedge:
-        if (f->isConquered())
-            continue;
+		// If the face is already processed, pick the next halfedge:
+		if (f->isConquered())
+			continue;
 
-        // Decode the face symbol.
-        unsigned sym = readChar();
-        f->setProtruding((sym/2)/100.0 * getNextHausdorfDistance());
-        //log("%d %f %f", sym/2,(sym/2)/100.0*getHausdorfDistance(),getHausdorfDistance());
+		// Decode the face symbol.
+		unsigned sym = readChar();
 
-        // Add the other halfedges to the queue
-        Halfedge_handle hIt = h;
-        do
-        {
-            Halfedge_handle hOpp = hIt->opposite();
-            assert(!hOpp->is_border());
-            if (!hOpp->facet()->isConquered())
-                gateQueue.push(hOpp);
-            hIt = hIt->next();
-        }
-        while (hIt != h);
+		// Add the other halfedges to the queue
+		Halfedge_handle hIt = h;
+		do
+		{
+			Halfedge_handle hOpp = hIt->opposite();
+			assert(!hOpp->is_border());
+			if (!hOpp->facet()->isConquered())
+				gateQueue.push(hOpp);
+			hIt = hIt->next();
+		} while (hIt != h);
+		// Decode the geometry symbol.
+		if (sym == 1){
+			float coord[3];
+			for (unsigned i = 0; i < 3; ++i)
+			{
+				// Store the value.
+				coord[i] = readFloat();
+			}
 
-        sym &= 1;
-        // Decode the geometry symbol.
-        if (sym == 1)
-            decodeGeometrySym(f);
-        else
-            f->setUnsplittable();
-    }
-    beginInsertedEdgeDecoding();
+			Point rmved(coord[0], coord[1], coord[2]);
+			f->setSplittable();
+			f->setRemovedVertexPos(rmved);
+		} else {
+			f->setUnsplittable();
+		}
+
+		// decode the hausdorf distance symbols
+		uint hsym = readuInt16();
+		uint prosym = hsym&((1<<8)-1);
+		hsym >>= 8;
+		uint consym = hsym&((1<<8)-1);
+		pair<float, float> hdist = getNextHausdorfDistance();
+		float progressive = prosym/100.0 * hdist.second;
+		float conservative = consym/100.0 * hdist.first;
+		f->setProgressive(progressive);
+		f->setConservative(conservative);
+		if(global_ctx.verbose>=3){
+			log("decode face: %d %.2f %d %.2f %d", sym, conservative, consym, progressive, prosym);
+		}
+	}
 }
-
-
-/**
-  * Begin the inserted edge decoding conquest.
-  */
-void MyMesh::beginInsertedEdgeDecoding()
-{
-    // Add the first halfedge to the queue.
-    pushHehInit();
-    operation = InsertedEdgeDecoding;
-}
-
 
 /**
   * One step of the inserted edge coding conquest.
   */
 void MyMesh::InsertedEdgeDecodingStep()
 {
+    pushHehInit();
     while (!gateQueue.empty())
     {
         Halfedge_handle h = gateQueue.front();
@@ -155,8 +152,7 @@ void MyMesh::InsertedEdgeDecodingStep()
 
         // Test if there is a symbol for this edge.
         // There is no symbol if the two faces of an edge are unsplitable.
-        if (h->facet()->isSplittable()
-            || h->opposite()->facet()->isSplittable())
+        if (h->facet()->isSplittable() || h->opposite()->facet()->isSplittable())
         {
             // Decode the edge symbol.
             unsigned sym = readChar();
@@ -165,24 +161,16 @@ void MyMesh::InsertedEdgeDecodingStep()
             if (sym != 0)
                 h->setAdded();
         }
-
-        return;
     }
-
-    insertRemovedVertices();
-    removeInsertedEdges();
-
-    i_curDecimationId++; // Increment the current decimation operation id.
-    operation = Idle;
-
 }
 
 
 /**
   * Insert center vertices.
   */
-void MyMesh ::insertRemovedVertices()
+void MyMesh::insertRemovedVertices()
 {
+
     // Add the first halfedge to the queue.
     pushHehInit();
 
@@ -247,21 +235,3 @@ void MyMesh::removeInsertedEdges()
     }
 }
 
-
-/**
-  * Decode the geometry symbols.
-  */
-void MyMesh::decodeGeometrySym(Face_handle fh)
-{
-
-    float coord[3];
-    for (unsigned i = 0; i < 3; ++i)
-    {
-		// Store the value.
-		coord[i] = readFloat();
-    }
-
-    Point rmved(coord[0], coord[1], coord[2]);
-    fh->setSplittable();
-    fh->setRemovedVertexPos(rmved);
-}

@@ -23,48 +23,6 @@
 #include "../PPMC/mymesh.h"
 #include "geometry.h"
 
-
-
-/**
-  * Start the next compression operation.
-  */
-void MyMesh::startNextCompresssionOp()
-{
-    beginDecimationConquest();
-}
-
-
-void MyMesh::beginDecimationConquest()
-{
-  //printf("Begin decimation conquest n°%u.\n", i_curDecimationId);
-
-  for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
-        vit->resetState();
-
-  for(MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
-        hit->resetState();
-
-  for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
-	  fit->resetState();
-
-  // Select the first gate to begin the decimation.
-  // teng: we always start from the middle
-  // size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
-  size_t i_heInitId = size_of_halfedges()/2;
-  Halfedge_iterator hitInit = halfedges_begin();
-  for (unsigned i = 0; i < i_heInitId; ++i)
-      ++hitInit;
-
-  hitInit->setInQueue();
-  gateQueue.push((Halfedge_handle)hitInit);
-
-  // Reset the number of removed vertices.
-  i_nbRemovedVertices = 0;
-
-  // Set the current operation.
-  operation = DecimationConquest;
-}
-
 float point_to_face_distance(Point p, MyMesh::Face_iterator fit){
 	float triangle[9];
 	float point[3];
@@ -94,100 +52,66 @@ float point_to_face_distance(Point p, MyMesh::Face_iterator fit){
 	return mindist;
 }
 
-float MyMesh::getHausdorfDistance(){
-	return i_nbDecimations>i_curDecimationId?maxHausdorfDistance[i_nbDecimations - i_curDecimationId-1]:0;
+pair<float, float> MyMesh::getHausdorfDistance(){
+	assert(i_nbDecimations>=i_curDecimationId);
+	return i_nbDecimations>i_curDecimationId?globalHausdorfDistance[i_nbDecimations - i_curDecimationId-1]:std::pair<float, float>(0, 0);
 }
 
-float MyMesh::getNextHausdorfDistance(){
-	return i_nbDecimations>(i_curDecimationId+1)?maxHausdorfDistance[i_nbDecimations - i_curDecimationId-1-1]:0;
+pair<float, float> MyMesh::getNextHausdorfDistance(){
+	assert(i_nbDecimations>i_curDecimationId);
+	return i_nbDecimations>(i_curDecimationId+1)?globalHausdorfDistance[i_nbDecimations - i_curDecimationId - 2]:std::pair<float, float>(0, 0);
 }
 
-void MyMesh::computeImpactedFactors(){
+/**
+  * Start the next compression operation.
+  */
+void MyMesh::startNextCompresssionOp()
+{
+	//printf("Begin decimation conquest n°%u.\n", i_curDecimationId);
 
-	current_hausdorf = 0.0;
-	float dist = DBL_MAX;
+	for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
+		vit->resetState();
 
-//	unordered_map<Point, pair<vector<MyMesh::Face_iterator>, float>> vertices_map;
-//	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-//		vector<Point> ps = fit->getImpactPoints();
-//		if(ps.size()==0){
-//		  continue;
-//		}
-//		// go check all the triangles for this facet
-//		for(Point &p:ps){
-//			if(vertices_map.find(p)==vertices_map.end()){
-//				pair<vector<MyMesh::Face_iterator>, float> flist;
-//			}
-//			vertices_map[p].first.push_back(fit);
-//		}
-//		//if(ps.size()<20&&ps.size()>10)
-////			{
-////				printf("OFF\n%ld 1 0\n\n", ps.size()+fit->facet_degree());
-////				Halfedge_const_handle hd = fit->halfedge();
-////				Halfedge_const_handle t = hd;
-////				do{
-////				  Point pt = t->vertex()->point();
-////				  printf("%f %f %f\n",pt.x(),pt.y(),pt.z());
-////				  t = t->next();
-////				} while(t!=hd);
-////
-////				for(Point &p:ps){
-////				  printf("%f %f %f\n",p.x(),p.y(),p.z());
-////				}
-////				printf("%ld ",fit->facet_degree());
-////				for(int i=0;i<fit->facet_degree();i++){
-////				  printf("%d ",i);
-////				}
-////				printf("\n");
-////			}
-//
-//	}
-//	for(auto &flist:vertices_map){
-//		// for each point, go check all the associated faces and get the closest one
-//		float mindist = DBL_MAX;
-//
-//		Point p = flist.first;
-//		for(auto &fit:flist.second.first){
-//			float dist = point_to_face_distance(p, fit);
-//			mindist = min(dist, mindist);
-//		}
-//		flist.second.second = mindist;
-//		//log("%f", mindist);
-//		// haussdorf distance, max of the min
-//		//hdist = max(hdist, mindist);
-//		//dist = min(dist, mindist);
-//		flist.second.first.clear();
-//	}
-//	vertices_map.clear();
+	for(MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
+		hit->resetState();
 
-	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		vector<Point> ps = fit->getImpactPoints();
-		if(ps.size()==0){
-		  continue;
-		}
-		float farthest_point = 0.0;
-		for(Point &p:ps){
-			float dist = point_to_face_distance(p, fit);
-			farthest_point = max(dist, farthest_point);
-		}
-		//log("%f", farthest_point);
-		fit->setProtruding(farthest_point);
-		current_hausdorf = max(current_hausdorf, farthest_point);
-		dist = min(dist, farthest_point);
-	}
-	maxHausdorfDistance.push_back(current_hausdorf);
-	if(global_ctx.verbose){
-		log("encode %d:\t[%.2f %.2f]\t%ld\t(%.2f %.2f %.2f)", i_curDecimationId, dist, current_hausdorf, size_of_vertices(), bbMax.x()-bbMin.x(), bbMax.y()-bbMin.y(), bbMax.z()-bbMin.z());
+	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
+		fit->resetState();
+
+    decimationStep();
+    if (i_nbRemovedVertices == 0){
+		b_jobCompleted = true;
+		i_curDecimationId--;
+		writeCompressedData();
+	} else {
+		// 3dpro: compute the impacted factors for all the faces
+		computeHausdorfDistance();
+
+		RemovedVertexCodingStep();
+		InsertedEdgeCodingStep();
+		// finish this round of decimation and start the next
+	    i_curDecimationId++; // Increment the current decimation operation id.
 	}
 }
-
 
 // One decimation step.
 void MyMesh::decimationStep()
 {
+	// Select the first gate to begin the decimation.
+	// teng: we always start from the middle, DO NOT use the pushHehInit() function
+	// size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
+	size_t i_heInitId = size_of_halfedges()/2;
+	Halfedge_iterator hitInit = halfedges_begin();
+	for (unsigned i = 0; i < i_heInitId; ++i)
+	  ++hitInit;
+	hitInit->setInQueue();
+	gateQueue.push((Halfedge_handle)hitInit);
+
+	// Reset the number of removed vertices.
+	i_nbRemovedVertices = 0;
+
     //choose a halfedge that can be processed:
-    while(!gateQueue.empty())
-    {
+    while(!gateQueue.empty()) {
         Halfedge_handle h = gateQueue.front();
         gateQueue.pop();
 
@@ -234,35 +158,11 @@ void MyMesh::decimationStep()
             }
             while((hh = hh->next()) != h);
             h->removeFromQueue();
-            return;
-        }
-        else
-        {
+        } else {
             //in that case, cornerCut that vertex.
             h->removeFromQueue();
             vertexCut(unconqueredVertexHE);
-            return;
         }
-    }
-
-    if (i_nbRemovedVertices == 0)
-    {
-		operation = Idle;
-		b_jobCompleted = true;
-		i_curDecimationId--;
-		writeCompressedData();
-    }
-    else
-    {
-
-        // Determine the residuals.
-        determineResiduals();
-
-        // 3dpro: compute the impacted factors for all the faces
-        computeImpactedFactors();
-
-        operation = RemovedVertexCoding;
-        beginRemovedVertexCodingConquest();
     }
 }
 
@@ -273,155 +173,120 @@ void MyMesh::decimationStep()
   */
 MyMesh::Halfedge_handle MyMesh::vertexCut(Halfedge_handle startH)
 {
-        Vertex_handle v = startH->vertex();
+	Vertex_handle v = startH->vertex();
 
-        //make sure that the center vertex can be removed
-        assert(!v->isConquered());
-        assert(v->vertex_degree()>2);
+	//make sure that the center vertex can be removed
+	assert(!v->isConquered());
+	assert(v->vertex_degree()>2);
 
-        vector<Point> impactpoints;
-        //int i = 0;
-        Halfedge_handle h = startH->opposite(), end(h);
-        do
-        {
-                assert(!h->is_border());
-                Face_handle f = h->facet();
-                assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
+	vector<Point> impactpoints;
+	//int i = 0;
+	Halfedge_handle h = startH->opposite(), end(h);
+	do
+	{
+		assert(!h->is_border());
+		Face_handle f = h->facet();
+		assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
 
-                vector<Point> ips = f->getImpactPoints();
-                if(ips.size()>0){
-                	impactpoints.insert(impactpoints.end(), ips.begin(), ips.end());
-                }
-                //if the face is not a triangle, cut the corner
-                int deg_bef = f->facet_degree();
-                if(f->facet_degree()>3)
-                {
-                  //loop around the face to find the appropriate other halfedge
-                  Halfedge_handle hSplit(h->next());
-                  for(; hSplit->next()->next() != h; hSplit = hSplit->next())
-                        ;
-                  Halfedge_handle hCorner = split_facet(h, hSplit);
-                  //mark the new halfedges as added
-                  hCorner->setAdded();
-                  hCorner->opposite()->setAdded();
+		vector<Point> ips = f->getImpactPoints();
+		impactpoints.insert(impactpoints.end(), ips.begin(), ips.end());
 
-                  //hCorner->opposite()->facet()->resetImpactPoints();
-                  //log("addr: %ld %ld %ld", f, hCorner->facet(), hCorner->opposite()->facet());
-                  //log("split: %ld %ld", hCorner->facet()->getImpactPoints().size(), hCorner->opposite()->facet()->getImpactPoints().size());
-                  //hCorner->facet()->addImpactPoints(ips);
+		//if the face is not a triangle, cut the corner
+		int deg_bef = f->facet_degree();
+		if(f->facet_degree()>3)
+		{
+		  //loop around the face to find the appropriate other halfedge
+		  Halfedge_handle hSplit(h->next());
+		  for(; hSplit->next()->next() != h; hSplit = hSplit->next())
+				;
+		  Halfedge_handle hCorner = split_facet(h, hSplit);
+		  //mark the new halfedges as added
+		  hCorner->setAdded();
+		  hCorner->opposite()->setAdded();
 
-				  //log("%d %d",deg_bef, hCorner->opposite()->facet_degree());
-                }
-                //mark the vertex as conquered
-                h->vertex()->setConquered();
-        }
-        while((h=h->opposite()->next()) != end);
-        //printf("%f\n\n",tmpmaxcut);
+		  //hCorner->opposite()->facet()->resetImpactPoints();
+		  //log("addr: %ld %ld %ld", f, hCorner->facet(), hCorner->opposite()->facet());
+		  //log("split: %ld %ld", hCorner->facet()->getImpactPoints().size(), hCorner->opposite()->facet()->getImpactPoints().size());
+		  //hCorner->facet()->addImpactPoints(ips);
 
-        //copy the position of the center vertex:
-        Point vPos = startH->vertex()->point();
+		  //log("%d %d",deg_bef, hCorner->opposite()->facet_degree());
+		}
+		//mark the vertex as conquered
+		h->vertex()->setConquered();
+	} while((h=h->opposite()->next()) != end);
 
-        //remove the center vertex
-        Halfedge_handle hNewFace = erase_center_vertex(startH);
+	//copy the position of the center vertex:
+	Point vPos = startH->vertex()->point();
 
-        //now mark the new face as having a removed vertex
-        hNewFace->facet()->setSplittable();
-        // keep the removed vertex position.
-        hNewFace->facet()->setRemovedVertexPos(vPos);
-        hNewFace->facet()->addImpactPoints(impactpoints);
+	//remove the center vertex
+	Halfedge_handle hNewFace = erase_center_vertex(startH);
 
-        //scan the outside halfedges of the new face and add them to
-        //the queue if the state of its face is unknown. Also mark it as in_queue
-        h = hNewFace;
-        do
-        {
-                Halfedge_handle hOpp = h->opposite();
-                assert(!hOpp->is_border());
-                if(!hOpp->facet()->isConquered())
-                {
-                        gateQueue.push(hOpp);
-                        hOpp->setInQueue();
-                }
+	//now mark the new face as having a removed vertex
+	hNewFace->facet()->setSplittable();
+	// keep the removed vertex position.
+	hNewFace->facet()->setRemovedVertexPos(vPos);
+	hNewFace->facet()->addImpactPoints(impactpoints);
+	hNewFace->facet()->addImpactPoint(vPos);
+	//scan the outside halfedges of the new face and add them to
+	//the queue if the state of its face is unknown. Also mark it as in_queue
+	h = hNewFace;
+	do
+	{
+		Halfedge_handle hOpp = h->opposite();
+		assert(!hOpp->is_border());
+		if(!hOpp->facet()->isConquered())
+		{
+			gateQueue.push(hOpp);
+			hOpp->setInQueue();
+		}
+	}
+	while((h = h->next()) != hNewFace);
 
-        }
-        while((h = h->next()) != hNewFace);
+	// Increment the number of removed vertices.
+	i_nbRemovedVertices++;
 
-        // Increment the number of removed vertices.
-        i_nbRemovedVertices++;
-
-        return hNewFace;
+	return hNewFace;
 }
 
+void MyMesh::computeHausdorfDistance(){
 
+	pair<float, float> current_hausdorf = pair<float, float>(0.0, 0.0);
+	float dist = DBL_MAX;
 
-/**
-  * Determine the residuals to encode.
-  */
-void MyMesh::determineResiduals()
-{
-
-    // Add the first halfedge to the queue.
-    pushHehInit();
-
-    while (!gateQueue.empty())
-    {
-        Halfedge_handle h = gateQueue.front();
-        gateQueue.pop();
-
-        Face_handle f = h->facet();
-
-        // If the face is already processed, pick the next halfedge:
-        if (f->isProcessed())
-            continue;
-
-        // Mark the face as processed.
-        f->setProcessedFlag();
-
-        // Add the other halfedges to the queue
-        Halfedge_handle hIt = h;
-        do
-        {
-            Halfedge_handle hOpp = hIt->opposite();
-            assert(!hOpp->is_border());
-            if (!hOpp->facet()->isProcessed())
-                gateQueue.push(hOpp);
-            hIt = hIt->next();
-        }
-        while (hIt != h);
-
-        // besides keep the residual, also update the maximum cut if needed
-        if (f->isSplittable()){
-        	Point rmved = f->getRemovedVertexPos();
-			f->addImpactPoint(rmved);
-        }
-    }
+	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		vector<Point> ps = fit->getImpactPoints();
+		if(ps.size()==0){
+		  continue;
+		}
+		float maxdist = 0.0;
+		for(Point &p:ps){
+			float dist = point_to_face_distance(p, fit);
+			maxdist = max(dist, maxdist);
+		}
+		//log("%f", farthest_point);
+		fit->setProgressive(maxdist);
+		fit->setConservative(0.0);
+		current_hausdorf.second = max(current_hausdorf.second, maxdist);
+		dist = min(dist, maxdist);
+	}
+	globalHausdorfDistance.push_back(current_hausdorf);
+	if(global_ctx.verbose>=2){
+		log("encode %d:\t[%.2f %.2f]\t%ld", i_curDecimationId, dist, current_hausdorf.second, size_of_vertices());
+	}
 }
-
-
-/**
-  * Begin the removed vertex coding conquest.
-  */
-void MyMesh::beginRemovedVertexCodingConquest()
-{
-    for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
-          fit->resetProcessedFlag();
-
-    // Add the first halfedge to the queue.
-    pushHehInit();
-
-    // Resize the vectors to add the current conquest symbols.
-    geometrySym.push_back(std::deque<Point>());
-    connectFaceSym.push_back(std::deque<unsigned>());
-
-    operation = RemovedVertexCoding;
-}
-
 
 /**
   * One step of the removed vertex coding conquest.
   */
 void MyMesh::RemovedVertexCodingStep()
 {
+    // Resize the vectors to add the current conquest symbols.
+    geometrySym.push_back(std::deque<Point>());
+    connectFaceSym.push_back(std::deque<unsigned>());
+    hausdorfSym.push_back(std::deque<unsigned>());
+
+    // Add the first halfedge to the queue.
+    pushHehInit();
     while (!gateQueue.empty())
     {
         Halfedge_handle h = gateQueue.front();
@@ -434,23 +299,28 @@ void MyMesh::RemovedVertexCodingStep()
             continue;
 
         // Determine face symbol.
-        unsigned sym;
         bool b_split = f->isSplittable();
-
-        // No connectivity prediction.
-        sym = b_split ? 1 : 0;
-
-        // 3dpro, besides the symbol, we also encode the hausdorf distance into it.
-        unsigned hdsym = f->getHausdorfDistance().second/current_hausdorf*100.0;
-        //log("%f %f %d",f->getHausdorfDistance().second,current_hausdorf, hdsym);
-        sym |= (hdsym*2);
+        unsigned sym = b_split;
 
         // Push the symbols.
         connectFaceSym[i_curDecimationId].push_back(sym);
 
         // Determine the geometry symbol.
-        if (b_split)
-            determineGeometrySym(h, f);
+        if (b_split){
+            Point rmved = f->getRemovedVertexPos();
+            geometrySym[i_curDecimationId].push_back(rmved);
+        }
+
+        // Determine the hausdorf symbol
+        // the hausdorf distances for this round of decimation.
+		pair<float, float> current_hausdorf = this->globalHausdorfDistance[this->globalHausdorfDistance.size()-1];
+		// 3dpro, besides the symbol, we also encode the hausdorf distance into it.
+		unsigned con = current_hausdorf.first==0?0:(f->getHausdorfDistance().first/current_hausdorf.first*100.0);
+		unsigned pro = current_hausdorf.second==0?0:(f->getHausdorfDistance().second/current_hausdorf.second*100.0);
+        hausdorfSym[i_curDecimationId].push_back((con<<8)|pro);
+        if(global_ctx.verbose>=3){
+        	log("encode face: %d %.2f %d %.2f %d",b_split, f->getHausdorfDistance().first, con, f->getHausdorfDistance().second, pro);
+        }
 
         // Mark the face as processed.
         f->setProcessedFlag();
@@ -466,38 +336,8 @@ void MyMesh::RemovedVertexCodingStep()
             hIt = hIt->next();
         }
         while (hIt != h);
-
-        return;
     }
-
-    operation = InsertedEdgeCoding;
-    beginInsertedEdgeCoding();
 }
-
-
-/**
-  * Determine the geometry symbols.
-  */
-void MyMesh::determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh)
-{
-    Point rmved = fh->getRemovedVertexPos();
-    geometrySym[i_curDecimationId].push_back(rmved);
-}
-
-
-/**
-  * Begin the inserted edge coding conquest.
-  */
-void MyMesh::beginInsertedEdgeCoding()
-{
-    // Add the first halfedge to the queue.
-    pushHehInit();
-    // Resize the vector to add the current conquest symbols.
-    connectEdgeSym.push_back(std::deque<unsigned>());
-
-    operation = InsertedEdgeCoding;
-}
-
 
 /**
   * One step of the inserted edge coding conquest.
@@ -505,6 +345,10 @@ void MyMesh::beginInsertedEdgeCoding()
 void MyMesh::InsertedEdgeCodingStep()
 {
 
+	// Add the first halfedge to the queue.
+	pushHehInit();
+	// Resize the vector to add the current conquest symbols.
+	connectEdgeSym.push_back(std::deque<unsigned>());
     while (!gateQueue.empty())
     {
         Halfedge_handle h = gateQueue.front();
@@ -543,12 +387,7 @@ void MyMesh::InsertedEdgeCodingStep()
         // Store the symbol if needed.
         if (b_toCode)
             connectEdgeSym[i_curDecimationId].push_back(sym);
-
-        return;
     }
-
-    i_curDecimationId++; // Increment the current decimation operation id.
-    operation = Idle;
 }
 
 
@@ -576,6 +415,7 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
 {
     std::deque<unsigned> &connSym = connectFaceSym[i_operationId];
     std::deque<Point> &geomSym = geometrySym[i_operationId];
+    std::deque<unsigned> &hausSym = hausdorfSym[i_operationId];
 
     unsigned i_lenGeom = geomSym.size();
     unsigned i_lenConn = connSym.size();
@@ -588,7 +428,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
         // Encode the connectivity.
         unsigned sym = connSym[i];
         writeChar(sym);
-        sym &= 1;
         // Encode the geometry if necessary.
         if (sym)
         {
@@ -599,5 +438,6 @@ void MyMesh::encodeRemovedVertices(unsigned i_operationId)
             }
             k++;
         }
+        writeuInt16(hausSym[i]);
     }
 }

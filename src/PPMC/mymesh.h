@@ -348,15 +348,15 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	}
 
 	inline pair<float, float> getHausdorfDistance(){
-		return pair<float, float>(recessing_distance, protruding_distance);
+		return pair<float, float>(conservative_distance, progressive_distance);
 	}
 
-	inline void setRecessing(float rec){
-		recessing_distance = rec;
+	inline void setConservative(float rec){
+		conservative_distance = rec;
 	}
 
-	inline void setProtruding(float pro){
-		protruding_distance = pro;
+	inline void setProgressive(float pro){
+		progressive_distance = pro;
 	}
 
 
@@ -367,8 +367,8 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	Point removedVertexPos;
 
 	vector<Point> impact_points;
-	float recessing_distance = 0.0;
-	float protruding_distance = 0.0;
+	float conservative_distance = 0.0;
+	float progressive_distance = 0.0;
 };
 
 
@@ -390,14 +390,6 @@ struct MyItems : public CGAL::Polyhedron_items_3
     };
 };
 
-// Operation list.
-enum Operation {Idle = 0,
-                DecimationConquest, RemovedVertexCoding, InsertedEdgeCoding, // Compression.
-                UndecimationConquest, InsertedEdgeDecoding // Decompression.
-                };
-
-const static char *operation_str[6] = {"Idle","DecimationConquest", "RemovedVertexCoding", "InsertedEdgeCoding", // Compression.
-        "UndecimationConquest", "InsertedEdgeDecoding"};
 
 class MyMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
@@ -411,8 +403,6 @@ public:
 
 	~MyMesh();
 
-	void stepOperation();
-	void batchOperation();
 	void completeOperation();
 
 	Vector computeNormal(Facet_const_handle f) const;
@@ -440,16 +430,12 @@ public:
 
 	// Compression
 	void startNextCompresssionOp();
-	void beginDecimationConquest();
-	void beginInsertedEdgeCoding();
 	void decimationStep();
 	void RemovedVertexCodingStep();
 	void InsertedEdgeCodingStep();
 	Halfedge_handle vertexCut(Halfedge_handle startH);
-	void determineResiduals();
 	void encodeInsertedEdges(unsigned i_operationId);
 	void encodeRemovedVertices(unsigned i_operationId);
-	void lift();
 
 	// Compression geometry and connectivity tests.
 	bool isRemovable(Vertex_handle v) const;
@@ -461,15 +447,12 @@ public:
 
 	// Decompression
 	void startNextDecompresssionOp();
-	void beginUndecimationConquest();
-	void beginInsertedEdgeDecoding();
 	void undecimationStep();
+
+	void DecimatedFaceDecodingStep();
 	void InsertedEdgeDecodingStep();
 	void insertRemovedVertices();
 	void removeInsertedEdges();
-	void decodeGeometrySym(Face_handle fh);
-	void beginRemovedVertexCodingConquest();
-	void determineGeometrySym(Halfedge_handle heh_gate, Face_handle fh);
 
 	// Utils
 	Vector computeNormal(Halfedge_const_handle heh_gate) const;
@@ -491,6 +474,8 @@ public:
 	float readFloat();
 	void writeInt16(int16_t i);
 	int16_t readInt16();
+	void writeuInt16(uint16_t i);
+	uint16_t readuInt16();
 	void writeInt(int i);
 	int readInt();
 	unsigned char readChar();
@@ -502,7 +487,7 @@ public:
 	void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const;
 
 	//3dpro
-	void computeImpactedFactors();
+	void computeHausdorfDistance();
 	bool isProtruding(Vertex_const_handle v) const;
 	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
 	void profileProtruding();
@@ -517,7 +502,6 @@ public:
 	int i_mode;
 	bool b_jobCompleted; // True if the job has been completed.
 
-	Operation operation;
 	unsigned i_curDecimationId;
 	unsigned i_nbDecimations;
 
@@ -525,6 +509,7 @@ public:
 	Vertex_handle vh_departureConquest[2];
 	// Geometry symbol list.
 	std::deque<std::deque<Point> > geometrySym;
+	std::deque<std::deque<unsigned>> hausdorfSym;
 
 	// Connectivity symbol list.
 	std::deque<std::deque<unsigned> > connectFaceSym;
@@ -549,10 +534,9 @@ public:
 	unsigned i_decompPercentage;
 
 	// Store the maximum size we cutted in each round of compression
-	vector<float> maxHausdorfDistance;
-	float current_hausdorf;
-	float getHausdorfDistance();
-	float getNextHausdorfDistance();
+	vector<pair<float, float>> globalHausdorfDistance;
+	pair<float, float> getHausdorfDistance();
+	pair<float, float> getNextHausdorfDistance();
 	int processCount = 0;
 };
 

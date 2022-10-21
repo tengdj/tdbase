@@ -349,6 +349,7 @@ static void compress(int argc, char **argv){
 
 	mesh->writeMeshOff("/gisdata/compressed.off");
 
+	printf("\n\n");
 	HiMesh *himesh = new HiMesh(mesh);
 	int lod = 100;
 	if(argc>2){
@@ -358,6 +359,11 @@ static void compress(int argc, char **argv){
 		himesh->advance_to(i);
 		//log("%d %f", i, himesh->getHausdorfDistance());
 		himesh->writeCurrentOperationMesh("/gisdata/compressed", i);
+
+		//log("global: %f", himesh->getHausdorfDistance().second);
+		for(int j=0;j<himesh->size_of_triangles();j++){
+			//log("%d\t%.2f\t%d", j, himesh->get_triangle_hausdorf(j).second, (int)(himesh->get_triangle_hausdorf(j).second*100/himesh->getHausdorfDistance().second));
+		}
 	}
 	delete mesh;
 	delete himesh;

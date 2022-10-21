@@ -155,6 +155,24 @@ void MyMesh::writeInt16(int16_t i)
     dataOffset += sizeof(int16_t);
 }
 
+/**
+  * Read a 16 bits integer in the data buffer.
+  */
+uint16_t MyMesh::readuInt16()
+{
+    uint16_t i = *(uint16_t *)(p_data + dataOffset);
+    dataOffset += sizeof(uint16_t);
+    return i;
+}
+
+
+// Write a 16 bits integer in the data buffer
+void MyMesh::writeuInt16(uint16_t i)
+{
+    *(uint16_t *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(uint16_t);
+}
+
 
 /**
   * Read a byte in the data buffer.
@@ -172,8 +190,6 @@ void MyMesh::writeChar(unsigned char  i)
     *(unsigned char *)(p_data + dataOffset) = i;
     dataOffset += sizeof(unsigned char );
 }
-
-
 
 // Write the base mesh.
 void MyMesh::writeBaseMesh()
@@ -246,14 +262,16 @@ void MyMesh::writeBaseMesh()
     for (MyMesh::Facet_iterator fit = facets_begin();
          fit != facets_end(); ++fit)
     {
+        writeFloat(fit->getHausdorfDistance().first);
         writeFloat(fit->getHausdorfDistance().second);
     }
 
     // 3dpro
     // Write the maximum volume change for each round of decimation
-    assert(maxHausdorfDistance.size()==i_nbDecimations);
+    assert(globalHausdorfDistance.size()==i_nbDecimations);
     for(unsigned i=0;i<i_nbDecimations;i++){
-    	writeFloat(maxHausdorfDistance[i]);
+    	writeFloat(globalHausdorfDistance[i].first);
+    	writeFloat(globalHausdorfDistance[i].second);
     }
 }
 
@@ -314,7 +332,9 @@ void MyMesh::readBaseMesh()
          fit != facets_end(); ++fit)
     {
     	float hdist = readFloat();
-    	fit->setProtruding(hdist);
+    	fit->setConservative(hdist);
+    	hdist = readFloat();
+    	fit->setProgressive(hdist);
     }
 
     // Free the memory.
@@ -325,8 +345,9 @@ void MyMesh::readBaseMesh()
 
     // Read the maximum cutting volume
     for(unsigned i=0;i<i_nbDecimations;i++){
-    	float maxcut = readFloat();
-    	maxHausdorfDistance.push_back(maxcut);
+    	float conservative = readFloat();
+    	float progressive = readFloat();
+    	globalHausdorfDistance.push_back(pair<float, float>(conservative, progressive));
     }
 }
 
