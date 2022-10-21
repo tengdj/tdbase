@@ -142,7 +142,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].data = cc.data;
 		params[i].id = i+1;
 		params[i].results = cc.results+start;
-		pthread_create(&threads[i], NULL, global_ctx.etype==DT_Segment?SegDist_unit:TriDist_unit, (void *)&params[i]);
+		pthread_create(&threads[i], NULL, TriDist_unit, (void *)&params[i]);
 	}
 	if(max_thread_num>1){
 		log("%d threads started to get distance", thread_num);

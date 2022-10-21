@@ -227,9 +227,16 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 						// update the distance
 						if(vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
 							range dist = vp.dist;
+							float hdist1;
+							float hdist2;
+							if(global_ctx.disable_triangle_hausdorf){
+								hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
+								hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
+							}else{
+								hdist1 = vp.v1->getHausdorfDistance(lod, res.p1).second;
+								hdist2 = vp.v2->getHausdorfDistance(lod, res.p2).second;
+							}
 
-							float hdist1 = wrapper1->mesh->get_triangle_hausdorf(res.p1).second;
-							float hdist2 = wrapper2->mesh->get_triangle_hausdorf(res.p2).second;
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
 								dist.mindist = res.result.distance;

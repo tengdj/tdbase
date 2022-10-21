@@ -67,8 +67,6 @@ pair<float, float> MyMesh::getNextHausdorfDistance(){
   */
 void MyMesh::startNextCompresssionOp()
 {
-	//printf("Begin decimation conquest n°%u.\n", i_curDecimationId);
-
 	for(MyMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
 		vit->resetState();
 
@@ -84,7 +82,7 @@ void MyMesh::startNextCompresssionOp()
 		i_curDecimationId--;
 		writeCompressedData();
 	} else {
-		// 3dpro: compute the impacted factors for all the faces
+		// 3dpro: compute the hausdorf distance for all the existing faces
 		computeHausdorfDistance();
 
 		RemovedVertexCodingStep();
@@ -299,14 +297,13 @@ void MyMesh::RemovedVertexCodingStep()
             continue;
 
         // Determine face symbol.
-        bool b_split = f->isSplittable();
-        unsigned sym = b_split;
+        unsigned sym = f->isSplittable();
 
         // Push the symbols.
         connectFaceSym[i_curDecimationId].push_back(sym);
 
         // Determine the geometry symbol.
-        if (b_split){
+        if (sym){
             Point rmved = f->getRemovedVertexPos();
             geometrySym[i_curDecimationId].push_back(rmved);
         }
@@ -319,7 +316,7 @@ void MyMesh::RemovedVertexCodingStep()
 		unsigned pro = current_hausdorf.second==0?0:(f->getHausdorfDistance().second/current_hausdorf.second*100.0);
         hausdorfSym[i_curDecimationId].push_back((con<<8)|pro);
         if(global_ctx.verbose>=3){
-        	log("encode face: %d %.2f %d %.2f %d",b_split, f->getHausdorfDistance().first, con, f->getHausdorfDistance().second, pro);
+        	log("encode face: %d %.2f %d %.2f %d",sym, f->getHausdorfDistance().first, con, f->getHausdorfDistance().second, pro);
         }
 
         // Mark the face as processed.

@@ -361,7 +361,8 @@ static void compress(int argc, char **argv){
 		himesh->writeCurrentOperationMesh("/gisdata/compressed", i);
 
 		//log("global: %f", himesh->getHausdorfDistance().second);
-		for(int j=0;j<himesh->size_of_triangles();j++){
+		int tris = himesh->size_of_triangles();
+		for(int j=0;j<tris;j++){
 			//log("%d\t%.2f\t%d", j, himesh->get_triangle_hausdorf(j).second, (int)(himesh->get_triangle_hausdorf(j).second*100/himesh->getHausdorfDistance().second));
 		}
 	}

@@ -139,17 +139,6 @@ void MyMesh::InsertedEdgeDecodingStep()
         h->setProcessed();
         h->opposite()->setProcessed();
 
-        // Add the other halfedges to the queue
-        Halfedge_handle hIt = h->next();
-        while (hIt->opposite() != h)
-        {
-            if (!hIt->isProcessed() && !hIt->isNew())
-                gateQueue.push(hIt);
-            hIt = hIt->opposite()->next();
-        }
-
-        assert(!hIt->isNew());
-
         // Test if there is a symbol for this edge.
         // There is no symbol if the two faces of an edge are unsplitable.
         if (h->facet()->isSplittable() || h->opposite()->facet()->isSplittable())
@@ -161,6 +150,17 @@ void MyMesh::InsertedEdgeDecodingStep()
             if (sym != 0)
                 h->setAdded();
         }
+
+        // Add the other halfedges to the queue
+        Halfedge_handle hIt = h->next();
+        while (hIt->opposite() != h)
+        {
+            if (!hIt->isProcessed() && !hIt->isNew())
+                gateQueue.push(hIt);
+            hIt = hIt->opposite()->next();
+        }
+        assert(!hIt->isNew());
+
     }
 }
 

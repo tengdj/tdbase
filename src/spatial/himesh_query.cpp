@@ -37,25 +37,17 @@ bool HiMesh::intersect(HiMesh *target){
 
 float HiMesh::distance(HiMesh *target){
 	result_container res;
-	if(global_ctx.etype == DT_Triangle){
-		float *tri1, *tri2;
-		size_t s1 = fill_triangles(tri1);
-		size_t s2 = target->fill_triangles(tri2);
-		res = TriDist_single(tri1, tri2, s1, s2);
-		if(global_ctx.verbose>=1){
-			print_triangles(tri1+res.p1*9, 1);
-			print_triangles(tri2+res.p2*9, 1);
-		}
-		delete []tri1;
-		delete []tri2;
-	}else{
-		float *seg1,*seg2;
-		size_t s1 = fill_segments(seg1);
-		size_t s2 = target->fill_segments(seg2);
-		res = SegDist_single(seg1, seg2, s1, s2);
-		delete []seg1;
-		delete []seg2;
+	float *tri1, *tri2;
+	size_t s1 = fill_triangles(tri1);
+	size_t s2 = target->fill_triangles(tri2);
+	res = TriDist_single(tri1, tri2, s1, s2);
+	if(global_ctx.verbose>=1){
+		print_triangles(tri1+res.p1*9, 1);
+		print_triangles(tri2+res.p2*9, 1);
 	}
+	delete []tri1;
+	delete []tri2;
+
 	return res.result.distance;
 }
 
@@ -74,12 +66,7 @@ float HiMesh::distance_tree(HiMesh *target){
 	{
 		list<Point> vertices = get_vertices();
 		for(Point &p:vertices){
-			FT sqd;
-			if(global_ctx.etype == DT_Segment){
-				sqd = target->get_aabb_tree_segment()->squared_distance(p);
-			}else{
-				sqd = target->get_aabb_tree_triangle()->squared_distance(p);
-			}
+			FT sqd = target->get_aabb_tree_triangle()->squared_distance(p);
 			double dist = (double)CGAL::to_double(sqd);
 			if(min_dist>dist){
 				min_dist = dist;
@@ -89,12 +76,7 @@ float HiMesh::distance_tree(HiMesh *target){
 	{
 		list<Point> vertices = target->get_vertices();
 		for(Point &p:vertices){
-			FT sqd;
-			if(global_ctx.etype == DT_Segment){
-				sqd = get_aabb_tree_segment()->squared_distance(p);
-			}else{
-				sqd = get_aabb_tree_triangle()->squared_distance(p);
-			}
+			FT sqd = get_aabb_tree_triangle()->squared_distance(p);
 			double dist = (double)CGAL::to_double(sqd);
 			if(min_dist>dist){
 				min_dist = dist;

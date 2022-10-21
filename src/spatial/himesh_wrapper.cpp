@@ -39,11 +39,10 @@ void HiMesh_Wrapper::advance_to(int lod){
 	mesh->advance_to(lod);
 	//pthread_mutex_unlock(&lock);
 }
-// fill the segments into voxels
-// seg_tri: 0 for segments, 1 for triangle
-size_t HiMesh_Wrapper::fill_voxels(element_type etype){
+// fill the triangles into voxels
+size_t HiMesh_Wrapper::fill_voxels(){
 	assert(mesh);
-	return mesh->fill_voxels(voxels, etype);
+	return mesh->fill_voxels(voxels);
 	return 0;
 }
 size_t HiMesh_Wrapper::num_vertices(){

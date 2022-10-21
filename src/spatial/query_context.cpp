@@ -96,7 +96,6 @@ query_context parse_args(int argc, char **argv){
 		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
-		("segment_distance", "calculate the distance between segments instead of triangles")
 		("disable_triangle_hausdorf", "use the hausdorf distance of the entire mesh")
 		;
 	po::variables_map vm;
@@ -118,9 +117,6 @@ query_context parse_args(int argc, char **argv){
 	}
 	if(vm.count("counter_clock")){
 		ctx.counter_clock = true;
-	}
-	if(vm.count("segment_distance")){
-		ctx.etype = DT_Segment;
 	}
 	if(vm.count("disable_triangle_hausdorf")){
 		ctx.disable_triangle_hausdorf = true;

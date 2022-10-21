@@ -19,11 +19,6 @@ using namespace std;
 
 namespace hispeed{
 
-typedef enum element_type_{
-	DT_Segment = 0,
-	DT_Triangle
-}element_type;
-
 class Tile;
 class query_context{
 public:
@@ -56,8 +51,6 @@ public:
 	int verbose = 0;
 	bool counter_clock = false;
 
-	// the element type used for calculating distance, segment or triangle
-	element_type etype = DT_Triangle;
 	int cur_lod = 0;
 	Tile *tile1 = NULL;
 	Tile *tile2 = NULL;

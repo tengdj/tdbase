@@ -73,7 +73,7 @@ public:
 	range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist);
 
 	void decode_data(vector<candidate_entry> &candidates, query_context &ctx);
-	void fill_voxels(vector<candidate_entry> &candidates, query_context &ctx, element_type etype);
+	void fill_voxels(vector<candidate_entry> &candidates, query_context &ctx);
 	void calculate_distance(vector<candidate_entry> &candidates, query_context &ctx);
 	void check_intersection(vector<candidate_entry> &candidates, query_context &ctx);
 	void nearest_neighbor(query_context ctx);

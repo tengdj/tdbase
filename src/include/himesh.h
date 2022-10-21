@@ -125,8 +125,9 @@ public:
 	// get the elements
 	size_t fill_segments(float *&segments);
 	size_t fill_triangles(float *&triangles);
+	size_t fill_hausdorf_distances(float *&hausdorf);
 	pair<float, float> get_triangle_hausdorf(int tri_id = -1);
-	size_t fill_voxels(vector<Voxel *> &voxels, element_type seg_or_triangle);
+	size_t fill_voxels(vector<Voxel *> &voxels);
 	size_t fill_vertices(float *&vertices);
 	list<Segment> get_segments();
 	list<Triangle> get_triangles();
@@ -173,9 +174,8 @@ public:
 	~HiMesh_Wrapper();
 	void writeMeshOff();
 	void advance_to(int lod);
-	// fill the segments into voxels
-	// seg_tri: 0 for segments, 1 for triangle
-	size_t fill_voxels(element_type seg_tri);
+	// fill the triangles into voxels
+	size_t fill_voxels();
 
 	size_t num_vertices();
 	void reset();

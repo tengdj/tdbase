@@ -71,12 +71,12 @@ void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context
 			for(voxel_pair &vp:info.voxel_pairs){
 				assert(vp.v1&&vp.v2);
 				// not filled yet
-				if(vp.v1->data.find(ctx.cur_lod)==vp.v1->data.end()){
+				if(!vp.v1->is_decoded(ctx.cur_lod)){
 					// ensure the mesh is extracted
 					ctx.tile1->decode_to(wrapper1->id, ctx.cur_lod);
 				}
 
-				if(vp.v2->data.find(ctx.cur_lod)==vp.v2->data.end()){
+				if(!vp.v2->is_decoded(ctx.cur_lod)){
 					ctx.tile2->decode_to(info.mesh_wrapper->id, ctx.cur_lod);
 				}
 			}// end for voxel_pairs
@@ -84,19 +84,19 @@ void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context
 	}// end for candidates
 }
 
-void SpatialJoin::fill_voxels(vector<candidate_entry> &candidates, query_context &ctx, element_type etype){
+void SpatialJoin::fill_voxels(vector<candidate_entry> &candidates, query_context &ctx){
 	for(candidate_entry &c:candidates){
 		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
 		for(candidate_info &info:c.candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
 				assert(vp.v1&&vp.v2);
 				// not filled yet
-				if(vp.v1->data.find(ctx.cur_lod)==vp.v1->data.end()){
+				if(!vp.v1->is_decoded(ctx.cur_lod)){
 					// ensure the mesh is extracted
-					wrapper1->fill_voxels(etype);
+					wrapper1->fill_voxels();
 				}
-				if(vp.v2->data.find(ctx.cur_lod)==vp.v2->data.end()){
-					info.mesh_wrapper->fill_voxels(etype);
+				if(!vp.v2->is_decoded(ctx.cur_lod)){
+					info.mesh_wrapper->fill_voxels();
 				}
 			}// end for voxel_pairs
 		}// end for distance_candiate list
@@ -140,7 +140,7 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 		}
 		ctx.computation_time += logt("computation for distance computation", start);
 	}else{
-		fill_voxels(candidates, ctx, DT_Triangle);
+		fill_voxels(candidates, ctx);
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		size_t element_num = 0;
 		size_t element_pair_num = 0;
@@ -226,17 +226,9 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 		// build the AABB tree
 		for(candidate_entry &c:candidates){
 			for(candidate_info &info:c.candidates){
-				if(global_ctx.etype==DT_Segment){
-					info.mesh_wrapper->mesh->get_aabb_tree_segment();
-				}else{
-					info.mesh_wrapper->mesh->get_aabb_tree_triangle();
-				}
+				info.mesh_wrapper->mesh->get_aabb_tree_triangle();
 			}
-			if(global_ctx.etype==DT_Segment){
-				c.mesh_wrapper->mesh->get_aabb_tree_segment();
-			}else{
-				c.mesh_wrapper->mesh->get_aabb_tree_triangle();
-			}
+			c.mesh_wrapper->mesh->get_aabb_tree_triangle();
 		}
 		ctx.packing_time += logt("building aabb tree", start);
 
@@ -257,7 +249,7 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 		ctx.computation_time += logt("computation for distance computation", start);
 
 	}else{
-		fill_voxels(candidates, ctx, global_ctx.etype);
+		fill_voxels(candidates, ctx);
 
 		map<Voxel *, std::pair<uint, uint>> voxel_map;
 		size_t element_num = 0;
@@ -286,7 +278,7 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 		}
 		assert(element_num>0 && "there should be elements in voxels need be calculated");
 
-		const int element_size = global_ctx.etype==DT_Segment?6:9;
+		const int element_size = 9;
 		// now we allocate the space and store the data in a buffer
 		float *data = new float[element_size*element_num];
 		uint *offset_size = new uint[4*pair_num];

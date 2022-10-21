@@ -18,6 +18,7 @@
 #include <math.h>
 #include <immintrin.h>
 #include <map>
+#include <assert.h>
 using namespace std;
 
 namespace hispeed{
@@ -225,6 +226,7 @@ public:
 	// the pointer and size of the segment/triangle data in this voxel
 	map<int, float *> data;
 	map<int, int> size;
+	map<int, float *> hausdorf;
 public:
 	~Voxel(){
 		reset();
@@ -236,8 +238,24 @@ public:
 				it->second = NULL;
 			}
 		}
+		for(map<int, float *>::iterator it=hausdorf.begin();it!=hausdorf.end();it++){
+			if(it->second!=NULL){
+				delete []it->second;
+				it->second = NULL;
+			}
+		}
+
 		data.clear();
 		size.clear();
+		hausdorf.clear();
+	}
+	bool is_decoded(int lod){
+		return !(data.find(lod)==data.end());
+	}
+
+	pair<float, float> getHausdorfDistance(int lod, int offset){
+		assert(is_decoded(lod) && size[lod]>offset);
+		return pair<float, float>(*(hausdorf[lod]+offset*2),*(hausdorf[lod]+offset*2+1));
 	}
 };
 
