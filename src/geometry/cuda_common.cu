@@ -4,7 +4,8 @@
  * */
 
 #include <cuda.h>
-#include "cuda_util.h"
+
+#include "cuda_util.cuh"
 #include "mygpu.h"
 
 using namespace std;

@@ -46,8 +46,8 @@
 // segments and TriDist() for finding closest points on a pair of triangles
 //--------------------------------------------------------------------------
 
+#include "cuda_util.cuh"
 #include "geometry.h"
-#include "cuda_util.h"
 
 namespace hispeed{
 

@@ -35,10 +35,15 @@
   triangle.
  *
  */
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <math.h>
+#include <memory.h>
+#include <time.h>
 
 #include "util.h"
 #include "geometry.h"
-#include "cuda_util.h"
 
 namespace hispeed{
 
@@ -104,14 +109,9 @@ namespace hispeed{
 	}                                         \
 }
 
-
-
-
 //This procedure testing for intersection between coplanar triangles is taken
 // from Tomas Moller's
 //"A Fast Triangle-Triangle Intersection Test",Journal of Graphics Tools, 2(2), 1997
-
-__device__
 inline int coplanar_tri_tri(const float N[3],
 					 const float V0[3],const float V1[3],const float V2[3],
 					 const float U0[3],const float U1[3],const float U2[3])
@@ -154,14 +154,18 @@ inline int coplanar_tri_tri(const float N[3],
     return 0;
 }
 
+void sVpsV_2(float *Vr, float s1, const float * V1, float s2, const float *V2){
+	Vr[0] = s1*V1[0] + s2*V2[0];
+	Vr[1] = s1*V1[1] + s2*V2[1];
+}
+
 /*
  * return whether two triangles intersect with each other
  * C1 and D1 are two points, and P1 P2, Q1 Q2 are the two vectors
  * represent the edges from C1 and D1
  *
  * */
-__device__
-inline bool TriInt(const float *data1, const float *data2){
+bool TriInt(const float *data1, const float *data2){
 
 	const float *C1 = data1;
 	const float *P1 = data1+3;
@@ -181,7 +185,7 @@ inline bool TriInt(const float *data1, const float *data2){
 	float  SF;
 	bool beta1_legal, beta2_legal;
 
-	VmV_d(r,D1,C1);
+	VmV(r,D1,C1);
 	// determinant computation
 	dp0 = P1[1]*P2[2]-P2[1]*P1[2];
 	dp1 = P1[0]*P2[2]-P2[0]*P1[2];
@@ -208,11 +212,11 @@ inline bool TriInt(const float *data1, const float *data2){
 			float C2[3],C3[3],D2[3],D3[3],N1[3];
 			// We use the coplanar test of Moller which
 			// takes the 6 vertices and 2 normals as input.
-			VpV_d(C2,C1,P1);
-			VpV_d(C3,C1,P2);
-			VpV_d(D2,D1,Q1);
-			VpV_d(D3,D1,Q2);
-			VcrossV_d(N1,P1,P2);
+			VpV(C2,C1,P1);
+			VpV(C3,C1,P2);
+			VpV(D2,D1,Q1);
+			VpV(D3,D1,Q2);
+			VcrossV(N1,P1,P2);
 			return coplanar_tri_tri(N1,C1,C2,C3,D1,D2,D3);
 		}
 	}else if (!beta2_legal && !beta1_legal){
@@ -227,17 +231,17 @@ inline bool TriInt(const float *data1, const float *data2){
 
 	if (beta2_legal && beta1_legal) { //beta1, beta2
 		SF = dq1*dq2;
-		sVpsV_2_d(t,beta2,Q2, (-beta1),Q1);
+		sVpsV_2(t,beta2,Q2, (-beta1),Q1);
 	} else if (beta1_legal && !beta2_legal) { //beta1, beta3
 		SF = dq1*dq3;
 		beta1 =beta1-beta2;   // all betas are multiplied by a positive SF
 		beta3 =dr3*dq1;
-		sVpsV_2_d(t,(SF-beta3-beta1),Q1,beta3,Q2);
+		sVpsV_2(t,(SF-beta3-beta1),Q1,beta3,Q2);
 	} else if (beta2_legal && !beta1_legal) { //beta2, beta3
 		SF = dq2*dq3;
 		beta2 =beta1-beta2;   // all betas are multiplied by a positive SF
 		beta3 =dr3*dq2;
-		sVpsV_2_d(t,(SF-beta3),Q1,(beta3-beta2),Q2);
+		sVpsV_2(t,(SF-beta3),Q1,(beta3-beta2),Q2);
 		Q1=Q2;
 		beta1=beta2;
 	}
@@ -245,7 +249,7 @@ inline bool TriInt(const float *data1, const float *data2){
 	/*
 	 * calculates the 2D intersection
 	 * */
-	sVpsV_2_d(r4,SF,r,beta1,Q1);
+	sVpsV_2(r4,SF,r,beta1,Q1);
 
 	p1[0]=SF*P1[0];
 	p1[1]=SF*P1[1];
@@ -282,67 +286,16 @@ inline bool TriInt(const float *data1, const float *data2){
 	return false;
 }
 
-
-__global__
-void TriInt_cuda(const float *data, const uint *offset_size, uint *intersect, uint pair_num){
-
-	int idx = blockIdx.x*1024+threadIdx.x;
-	if(idx>=pair_num){
-		return;
-	}
-
-	uint offset1 = offset_size[idx*4];
-	uint size_1 = offset_size[idx*4+1];
-	uint offset2 = offset_size[idx*4+2];
-	uint size_2 = offset_size[idx*4+3];
-	intersect[idx] = 0;
-	for(uint s1 = 0;s1<size_1;s1++){
-		for(uint s2=0;s2<size_2;s2++){
-			const float *t1 = data + 9*(offset1+s1);
-			const float *t2 = data + 9*(offset2+s2);
-			if(TriInt(t1,t2)){
-				intersect[idx] = 1;
-				return;
-			}
+void print_triangle(const float *tri){
+	for(int i=0;i<3;i++){
+		for(int j=0;j<3;j++){
+			printf("%f ",*(tri+i*3+j));
 		}
+		printf("\n");
 	}
 }
 
-
-void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
-		uint *intersection, const uint pair_num, const uint triangle_num){
-
-	assert(gpu);
-	cudaSetDevice(gpu->device_id);
-	struct timeval start = get_cur_time();
-	// allocate memory in GPU
-	char *cur_d_cuda = gpu->d_data;
-
-	// segment data in device
-	float *d_data = (float *)(cur_d_cuda);
-	cur_d_cuda += 9*triangle_num*sizeof(float);
-	// space for the results in GPU
-	uint *d_intersect = (uint *)(cur_d_cuda);
-	cur_d_cuda += sizeof(uint)*pair_num;
-	// space for the offset and size information in GPU
-	uint *d_os = (uint *)(cur_d_cuda);
-
-	CUDA_SAFE_CALL(cudaMemcpy(d_data, data, triangle_num*9*sizeof(float), cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, pair_num*4*sizeof(uint), cudaMemcpyHostToDevice));
-	//logt("copying data to GPU", start);
-
-	// check the intersection
-
-	TriInt_cuda<<<(pair_num/1024+1), 1024>>>(d_data, d_os, d_intersect, pair_num);
-	check_execution();
-
-	//cout<<pair_num<<" "<<triangle_num<<" "<<sizeof(uint)<<endl;
-	cudaDeviceSynchronize();
-	//logt("distances computations", start);
-
-	CUDA_SAFE_CALL(cudaMemcpy(intersection, d_intersect, pair_num*sizeof(uint), cudaMemcpyDeviceToHost));
-	//logt("copy data out", start);
-}
+int counter = 0;
 
 }
 

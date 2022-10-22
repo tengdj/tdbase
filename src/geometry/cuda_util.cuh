@@ -96,6 +96,27 @@ void sVpsV_2_d(float *Vr, float s1, const float * V1, float s2, const float *V2)
 	Vr[1] = s1*V1[1] + s2*V2[1];
 }
 
+__device__
+inline
+void
+VxS_d(float Vr[3], const float V[3], float s)
+{
+  Vr[0] = V[0] * s;
+  Vr[1] = V[1] * s;
+  Vr[2] = V[2] * s;
+}
+
+// Euclid distance
+__device__
+inline
+float
+VdistV2_d(const float V1[3], const float V2[3])
+{
+  return ( (V1[0]-V2[0]) * (V1[0]-V2[0]) +
+	   (V1[1]-V2[1]) * (V1[1]-V2[1]) +
+	   (V1[2]-V2[2]) * (V1[2]-V2[2]));
+}
+
 }
 
 

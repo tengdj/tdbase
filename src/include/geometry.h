@@ -129,17 +129,14 @@ typedef struct geometry_param_{
 
 
 float PointTriangleDist(const float *point, const float *triangle);
-
 float TriDist(const float *S, const float *T);
 result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
-
-result_container SegDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
-void SegDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
-					   float *result, const uint batch_num, const uint segment_num);
+void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
+		               result_container *result, const uint pair_num, const uint element_num);
 
 result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2);
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
-		uint *result, const uint batch_num, const uint triangle_num);
+		result_container *result, const uint batch_num, const uint triangle_num);
 
 class geometry_computer{
 	pthread_mutex_t gpu_lock;

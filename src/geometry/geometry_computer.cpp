@@ -12,16 +12,6 @@
 
 namespace hispeed{
 
-void *SegDist_unit(void *params_void){
-	geometry_param *param = (geometry_param *)params_void;
-	for(int i=0;i<param->pair_num;i++){
-		param->results[i] = SegDist_single(param->data+param->offset_size[4*i]*6,
-											param->data+param->offset_size[4*i+2]*6,
-											param->offset_size[4*i+1],
-											param->offset_size[4*i+3]);
-	}
-	return NULL;
-}
 
 void *TriDist_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
@@ -58,11 +48,6 @@ void geometry_computer::release_cpu(){
 
 gpu_info *geometry_computer::request_gpu(int min_size, bool force){
 	assert(gpus.size()>=1);
-//	if(gpus.size()==1){
-//		gpu_info *info = gpus[0];
-//		pthread_mutex_lock(&info->lock);
-//		return info;
-//	}
 	do{
 		for(gpu_info *info:gpus){
 			if(!info->busy&&info->mem_size>min_size+1){
@@ -96,7 +81,7 @@ void geometry_computer::get_distance_gpu(geometry_param &cc){
 	gpu_info *gpu = request_gpu(cc.data_size*6*sizeof(float)/1024/1024, true);
 	assert(gpu);
 	log("GPU %d started to get distance", gpu->device_id);
-	hispeed::SegDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.distances, cc.pair_num, cc.data_size);
+	hispeed::TriDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.results, cc.pair_num, cc.data_size);
 	release_gpu(gpu);
 }
 
@@ -105,7 +90,7 @@ void geometry_computer::get_intersect_gpu(geometry_param &cc){
 	gpu_info *gpu = request_gpu(cc.data_size*9*sizeof(float)/1024/1024, true);
 	assert(gpu);
 	log("GPU %d started to check intersect", gpu->device_id);
-	hispeed::TriInt_batch_gpu(gpu, cc.data, cc.offset_size, cc.intersect, cc.pair_num, cc.data_size);
+	hispeed::TriInt_batch_gpu(gpu, cc.data, cc.offset_size, cc.results, cc.pair_num, cc.data_size);
 	release_gpu(gpu);
 }
 
@@ -151,7 +136,6 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		void *status;
 		pthread_join(threads[i-1], &status);
 	}
-//release_cpu();
 }
 
 

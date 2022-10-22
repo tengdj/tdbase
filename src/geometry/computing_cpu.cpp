@@ -462,6 +462,28 @@ result_container TriDist_single(const float *data1, const float *data2, size_t s
 	return ret;
 }
 
+result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2){
+	result_container res;
+	res.result.intersected = false;
+	for(size_t i=0;i<size1;i++){
+		for(size_t j=0;j<size2;j++){
+			//todo: the TriInt function does not work correctly
+			//if(TriInt(data1+9*i, data2+9*j))
+			if(TriDist(data1+9*i, data2+9*j)==0)
+			{
+				res.result.intersected = true;
+				res.p1 = i;
+				res.p2 = j;
+				//log("computed %d",counter);
+//				print_triangle(data1+9*i);
+//				print_triangle(data2+9*i);
+				return res;
+			}
+		}
+	}
+	return res;
+}
+
 float PointTriangleDist(const float *point, const float *triangle)
 {
 	// The member result.sqrDistance is set in each block of the
