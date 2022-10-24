@@ -151,7 +151,7 @@ void SpatialJoin::within(query_context ctx){
 							range dist = vp_iter->dist;
 							float hdist1;
 							float hdist2;
-							if(global_ctx.disable_triangle_hausdorf){
+							if(global_ctx.hausdorf_level<2){
 								hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
 								hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
 							}else{
@@ -165,12 +165,14 @@ void SpatialJoin::within(query_context ctx){
 								dist.maxdist = res.result.distance;
 							}else{
 								dist.maxdist = std::min(dist.maxdist, res.result.distance);
-								dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-								if(global_ctx.verbose>=1){
-									log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-											hdist1, hdist2,
-											ci_iter->distance.mindist, ci_iter->distance.maxdist,
-											dist.mindist, dist.maxdist);
+								if(global_ctx.hausdorf_level>0){
+									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
+									if(global_ctx.verbose>=1){
+										log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
+												hdist1, hdist2,
+												ci_iter->distance.mindist, ci_iter->distance.maxdist,
+												dist.mindist, dist.maxdist);
+									}
 								}
 							}
 							vp_iter->dist = dist;

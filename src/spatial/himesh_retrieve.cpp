@@ -95,7 +95,7 @@ size_t HiMesh::fill_hausdorf_distances(float *&hausdorf){
 
 
 std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
-	if(global_ctx.disable_triangle_hausdorf || tri_id==-1){
+	if(global_ctx.hausdorf_level<2 || tri_id==-1){
 		return getHausdorfDistance();
 	}
 	size_t index = 0;

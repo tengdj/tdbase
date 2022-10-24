@@ -229,7 +229,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							range dist = vp.dist;
 							float hdist1;
 							float hdist2;
-							if(global_ctx.disable_triangle_hausdorf){
+							if(global_ctx.hausdorf_level<2){
 								hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
 								hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
 							}else{
@@ -243,12 +243,13 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 								dist.maxdist = res.result.distance;
 							}else{
 								dist.maxdist = std::min(dist.maxdist, res.result.distance);
-								dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-
-								dist.mindist = std::min(dist.mindist, dist.maxdist);
+								if(global_ctx.hausdorf_level>0){
+									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
+									dist.mindist = std::min(dist.mindist, dist.maxdist);
+								}
 							}
 
-							if(global_ctx.verbose>=1){
+							if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0){
 								log("%ld(%d)\t%ld(%d):\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id,res.p1, wrapper2->id,res.p2,
 										hdist1, hdist2,
 										vp.dist.mindist, vp.dist.maxdist,

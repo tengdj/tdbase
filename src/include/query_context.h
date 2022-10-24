@@ -44,7 +44,7 @@ public:
 	bool use_aabb = false;
 	bool use_gpu = false;
 	bool use_multimbb = false;
-	bool disable_triangle_hausdorf = false;
+	int hausdorf_level = 2; // 0 for no hausdor, 1 for hausdorf at the mesh level, 2 for triangle level
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;

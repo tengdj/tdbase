@@ -35,15 +35,15 @@ void HiMesh_Wrapper::writeMeshOff(){
 }
 void HiMesh_Wrapper::advance_to(int lod){
 	assert(mesh);
-	//pthread_mutex_lock(&lock);
+	pthread_mutex_lock(&lock);
 	mesh->advance_to(lod);
-	//pthread_mutex_unlock(&lock);
+	cur_lod = lod;
+	pthread_mutex_unlock(&lock);
 }
 // fill the triangles into voxels
 size_t HiMesh_Wrapper::fill_voxels(){
 	assert(mesh);
 	return mesh->fill_voxels(voxels);
-	return 0;
 }
 size_t HiMesh_Wrapper::num_vertices(){
 	return mesh->size_of_vertices();

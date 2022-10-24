@@ -165,6 +165,7 @@ void Tile::retrieve_mesh(size_t id){
 
 	assert(id>=0&&id<objects.size());
 	HiMesh_Wrapper *wrapper = objects[id];
+	pthread_mutex_lock(&read_lock);
 	if(wrapper->mesh==NULL){
 		timeval cur = hispeed::get_cur_time();
 		char *mesh_data = new char[wrapper->data_size];
@@ -178,6 +179,7 @@ void Tile::retrieve_mesh(size_t id){
 		delete mesh_data;
 		newmesh_time += hispeed::get_time_elapsed(cur, true);
 	}
+	pthread_mutex_unlock(&read_lock);
 }
 
 OctreeNode *Tile::build_octree(size_t leaf_size){

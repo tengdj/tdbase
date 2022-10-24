@@ -96,7 +96,7 @@ query_context parse_args(int argc, char **argv){
 		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
-		("disable_triangle_hausdorf", "use the hausdorf distance of the entire mesh")
+		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdor, 1 for hausdorf at the mesh level, 2 for triangle level(default)")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -118,9 +118,7 @@ query_context parse_args(int argc, char **argv){
 	if(vm.count("counter_clock")){
 		ctx.counter_clock = true;
 	}
-	if(vm.count("disable_triangle_hausdorf")){
-		ctx.disable_triangle_hausdorf = true;
-	}
+
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
 		cout <<"error query type: "<< ctx.query_type <<endl;
 		exit(0);

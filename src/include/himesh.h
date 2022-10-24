@@ -169,6 +169,7 @@ public:
 
 	pthread_mutex_t lock;
 	vector<HiMesh_Wrapper *> results;
+	int cur_lod = 0;
 public:
 	HiMesh_Wrapper();
 	~HiMesh_Wrapper();
