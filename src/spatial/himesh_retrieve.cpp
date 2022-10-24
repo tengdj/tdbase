@@ -149,7 +149,16 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	const int  size_of_element = 9;
 	float *data_buffer = NULL;
 	float *hausdorf_buffer = NULL;
-	int lod = i_decompPercentage;
+	uint lod = i_decompPercentage;
+
+	// already filled
+	if(voxels[0]->size.find(lod)!=voxels[0]->size.end()){
+		if(!(voxels[0]->data[lod]!=NULL &&voxels[0]->hausdorf[lod] !=NULL)){
+			log("unexpectedly large lod: %d %d",lod,i_decompPercentage);
+		}
+		assert(voxels[0]->data[lod]!=NULL &&voxels[0]->hausdorf[lod] !=NULL);
+		return size_of_triangles();
+	}
 
 	num_of_element = fill_triangles(data_buffer);
 	fill_hausdorf_distances(hausdorf_buffer);
@@ -171,6 +180,7 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	for(int i=0;i<voxels.size();i++){
 		voxels[i]->size[lod] = 0;
 		voxels[i]->data[lod] = NULL;
+		voxels[0]->hausdorf[lod] = NULL;
 		group_count[i] = 0;
 	}
 	for(int i=0;i<num_of_element;i++){

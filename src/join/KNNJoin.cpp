@@ -174,7 +174,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 	ctx.index_time += logt("index retrieving", start);
 
 	// now we start to get the distances with progressive level of details
-	for(int lod:ctx.lods){
+	for(uint lod:ctx.lods){
 		ctx.cur_lod = lod;
 		struct timeval iter_start = get_cur_time();
 		start = get_cur_time();

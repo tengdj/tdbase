@@ -191,7 +191,8 @@ OctreeNode *Tile::build_octree(size_t leaf_size){
 }
 
 
-void Tile::decode_to(size_t id, int lod){
+void Tile::decode_to(size_t id, uint lod){
+	assert(lod>=0 && lod<=100);
 	assert(id>=0&&id<objects.size());
 	timeval cur = hispeed::get_cur_time();
 	timeval start = hispeed::get_cur_time();

@@ -33,7 +33,7 @@ void HiMesh_Wrapper::writeMeshOff(){
 	ss<<id<<".off";
 	mesh->writeMeshOff(ss.str().c_str());
 }
-void HiMesh_Wrapper::advance_to(int lod){
+void HiMesh_Wrapper::advance_to(uint lod){
 	assert(mesh);
 	pthread_mutex_lock(&lock);
 	mesh->advance_to(lod);

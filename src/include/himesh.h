@@ -174,7 +174,7 @@ public:
 	HiMesh_Wrapper();
 	~HiMesh_Wrapper();
 	void writeMeshOff();
-	void advance_to(int lod);
+	void advance_to(uint lod);
 	// fill the triangles into voxels
 	size_t fill_voxels();
 

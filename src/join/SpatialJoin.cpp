@@ -64,6 +64,7 @@ range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, doubl
 }
 
 void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context &ctx){
+	assert(ctx.cur_lod>=0 && ctx.cur_lod<=100);
 	for(candidate_entry &c:candidates){
 		//print_candidate(c);
 		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
@@ -85,6 +86,7 @@ void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context
 }
 
 void SpatialJoin::fill_voxels(vector<candidate_entry> &candidates, query_context &ctx){
+	assert(ctx.cur_lod>=0 && ctx.cur_lod<=100);
 	for(candidate_entry &c:candidates){
 		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
 		for(candidate_info &info:c.candidates){

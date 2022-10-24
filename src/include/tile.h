@@ -62,7 +62,7 @@ public:
 			<<endl<<endl;
 	}
 
-	void decode_to(size_t id, int lod);
+	void decode_to(size_t id, uint lod);
 	HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
 		return objects[id];

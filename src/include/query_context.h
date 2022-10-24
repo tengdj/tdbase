@@ -51,7 +51,7 @@ public:
 	int verbose = 0;
 	bool counter_clock = false;
 
-	int cur_lod = 0;
+	uint cur_lod = 0;
 	Tile *tile1 = NULL;
 	Tile *tile2 = NULL;
 

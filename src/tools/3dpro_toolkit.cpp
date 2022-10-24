@@ -355,7 +355,7 @@ static void compress(int argc, char **argv){
 	if(argc>2){
 		lod = atoi(argv[2]);
 	}
-	for(int i=0;i<=lod;i+=10){
+	for(uint i=0;i<=lod;i+=10){
 		himesh->advance_to(i);
 		//log("%d %f", i, himesh->getHausdorfDistance());
 		himesh->writeCurrentOperationMesh("/gisdata/compressed", i);
