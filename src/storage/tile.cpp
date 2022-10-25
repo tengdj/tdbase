@@ -21,37 +21,58 @@ namespace hispeed{
 // load meta data from file
 // and construct the hierarchy structure
 // tile->mesh->voxels->triangle/edges
-Tile::Tile(std::string path, size_t capacity){
-	struct timeval start = get_cur_time();
+Tile::Tile(std::string path, size_t capacity, bool init_data){
 	if(!hispeed::file_exist(path.c_str())){
 		log("%s does not exist", path.c_str());
 		exit(-1);
 	}
-	dt_fs = fopen(path.c_str(), "r");
+	tile_path = path;
+	tile_capacity = capacity;
+	if(init_data){
+		init();
+	}
+}
+
+void Tile::init(){
+	struct timeval start = get_cur_time();
+	FILE *dt_fs = fopen(tile_path.c_str(), "r");
 	if(!dt_fs){
-		log("%s can not be opened", path.c_str());
+		log("%s can not be opened", tile_path.c_str());
 		exit(-1);
 	}
-	string meta_path = path;
+	string meta_path = tile_path;
 	boost::replace_all(meta_path, ".dt", ".mt");
+	process_lock();
 	if(!hispeed::file_exist(meta_path.c_str())){
-		parse_raw();
+		parse_raw(dt_fs);
 		persist(meta_path);
 	}else{
-		load(meta_path, capacity);
+		load(meta_path, tile_capacity);
 	}
-	pthread_mutex_init(&read_lock, NULL);
-	logt("loaded %ld polyhedra in tile %s", start, objects.size(), path.c_str());
+	process_unlock();
+	size_t sz = file_size(tile_path.c_str());
+	data_buffer = new char[sz];
+	start = get_cur_time();
+	fseek(dt_fs, 0, SEEK_SET);
+	size_t rdsze = fread((void *)data_buffer, sizeof(char), sz, dt_fs);
+	assert(rdsze == sz);
+
+	// close the data file pointer
+	fclose(dt_fs);
+	logt("read the file", start);
+
+	if(!global_ctx.use_multimbb){
+		disable_innerpart();
+	}
+	logt("loaded %ld polyhedra in tile %s", start, objects.size(), tile_path.c_str());
 }
 
 Tile::~Tile(){
 	for(HiMesh_Wrapper *h:objects){
 		delete h;
 	}
-	// close the data file pointer
-	if(dt_fs!=NULL){
-		fclose(dt_fs);
-		dt_fs = NULL;
+	if(data_buffer!=NULL){
+		delete []data_buffer;
 	}
 }
 
@@ -94,7 +115,6 @@ bool Tile::persist(string path){
 
 // load from the cached data
 bool Tile::load(string path, int capacity){
-
 	FILE *mt_fs = fopen(path.c_str(), "r");
 	if(mt_fs==NULL){
 		log("%s cannot be opened, error: %s",path.c_str(),strerror(errno));
@@ -128,7 +148,7 @@ bool Tile::load(string path, int capacity){
 }
 
 // parse the metadata
-bool Tile::parse_raw(){
+bool Tile::parse_raw(FILE *dt_fs){
 	assert(dt_fs);
 	size_t dsize = 0;
 	long offset = 0;
@@ -165,21 +185,13 @@ void Tile::retrieve_mesh(size_t id){
 
 	assert(id>=0&&id<objects.size());
 	HiMesh_Wrapper *wrapper = objects[id];
-	pthread_mutex_lock(&read_lock);
 	if(wrapper->mesh==NULL){
 		timeval cur = hispeed::get_cur_time();
-		char *mesh_data = new char[wrapper->data_size];
-		malloc_time += hispeed::get_time_elapsed(cur, true);
-		assert(dt_fs);
-		fseek(dt_fs, wrapper->offset, SEEK_SET);
-		size_t rd = fread(mesh_data, sizeof(char), wrapper->data_size, dt_fs);
-		disk_time += hispeed::get_time_elapsed(cur, true);
-		assert(wrapper->data_size==rd);
-		wrapper->mesh = new HiMesh(mesh_data, wrapper->data_size);
-		delete mesh_data;
+		wrapper->mesh = new HiMesh(data_buffer+wrapper->offset, wrapper->data_size);
 		newmesh_time += hispeed::get_time_elapsed(cur, true);
 	}
-	pthread_mutex_unlock(&read_lock);
+	log("%ld", wrapper->mesh->size_of_triangles());
+	assert(wrapper->mesh);
 }
 
 OctreeNode *Tile::build_octree(size_t leaf_size){

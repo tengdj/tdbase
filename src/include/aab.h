@@ -213,6 +213,20 @@ public:
 	uint size = 1;
 };
 
+class data_holder{
+public:
+	int size = 0;
+	float *data = NULL;
+	float *hausdorf = NULL;
+	~data_holder(){
+		if(data){
+			delete []data;
+		}
+		if(hausdorf){
+			delete []hausdorf;
+		}
+	}
+};
 
 /*
  * each voxel contains the minimum boundary box
@@ -221,41 +235,29 @@ public:
  * */
 class Voxel: public aab{
 public:
-	// point which the segments close with
+	// point which the triangles close with
 	float core[3];
-	// the pointer and size of the segment/triangle data in this voxel
-	map<int, float *> data;
-	map<int, int> size;
-	map<int, float *> hausdorf;
+	// the container triangle data in this voxel
+	// todo: we assume no data for multiple LOD will be visited at once for now
+	// we assume each voxel maintains the triangle data only for one LOD
+	data_holder *data = NULL;
 public:
 	~Voxel(){
 		reset();
 	}
 	void reset(){
-		for(map<int, float *>::iterator it=data.begin();it!=data.end();it++){
-			if(it->second!=NULL){
-				delete []it->second;
-				it->second = NULL;
-			}
+		if(data){
+			delete data;
+			data = NULL;
 		}
-		for(map<int, float *>::iterator it=hausdorf.begin();it!=hausdorf.end();it++){
-			if(it->second!=NULL){
-				delete []it->second;
-				it->second = NULL;
-			}
-		}
-
-		data.clear();
-		size.clear();
-		hausdorf.clear();
 	}
-	bool is_decoded(int lod){
-		return !(data.find(lod)==data.end());
+	bool is_decoded(){
+		return data!=NULL;
 	}
 
-	pair<float, float> getHausdorfDistance(int lod, int offset){
-		assert(is_decoded(lod) && size[lod]>offset);
-		return pair<float, float>(*(hausdorf[lod]+offset*2),*(hausdorf[lod]+offset*2+1));
+	pair<float, float> getHausdorfDistance(int offset){
+		assert(data);
+		return pair<float, float>(*(data->hausdorf+offset*2),*(data->hausdorf+offset*2+1));
 	}
 };
 

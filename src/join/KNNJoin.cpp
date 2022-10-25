@@ -225,7 +225,8 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 					for(voxel_pair &vp:ci.voxel_pairs){
 						result_container res = ctx.results[index++];
 						// update the distance
-						if(vp.v1->size[lod]>0&&vp.v2->size[lod]>0){
+						assert(vp.v1->data && vp.v2->data);
+						if(vp.v1->data->size>0&&vp.v2->data->size>0){
 							range dist = vp.dist;
 							float hdist1;
 							float hdist2;
@@ -233,8 +234,8 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 								hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
 								hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
 							}else{
-								hdist1 = vp.v1->getHausdorfDistance(lod, res.p1).second;
-								hdist2 = vp.v2->getHausdorfDistance(lod, res.p2).second;
+								hdist1 = vp.v1->getHausdorfDistance(res.p1).second;
+								hdist2 = vp.v2->getHausdorfDistance(res.p2).second;
 							}
 
 							if(lod==ctx.highest_lod()){

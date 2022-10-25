@@ -106,6 +106,15 @@ inline int get_num_threads(){
 	return std::thread::hardware_concurrency();
 }
 
+static pthread_mutex_t plock;
+inline void process_lock(){
+	pthread_mutex_lock(&plock);
+}
+
+inline void process_unlock(){
+	pthread_mutex_unlock(&plock);
+}
+
 /*
  * some random number based functions
  *

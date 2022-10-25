@@ -144,10 +144,11 @@ void SpatialJoin::within(query_context ctx){
 					}
 				}else{
 					for(auto vp_iter = ci_iter->voxel_pairs.begin();vp_iter!=ci_iter->voxel_pairs.end();){
-						result_container res = ctx.results[index++];
+						assert(vp_iter->v1->data && vp_iter->v2->data);
 
+						result_container res = ctx.results[index++];
 						// update the distance
-						if(!determined && vp_iter->v1->size[lod]>0&&vp_iter->v2->size[lod]>0){
+						if(!determined && vp_iter->v1->data->size>0&&vp_iter->v2->data->size>0){
 							range dist = vp_iter->dist;
 							float hdist1;
 							float hdist2;
@@ -155,8 +156,8 @@ void SpatialJoin::within(query_context ctx){
 								hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
 								hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
 							}else{
-								hdist1 = vp_iter->v1->getHausdorfDistance(lod, res.p1).second;
-								hdist2 = vp_iter->v2->getHausdorfDistance(lod, res.p2).second;
+								hdist1 = vp_iter->v1->getHausdorfDistance(res.p1).second;
+								hdist2 = vp_iter->v2->getHausdorfDistance(res.p2).second;
 							}
 
 							if(lod==ctx.highest_lod()){

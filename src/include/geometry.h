@@ -118,10 +118,11 @@ typedef struct result_container_{
 typedef struct geometry_param_{
 	int id;
 	uint pair_num;
-	uint data_size;
-	const float *data;
+	uint element_num;;
+	size_t element_pair_num;
+	float *data;
 	// the offset and size of the computing pairs
-	const uint *offset_size;
+	uint *offset_size;
 	result_container *results;
 }geometry_param;
 

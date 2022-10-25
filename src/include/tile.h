@@ -18,21 +18,22 @@ using namespace std;
 namespace hispeed{
 
 class Tile{
-	pthread_mutex_t read_lock;
 	aab box;
 	std::vector<HiMesh_Wrapper *> objects;
-	FILE *dt_fs = NULL;
+	char *data_buffer = NULL;
+	size_t tile_capacity = INT_MAX;
+	string tile_path;
 	bool load(string path, int max_objects=INT_MAX);
 	bool persist(string path);
-	bool parse_raw();
+	bool parse_raw(FILE *);
 	// retrieve the data of the mesh with ID id on demand
 	void retrieve_mesh(size_t id);
-
 public:
 	// for building tile instead of load from file
 	Tile(){};
 	void add_raw(char *data);
-	Tile(std::string path, size_t capacity=LONG_MAX);
+	Tile(std::string path, size_t capacity=LONG_MAX, bool init_data = true);
+	void init();
 	~Tile();
 	void disable_innerpart();
 

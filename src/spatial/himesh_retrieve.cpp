@@ -141,35 +141,43 @@ size_t HiMesh::fill_vertices(float *&vertices){
 	return size;
 }
 
-// assign each segment(0) or triangle(1) to the proper voxel
 size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	assert(voxels.size()>0);
+	if(voxels[0]->is_decoded()){
+		return this->size_of_triangles();
+	}
 
 	size_t num_of_element = 0;
 	const int  size_of_element = 9;
 	float *data_buffer = NULL;
 	float *hausdorf_buffer = NULL;
-	uint lod = i_decompPercentage;
-
 	// already filled
-	if(voxels[0]->size.find(lod)!=voxels[0]->size.end()){
-		if(!(voxels[0]->data[lod]!=NULL &&voxels[0]->hausdorf[lod] !=NULL)){
-			log("unexpectedly large lod: %d %d",lod,i_decompPercentage);
-		}
-		assert(voxels[0]->data[lod]!=NULL &&voxels[0]->hausdorf[lod] !=NULL);
-		return size_of_triangles();
-	}
+//	if(voxels[0]->data_buffer.find(lod)!=voxels[0]->data_buffer.end()){
+//		if(voxels[0]->data.find(lod)==voxels[0]->data.end()){
+//			assert(false && "data is empty");
+//		}
+//		if(voxels[0]->hausdorf.find(lod)==voxels[0]->hausdorf.end()){
+//			assert(false && "hausdorf is empty");
+//		}
+//		if(!(voxels[0]->data->data!=NULL &&voxels[0]->hausdorf[lod] !=NULL)){
+//			log("unexpectedly large lod: %d %d",lod,i_decompPercentage);
+//		}
+//	}
 
 	num_of_element = fill_triangles(data_buffer);
 	fill_hausdorf_distances(hausdorf_buffer);
 
 	// for the special case only one voxel exist
 	if(voxels.size()==1){
-		voxels[0]->size[lod] = num_of_element;
-		voxels[0]->data[lod] = data_buffer;
-		voxels[0]->hausdorf[lod] = hausdorf_buffer;
+		data_holder *bf = new data_holder();
+		bf->size = num_of_element;
+		bf->data = data_buffer;
+		bf->hausdorf = hausdorf_buffer;
+		voxels[0]->data = bf;
 		return num_of_element;
 	}
+
+	assert(false);
 
 	// now reorganize the data with the voxel information given
 	// assign each segment to a proper group
@@ -178,9 +186,7 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	int *groups = new int[num_of_element];
 	int *group_count = new int[voxels.size()];
 	for(int i=0;i<voxels.size();i++){
-		voxels[i]->size[lod] = 0;
-		voxels[i]->data[lod] = NULL;
-		voxels[0]->hausdorf[lod] = NULL;
+		voxels[i]->data = new data_holder();
 		group_count[i] = 0;
 	}
 	for(int i=0;i<num_of_element;i++){
@@ -206,21 +212,21 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 
 	for(int i=0;i<voxels.size();i++){
 		if(group_count[i]>0){
-			voxels[i]->data[lod] = new float[group_count[i]*size_of_element];
-			voxels[i]->hausdorf[lod] = new float[group_count[i]*2];
+			voxels[i]->data->data = new float[group_count[i]*size_of_element];
+			voxels[i]->data->hausdorf = new float[group_count[i]*2];
 		}
 	}
 
 	// copy the data to the proper position in the segment_buffer
 	for(int i=0;i<num_of_element;i++){
 		Voxel *v = voxels[groups[i]];
-		memcpy((void *)(v->data[lod]+v->size[lod]*size_of_element),
+		memcpy((void *)(v->data->data+v->data->size*size_of_element),
 			   (void *)(data_buffer+i*size_of_element),
 			   size_of_element*sizeof(float));
-		memcpy((void *)(v->hausdorf[lod]+v->size[lod]*2),
+		memcpy((void *)(v->data->hausdorf+v->data->size*2),
 			   (void *)(hausdorf_buffer+i*2),
 			   2*sizeof(float));
-		v->size[lod]++;
+		v->data->size++;
 	}
 
 	delete []groups;

@@ -293,7 +293,6 @@ void MyMesh::readBaseMesh()
     i_nbDecimations = readInt16();
 
     // Set the mesh bounding box.
-
     unsigned i_nbVerticesBaseMesh = readInt();
     unsigned i_nbFacesBaseMesh = readInt();
     unsigned i_nbBitsPerVertex = ceil(log(i_nbVerticesBaseMesh) / log(2));

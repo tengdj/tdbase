@@ -125,12 +125,12 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 	voxel_num = std::max(1, voxel_num);
 	timeval start = hispeed::get_cur_time();
 	vector<Voxel *> voxels;
-	int lod = i_decompPercentage;
 	aab box = get_box();
 	if(voxel_num<=1){
 		Voxel *v = new Voxel();
 		v->set_box(box);
-		v->size[lod] = size_of_edges();
+		v->data = new data_holder();
+		v->data->size = size_of_edges();
 		voxels.push_back(v);
 		return voxels;
 	}
@@ -144,19 +144,19 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		v->core[0] = skeleton_points[i][0];
 		v->core[1] = skeleton_points[i][1];
 		v->core[2] = skeleton_points[i][2];
-		v->size[lod] = 0;
+		v->data->size = 0;
 		voxels.push_back(v);
 	}
 	// return one single box if less than 2 points are sampled
 	if(voxels.size()==0){
 		Voxel *v = new Voxel();
 		v->set_box(box);
-		v->size[lod] = size_of_edges();
+		v->data->size = size_of_edges();
 		voxels.push_back(v);
 		return voxels;
 	}else if(voxels.size()==1){
 		voxels[0]->set_box(box);
-		voxels[0]->size[lod] = size_of_edges();
+		voxels[0]->data->size = size_of_edges();
 		return voxels;
 	}
 
@@ -180,13 +180,13 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		voxels[gid]->update(p1.x(),p1.y(),p1.z());
 		voxels[gid]->update(p2.x(),p2.y(),p2.z());
 		voxels[gid]->update(p3.x(),p3.y(),p3.z());
-		voxels[gid]->size[lod]++;
+		voxels[gid]->data->size++;
 	}
 
 	// erase the one without any data in it
 	int vs=voxels.size();
 	for(int i=0;i<vs;){
-		if(voxels[i]->size[lod]==0){
+		if(voxels[i]->data->size==0){
 			voxels.erase(voxels.begin()+i);
 			vs--;
 		}else{

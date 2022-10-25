@@ -252,20 +252,22 @@ void MyMesh::computeHausdorfDistance(){
 	float dist = DBL_MAX;
 
 	for(MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		vector<Point> ps = fit->getImpactPoints();
-		if(ps.size()==0){
-		  continue;
+		if(fit->isSplittable()){
+			vector<Point> ps = fit->getImpactPoints();
+			if(ps.size()==0){
+			  continue;
+			}
+			float maxdist = 0.0;
+			for(Point &p:ps){
+				float dist = point_to_face_distance(p, fit);
+				maxdist = max(dist, maxdist);
+			}
+			//log("%f", farthest_point);
+			fit->setProgressive(maxdist);
+			fit->setConservative(0.0);
 		}
-		float maxdist = 0.0;
-		for(Point &p:ps){
-			float dist = point_to_face_distance(p, fit);
-			maxdist = max(dist, maxdist);
-		}
-		//log("%f", farthest_point);
-		fit->setProgressive(maxdist);
-		fit->setConservative(0.0);
-		current_hausdorf.second = max(current_hausdorf.second, maxdist);
-		dist = min(dist, maxdist);
+		current_hausdorf.second = max(current_hausdorf.second, fit->getHausdorfDistance().second);
+		dist = min(dist, fit->getHausdorfDistance().second);
 	}
 	globalHausdorfDistance.push_back(current_hausdorf);
 	if(global_ctx.verbose>=2){
