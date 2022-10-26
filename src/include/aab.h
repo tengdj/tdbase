@@ -248,6 +248,7 @@ public:
 	void reset(){
 		if(data){
 			delete data;
+			data = NULL;
 		}
 	}
 	bool is_decoded(){
