@@ -49,18 +49,20 @@ void Tile::init(){
 	}else{
 		load(meta_path, tile_capacity);
 	}
-	process_unlock();
 	size_t sz = file_size(tile_path.c_str());
 	data_buffer = new char[sz];
-	start = get_cur_time();
 	fseek(dt_fs, 0, SEEK_SET);
 	size_t rdsze = fread((void *)data_buffer, sizeof(char), sz, dt_fs);
 	assert(rdsze == sz);
+	process_unlock();
 
+//	size_t sm = 0;
+//	for(int i=0;i<sz;i++){
+//		sm += data_buffer[i];
+//	}
+//	log("%ld",sm);
 	// close the data file pointer
 	fclose(dt_fs);
-	logt("read the file", start);
-
 	if(!global_ctx.use_multimbb){
 		disable_innerpart();
 	}
@@ -190,7 +192,6 @@ void Tile::retrieve_mesh(size_t id){
 		wrapper->mesh = new HiMesh(data_buffer+wrapper->offset, wrapper->data_size);
 		newmesh_time += hispeed::get_time_elapsed(cur, true);
 	}
-	log("%ld", wrapper->mesh->size_of_triangles());
 	assert(wrapper->mesh);
 }
 

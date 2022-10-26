@@ -204,7 +204,6 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 	}else{
 		geometry_param gp = packing_data(candidates, ctx);
 		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, gp.element_num, gp.element_pair_num);
-
 		computer->get_intersect(gp);
 		delete []gp.data;
 		delete []gp.offset_size;
@@ -266,7 +265,7 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 class nn_param{
 public:
 	pthread_mutex_t lock;
-	queue<pair<Tile *, Tile *>> tile_queue;
+	queue<pair<Tile *, Tile *>> *tile_queue = NULL;
 	SpatialJoin *joiner;
 	query_context ctx;
 	nn_param(){
@@ -277,14 +276,14 @@ public:
 
 void *join_unit(void *param){
 	struct nn_param *nnparam = (struct nn_param *)param;
-	while(!nnparam->tile_queue.empty()){
+	while(!nnparam->tile_queue->empty()){
 		pthread_mutex_lock(&nnparam->lock);
-		if(nnparam->tile_queue.empty()){
+		if(nnparam->tile_queue->empty()){
 			pthread_mutex_unlock(&nnparam->lock);
 			break;
 		}
-		pair<Tile *, Tile *> p = nnparam->tile_queue.front();
-		nnparam->tile_queue.pop();
+		pair<Tile *, Tile *> p = nnparam->tile_queue->front();
+		nnparam->tile_queue->pop();
 		pthread_mutex_unlock(&nnparam->lock);
 		nnparam->ctx.tile1 = p.first;
 		nnparam->ctx.tile2 = p.second;
@@ -304,31 +303,32 @@ void *join_unit(void *param){
 			delete p.second;
 		}
 		delete p.first;
-		log("%d tile pairs left for processing",nnparam->tile_queue.size());
+		log("%d tile pairs left for processing",nnparam->tile_queue->size());
 	}
 	return NULL;
 }
 
 void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs){
 	struct timeval start = hispeed::get_cur_time();
-	struct nn_param param;
+	queue<pair<Tile *, Tile *>> *tile_queue = new queue<pair<Tile *, Tile *>>();
 	for(pair<Tile *, Tile *> &p:tile_pairs){
-		param.tile_queue.push(p);
+		tile_queue->push(p);
 	}
-	param.joiner = this;
-	param.ctx = global_ctx;
+	struct nn_param param[global_ctx.num_thread];
+
 	pthread_t threads[global_ctx.num_thread];
 	for(int i=0;i<global_ctx.num_thread;i++){
-		pthread_create(&threads[i], NULL, join_unit, (void *)&param);
-	}
-	while(!param.tile_queue.empty()){
-		usleep(10);
+		param[i].joiner = this;
+		param[i].ctx = global_ctx;
+		param[i].tile_queue = tile_queue;
+		pthread_create(&threads[i], NULL, join_unit, (void *)&param[i]);
 	}
 	for(int i = 0; i < global_ctx.num_thread; i++){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
 	global_ctx.report(get_time_elapsed(start));
+	delete tile_queue;
 }
 
 }

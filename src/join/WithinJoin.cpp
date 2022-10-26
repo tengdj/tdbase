@@ -84,11 +84,10 @@ vector<candidate_entry> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_
 void SpatialJoin::within(query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
-
 	// filtering with MBBs to get the candidate list
 	vector<candidate_entry> candidates = mbb_within(ctx.tile1, ctx.tile2, ctx);
 	ctx.index_time += get_time_elapsed(start, false);
-	logt("comparing mbbs", start);
+	logt("comparing mbbs with %d candidate pairs", start, get_candidate_num(candidates));
 
 	// now we start to get the distances with progressive level of details
 	for(uint lod:ctx.lods){
@@ -101,6 +100,7 @@ void SpatialJoin::within(query_context ctx){
 		size_t candidate_num = get_candidate_num(candidates);
 		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per candidate",
 				candidates.size(), candidate_num, pair_num, (1.0*pair_num)/candidates.size());
+
 
 		// do the computation
 		calculate_distance(candidates, ctx);
