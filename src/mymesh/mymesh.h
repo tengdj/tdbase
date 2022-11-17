@@ -45,36 +45,61 @@ public:
     Point(){};
 };
 
+class Vertex;
 class Face;
+class Half_Edge;
 
 class Vertex: public Point{
 public:
-	vector<Face *> faces;
+	Vertex(float v1, float v2, float v3):Point(v1, v2, v3){}
+	unordered_set<Half_Edge *> half_edges;
+	unordered_set<Half_Edge *> opposite_half_edges;
+	int id = 0;
+	void print(){
+		printf("%f %f %f\n", v[0], v[1], v[2]);
+	}
 };
 
+class Half_Edge{
+public:
+	Vertex *vertex = NULL;
+	Vertex *end_vertex = NULL;
+	Face *face = NULL;
+	Half_Edge *next = NULL;
+	Half_Edge *opposite = NULL;
+	Half_Edge(Vertex *v1, Vertex *v2);
+	~Half_Edge();
+};
 
 class Face{
 public:
-	vector<int> vertices;
+	int id = 0;
+	vector<Vertex *> vertices;
+	unordered_set<Half_Edge *> half_edges;
 
-	Face(vector<int> &vs){
+	Face(vector<Vertex *> &vs){
 		vertices.insert(vertices.begin(), vs.begin(), vs.end());
 	}
 	Face(){};
+	~Face(){
+		for(Half_Edge *h:half_edges){
+			delete h;
+		}
+		half_edges.clear();
+		vertices.clear();
+	}
 
-    Face(int v1, int v2, int v3){
+    Face(Vertex *v1, Vertex *v2, Vertex *v3){
     	vertices.push_back(v1);
     	vertices.push_back(v2);
     	vertices.push_back(v3);
     }
 
     void print(){
-    	for(int v:vertices){
-    		printf("%d ",v);
+    	for(Vertex *v:vertices){
+    		v->print();
     	}
-    	printf("\n");
     }
-
 
     bool equal(const Face& rhs) const {
     	if(vertices.size()!=rhs.vertices.size()){
@@ -92,7 +117,12 @@ public:
         return this->equal(rhs);
     }
 
-
+    int degree(){
+    	return vertices.size();
+    }
+    // split the face and make sure the one without v as the new
+    Face *split(Vertex *v);
+    void remove(Half_Edge *h);
 };
 
 
@@ -101,9 +131,8 @@ class Polyhedron{
 
 public:
 	int id = 0;
-	vector<Point *> points;
-	vector<Face *>	faces;
-	map<pair<int,int>, vector<Face *>> edges;
+	unordered_set<Vertex *> vertices;
+	unordered_set<Face *>	faces;
 
 public:
 	Polyhedron(int i=0){id=i;}
@@ -111,16 +140,21 @@ public:
 
 	// I/O
 	void load(string path);
+	bool parse(string str);
 	bool parse(const char*, size_t);
 	void dumpto(string path);
 	void print();
+	string to_string();
+	Vertex *get_vertex(int vseq=0);
 
-	void get_edge();
-	void add_face(Face *f);
+	// element operating
+	Face *add_face(vector<Vertex *> &vs);
+	void remove_vertex(Vertex *v);
 
 	// mesh fixing
+	int remove_orphan_vertices();
 	void merge_vertex();
-	void fill_holes();
+	bool fill_holes();
 	void remove_redundant();
 	vector<Polyhedron *> depart();
 	void evaluate();

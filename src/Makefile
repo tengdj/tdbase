@@ -98,6 +98,9 @@ h5tooff: tools/H5ToOFF.o
 
 3dpro: tools/3dpro_toolkit.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(PPMC_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+
+develop: tools/develop.o $(MYMESH_OBJS)
+	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 .PHONY: all clean
 
