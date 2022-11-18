@@ -77,9 +77,6 @@ public:
 	vector<Vertex *> vertices;
 	unordered_set<Half_Edge *> half_edges;
 
-	Face(vector<Vertex *> &vs){
-		vertices.insert(vertices.begin(), vs.begin(), vs.end());
-	}
 	Face(){};
 	~Face(){
 		for(Half_Edge *h:half_edges){
@@ -93,6 +90,27 @@ public:
     	vertices.push_back(v1);
     	vertices.push_back(v2);
     	vertices.push_back(v3);
+    }
+
+    Face(vector<Vertex *> &vs){
+    	Half_Edge *prev = NULL;
+    	Half_Edge *head = NULL;
+    	for(int i=0;i<vs.size();i++){
+    		vertices.push_back(vs[i]);
+    		Vertex *nextv = vs[(i+1)%vs.size()];
+    		Half_Edge *hf = new Half_Edge(vs[i], nextv);
+    		hf->face = this;
+    		if(prev != NULL){
+    			prev->next = hf;
+    		}else{
+    			head = hf;
+    		}
+    		if(i==vs.size()-1){
+    			hf->next = head;
+    		}
+    		prev = hf;
+    		half_edges.insert(hf);
+    	}
     }
 
     void print(){
@@ -123,6 +141,7 @@ public:
     // split the face and make sure the one without v as the new
     Face *split(Vertex *v);
     void remove(Half_Edge *h);
+
 };
 
 
@@ -149,7 +168,7 @@ public:
 
 	// element operating
 	Face *add_face(vector<Vertex *> &vs);
-	void remove_vertex(Vertex *v);
+	Face *remove_vertex(Vertex *v);
 
 	// mesh fixing
 	int remove_orphan_vertices();

@@ -36,31 +36,12 @@ Vertex *Polyhedron::get_vertex(int vseq){
 }
 
 Face *Polyhedron::add_face(vector<Vertex *> &vs){
-	Face *f = new Face();
-	Half_Edge *prev = NULL;
-	Half_Edge *head = NULL;
-	for(int i=0;i<vs.size();i++){
-		f->vertices.push_back(vs[i]);
-		Vertex *nextv = vs[(i+1)%vs.size()];
-		Half_Edge *hf = new Half_Edge(vs[i], nextv);
-		hf->face = f;
-		if(prev != NULL){
-			prev->next = hf;
-		}else{
-			head = hf;
-		}
-		if(i==vs.size()-1){
-			hf->next = head;
-		}
-		prev = hf;
-		f->half_edges.insert(hf);
-	}
-
+	Face *f = new Face(vs);
 	faces.insert(f);
 	return f;
 }
 
-void Polyhedron::remove_vertex(Vertex *v){
+Face *Polyhedron::remove_vertex(Vertex *v){
 
 	vector<Face *> face_removed;
 	for(Half_Edge *h:v->half_edges){
@@ -98,9 +79,10 @@ void Polyhedron::remove_vertex(Vertex *v){
 			}
 		}
 	}while(!boundary.empty());
-	add_face(ordered_boundary);
+	Face *nface = add_face(ordered_boundary);
 	ordered_boundary.clear();
-	return;
+
+	return nface;
 }
 
 int Polyhedron::remove_orphan_vertices(){
@@ -121,6 +103,7 @@ int Polyhedron::remove_orphan_vertices(){
 
 }
 
+// create a new half edge, setup the opposite of this half edge if needed
 Half_Edge::Half_Edge(Vertex *v1, Vertex *v2){
 	vertex = v1;
 	end_vertex = v2;
@@ -151,11 +134,11 @@ Half_Edge::~Half_Edge(){
 
 void Face::remove(Half_Edge *rh){
 	half_edges.erase(rh);
-	for(Half_Edge *h:half_edges){
-		if(h->next==rh){
-			h->next = NULL;
-		}
-	}
+//	for(Half_Edge *h:half_edges){
+//		if(h->next==rh){
+//			h->next = NULL;
+//		}
+//	}
 }
 
 Face *Face::split(Vertex *v){
@@ -172,12 +155,26 @@ Face *Face::split(Vertex *v){
 	assert(first);
 
 	Half_Edge *last = first;
+	Half_Edge *second_last = NULL;
 	while(last->end_vertex!=v){
-		last = first->next;
+		second_last = last;
+		last = last->next;
 	}
 	assert(last->end_vertex == v);
 
+	remove(first);
+	remove(last);
+	Half_Edge *new_he = new Half_Edge(last->vertex, first->end_vertex);
+	second_last->next = new_he;
+	new_he->next = first->next;
+	half_edges.insert(new_he);
 
+	vector<Vertex *> newfc;
+	newfc.push_back(v);
+	newfc.push_back(first->end_vertex);
+	newfc.push_back(last->vertex);
+	Face *f = new Face(newfc);
+	return f;
 }
 
 }
