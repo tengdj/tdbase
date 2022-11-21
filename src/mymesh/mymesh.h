@@ -55,8 +55,16 @@ public:
 	unordered_set<Half_Edge *> half_edges;
 	unordered_set<Half_Edge *> opposite_half_edges;
 	int id = 0;
+	bool added = false;
+	bool removable = true;
+	int degree(){
+		return half_edges.size();
+	}
 	void print(){
 		printf("%f %f %f\n", v[0], v[1], v[2]);
+	}
+	bool is_removable(){
+		return degree()>2&&removable;
 	}
 };
 
@@ -74,6 +82,7 @@ public:
 class Face{
 public:
 	int id = 0;
+	bool added = false;
 	vector<Vertex *> vertices;
 	unordered_set<Half_Edge *> half_edges;
 
@@ -99,6 +108,7 @@ public:
     		vertices.push_back(vs[i]);
     		Vertex *nextv = vs[(i+1)%vs.size()];
     		Half_Edge *hf = new Half_Edge(vs[i], nextv);
+    		half_edges.insert(hf);
     		hf->face = this;
     		if(prev != NULL){
     			prev->next = hf;
@@ -109,14 +119,28 @@ public:
     			hf->next = head;
     		}
     		prev = hf;
-    		half_edges.insert(hf);
     	}
     }
 
     void print(){
+    	printf("totally %ld vertices:\n",vertices.size());
+    	int idx = 0;
+    	for(Vertex *v:vertices){
+    		printf("%d:\t",idx++);
+    		v->print();
+    	}
+    }
+
+    void print_off(){
+    	printf("OFF\n%ld 1 0\n",vertices.size());
     	for(Vertex *v:vertices){
     		v->print();
     	}
+    	printf("%ld\t",vertices.size());
+    	for(int i=0;i<vertices.size();i++){
+    		printf("%d ",i);
+    	}
+    	printf("\n");
     }
 
     bool equal(const Face& rhs) const {
@@ -169,6 +193,11 @@ public:
 	// element operating
 	Face *add_face(vector<Vertex *> &vs);
 	Face *remove_vertex(Vertex *v);
+	Half_Edge *merge_edges(Vertex *v);
+
+	// compression/decompression
+	void reset_states();
+	void compress();
 
 	// mesh fixing
 	int remove_orphan_vertices();

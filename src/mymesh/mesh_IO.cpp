@@ -25,11 +25,15 @@ string Polyhedron::to_string(){
 		for(Vertex *v:f->vertices){
 			os<<v->id<<" ";
 		}
+		if(f->added){
+			os<<"\t255 255 0";
+		}else{
+			os<<"\t0 255 0";
+		}
 		os<<endl;
 	}
 	return os.str();
 }
-
 
 void Polyhedron::print(){
 	cout<<to_string().c_str();

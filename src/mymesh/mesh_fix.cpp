@@ -13,6 +13,7 @@ namespace hispeed{
 
 // to get the largest connected component
 vector<Polyhedron *> Polyhedron::depart(){
+	vector<Polyhedron *> polys;
 
 //	vector<bool> added;
 //	for(int i=0;i<vertices.size();i++){
@@ -51,7 +52,6 @@ vector<Polyhedron *> Polyhedron::depart(){
 //		ccg.push_back(cur);
 //	}
 //
-//	vector<Polyhedron *> polys;
 //	for(int i=0;i<ccg.size();i++){
 //		polys.push_back(new Polyhedron(i));
 //	}
@@ -86,7 +86,7 @@ vector<Polyhedron *> Polyhedron::depart(){
 //		faces.clear();
 //	}
 //
-//	return polys;
+	return polys;
 }
 
 bool Polyhedron::fill_holes(){
@@ -152,6 +152,13 @@ void Polyhedron::merge_vertex(){
 }
 
 void Polyhedron::evaluate(){
+
+	for(Face *f:faces){
+		for(Half_Edge *he:f->half_edges){
+			assert(he->opposite && "hole exist");
+		}
+	}
+
     int V = vertices.size();
     int F = faces.size();
     int E = 0;
