@@ -125,7 +125,9 @@ void Polyhedron::compress(){
 				assert(f);
 				if(f->degree()>3){
 					Face *nf = f->split(v);
-					faces.insert(nf);
+					if(nf){
+						faces.insert(nf);
+					}
 				}
 			}
 			remove_vertex(v);
@@ -203,9 +205,9 @@ Face *Face::split(Vertex *v){
 		return NULL;
 	}
 
-	printf("splitting\n");
-	v->print();
-	this->print_off();
+//	printf("splitting\n");
+//	v->print();
+//	this->print_off();
 //	v->print();
 //	print_off();
 //	printf("\n");
@@ -217,6 +219,10 @@ Face *Face::split(Vertex *v){
 		}
 	}
 	assert(first);
+
+	if(this->degree()==4 && first->next->end_vertex->degree()==2){
+		return NULL;
+	}
 
 	Half_Edge *last = first;
 	Half_Edge *second_last = NULL;

@@ -100,14 +100,19 @@ size_t MyMesh::size_of_triangles(){
   */
 void MyMesh::completeOperation()
 {
+
     while (!b_jobCompleted)
     {
-        if (i_mode == COMPRESSION_MODE_ID)
-            startNextCompresssionOp();
+        if (i_mode == COMPRESSION_MODE_ID){
+        	//struct timeval start = get_cur_time();
+        	startNextCompresssionOp();
+        	//logt("compress", start);
+        }
         else{
             startNextDecompresssionOp();
         }
     }
+
 }
 
 

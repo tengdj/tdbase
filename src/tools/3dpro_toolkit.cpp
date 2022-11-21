@@ -345,8 +345,9 @@ static void compress(int argc, char **argv){
 	MyMesh *mesh = read_mesh(argv[1]);
 	mesh->writeMeshOff("/gisdata/origin.off");
 	assert(mesh);
+	struct timeval start = get_cur_time();
 	mesh->completeOperation();
-
+	logt("compress", start);
 	mesh->writeMeshOff("/gisdata/compressed.off");
 
 	printf("\n\n");

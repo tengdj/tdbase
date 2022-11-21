@@ -24,8 +24,10 @@ int main(int argc, char **argv){
 
 	for(int i=0;i<10;i++){
 		poly->reset_states();
+		struct timeval start = get_cur_time();
 		poly->compress();
-		poly->print();
+		logt("compress %d", start, i);
+		//poly->print();
 		sprintf(path,"/gisdata/mymesh/compressed_%d.off", i);
 		poly->dumpto(path);
 		poly->evaluate();
