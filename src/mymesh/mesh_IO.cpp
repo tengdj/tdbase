@@ -203,6 +203,340 @@ bool Polyhedron::parse(const char *data, size_t len){
 }
 
 
+/*
+ * the operations for read/write the data
+ *
+ * */
+
+/**
+  * Write the compressed data to the buffer.
+  */
+void Polyhedron::writeCompressedData()
+{
+
+    i_nbDecimations = i_curDecimationId + 1;
+
+    // Write the base mesh.
+    writeBaseMesh();
+    int i_deci = i_curDecimationId;
+    assert(i_deci>0);
+    while (i_deci>=0)
+    {
+		encodeRemovedVertices(i_deci);
+		encodeInsertedEdges(i_deci);
+		i_deci--;
+    }
+}
+
+
+/**
+  * Read the compressed data from the buffer.
+  */
+void Polyhedron::readCompressedData()
+{
+    // Read the base mesh.
+    readBaseMesh();
+}
+
+// Write a given number of bits in a buffer.
+void writeBits(uint32_t data, unsigned i_nbBits, char *p_dest,
+               unsigned &i_bitOffset, size_t &offset)
+{
+    assert(i_nbBits <= 25);
+
+    uint32_t dataToAdd = data << (32 - i_nbBits - i_bitOffset);
+    // Swap the integer bytes because the x86 architecture is little endian.
+    dataToAdd = __builtin_bswap32(dataToAdd); // Call a GCC builtin function.
+
+    // Write the data.
+    *(uint32_t *)p_dest |= dataToAdd;
+
+    // Update the size and offset.
+    offset += (i_bitOffset + i_nbBits) / 8;
+    i_bitOffset = (i_bitOffset + i_nbBits) % 8;
+}
+
+/**
+  * Read a given number of bits in a buffer.
+  */
+uint32_t readBits(unsigned i_nbBits, char *p_src,
+                  unsigned &i_bitOffset, size_t &offset)
+{
+    assert(i_nbBits <= 25);
+
+    // Build the mask.
+    uint32_t mask = 0;
+    for (unsigned i = 0; i < 32 - i_bitOffset; ++i)
+        mask |= 1 << i;
+    // Swap the mask bytes because the x86 architecture is little endian.
+    mask = __builtin_bswap32(mask); // Call a GCC builtin function.
+
+    uint32_t data = *(uint32_t *)p_src & mask;
+
+    // Swap the integer bytes because the x86 architecture is little endian.
+    data = __builtin_bswap32(data); // Call a GCC builtin function.
+
+    data >>= 32 - i_nbBits - i_bitOffset;
+
+    // Update the size and offset.
+    offset += (i_bitOffset + i_nbBits) / 8;
+    i_bitOffset = (i_bitOffset + i_nbBits) % 8;
+
+    return data;
+}
+
+
+// Write a floating point number in the data buffer.
+void Polyhedron::writeFloat(float f)
+{
+    *(float *)(p_data + dataOffset) = f;
+    dataOffset += sizeof(float);
+}
+
+
+/**
+  * Read a floating point number in the data buffer.
+  */
+float Polyhedron::readFloat()
+{
+    float f = *(float *)(p_data + dataOffset);
+    dataOffset += sizeof(float);
+    return f;
+}
+
+/**
+  * Read an integer in the data buffer.
+  */
+int Polyhedron::readInt()
+{
+    int i = *(int *)(p_data + dataOffset);
+    dataOffset += sizeof(int);
+    return i;
+}
+
+// Write an integer in the data buffer
+void Polyhedron::writeInt(int i)
+{
+    *(int *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(int);
+}
+
+/**
+  * Read a 16 bits integer in the data buffer.
+  */
+int16_t Polyhedron::readInt16()
+{
+    int16_t i = *(int16_t *)(p_data + dataOffset);
+    dataOffset += sizeof(int16_t);
+    return i;
+}
+
+
+// Write a 16 bits integer in the data buffer
+void Polyhedron::writeInt16(int16_t i)
+{
+    *(int16_t *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(int16_t);
+}
+
+/**
+  * Read a 16 bits integer in the data buffer.
+  */
+uint16_t Polyhedron::readuInt16()
+{
+    uint16_t i = *(uint16_t *)(p_data + dataOffset);
+    dataOffset += sizeof(uint16_t);
+    return i;
+}
+
+
+// Write a 16 bits integer in the data buffer
+void Polyhedron::writeuInt16(uint16_t i)
+{
+    *(uint16_t *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(uint16_t);
+}
+
+
+/**
+  * Read a byte in the data buffer.
+  */
+unsigned char Polyhedron::readChar()
+{
+	unsigned char  i = *(unsigned char  *)(p_data + dataOffset);
+    dataOffset += sizeof(unsigned char );
+    return i;
+}
+
+// Write a byte in the data buffer
+void Polyhedron::writeChar(unsigned char  i)
+{
+    *(unsigned char *)(p_data + dataOffset) = i;
+    dataOffset += sizeof(unsigned char );
+}
+
+// Write the base mesh.
+void Polyhedron::writeBaseMesh()
+{
+
+    // Write the bounding box coordinate.
+    for (unsigned i = 0; i < 3; ++i)
+        writeFloat((float)(mbb.low[i]));
+    for (unsigned i = 0; i < 3; ++i)
+        writeFloat((float)(mbb.high[i]));
+
+    // Write the number of level of decimations.
+    writeInt16(i_nbDecimations);
+
+    // Write the number of vertices and faces on 16 bits.
+    unsigned i_nbVerticesBaseMesh = size_of_vertices();
+    unsigned i_nbFacesBaseMesh = size_of_facets();
+    writeInt(i_nbVerticesBaseMesh);
+    writeInt(i_nbFacesBaseMesh);
+
+    // Write the base mesh vertex coordinates.
+    unsigned i_nbAdditionalBitsGeometry = 0;
+
+    // Write the vertices of the edge that is the departure of the coding conquests.
+    for (unsigned i = 0; i < 2; ++i)
+    {
+        Vertex *p = vh_departureConquest[i];
+        for (unsigned j = 0; j < 3; ++j)
+        {
+        	writeFloat(p->v[j]);
+        }
+        vh_departureConquest[i]->id = i;
+    }
+
+    // Write the other vertices.
+    size_t id = 2;
+    for (Vertex *v:vertices)
+    {
+        if (v == vh_departureConquest[0] || v == vh_departureConquest[1])
+            continue;
+        // Write the coordinates.
+        for (unsigned i = 0; i < 3; ++i)
+        {
+        	writeFloat(v->v[i]);
+        }
+        // Set an id to the vertex.
+        v->id = id++;
+    }
+
+    // Write the base mesh face vertex indices.
+    for (Face *fit:faces)
+    {
+        unsigned i_faceDegree = fit->facet_degree();
+        writeInt(i_faceDegree);
+        for(Vertex *v:fit->vertices){
+        	writeInt(v->getId());
+        }
+    }
+
+    // Write the hausdorf distance for the base faces
+    for (Face *fit:faces)
+    {
+        writeFloat(fit->getHausdorfDistance().first);
+        writeFloat(fit->getHausdorfDistance().second);
+    }
+
+    // 3dpro
+    // Write the maximum volume change for each round of decimation
+    assert(globalHausdorfDistance.size()==i_nbDecimations);
+    for(unsigned i=0;i<i_nbDecimations;i++){
+    	writeFloat(globalHausdorfDistance[i].first);
+    	writeFloat(globalHausdorfDistance[i].second);
+    }
+}
+
+
+// Read the base mesh.
+void Polyhedron::readBaseMesh()
+{
+    // Read the bounding box min coordinate.
+    for (unsigned i = 0; i < 3; ++i)
+        mbb.low[i] = readFloat();
+
+    for (unsigned i = 0; i < 3; ++i)
+        mbb.high[i] = readFloat();
+
+    // Read the number of level of detail.
+    i_nbDecimations = readInt16();
+
+    // Set the mesh bounding box.
+    unsigned i_nbVerticesBaseMesh = readInt();
+    unsigned i_nbFacesBaseMesh = readInt();
+
+    vector<Vertex *> tmp_vertices;
+    tmp_vertices.resize(i_nbVerticesBaseMesh);
+    // Read the vertex positions.
+    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
+    {
+    	tmp_vertices[i] = new Vertex();
+        for (unsigned j = 0; j < 3; ++j){
+        	tmp_vertices[i]->v[j] = readFloat();
+        }
+    }
+
+    // Read the face vertex indices.
+    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
+    {
+        uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
+        // Write in the first cell of the array the face degree.
+        f[0] = readInt();
+        for (unsigned j = 1; j < f[0] + 1; ++j){
+        	f[j] = readInt();
+        }
+        p_faceDeque->push_back(f);
+    }
+
+    for (Polyhedron::Facet_iterator fit = facets_begin();
+         fit != facets_end(); ++fit)
+    {
+    	float hdist = readFloat();
+    	fit->setConservative(hdist);
+    	hdist = readFloat();
+    	fit->setProgressive(hdist);
+    }
+
+    // Free the memory.
+    for (unsigned i = 0; i < p_faceDeque->size(); ++i)
+        delete[] p_faceDeque->at(i);
+    delete p_faceDeque;
+    delete p_pointDeque;
+
+    // Read the maximum cutting volume
+    for(unsigned i=0;i<i_nbDecimations;i++){
+    	float conservative = readFloat();
+    	float progressive = readFloat();
+    	globalHausdorfDistance.push_back(pair<float, float>(conservative, progressive));
+    }
+}
+
+void Polyhedron::writeMeshOff(const char psz_filePath[])
+{
+    std::filebuf fb;
+    fb.open(psz_filePath, std::ios::out | std::ios::trunc);
+    if(fb.is_open())
+    {
+        std::ostream os(&fb);
+        os << *this;
+    }else{
+    	std::cerr<<"cannot find path "<<psz_filePath<<std::endl;
+    }
+}
+
+
+void Polyhedron::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id)
+{
+    // Output the current mesh in an off file.
+    std::ostringstream fileName;
+    fileName << pathPrefix << "_" << i_id << ".off";
+    writeMeshOff(fileName.str().c_str());
+}
+
+
+
 }
 
 

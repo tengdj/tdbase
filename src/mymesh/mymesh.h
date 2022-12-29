@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <tuple>
 #include "util.h"
+#include "aab.h"
 
 using namespace std;
 
@@ -51,6 +52,7 @@ class Half_Edge;
 
 class Vertex: public Point{
 public:
+	Vertex(){}
 	Vertex(float v1, float v2, float v3):Point(v1, v2, v3){}
 	unordered_set<Half_Edge *> half_edges;
 	unordered_set<Half_Edge *> opposite_half_edges;
@@ -65,6 +67,12 @@ public:
 	}
 	bool is_removable(){
 		return degree()>2&&removable;
+	}
+	void setId(int i){
+		id = i;
+	}
+	int getId(){
+		return id;
 	}
 };
 
@@ -86,6 +94,14 @@ public:
 	vector<Vertex *> vertices;
 	unordered_set<Half_Edge *> half_edges;
 
+	Vertex *removedVertexPos = NULL;
+	vector<Vertex *> impact_points;
+	float conservative_distance = 0.0;
+	float progressive_distance = 0.0;
+	inline pair<float, float> getHausdorfDistance(){
+		return pair<float, float>(conservative_distance, progressive_distance);
+	}
+public:
 	Face(){};
 	~Face(){
 		for(Half_Edge *h:half_edges){
@@ -159,7 +175,7 @@ public:
         return this->equal(rhs);
     }
 
-    int degree(){
+    int facet_degree(){
     	return vertices.size();
     }
     // split the face and make sure the one without v as the new
@@ -176,6 +192,12 @@ public:
 	int id = 0;
 	unordered_set<Vertex *> vertices;
 	unordered_set<Face *>	faces;
+	aab mbb;
+
+	char *p_data = NULL;
+	size_t dataOffset = 0;
+
+	Vertex *vh_departureConquest[2];
 
 public:
 	Polyhedron(int i=0){id=i;}
@@ -206,6 +228,55 @@ public:
 	void remove_redundant();
 	vector<Polyhedron *> depart();
 	void evaluate();
+
+	/*
+	 * statistics
+	 *
+	 * */
+
+	size_t size_of_vertices(){
+		return vertices.size();
+	}
+
+	size_t size_of_facets(){
+		return faces.size();
+	}
+
+
+	int i_nbDecimations;
+	int i_curDecimationId;
+
+
+	/**
+	  * operations to the data buffer, read/write
+	  */
+	void writeCompressedData();
+	void readCompressedData();
+
+	void writeBits(uint32_t data, unsigned i_nbBits, char *p_dest,
+	               unsigned &i_bitOffset, size_t &offset);
+	uint32_t readBits(unsigned i_nbBits, char *p_src,
+	                  unsigned &i_bitOffset, size_t &offset);
+	void writeFloat(float f);
+	float readFloat();
+	int readInt();
+	void writeInt(int i);
+	int16_t readInt16();
+	void writeInt16(int16_t i);
+	uint16_t readuInt16();
+	void writeuInt16(uint16_t i);
+	unsigned char readChar();
+	void writeChar(unsigned char  i);
+
+	void writeBaseMesh();
+	void readBaseMesh();
+	void writeMeshOff(const char psz_filePath[]);
+	void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id);
+
+
+	vector<pair<float, float>> globalHausdorfDistance;
+	pair<float, float> getHausdorfDistance();
+	pair<float, float> getNextHausdorfDistance();
 
 };
 

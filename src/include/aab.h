@@ -51,6 +51,9 @@ public:
 	void print(){
 		printf("[%f,%f]\n",mindist,maxdist);
 	}
+	bool valid(){
+		return mindist<=maxdist;
+	}
 }range;
 
 class aab{

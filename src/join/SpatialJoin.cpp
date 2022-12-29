@@ -67,11 +67,12 @@ void SpatialJoin::clear_data(vector<candidate_entry> &candidates, query_context 
 	for(candidate_entry &c:candidates){
 		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
 		for(candidate_info &info:c.candidates){
-			for(voxel_pair &vp:info.voxel_pairs){
-				assert(vp.v1&&vp.v2);
-				vp.v1->reset();
-				vp.v2->reset();
-			}// end for voxel_pairs
+			for(Voxel *v:wrapper1->voxels){
+				v->reset();
+			}
+			for(Voxel *v:info.mesh_wrapper->voxels){
+				v->reset();
+			}
 		}// end for distance_candiate list
 	}// end for candidates
 }
@@ -119,11 +120,13 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, qu
 		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
 		for(candidate_info &info:c.candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
-				assert(vp.v1->data&&vp.v2->data);
+				assert(vp.v1->data);
+				assert(vp.v2->data);
+				//log("%d %d",vp.v1->data->size, vp.v2->data->size);
 				gp.element_pair_num += vp.v1->data->size*vp.v2->data->size;
 				// update the voxel map
 				for(int i=0;i<2;i++){
-					Voxel *tv = i==0?vp.v1:vp.v2;
+					Voxel *tv = (i==0?vp.v1:vp.v2);
 					if(voxel_map.find(tv)==voxel_map.end()){
 						std::pair<uint, uint> p;
 						p.first = gp.element_num;

@@ -123,7 +123,7 @@ void Polyhedron::compress(){
 			for(Half_Edge *he:hes){
 				Face *f = he->face;
 				assert(f);
-				if(f->degree()>3){
+				if(f->facet_degree()>3){
 					Face *nf = f->split(v);
 					if(nf){
 						faces.insert(nf);
@@ -201,7 +201,7 @@ void Face::remove(Half_Edge *rh){
 }
 
 Face *Face::split(Vertex *v){
-	if(degree()==3){
+	if(facet_degree()==3){
 		return NULL;
 	}
 

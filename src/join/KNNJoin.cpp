@@ -246,8 +246,8 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 								dist.maxdist = std::min(dist.maxdist, res.result.distance);
 								if(global_ctx.hausdorf_level>0){
 									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-									dist.mindist = std::min(dist.mindist, dist.maxdist);
 								}
+								dist.mindist = std::min(dist.mindist, dist.maxdist);
 							}
 
 							if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0){
@@ -258,6 +258,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							}
 							vp.dist = dist;
 							vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
+							assert(dist.valid());
 						}
 					}
 					// after each round, some voxels need to be evicted

@@ -204,7 +204,6 @@ void MyMesh::writeBaseMesh()
 
     unsigned i_nbVerticesBaseMesh = size_of_vertices();
     unsigned i_nbFacesBaseMesh = size_of_facets();
-    unsigned i_nbBitsPerVertex = ceil(log(i_nbVerticesBaseMesh) / log(2));
 
     // Write the number of level of decimations.
     writeInt16(i_nbDecimations);
@@ -212,9 +211,6 @@ void MyMesh::writeBaseMesh()
     // Write the number of vertices and faces on 16 bits.
     writeInt(i_nbVerticesBaseMesh);
     writeInt(i_nbFacesBaseMesh);
-
-    // Write the base mesh vertex coordinates.
-    unsigned i_nbAdditionalBitsGeometry = 0;
 
     // Write the vertices of the edge that is the departure of the coding conquests.
     for (unsigned j = 0; j < 2; ++j)
@@ -295,11 +291,9 @@ void MyMesh::readBaseMesh()
     // Set the mesh bounding box.
     unsigned i_nbVerticesBaseMesh = readInt();
     unsigned i_nbFacesBaseMesh = readInt();
-    unsigned i_nbBitsPerVertex = ceil(log(i_nbVerticesBaseMesh) / log(2));
 
     std::deque<Point> *p_pointDeque = new std::deque<Point>();
     std::deque<uint32_t *> *p_faceDeque = new std::deque<uint32_t *>();
-    unsigned i_nbAdditionalBitsGeometry = 0;
 
     // Read the vertex positions.
     for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)

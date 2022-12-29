@@ -41,7 +41,8 @@ void HiMesh_Wrapper::advance_to(uint lod){
 // fill the triangles into voxels
 size_t HiMesh_Wrapper::fill_voxels(){
 	assert(mesh);
-	return mesh->fill_voxels(voxels);
+	size_t sz = mesh->fill_voxels(voxels);
+	return sz;
 }
 size_t HiMesh_Wrapper::num_vertices(){
 	return mesh->size_of_vertices();

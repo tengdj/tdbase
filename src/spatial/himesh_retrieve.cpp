@@ -143,6 +143,7 @@ size_t HiMesh::fill_vertices(float *&vertices){
 
 size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	assert(voxels.size()>0);
+	// already filled
 	if(voxels[0]->is_decoded()){
 		return this->size_of_triangles();
 	}
@@ -151,18 +152,6 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	const int  size_of_element = 9;
 	float *data_buffer = NULL;
 	float *hausdorf_buffer = NULL;
-	// already filled
-//	if(voxels[0]->data_buffer.find(lod)!=voxels[0]->data_buffer.end()){
-//		if(voxels[0]->data.find(lod)==voxels[0]->data.end()){
-//			assert(false && "data is empty");
-//		}
-//		if(voxels[0]->hausdorf.find(lod)==voxels[0]->hausdorf.end()){
-//			assert(false && "hausdorf is empty");
-//		}
-//		if(!(voxels[0]->data->data!=NULL &&voxels[0]->hausdorf[lod] !=NULL)){
-//			log("unexpectedly large lod: %d %d",lod,i_decompPercentage);
-//		}
-//	}
 
 	num_of_element = fill_triangles(data_buffer);
 	fill_hausdorf_distances(hausdorf_buffer);
@@ -177,8 +166,6 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 		return num_of_element;
 	}
 
-	assert(false);
-
 	// now reorganize the data with the voxel information given
 	// assign each segment to a proper group
 	// we tried voronoi graph, but for some reason it's
@@ -187,6 +174,7 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	int *group_count = new int[voxels.size()];
 	for(int i=0;i<voxels.size();i++){
 		voxels[i]->data = new data_holder();
+		//log("%d %d",i,voxels.size());
 		group_count[i] = 0;
 	}
 	for(int i=0;i<num_of_element;i++){
