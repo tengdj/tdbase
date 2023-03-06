@@ -502,7 +502,7 @@ void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size
 
 	// compute the distance in parallel
 	for(uint cur_offset_2=0;cur_offset_2<max_size_2;cur_offset_2+=1024){
-		uint dim2 = min(max_size_2-cur_offset_2, (uint)1024);
+		uint dim2 = min(max_size_2-cur_offset_2, (uint)512);
 		for(uint cur_offset_1=0;cur_offset_1<max_size_1;cur_offset_1++){
 			TriDist_cuda<<<pair_num, dim2>>>(d_data, d_os, d_dist, cur_offset_1, cur_offset_2);
 			check_execution();
