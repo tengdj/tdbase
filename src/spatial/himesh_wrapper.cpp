@@ -38,12 +38,29 @@ void HiMesh_Wrapper::advance_to(uint lod){
 	mesh->advance_to(lod);
 	cur_lod = lod;
 }
+
+void HiMesh_Wrapper::disable_innerpart(){
+	if(voxels.size()>1){
+		for(Voxel *v:voxels){
+			delete v;
+		}
+		voxels.clear();
+		Voxel *v = new Voxel();
+		v->set_box(box);
+		for(int i=0;i<3;i++){
+			v->core[i] = (v->high[i]-v->low[i])/2+v->low[i];
+		}
+		voxels.push_back(v);
+	}
+}
+
 // fill the triangles into voxels
 size_t HiMesh_Wrapper::fill_voxels(){
 	assert(mesh);
 	size_t sz = mesh->fill_voxels(voxels);
 	return sz;
 }
+
 size_t HiMesh_Wrapper::num_vertices(){
 	return mesh->size_of_vertices();
 }

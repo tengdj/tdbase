@@ -1,15 +1,42 @@
-/*
- * himesh.h
- *
- *  Created on: Nov 28, 2019
- *      Author: teng
- */
+/*****************************************************************************
+* Copyright (C) 2011 Adrien Maglo and Clément Courbet
+*
+* This file is part of PPMC.
+*
+* PPMC is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* PPMC is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
+*****************************************************************************/
 
-#ifndef HIMESH_H_
-#define HIMESH_H_
+#ifndef PROGRESSIVEPOLYGONS_MYMESH_H
+#define PROGRESSIVEPOLYGONS_MYMESH_H
 
+#ifndef CGAL_EIGEN3_ENABLED
 #define CGAL_EIGEN3_ENABLED
+#endif
 
+#include <iostream>
+#include <fstream>
+#include <stdint.h>
+#include <queue>
+#include <assert.h>
+#include <utility>
+
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/Polyhedron_3.h>
+#include <CGAL/circulator.h>
+#include <CGAL/bounding_box.h>
+#include <CGAL/IO/Polyhedron_iostream.h>
+#include <CGAL/Polyhedron_incremental_builder_3.h>
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -48,10 +75,38 @@
 
 #include <boost/algorithm/string/replace.hpp>
 
+
 #include "aab.h"
+#include "util.h"
 #include "geometry.h"
-#include "../PPMC/mymesh.h"
-#include "../PPMC/configuration.h"
+#include "query_context.h"
+
+// Size of the compressed data buffer.
+// for configuration
+#define BUFFER_SIZE 10 * 1024 * 1024
+
+#define NB_BITS_FACE_DEGREE_BASE_MESH 3
+
+#define COMPRESSION_MODE_ID 0
+#define DECOMPRESSION_MODE_ID 1
+
+#define INV_ALPHA 2
+#define INV_GAMMA 2
+
+#define PPMC_RANDOM_CONSTANT 0315
+
+using namespace std;
+namespace SMS = CGAL::Surface_mesh_simplification ;
+
+// definition for the CGAL library
+//typedef CGAL::Exact_predicates_exact_constructions_kernel MyKernel;
+typedef CGAL::Simple_cartesian<float> MyKernel;
+
+typedef MyKernel::Point_3 Point;
+typedef MyKernel::Vector_3 Vector;
+
+typedef CGAL::Simple_cartesian<double> MyKernelDouble;
+typedef MyKernelDouble::Vector_3 VectorDouble;
 
 // templates for AABB tree
 typedef MyKernel::FT FT;
@@ -82,25 +137,496 @@ typedef CGAL::Delaunay_triangulation_3<MyKernel, CGAL::Fast_location> Delaunay;
 typedef CGAL::Triangulation_3<MyKernel> Triangulation;
 typedef Triangulation::Tetrahedron 	Tetrahedron;
 
-namespace SMS = CGAL::Surface_mesh_simplification ;
-//
 //typedef CGAL::Nef_polyhedron_3<MyKernel> Nef_polyhedron;
 //typedef Nef_polyhedron::Volume_const_iterator Volume_const_iterator;
 //typedef Nef_polyhedron::Shell_entry_const_iterator Shell_entry_const_iterator;
 
+
 namespace hispeed{
 
-/*
- *
- * each voxel group is mapped to an independent polyhedron
- * it contains a list of voxels, and initially being assigned
- * with the ABB of the voxel, for indexing. The true surfaces
- * and edges for different levels of details will be decoded and
- * released on-demand. The spaces taken by them is managed by
- * a global cache.
- *
- * */
-class HiMesh:public MyMesh{
+// the builder for reading the base mesh
+template <class HDS> class MyMeshBaseBuilder : public CGAL::Modifier_base<HDS>
+{
+public:
+    MyMeshBaseBuilder(std::deque<Point> *p_pointDeque, std::deque<uint32_t *> *p_faceDeque)
+        : p_pointDeque(p_pointDeque), p_faceDeque(p_faceDeque) {}
+
+    void operator()(HDS& hds)
+    {
+        CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+
+        size_t nbVertices = p_pointDeque->size();
+        size_t nbFaces = p_faceDeque->size();
+
+        B.begin_surface(nbVertices, nbFaces);
+
+        for (unsigned i = 0; i < nbVertices; ++i)
+            B.add_vertex(p_pointDeque->at(i));
+
+        for (unsigned i = 0; i < nbFaces; ++i)
+        {
+            B.begin_facet();
+            uint32_t *f = p_faceDeque->at(i);
+            for (unsigned j = 1; j < f[0] + 1; ++j)
+                B.add_vertex_to_facet(f[j]);
+            B.end_facet();
+        }
+
+        B.end_surface();
+    }
+
+private:
+    std::deque<Point> *p_pointDeque;
+    std::deque<uint32_t *> *p_faceDeque;
+};
+
+// My vertex type has a isConquered flag
+template <class Refs>
+class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
+{
+    enum Flag {Unconquered=0, Conquered=1};
+
+  public:
+    MyVertex(): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(), flag(Unconquered), id(0), i_quantCellId(0){}
+	MyVertex(const Point &p): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(p), flag(Unconquered), id(0), i_quantCellId(0){}
+
+	inline void resetState()
+	{
+	  flag=Unconquered;
+	}
+
+	inline bool isConquered() const
+	{
+	  return flag==Conquered;
+	}
+
+	inline void setConquered()
+	{
+	  flag=Conquered;
+	}
+
+	inline size_t getId() const
+	{
+		return id;
+	}
+
+	inline void setId(size_t nId)
+	{
+		id = nId;
+	}
+
+	inline unsigned getQuantCellId() const
+	{
+		return i_quantCellId;
+	}
+
+	inline void setQuantCellId(unsigned nId)
+	{
+		i_quantCellId = nId;
+	}
+
+	inline void setRecessing(){
+		is_protruding = false;
+	}
+
+	inline bool isProtruding(){
+		return is_protruding;
+	}
+
+  private:
+	Flag flag;
+	size_t id;
+	unsigned i_quantCellId;
+	bool is_protruding = true;
+};
+
+
+// My vertex type has a isConquered flag
+template <class Refs>
+class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
+{
+    enum Flag {NotYetInQueue=0, InQueue=1, InQueue2=2, NoLongerInQueue=3};
+    enum Flag2 {Original, Added, New};
+    enum ProcessedFlag {NotProcessed, Processed};
+
+  public:
+        MyHalfedge(): flag(NotYetInQueue), flag2(Original),
+        processedFlag(NotProcessed){}
+
+	inline void resetState()
+	{
+		flag = NotYetInQueue;
+		flag2 = Original;
+		processedFlag = NotProcessed;
+	}
+
+        /* Flag 1 */
+
+	inline void setInQueue()
+	{
+	  flag=InQueue;
+	}
+
+	inline void setInProblematicQueue()
+	{
+	  assert(flag==InQueue);
+	  flag=InQueue2;
+	}
+
+	inline void removeFromQueue()
+	{
+	  assert(flag==InQueue || flag==InQueue2);
+	  flag=NoLongerInQueue;
+	}
+
+	inline bool isInNormalQueue() const
+	{
+	  return flag==InQueue;
+	}
+
+	inline bool isInProblematicQueue() const
+	{
+	  return flag==InQueue2;
+	}
+
+	/* Processed flag */
+
+	inline void resetProcessedFlag()
+	{
+	  processedFlag = NotProcessed;
+	}
+
+	inline void setProcessed()
+	{
+		processedFlag = Processed;
+	}
+
+	inline bool isProcessed() const
+	{
+		return (processedFlag == Processed);
+	}
+
+	/* Flag 2 */
+
+	inline void setAdded()
+	{
+	  assert(flag2 == Original);
+	  flag2=Added;
+	}
+
+	inline void setNew()
+	{
+		assert(flag2 == Original);
+		flag2 = New;
+	}
+
+	inline bool isAdded() const
+	{
+	  return flag2==Added;
+	}
+
+	inline bool isOriginal() const
+	{
+	  return flag2==Original;
+	}
+
+	inline bool isNew() const
+	{
+	  return flag2 == New;
+	}
+
+  private:
+	Flag flag;
+	Flag2 flag2;
+    ProcessedFlag processedFlag;
+
+};
+
+// My face type has a vertex flag
+template <class Refs>
+class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
+{
+    enum Flag {Unknown=0, Splittable=1, Unsplittable=2};
+    enum ProcessedFlag {NotProcessed, Processed};
+
+  public:
+    MyFace(): flag(Unknown), processedFlag(NotProcessed){}
+
+	inline void resetState()
+	{
+          flag = Unknown;
+          processedFlag = NotProcessed;
+	}
+
+	inline void resetProcessedFlag()
+	{
+	  processedFlag = NotProcessed;
+	}
+
+	inline bool isConquered() const
+	{
+	  return (flag==Splittable ||flag==Unsplittable) ;
+	}
+
+	inline bool isSplittable() const
+	{
+	  return (flag==Splittable) ;
+	}
+
+	inline bool isUnsplittable() const
+	{
+	  return (flag==Unsplittable) ;
+	}
+
+	inline void setSplittable()
+	{
+	  assert(flag == Unknown);
+	  flag=Splittable;
+	}
+
+	inline void setUnsplittable()
+	{
+	  assert(flag == Unknown);
+	  flag=Unsplittable;
+	}
+
+	inline void setProcessedFlag()
+	{
+		processedFlag = Processed;
+	}
+
+	inline bool isProcessed() const
+	{
+		return (processedFlag == Processed);
+	}
+
+	inline Point getRemovedVertexPos() const
+	{
+		return removedVertexPos;
+	}
+
+	inline void setRemovedVertexPos(Point p)
+	{
+		removedVertexPos = p;
+	}
+
+	inline void addImpactPoint(Point p){
+		for(Point &ep:impact_points){
+			if(ep==p){
+				return;
+			}
+		}
+		impact_points.push_back(p);
+	}
+
+	inline void addImpactPoints(vector<Point> ps){
+		for(Point p:ps){
+			addImpactPoint(p);
+		}
+	}
+
+	inline vector<Point> getImpactPoints(){
+		return impact_points;
+	}
+
+	inline void resetImpactPoints(){
+		impact_points.clear();
+	}
+
+	inline pair<float, float> getHausdorfDistance(){
+		return pair<float, float>(conservative_distance, progressive_distance);
+	}
+
+	inline void setConservative(float rec){
+		conservative_distance = rec;
+	}
+
+	inline void setProgressive(float pro){
+		progressive_distance = pro;
+	}
+
+
+  private:
+	Flag flag;
+	ProcessedFlag processedFlag;
+
+	Point removedVertexPos;
+
+	vector<Point> impact_points;
+	float conservative_distance = 0.0;
+	float progressive_distance = 0.0;
+};
+
+
+struct MyItems : public CGAL::Polyhedron_items_3
+{
+    template <class Refs, class Traits>
+    struct Face_wrapper {
+        typedef MyFace<Refs> Face;
+    };
+
+	template <class Refs, class Traits>
+    struct Vertex_wrapper {
+        typedef MyVertex<Refs> Vertex;
+    };
+
+	template <class Refs, class Traits>
+    struct Halfedge_wrapper {
+        typedef MyHalfedge<Refs> Halfedge;
+    };
+};
+
+
+class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
+{
+
+public:
+	HiMesh(unsigned i_decompPercentage,
+		   const int i_mode,
+		   const char* data,
+		   long length);
+
+	~HiMesh();
+
+	void completeOperation();
+
+	Vector computeNormal(Facet_const_handle f) const;
+	Vector computeVertexNormal(Halfedge_const_handle heh) const;
+
+	Point barycenter(Facet_const_handle f) const;
+
+	float getBBoxDiagonal() const;
+	Vector getBBoxCenter() const;
+
+	// General
+	void computeBoundingBox();
+
+	inline size_t count_triangle(Facet_const_iterator f){
+		size_t size = 0;
+		Halfedge_const_handle e1 = f->halfedge();
+		Halfedge_const_handle e3 = f->halfedge()->next()->next();
+		while(e3!=e1){
+			size++;
+			e3 = e3->next();
+		}
+		return size;
+	}
+	size_t size_of_triangles();
+
+	// Compression
+	void startNextCompresssionOp();
+	void decimationStep();
+	void RemovedVertexCodingStep();
+	void InsertedEdgeCodingStep();
+	Halfedge_handle vertexCut(Halfedge_handle startH);
+	void encodeInsertedEdges(unsigned i_operationId);
+	void encodeRemovedVertices(unsigned i_operationId);
+
+	// Compression geometry and connectivity tests.
+	bool isRemovable(Vertex_handle v) const;
+	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
+	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
+	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
+	float removalError(Vertex_const_handle v,
+					   const std::vector<Vertex_const_handle> &polygon) const;
+
+	// Decompression
+	void startNextDecompresssionOp();
+	void undecimationStep();
+
+	void DecimatedFaceDecodingStep();
+	void InsertedEdgeDecodingStep();
+	void insertRemovedVertices();
+	void removeInsertedEdges();
+
+	// Utils
+	Vector computeNormal(Halfedge_const_handle heh_gate) const;
+	Vector computeNormal(const std::vector<Vertex_const_handle> & polygon) const;
+	Vector computeNormal(Point p[3]) const;
+	Point barycenter(Halfedge_handle heh_gate) const;
+	Point barycenter(const std::vector<Vertex_const_handle> &polygon) const;
+	unsigned vertexDegreeNotNew(Vertex_const_handle vh) const;
+	float triangleSurface(const Point p[]) const;
+	float edgeLen(Halfedge_const_handle heh) const;
+	float facePerimeter(const Face_handle fh) const;
+	float faceSurface(Halfedge_handle heh) const;
+	void pushHehInit();
+
+	// IOs
+	void writeCompressedData();
+	void readCompressedData();
+	void writeFloat(float f);
+	float readFloat();
+	void writeInt16(int16_t i);
+	int16_t readInt16();
+	void writeuInt16(uint16_t i);
+	uint16_t readuInt16();
+	void writeInt(int i);
+	int readInt();
+	unsigned char readChar();
+	void writeChar(unsigned char ch);
+
+	void writeBaseMesh();
+	void readBaseMesh();
+	void writeMeshOff(const char psz_filePath[]) const;
+	void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const;
+
+	//3dpro
+	void computeHausdorfDistance();
+	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
+	void profileProtruding();
+
+	// Variables.
+
+	// Gate queues
+	std::queue<Halfedge_handle> gateQueue;
+	std::queue<Halfedge_handle> problematicGateQueue;
+
+	// Processing mode: 0 for compression and 1 for decompression.
+	int i_mode;
+	bool b_jobCompleted; // True if the job has been completed.
+
+	unsigned i_curDecimationId;
+	unsigned i_nbDecimations;
+
+	// The vertices of the edge that is the departure of the coding and decoding conquests.
+	Vertex_handle vh_departureConquest[2];
+	// Geometry symbol list.
+	std::deque<std::deque<Point> > geometrySym;
+	std::deque<std::deque<unsigned>> hausdorfSym;
+
+	// Connectivity symbol list.
+	std::deque<std::deque<unsigned> > connectFaceSym;
+	std::deque<std::deque<unsigned> > connectEdgeSym;
+
+	// Number of vertices removed during current conquest.
+	unsigned i_nbRemovedVertices;
+
+	Point bbMin;
+	Point bbMax;
+	float f_bbVolume;
+
+	// Initial number of vertices and faces.
+	size_t i_nbVerticesInit;
+	size_t i_nbFacetsInit;
+
+	// The compressed data;
+	char *p_data;
+	size_t dataOffset; // the offset to read and write.
+	size_t d_capacity;
+
+	unsigned i_decompPercentage;
+
+	// Store the maximum size we cutted in each round of compression
+	vector<pair<float, float>> globalHausdorfDistance;
+	pair<float, float> getHausdorfDistance();
+	pair<float, float> getNextHausdorfDistance();
+	int processCount = 0;
+
+	/*
+	 * for 3dpro
+	 * */
+private:
 	SegTree *segment_tree = NULL;
 	TriangleTree *triangle_tree = NULL;
 	list<Segment> segments;
@@ -108,8 +634,7 @@ class HiMesh:public MyMesh{
 	list<Point> vertices;
 public:
 	HiMesh(char *data, size_t dsize);
-	HiMesh(MyMesh *mesh);
-	~HiMesh();
+	HiMesh(HiMesh *mesh);
 
 	aab get_box();
 
@@ -173,8 +698,11 @@ public:
 public:
 	HiMesh_Wrapper();
 	~HiMesh_Wrapper();
+
 	void writeMeshOff();
 	void advance_to(uint lod);
+
+	void disable_innerpart();
 	// fill the triangles into voxels
 	size_t fill_voxels();
 
@@ -201,11 +729,11 @@ string read_off_stdin();
 string polyhedron_to_wkt(Polyhedron *poly);
 
 // some utility functions to operate mesh polyhedrons
-extern MyMesh *parse_mesh(string input, bool complete_compress = false);
-extern MyMesh *read_mesh();
-extern MyMesh *read_mesh(char *path);
+extern HiMesh *parse_mesh(string input, bool complete_compress = false);
+extern HiMesh *read_mesh();
+extern HiMesh *read_mesh(char *path);
 
-extern MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation = false);
+extern HiMesh *decompress_mesh(HiMesh *compressed, int lod, bool complete_operation = false);
 
 float get_volume(Polyhedron *polyhedron);
 Polyhedron *read_polyhedron();
@@ -215,6 +743,16 @@ vector<Polyhedron *> read_polyhedrons(const char *path, size_t load_num = LONG_M
 Polyhedron *parse_polyhedron(string &str);
 Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o);
 
+// get the Euclid distance of two points
+inline float get_distance(const Point &p1, const Point &p2){
+	float dist = 0;
+	for(int i=0;i<3;i++){
+		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
+	}
+	return dist;
 }
 
-#endif /* HIMESH_H_ */
+}
+
+
+#endif

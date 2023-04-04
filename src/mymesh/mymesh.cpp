@@ -9,10 +9,10 @@
 #include <sstream>
 #include <queue>
 
-namespace hispeed{
+namespace tmesh{
 
 
-Polyhedron::~Polyhedron(){
+TMesh::~TMesh(){
 
 	for(Face *f:faces){
 		delete f;
@@ -23,9 +23,12 @@ Polyhedron::~Polyhedron(){
 	}
 	vertices.clear();
 	faces.clear();
+	if(owned_data){
+		delete p_data;
+	}
 }
 
-Vertex *Polyhedron::get_vertex(int vseq){
+Vertex *TMesh::get_vertex(int vseq){
 	assert(vseq>=0&&vseq<vertices.size());
 	for(Vertex *v:vertices){
 		if(vseq--==0){
@@ -36,13 +39,13 @@ Vertex *Polyhedron::get_vertex(int vseq){
 	return NULL;
 }
 
-Face *Polyhedron::add_face(vector<Vertex *> &vs){
+Face *TMesh::add_face(vector<Vertex *> &vs){
 	Face *f = new Face(vs);
 	faces.insert(f);
 	return f;
 }
 
-Face *Polyhedron::remove_vertex(Vertex *v){
+Face *TMesh::remove_vertex(Vertex *v){
 
 	vector<Face *> face_removed;
 	for(Half_Edge *h:v->half_edges){
@@ -87,7 +90,7 @@ Face *Polyhedron::remove_vertex(Vertex *v){
 	return nface;
 }
 
-void Polyhedron::reset_states(){
+void TMesh::reset_states(){
 	for(Vertex *v:vertices){
 		v->added = false;
 		v->removable = true;
@@ -98,7 +101,7 @@ void Polyhedron::reset_states(){
 	}
 }
 
-void Polyhedron::compress(){
+void TMesh::compress(){
 	Vertex *seed = get_vertex(0);
 	queue<Vertex *> wq;
 	wq.push(seed);
@@ -135,7 +138,7 @@ void Polyhedron::compress(){
 	}
 }
 
-int Polyhedron::remove_orphan_vertices(){
+int TMesh::remove_orphan_vertices(){
 	vector<Vertex *> orphan;
 	for(auto v:vertices){
 		if(v->half_edges.size()==0){
@@ -152,114 +155,6 @@ int Polyhedron::remove_orphan_vertices(){
 	return ret;
 }
 
-// create a new half edge, setup the opposite of this half edge if needed
-Half_Edge::Half_Edge(Vertex *v1, Vertex *v2){
-	vertex = v1;
-	end_vertex = v2;
-	vertex->half_edges.insert(this);
-	end_vertex->opposite_half_edges.insert(this);
-
-	// in case this is the second half edge
-	for(Half_Edge *h:v2->half_edges){
-		if(h->end_vertex == v1){
-			if(h->opposite){
-				printf("create half edge:\n");
-				v1->print();
-				v2->print();
-				h->opposite->face->print_off();
-			}
-			assert(h->opposite==NULL);
-			h->opposite = this;
-			this->opposite = h;
-		}
-	}
-}
-
-Half_Edge::~Half_Edge(){
-	// reset the opposite;
-	if(opposite!=NULL){
-		assert(opposite->opposite = this);
-		opposite->opposite = NULL;
-	}
-
-	// detach from the vertices
-	assert(vertex && end_vertex);
-	assert(vertex->half_edges.find(this)!=vertex->half_edges.end());
-	assert(end_vertex->opposite_half_edges.find(this)!=end_vertex->opposite_half_edges.end());
-	vertex->half_edges.erase(this);
-	end_vertex->opposite_half_edges.erase(this);
-}
-
-void Face::remove(Half_Edge *rh){
-	half_edges.erase(rh);
-	for(Half_Edge *h:half_edges){
-		if(h->next==rh){
-			h->next = NULL;
-		}
-	}
-	delete rh;
-}
-
-Face *Face::split(Vertex *v){
-	if(facet_degree()==3){
-		return NULL;
-	}
-
-//	printf("splitting\n");
-//	v->print();
-//	this->print_off();
-//	v->print();
-//	print_off();
-//	printf("\n");
-	Half_Edge *first = NULL;
-	for(Half_Edge *h:half_edges){
-		if(h->vertex==v){
-			first = h;
-			break;
-		}
-	}
-	assert(first);
-
-	if(this->degree()==4 && first->next->end_vertex->degree()==2){
-		return NULL;
-	}
-
-	Half_Edge *last = first;
-	Half_Edge *second_last = NULL;
-	while(last->end_vertex!=v){
-		second_last = last;
-		last = last->next;
-	}
-	assert(last->end_vertex == v);
-
-	Vertex *last_vertex = last->vertex;
-	Vertex *first_vertex = first->end_vertex;
-	Half_Edge *first_next = first->next;
-	remove(first);
-	remove(last);
-	Half_Edge *new_he = new Half_Edge(last_vertex, first_vertex);
-	new_he->face = this;
-	half_edges.insert(new_he);
-
-	second_last->next = new_he;
-	new_he->next = first_next;
-
-	vector<Vertex *> tmpvertices;
-	for(Vertex *tv:vertices){
-		if(tv!=v){
-			tmpvertices.push_back(tv);
-		}
-	}
-	vertices.clear();
-	vertices.insert(vertices.begin(), tmpvertices.begin(), tmpvertices.end());
-
-	vector<Vertex *> newfc;
-	newfc.push_back(v);
-	newfc.push_back(first_vertex);
-	newfc.push_back(last_vertex);
-	Face *f = new Face(newfc);
-	return f;
-}
 
 }
 

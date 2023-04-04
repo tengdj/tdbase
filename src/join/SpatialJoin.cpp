@@ -290,17 +290,15 @@ void *join_unit(void *param){
 		pthread_mutex_unlock(&nnparam->lock);
 		nnparam->ctx.tile1 = p.first;
 		nnparam->ctx.tile2 = p.second;
-		nnparam->ctx.tile1->init();
-		if(nnparam->ctx.tile1!=nnparam->ctx.tile2){
-			nnparam->ctx.tile2->init();
-		}
 		// can only be in one of those three queries for now
 		if(nnparam->ctx.query_type=="intersect"){
 			nnparam->joiner->intersect(nnparam->ctx);
 		}else if(nnparam->ctx.query_type=="nn"){
 			nnparam->joiner->nearest_neighbor(nnparam->ctx);
-		}else{
+		}else if(nnparam->ctx.query_type=="within"){
 			nnparam->joiner->within(nnparam->ctx);
+		}else{
+			log("wrong query type: %s", nnparam->ctx.query_type.c_str());
 		}
 		if(p.second!=p.first){
 			delete p.second;

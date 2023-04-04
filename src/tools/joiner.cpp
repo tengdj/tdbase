@@ -34,10 +34,10 @@ int main(int argc, char **argv){
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *tile1, *tile2;
 		if(global_ctx.tile2_path.size()>0){
-			tile1 = new Tile(global_ctx.tile1_path.c_str(), global_ctx.max_num_objects1, false);
-			tile2 = new Tile(global_ctx.tile2_path.c_str(), global_ctx.max_num_objects2, false);
+			tile1 = new Tile(global_ctx.tile1_path.c_str(), global_ctx.max_num_objects1);
+			tile2 = new Tile(global_ctx.tile2_path.c_str(), global_ctx.max_num_objects2);
 		}else{
-			tile1 = new Tile(global_ctx.tile1_path.c_str(), LONG_MAX, false);
+			tile1 = new Tile(global_ctx.tile1_path.c_str(), LONG_MAX);
 			tile2 = tile1;
 		}
 		assert(tile1&&tile2);

@@ -7,10 +7,10 @@
 
 #include "mymesh.h"
 
-namespace hispeed{
+namespace tmesh{
 
 
-string Polyhedron::to_string(){
+string TMesh::to_string(){
 
 	stringstream os;
 	os << "OFF" << endl;
@@ -35,11 +35,11 @@ string Polyhedron::to_string(){
 	return os.str();
 }
 
-void Polyhedron::print(){
+void TMesh::print(){
 	cout<<to_string().c_str();
 }
 
-void Polyhedron::dumpto(string fp){
+void TMesh::dumpto(string fp){
 	ofstream of(fp.c_str());
 	of<<to_string().c_str();
 	of.close();
@@ -48,11 +48,16 @@ void Polyhedron::dumpto(string fp){
 //
 // read vertices and faces from original OFF file
 //
-void Polyhedron::load(string fp) {
+void TMesh::load(string fp) {
 	string content = hispeed::read_file(fp.c_str());
 	parse(content.c_str(), content.size());
 }
 
+void TMesh::load(char *data, bool owned) {
+	p_data = data;
+	owned_data = owned;
+	readBaseMesh();
+}
 
 bool parse_OFF_sign(const char *data, size_t &offset, size_t len){
 	if(len<3){
@@ -143,12 +148,12 @@ bool parse_int(const char *data, size_t &offset, size_t len, int &ret){
 	return false;
 }
 
-bool Polyhedron::parse(string str){
+bool TMesh::parse(string str){
 	return parse(str.c_str(), str.size());
 }
 
 // parse from OFF
-bool Polyhedron::parse(const char *data, size_t len){
+bool TMesh::parse(const char *data, size_t len){
 	size_t offset = 0;
 	float flt_tmp;
 	int int_tmp;
@@ -211,28 +216,28 @@ bool Polyhedron::parse(const char *data, size_t len){
 /**
   * Write the compressed data to the buffer.
   */
-void Polyhedron::writeCompressedData()
+void TMesh::writeCompressedData()
 {
 
-    i_nbDecimations = i_curDecimationId + 1;
-
-    // Write the base mesh.
-    writeBaseMesh();
-    int i_deci = i_curDecimationId;
-    assert(i_deci>0);
-    while (i_deci>=0)
-    {
-		encodeRemovedVertices(i_deci);
-		encodeInsertedEdges(i_deci);
-		i_deci--;
-    }
+//    i_nbDecimations = i_curDecimationId + 1;
+//
+//    // Write the base mesh.
+//    writeBaseMesh();
+//    int i_deci = i_curDecimationId;
+//    assert(i_deci>0);
+//    while (i_deci>=0)
+//    {
+//		encodeRemovedVertices(i_deci);
+//		encodeInsertedEdges(i_deci);
+//		i_deci--;
+//    }
 }
 
 
 /**
   * Read the compressed data from the buffer.
   */
-void Polyhedron::readCompressedData()
+void TMesh::readCompressedData()
 {
     // Read the base mesh.
     readBaseMesh();
@@ -287,7 +292,7 @@ uint32_t readBits(unsigned i_nbBits, char *p_src,
 
 
 // Write a floating point number in the data buffer.
-void Polyhedron::writeFloat(float f)
+void TMesh::writeFloat(float f)
 {
     *(float *)(p_data + dataOffset) = f;
     dataOffset += sizeof(float);
@@ -297,7 +302,7 @@ void Polyhedron::writeFloat(float f)
 /**
   * Read a floating point number in the data buffer.
   */
-float Polyhedron::readFloat()
+float TMesh::readFloat()
 {
     float f = *(float *)(p_data + dataOffset);
     dataOffset += sizeof(float);
@@ -307,7 +312,7 @@ float Polyhedron::readFloat()
 /**
   * Read an integer in the data buffer.
   */
-int Polyhedron::readInt()
+int TMesh::readInt()
 {
     int i = *(int *)(p_data + dataOffset);
     dataOffset += sizeof(int);
@@ -315,7 +320,7 @@ int Polyhedron::readInt()
 }
 
 // Write an integer in the data buffer
-void Polyhedron::writeInt(int i)
+void TMesh::writeInt(int i)
 {
     *(int *)(p_data + dataOffset) = i;
     dataOffset += sizeof(int);
@@ -324,7 +329,7 @@ void Polyhedron::writeInt(int i)
 /**
   * Read a 16 bits integer in the data buffer.
   */
-int16_t Polyhedron::readInt16()
+int16_t TMesh::readInt16()
 {
     int16_t i = *(int16_t *)(p_data + dataOffset);
     dataOffset += sizeof(int16_t);
@@ -333,7 +338,7 @@ int16_t Polyhedron::readInt16()
 
 
 // Write a 16 bits integer in the data buffer
-void Polyhedron::writeInt16(int16_t i)
+void TMesh::writeInt16(int16_t i)
 {
     *(int16_t *)(p_data + dataOffset) = i;
     dataOffset += sizeof(int16_t);
@@ -342,7 +347,7 @@ void Polyhedron::writeInt16(int16_t i)
 /**
   * Read a 16 bits integer in the data buffer.
   */
-uint16_t Polyhedron::readuInt16()
+uint16_t TMesh::readuInt16()
 {
     uint16_t i = *(uint16_t *)(p_data + dataOffset);
     dataOffset += sizeof(uint16_t);
@@ -351,7 +356,7 @@ uint16_t Polyhedron::readuInt16()
 
 
 // Write a 16 bits integer in the data buffer
-void Polyhedron::writeuInt16(uint16_t i)
+void TMesh::writeuInt16(uint16_t i)
 {
     *(uint16_t *)(p_data + dataOffset) = i;
     dataOffset += sizeof(uint16_t);
@@ -361,7 +366,7 @@ void Polyhedron::writeuInt16(uint16_t i)
 /**
   * Read a byte in the data buffer.
   */
-unsigned char Polyhedron::readChar()
+unsigned char TMesh::readChar()
 {
 	unsigned char  i = *(unsigned char  *)(p_data + dataOffset);
     dataOffset += sizeof(unsigned char );
@@ -369,14 +374,14 @@ unsigned char Polyhedron::readChar()
 }
 
 // Write a byte in the data buffer
-void Polyhedron::writeChar(unsigned char  i)
+void TMesh::writeChar(unsigned char  i)
 {
     *(unsigned char *)(p_data + dataOffset) = i;
     dataOffset += sizeof(unsigned char );
 }
 
 // Write the base mesh.
-void Polyhedron::writeBaseMesh()
+void TMesh::writeBaseMesh()
 {
 
     // Write the bounding box coordinate.
@@ -449,14 +454,86 @@ void Polyhedron::writeBaseMesh()
     }
 }
 
+//// Read the base mesh.
+//void MyMesh::readBaseMesh()
+//{
+//    // Read the bounding box min coordinate.
+//    float coord[3];
+//    for (unsigned i = 0; i < 3; ++i)
+//        coord[i] = readFloat();
+//    bbMin = Point(coord[0], coord[1], coord[2]);
+//
+//    for (unsigned i = 0; i < 3; ++i)
+//        coord[i] = readFloat();
+//    bbMax = Point(coord[0], coord[1], coord[2]);
+//
+//    // Read the number of level of detail.
+//    i_nbDecimations = readInt16();
+//
+//    // Set the mesh bounding box.
+//    unsigned i_nbVerticesBaseMesh = readInt();
+//    unsigned i_nbFacesBaseMesh = readInt();
+//
+//    std::deque<Point> *p_pointDeque = new std::deque<Point>();
+//    std::deque<uint32_t *> *p_faceDeque = new std::deque<uint32_t *>();
+//
+//    // Read the vertex positions.
+//    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
+//    {
+//        float p[3];
+//        for (unsigned j = 0; j < 3; ++j)
+//            p[j] = readFloat();
+//        Point pos(p[0], p[1], p[2]);
+//        p_pointDeque->push_back(pos);
+//    }
+//
+//    // Read the face vertex indices.
+//    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
+//    {
+//        uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
+//        // Write in the first cell of the array the face degree.
+//        f[0] = readInt();
+//        for (unsigned j = 1; j < f[0] + 1; ++j){
+//        	f[j] = readInt();
+//        }
+//        p_faceDeque->push_back(f);
+//    }
+//
+//    // Let the builder do its job.
+//    MyMeshBaseBuilder<HalfedgeDS> builder(p_pointDeque, p_faceDeque);
+//    delegate(builder);
+//
+//    for (MyMesh::Facet_iterator fit = facets_begin();
+//         fit != facets_end(); ++fit)
+//    {
+//    	float hdist = readFloat();
+//    	fit->setConservative(hdist);
+//    	hdist = readFloat();
+//    	fit->setProgressive(hdist);
+//    }
+//
+//    // Free the memory.
+//    for (unsigned i = 0; i < p_faceDeque->size(); ++i)
+//        delete[] p_faceDeque->at(i);
+//    delete p_faceDeque;
+//    delete p_pointDeque;
+//
+//    // Read the maximum cutting volume
+//    for(unsigned i=0;i<i_nbDecimations;i++){
+//    	float conservative = readFloat();
+//    	float progressive = readFloat();
+//    	globalHausdorfDistance.push_back(pair<float, float>(conservative, progressive));
+//    }
+//}
+
+#define NB_BITS_FACE_DEGREE_BASE_MESH 3
 
 // Read the base mesh.
-void Polyhedron::readBaseMesh()
+void TMesh::readBaseMesh()
 {
-    // Read the bounding box min coordinate.
+    // Read the bounding box
     for (unsigned i = 0; i < 3; ++i)
         mbb.low[i] = readFloat();
-
     for (unsigned i = 0; i < 3; ++i)
         mbb.high[i] = readFloat();
 
@@ -466,6 +543,9 @@ void Polyhedron::readBaseMesh()
     // Set the mesh bounding box.
     unsigned i_nbVerticesBaseMesh = readInt();
     unsigned i_nbFacesBaseMesh = readInt();
+
+    std::deque<Point> *p_pointDeque = new std::deque<Point>();
+    std::deque<uint32_t *> *p_faceDeque = new std::deque<uint32_t *>();
 
     vector<Vertex *> tmp_vertices;
     tmp_vertices.resize(i_nbVerticesBaseMesh);
@@ -481,23 +561,31 @@ void Polyhedron::readBaseMesh()
     // Read the face vertex indices.
     for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
     {
-        uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
-        // Write in the first cell of the array the face degree.
-        f[0] = readInt();
-        for (unsigned j = 1; j < f[0] + 1; ++j){
-        	f[j] = readInt();
+        int nv = readInt();
+        assert(nv>=2);
+        vector<Vertex *> vts;
+        vts.resize(nv);
+        for (unsigned j = 0; j < nv; ++j){
+        	int fid = readInt();
+        	assert(fid<tmp_vertices.size());
+        	vts[j] = tmp_vertices[fid];
         }
-        p_faceDeque->push_back(f);
+        add_face(vts);
     }
+    vertices.insert(tmp_vertices.begin(), tmp_vertices.end());
 
-    for (Polyhedron::Facet_iterator fit = facets_begin();
-         fit != facets_end(); ++fit)
-    {
-    	float hdist = readFloat();
-    	fit->setConservative(hdist);
-    	hdist = readFloat();
-    	fit->setProgressive(hdist);
-    }
+    this->print();
+
+    exit(0);
+
+//    for (TMesh::Facet_iterator fit = facets_begin();
+//         fit != facets_end(); ++fit)
+//    {
+//    	float hdist = readFloat();
+//    	fit->setConservative(hdist);
+//    	hdist = readFloat();
+//    	fit->setProgressive(hdist);
+//    }
 
     // Free the memory.
     for (unsigned i = 0; i < p_faceDeque->size(); ++i)
@@ -505,7 +593,7 @@ void Polyhedron::readBaseMesh()
     delete p_faceDeque;
     delete p_pointDeque;
 
-    // Read the maximum cutting volume
+    // Read the compression loss
     for(unsigned i=0;i<i_nbDecimations;i++){
     	float conservative = readFloat();
     	float progressive = readFloat();
@@ -513,21 +601,21 @@ void Polyhedron::readBaseMesh()
     }
 }
 
-void Polyhedron::writeMeshOff(const char psz_filePath[])
+void TMesh::writeMeshOff(const char psz_filePath[])
 {
-    std::filebuf fb;
-    fb.open(psz_filePath, std::ios::out | std::ios::trunc);
-    if(fb.is_open())
-    {
-        std::ostream os(&fb);
-        os << *this;
-    }else{
-    	std::cerr<<"cannot find path "<<psz_filePath<<std::endl;
-    }
+//    std::filebuf fb;
+//    fb.open(psz_filePath, std::ios::out | std::ios::trunc);
+//    if(fb.is_open())
+//    {
+//        std::ostream os(&fb);
+//        os << *this;
+//    }else{
+//    	std::cerr<<"cannot find path "<<psz_filePath<<std::endl;
+//    }
 }
 
 
-void Polyhedron::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id)
+void TMesh::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id)
 {
     // Output the current mesh in an off file.
     std::ostringstream fileName;

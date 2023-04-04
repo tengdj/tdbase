@@ -23,82 +23,58 @@ class Tile{
 	char *data_buffer = NULL;
 	size_t tile_capacity = INT_MAX;
 	string tile_path;
-	bool load(string path, int max_objects=INT_MAX);
-	bool persist(string path);
-	bool parse_raw(FILE *);
+
+	void init();
+	bool load(string meta_path, int max_objects=INT_MAX);
+	bool persist(string meta_path);
+	bool parse_raw();
 	// retrieve the data of the mesh with ID id on demand
 	void retrieve_mesh(size_t id);
 public:
 	// for building tile instead of load from file
-	Tile(){};
-	void add_raw(char *data);
-	Tile(std::string path, size_t capacity=LONG_MAX, bool init_data = true);
-	void init();
+	Tile(std::string path, size_t capacity=LONG_MAX);
 	~Tile();
-	void disable_innerpart();
+
+	inline HiMesh_Wrapper *get_mesh_wrapper(int id){
+		assert(id>=0&&id<objects.size());
+		return objects[id];
+	}
+	inline aab get_mbb(int id){
+		assert(id>=0&&id<objects.size());
+		return objects[id]->box;
+	}
+
+	inline size_t num_objects(){
+		return objects.size();
+	}
+
+	void decode_to(size_t id, uint lod);
+	HiMesh *get_mesh(int id);
+	void retrieve_all();
+	void advance_all(int lod = 100);
+	char *retrieve_data(int id);
+	OctreeNode *build_octree(size_t num_tiles);
 
 	// for profiling performance
+private:
 	double decode_time = 0;
 	double retrieve_time = 0;
 	double advance_time = 0;
-	double disk_time = 0;
-	double malloc_time = 0;
 	double newmesh_time = 0;
+public:
 	void reset_time(){
 		decode_time = 0;
 		retrieve_time = 0;
 		advance_time = 0;
-		disk_time = 0;
-		malloc_time = 0;
 		newmesh_time = 0;
 	}
-
 	void print_time(){
 		cerr<<"\ndecoding time\t"<<decode_time
 			<<"\n\tretrieve time\t"<< retrieve_time
-			<<"\n\t\tdisk time\t" << disk_time
-			<<"\n\t\tmalloc time\t"<< malloc_time
 			<<"\n\t\tnewmesh time\t"<< newmesh_time
 			<<"\n\tadvance time\t"<< advance_time
 			<<endl<<endl;
 	}
-
-	void decode_to(size_t id, uint lod);
-	HiMesh_Wrapper *get_mesh_wrapper(int id){
-		assert(id>=0&&id<objects.size());
-		return objects[id];
-	}
-	aab get_mbb(int id){
-		assert(id>=0&&id<objects.size());
-		return objects[id]->box;
-	}
-	HiMesh *get_mesh(int id){
-		if(!get_mesh_wrapper(id)->mesh){
-			retrieve_mesh(id);
-		}
-		//assert(get_mesh_wrapper(id)->mesh && "the mesh must be retrieved before can be returned");
-		return get_mesh_wrapper(id)->mesh;
-	}
-	size_t num_objects(){
-		return objects.size();
-	}
-
-	void retrieve_all(){
-		for(HiMesh_Wrapper *w:objects){
-			retrieve_mesh(w->id);
-		}
-	}
-
-	void advance_all(int lod){
-		retrieve_all();
-		for(HiMesh_Wrapper *w:objects){
-			w->advance_to(lod);
-		}
-	}
-
-	OctreeNode *build_octree(size_t num_tiles);
-	//SpatialIndex::ISpatialIndex *build_rtree();
-
 };
 
 }

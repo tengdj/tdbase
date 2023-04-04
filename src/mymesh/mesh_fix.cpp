@@ -9,11 +9,11 @@
 #include "mymesh.h"
 
 
-namespace hispeed{
+namespace tmesh{
 
 // to get the largest connected component
-vector<Polyhedron *> Polyhedron::depart(){
-	vector<Polyhedron *> polys;
+vector<TMesh *> TMesh::depart(){
+	vector<TMesh *> polys;
 
 //	vector<bool> added;
 //	for(int i=0;i<vertices.size();i++){
@@ -89,7 +89,7 @@ vector<Polyhedron *> Polyhedron::depart(){
 	return polys;
 }
 
-bool Polyhedron::fill_holes(){
+bool TMesh::fill_holes(){
 
 //	while(true){
 //		// identify the singsingle_edgele edges
@@ -112,7 +112,7 @@ bool Polyhedron::fill_holes(){
 
 }
 
-void Polyhedron::remove_redundant(){
+void TMesh::remove_redundant(){
 //	map<tuple<int, int, int>, Face *> face_map;
 //	for(Face *f:faces){
 //
@@ -128,7 +128,7 @@ void Polyhedron::remove_redundant(){
 //	}
 }
 
-void Polyhedron::merge_vertex(){
+void TMesh::merge_vertex(){
 //	map<tuple<double, double, double>, int> vertex_map;
 //	vector<int> vid_map;
 //	vid_map.resize(points.size());
@@ -151,7 +151,7 @@ void Polyhedron::merge_vertex(){
 //	}
 }
 
-void Polyhedron::evaluate(){
+void TMesh::evaluate(){
 
 	for(Face *f:faces){
 		for(Half_Edge *he:f->half_edges){

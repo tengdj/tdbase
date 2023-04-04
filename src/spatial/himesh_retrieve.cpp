@@ -253,7 +253,7 @@ list<Triangle> HiMesh::get_triangles(){
 
 list<Point> HiMesh::get_vertices(){
 	vertices.clear();
-	for(MyMesh::Vertex_iterator v = vertices_begin(); v != vertices_end(); ++v){
+	for(HiMesh::Vertex_iterator v = vertices_begin(); v != vertices_end(); ++v){
 		vertices.push_back(v->point());
 	}
 	return vertices;

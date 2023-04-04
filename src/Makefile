@@ -18,7 +18,7 @@ ifdef USE_GPU
 endif
 
 ifdef CGAL_MCFSKEL_DEBUG
-	CPPFLAGS += -DCGAL_MCFSKEL_DEBUG
+	CPPFLAGS += -DCGAL_MCFSKEL_DEBUG -DCGAL_MCFSKEL_INFO
 endif 
  
    
@@ -46,10 +46,6 @@ endif
 
 %.o: %.c
 	$(CC) $(INCFLAGS) -c $? -o $@
-	
-#PPMC source and object
-PPMC_SRCS := $(wildcard PPMC/*.cpp)
-PPMC_OBJS := $(patsubst %.cpp,%.o,$(PPMC_SRCS))
 
 #SPATIAL source and object
 SPATIAL_SRCS := $(wildcard spatial/*.cpp)
@@ -84,10 +80,10 @@ all:  join generator 3dpro
 compress: tools/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(PPMC_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-join: tools/joiner.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(PPMC_OBJS)
+join: tools/joiner.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
-generator: tools/generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(PPMC_OBJS) $(GEOMETRY_OBJS)
+generator: tools/generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
 	
 fixer: tools/fixer.o $(MYMESH_OBJS)
@@ -96,7 +92,7 @@ fixer: tools/fixer.o $(MYMESH_OBJS)
 h5tooff: tools/H5ToOFF.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@
 
-3dpro: tools/3dpro_toolkit.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS) $(PPMC_OBJS)
+3dpro: tools/3dpro_toolkit.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 
 develop: tools/develop.o $(MYMESH_OBJS)

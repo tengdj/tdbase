@@ -21,12 +21,14 @@
 
 #include <unistd.h>
 
-#include "../PPMC/configuration.h"
-#include "../PPMC/mymesh.h"
+#include "himesh.h"
+
+namespace hispeed{
+
 /**
   * Write the compressed data to the buffer.
   */
-void MyMesh::writeCompressedData()
+void HiMesh::writeCompressedData()
 {
 
     i_nbDecimations = i_curDecimationId + 1;
@@ -47,7 +49,7 @@ void MyMesh::writeCompressedData()
 /**
   * Read the compressed data from the buffer.
   */
-void MyMesh::readCompressedData()
+void HiMesh::readCompressedData()
 {
     // Read the base mesh.
     readBaseMesh();
@@ -103,7 +105,7 @@ uint32_t readBits(unsigned i_nbBits, char *p_src,
 
 
 // Write a floating point number in the data buffer.
-void MyMesh::writeFloat(float f)
+void HiMesh::writeFloat(float f)
 {
     *(float *)(p_data + dataOffset) = f;
     dataOffset += sizeof(float);
@@ -113,7 +115,7 @@ void MyMesh::writeFloat(float f)
 /**
   * Read a floating point number in the data buffer.
   */
-float MyMesh::readFloat()
+float HiMesh::readFloat()
 {
     float f = *(float *)(p_data + dataOffset);
     dataOffset += sizeof(float);
@@ -123,7 +125,7 @@ float MyMesh::readFloat()
 /**
   * Read an integer in the data buffer.
   */
-int MyMesh::readInt()
+int HiMesh::readInt()
 {
     int i = *(int *)(p_data + dataOffset);
     dataOffset += sizeof(int);
@@ -131,7 +133,7 @@ int MyMesh::readInt()
 }
 
 // Write an integer in the data buffer
-void MyMesh::writeInt(int i)
+void HiMesh::writeInt(int i)
 {
     *(int *)(p_data + dataOffset) = i;
     dataOffset += sizeof(int);
@@ -140,7 +142,7 @@ void MyMesh::writeInt(int i)
 /**
   * Read a 16 bits integer in the data buffer.
   */
-int16_t MyMesh::readInt16()
+int16_t HiMesh::readInt16()
 {
     int16_t i = *(int16_t *)(p_data + dataOffset);
     dataOffset += sizeof(int16_t);
@@ -149,7 +151,7 @@ int16_t MyMesh::readInt16()
 
 
 // Write a 16 bits integer in the data buffer
-void MyMesh::writeInt16(int16_t i)
+void HiMesh::writeInt16(int16_t i)
 {
     *(int16_t *)(p_data + dataOffset) = i;
     dataOffset += sizeof(int16_t);
@@ -158,7 +160,7 @@ void MyMesh::writeInt16(int16_t i)
 /**
   * Read a 16 bits integer in the data buffer.
   */
-uint16_t MyMesh::readuInt16()
+uint16_t HiMesh::readuInt16()
 {
     uint16_t i = *(uint16_t *)(p_data + dataOffset);
     dataOffset += sizeof(uint16_t);
@@ -167,7 +169,7 @@ uint16_t MyMesh::readuInt16()
 
 
 // Write a 16 bits integer in the data buffer
-void MyMesh::writeuInt16(uint16_t i)
+void HiMesh::writeuInt16(uint16_t i)
 {
     *(uint16_t *)(p_data + dataOffset) = i;
     dataOffset += sizeof(uint16_t);
@@ -177,7 +179,7 @@ void MyMesh::writeuInt16(uint16_t i)
 /**
   * Read a byte in the data buffer.
   */
-unsigned char MyMesh::readChar()
+unsigned char HiMesh::readChar()
 {
 	unsigned char  i = *(unsigned char  *)(p_data + dataOffset);
     dataOffset += sizeof(unsigned char );
@@ -185,14 +187,14 @@ unsigned char MyMesh::readChar()
 }
 
 // Write a byte in the data buffer
-void MyMesh::writeChar(unsigned char  i)
+void HiMesh::writeChar(unsigned char  i)
 {
     *(unsigned char *)(p_data + dataOffset) = i;
     dataOffset += sizeof(unsigned char );
 }
 
 // Write the base mesh.
-void MyMesh::writeBaseMesh()
+void HiMesh::writeBaseMesh()
 {
 
     // Write the bounding box min coordinate.
@@ -225,7 +227,7 @@ void MyMesh::writeBaseMesh()
 
     // Write the other vertices.
     size_t id = 2;
-    for (MyMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit)
+    for (HiMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit)
     {
         if (vit == vh_departureConquest[0] || vit == vh_departureConquest[1])
             continue;
@@ -240,7 +242,7 @@ void MyMesh::writeBaseMesh()
     }
 
     // Write the base mesh face vertex indices.
-    for (MyMesh::Facet_iterator fit = facets_begin();
+    for (HiMesh::Facet_iterator fit = facets_begin();
          fit != facets_end(); ++fit)
     {
         unsigned i_faceDegree = fit->facet_degree();
@@ -255,7 +257,7 @@ void MyMesh::writeBaseMesh()
     }
 
     // Write the hausdorf distance for the base faces
-    for (MyMesh::Facet_iterator fit = facets_begin();
+    for (HiMesh::Facet_iterator fit = facets_begin();
          fit != facets_end(); ++fit)
     {
         writeFloat(fit->getHausdorfDistance().first);
@@ -273,7 +275,7 @@ void MyMesh::writeBaseMesh()
 
 
 // Read the base mesh.
-void MyMesh::readBaseMesh()
+void HiMesh::readBaseMesh()
 {
     // Read the bounding box min coordinate.
     float coord[3];
@@ -321,7 +323,7 @@ void MyMesh::readBaseMesh()
     MyMeshBaseBuilder<HalfedgeDS> builder(p_pointDeque, p_faceDeque);
     delegate(builder);
 
-    for (MyMesh::Facet_iterator fit = facets_begin();
+    for (HiMesh::Facet_iterator fit = facets_begin();
          fit != facets_end(); ++fit)
     {
     	float hdist = readFloat();
@@ -344,7 +346,7 @@ void MyMesh::readBaseMesh()
     }
 }
 
-void MyMesh::writeMeshOff(const char psz_filePath[]) const
+void HiMesh::writeMeshOff(const char psz_filePath[]) const
 {
     std::filebuf fb;
     fb.open(psz_filePath, std::ios::out | std::ios::trunc);
@@ -358,10 +360,12 @@ void MyMesh::writeMeshOff(const char psz_filePath[]) const
 }
 
 
-void MyMesh::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const
+void HiMesh::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const
 {
     // Output the current mesh in an off file.
     std::ostringstream fileName;
     fileName << pathPrefix << "_" << i_id << ".off";
     writeMeshOff(fileName.str().c_str());
+}
+
 }

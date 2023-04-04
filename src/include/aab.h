@@ -162,8 +162,6 @@ public:
 
 	friend std::ostream&
 	operator<<(std::ostream& os, const aab &p){
-		for(int i=0;i<3;i++){
-		}
 		os<<"(";
 		os<<p.low[0]<<",";
 		os<<p.low[1]<<",";

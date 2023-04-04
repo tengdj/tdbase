@@ -65,12 +65,10 @@ void *mycompress(void *args){
 			usleep(10);
 			continue;
 		}
-		MyMesh *mesh = hispeed::parse_mesh(processing_line[id], true);
-		HiMesh *himesh = new HiMesh(mesh);
-		himesh->advance_to(100);
-		voxels.push_back(himesh->generate_voxels_skeleton(500));
-		delete mesh;
-		mesh_buffer.push_back(himesh);
+		HiMesh *mesh = hispeed::parse_mesh(processing_line[id]);
+		voxels.push_back(mesh->generate_voxels_skeleton(500));
+		mesh->completeOperation();
+		mesh_buffer.push_back(mesh);
 		// if the buffer is full, write the compressed data into binary file
 		if(mesh_buffer.size()>=QUEUE_SIZE){
 			flush_mesh_buffer(mesh_buffer, voxels);

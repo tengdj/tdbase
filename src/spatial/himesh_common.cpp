@@ -174,7 +174,7 @@ void write_polyhedron(Polyhedron *mesh, int id){
 
 
 /*
- * read polyhedrons or MyMesh
+ * read polyhedrons or HiMesh
  * */
 
 string read_off_stdin(){
@@ -192,7 +192,7 @@ string read_off_stdin(){
 	return whole_mesh;
 }
 
-MyMesh *parse_mesh(string input_line, bool complete_compress){
+HiMesh *parse_mesh(string input_line, bool complete_compress){
 	if(input_line.size()==0){
 		return NULL;
 	}
@@ -200,7 +200,7 @@ MyMesh *parse_mesh(string input_line, bool complete_compress){
 		boost::replace_all(input_line, "|", "\n");
 	}
 
-	MyMesh *mesh = new MyMesh(100, COMPRESSION_MODE_ID, input_line.c_str(), input_line.size());
+	HiMesh *mesh = new HiMesh(100, COMPRESSION_MODE_ID, input_line.c_str(), input_line.size());
 
 	if(complete_compress){
 		mesh->completeOperation();
@@ -208,22 +208,22 @@ MyMesh *parse_mesh(string input_line, bool complete_compress){
 	return mesh;
 }
 
-MyMesh *read_mesh(){
+HiMesh *read_mesh(){
 	string mesh_str = read_off_stdin();
-	MyMesh *mesh = parse_mesh(mesh_str);
+	HiMesh *mesh = parse_mesh(mesh_str);
 	assert(mesh && "this function must return a valid mesh");
 	return mesh;
 }
 
-MyMesh *read_mesh(char *path){
+HiMesh *read_mesh(char *path){
 	string str = read_file(path);
-	MyMesh *mesh = parse_mesh(str);
+	HiMesh *mesh = parse_mesh(str);
 	assert(mesh && "this function must return a valid mesh");
 	return mesh;
 }
 
-MyMesh *decompress_mesh(MyMesh *compressed, int lod, bool complete_operation){
-	MyMesh *decompressed = new MyMesh(lod,
+HiMesh *decompress_mesh(HiMesh *compressed, int lod, bool complete_operation){
+	HiMesh *decompressed = new HiMesh(lod,
 			 DECOMPRESSION_MODE_ID,
 			 compressed->p_data, compressed->dataOffset);
 	if(complete_operation){

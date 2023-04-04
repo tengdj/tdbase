@@ -22,12 +22,14 @@
 #include <stack>
 #include <stdlib.h>
 #include <tuple>
+
 #include "util.h"
 #include "aab.h"
 
 using namespace std;
+using namespace hispeed;
 
-namespace hispeed{
+namespace tmesh{
 
 class Point{
 public:
@@ -186,7 +188,7 @@ public:
 
 
 
-class Polyhedron{
+class TMesh{
 
 public:
 	int id = 0;
@@ -194,16 +196,21 @@ public:
 	unordered_set<Face *>	faces;
 	aab mbb;
 
+	bool owned_data = false;
 	char *p_data = NULL;
 	size_t dataOffset = 0;
 
 	Vertex *vh_departureConquest[2];
 
+	int i_nbDecimations = 0;
+	int i_curDecimationId = 0;
+
 public:
-	Polyhedron(int i=0){id=i;}
-	~Polyhedron();
+	TMesh(int i=0){id=i;}
+	~TMesh();
 
 	// I/O
+	void load(char *data, bool owned = false);
 	void load(string path);
 	bool parse(string str);
 	bool parse(const char*, size_t);
@@ -226,7 +233,7 @@ public:
 	void merge_vertex();
 	bool fill_holes();
 	void remove_redundant();
-	vector<Polyhedron *> depart();
+	vector<TMesh *> depart();
 	void evaluate();
 
 	/*
@@ -242,9 +249,6 @@ public:
 		return faces.size();
 	}
 
-
-	int i_nbDecimations;
-	int i_curDecimationId;
 
 
 	/**

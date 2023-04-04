@@ -33,16 +33,11 @@ void HiMesh::advance_to(int lod){
 }
 
 
-HiMesh::HiMesh(MyMesh *mesh):
-		MyMesh(0, DECOMPRESSION_MODE_ID, mesh->p_data, mesh->dataOffset){
+HiMesh::HiMesh(HiMesh *mesh):
+		HiMesh(0, DECOMPRESSION_MODE_ID, mesh->p_data, mesh->dataOffset){
 }
 HiMesh::HiMesh(char *data, size_t dsize):
-		MyMesh(0, DECOMPRESSION_MODE_ID, data, dsize){
-}
-
-HiMesh::~HiMesh(){
-	//release_buffer();
-	this->clear_aabb_tree();
+		HiMesh(0, DECOMPRESSION_MODE_ID, data, dsize){
 }
 
 aab HiMesh::get_box(){

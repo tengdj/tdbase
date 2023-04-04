@@ -10,7 +10,6 @@
 
 #include "himesh.h"
 #include "tile.h"
-#include "../PPMC/ppmc.h"
 #include "util.h"
 
 using namespace hispeed;
@@ -253,10 +252,9 @@ static void aabb(int argc, char **argv){
 		num = atoi(argv[3]);
 	}
 
+	global_ctx.use_multimbb = false;
 	Tile *tile1 = new Tile(argv[1], num);
 	Tile *tile2 = new Tile(argv[2],1);
-	tile1->disable_innerpart();
-	tile2->disable_innerpart();
 	tile1->retrieve_all();
 	tile1->advance_all(100);
 	logt("load tiles", start);
@@ -432,10 +430,17 @@ static void print(int argc, char **argv){
 
 static void test(int argc, char **argv){
 
-	for(int i=0;i<100;i++){
-		log("%d", rand());
-	}
+	Tile *tile = new Tile(argv[1],1);
+	HiMesh *mesh = tile->get_mesh(0);
 
+	cout<<sizeof(Polyhedron)<<endl;
+
+	if(argc>2){
+		int lod = atoi(argv[2]);
+		assert(lod>=0 && lod<=100);
+		mesh->advance_to(lod);
+	}
+	cout<<*mesh<<endl;
 }
 
 int main(int argc, char **argv){

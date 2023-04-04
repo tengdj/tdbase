@@ -17,20 +17,20 @@
 * along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
 *****************************************************************************/
 
-#include "../PPMC/configuration.h"
-#include "../PPMC/mymesh.h"
+#include "himesh.h"
 
+namespace hispeed{
 
 /**
   * Start the next decompression operation.
   */
-void MyMesh::startNextDecompresssionOp()
+void HiMesh::startNextDecompresssionOp()
 {
 	// reset the states
-    for (MyMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
+    for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
 
-    for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
+    for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
     if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
@@ -40,7 +40,7 @@ void MyMesh::startNextDecompresssionOp()
     	if(i_curDecimationId == i_nbDecimations){
     		// reset all the hausdorf distance to 0 for the highest LOD
     		// as we do not have another round of decoding to set them
-            for (MyMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+            for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
             	fit->setProgressive(0.0);
             	fit->setConservative(0.0);
             }
@@ -60,7 +60,7 @@ void MyMesh::startNextDecompresssionOp()
 /**
   * One undecimation step.
   */
-void MyMesh::undecimationStep()
+void HiMesh::undecimationStep()
 {
 	// Add the first halfedge to the queue.
 	pushHehInit();
@@ -123,7 +123,7 @@ void MyMesh::undecimationStep()
 /**
   * One step of the inserted edge coding conquest.
   */
-void MyMesh::InsertedEdgeDecodingStep()
+void HiMesh::InsertedEdgeDecodingStep()
 {
     pushHehInit();
     while (!gateQueue.empty())
@@ -168,7 +168,7 @@ void MyMesh::InsertedEdgeDecodingStep()
 /**
   * Insert center vertices.
   */
-void MyMesh::insertRemovedVertices()
+void HiMesh::insertRemovedVertices()
 {
 
     // Add the first halfedge to the queue.
@@ -224,9 +224,9 @@ void MyMesh::insertRemovedVertices()
 /**
   * Remove all the marked edges.
   */
-void MyMesh::removeInsertedEdges()
+void HiMesh::removeInsertedEdges()
 {
-    for (MyMesh::Halfedge_iterator hit = halfedges_begin();
+    for (HiMesh::Halfedge_iterator hit = halfedges_begin();
          hit!=halfedges_end(); ++hit)
     {
         if(hit->isAdded()){
@@ -235,3 +235,4 @@ void MyMesh::removeInsertedEdges()
     }
 }
 
+}
