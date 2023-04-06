@@ -62,10 +62,7 @@ public:
 	float high[3];
 public:
 	aab(){
-		for(int i=0;i<3;i++){
-			low[i] = DBL_MAX;
-			high[i] = -DBL_MAX;
-		}
+		reset();
 	}
 
 	aab(const aab &b){
@@ -90,6 +87,12 @@ public:
 		high[0] = h0;
 		high[1] = h1;
 		high[2] = h2;
+	}
+	void reset(){
+		for(int i=0;i<3;i++){
+			low[i] = DBL_MAX;
+			high[i] = -DBL_MAX;
+		}
 	}
 
 	void update(float x, float y, float z){
@@ -158,6 +161,18 @@ public:
 			}
 		}
 		return true;
+	}
+
+	void print(){
+		cout<<"(";
+		cout<<low[0]<<",";
+		cout<<low[1]<<",";
+		cout<<low[2]<<")";
+		cout<<" -> (";
+		cout<<high[0]<<",";
+		cout<<high[1]<<",";
+		cout<<high[2]<<")";
+		cout<<endl;
 	}
 
 	friend std::ostream&

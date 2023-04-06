@@ -1,6 +1,6 @@
 prefix=/usr/local
 
-CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result
+CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS
 NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include -I/usr/local/include/eigen3 -I/usr/local/cgal/include
 LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz

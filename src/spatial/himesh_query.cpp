@@ -10,6 +10,8 @@
 
 namespace hispeed{
 
+query_context global_ctx;
+
 void print_triangles(float *triangle, size_t size){
 	printf("OFF\n%ld %ld 0\n\n",size*3,size);
 	for(size_t i=0;i<size*3;i++){

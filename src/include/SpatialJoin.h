@@ -79,7 +79,7 @@ public:
 	geometry_param packing_data(vector<candidate_entry> &candidates, query_context &ctx);
 	void calculate_distance(vector<candidate_entry> &candidates, query_context &ctx);
 	void check_intersection(vector<candidate_entry> &candidates, query_context &ctx);
-	void nearest_neighbor(query_context ctx);
+	void nearest_neighbor(query_context &ctx);
 	void within(query_context ctx);
 
 	vector<candidate_entry> mbb_intersect(Tile *tile1, Tile *tile2);

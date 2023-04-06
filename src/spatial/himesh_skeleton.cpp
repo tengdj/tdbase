@@ -125,7 +125,7 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 	voxel_num = std::max(1, voxel_num);
 	timeval start = hispeed::get_cur_time();
 	vector<Voxel *> voxels;
-	aab box = get_box();
+	aab box = get_mbb();
 	if(voxel_num<=1){
 		Voxel *v = new Voxel();
 		v->set_box(box);
@@ -204,11 +204,11 @@ vector<Voxel *> HiMesh::voxelization(int voxel_size){
 	vector<Voxel *> voxels;
 	if(voxel_size<=1){
 		Voxel *vox = new Voxel();
-		vox->set_box(get_box());
+		vox->set_box(get_mbb());
 		voxels.push_back(vox);
 	}
 
-	aab box = get_box();
+	aab box = get_mbb();
 	float min_dim = std::min(box.high[2]-box.low[2], std::min(box.high[1]-box.low[1], box.high[0]-box.low[0]));
 	float div = (box.high[2]-box.low[2])*(box.high[1]-box.low[1])*(box.high[0]-box.low[0])/(min_dim*min_dim*min_dim);
 	float multi = std::pow(1.0*voxel_size/div, 1.0/3);

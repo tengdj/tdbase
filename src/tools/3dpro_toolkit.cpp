@@ -49,7 +49,7 @@ static void profile_protruding(int argc, char **argv){
 	// Init the random number generator.
 	log("start compressing");
 	struct timeval starttime = get_cur_time();
-	MyMesh *compressed = read_mesh();
+	HiMesh *compressed = read_mesh();
 	assert(compressed->size_of_border_edges()&&"must be manifold");
 	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed);
 	compressed->profileProtruding();
@@ -60,7 +60,7 @@ static void profile_protruding(int argc, char **argv){
  * */
 static void get_voxel_boxes(int argc, char **argv){
 	struct timeval start = get_cur_time();
-	MyMesh *mesh = hispeed::read_mesh();
+	HiMesh *mesh = hispeed::read_mesh();
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
@@ -77,7 +77,7 @@ static void get_voxel_boxes(int argc, char **argv){
 
 	log("%ld voxels are generated %f volumn", voxels.size(), vol);
 	write_voxels(voxels, "/gisdata/skeleton_voxels.off");
-	hispeed::write_box(himesh->get_box(), "/gisdata/aab.off");
+	hispeed::write_box(himesh->get_mbb(), "/gisdata/aab.off");
 	delete himesh;
 }
 
@@ -88,7 +88,7 @@ static void get_voxel_boxes(int argc, char **argv){
 static void get_skeleton(int argc, char **argv){
 	assert(argc>2);
 	struct timeval start = get_cur_time();
-	MyMesh *mesh = read_mesh(argv[1]);
+	HiMesh *mesh = read_mesh(argv[1]);
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
@@ -112,8 +112,7 @@ static void get_skeleton(int argc, char **argv){
 static void voxelize(int argc, char **argv){
 	assert(argc>2);
 	struct timeval start = get_cur_time();
-	MyMesh *mesh = read_mesh(argv[1]);
-
+	HiMesh *mesh = read_mesh(argv[1]);
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
@@ -139,8 +138,8 @@ static void voxelize(int argc, char **argv){
  * */
 static void profile_distance(int argc, char **argv){
 
-	Tile *tile1 = new Tile("/home/teng/git/3DPro/src/teng_v_nv1_nu200_s10_vs100_r30.dt");
-	Tile *tile2 = new Tile("/home/teng/git/3DPro/src/teng_n_nv1_nu200_s10_vs100_r30.dt");
+	Tile *tile1 = new Tile(argv[1]);
+	Tile *tile2 = new Tile(argv[2]);
 
 	for(int i=10;i<=100;i+=10){
 		tile1->advance_all(i);
@@ -171,16 +170,15 @@ void profile_decoding(int argc, char **argv){
 	assert(start_lod>=0&&start_lod<=10);
 	// Init the random number generator.
 	log("start compressing");
-	MyMesh *compressed = read_mesh(argv[1]);
-
+	HiMesh *compressed = read_mesh(argv[1]);
 	struct timeval starttime = get_cur_time();
 	//assert(compressed->size_of_border_edges()&&"must be manifold");
 	compressed->completeOperation();
 	logt("compress", starttime);
 
-	const int itertime = 10;
+	const int itertime = 5;
 
-	MyMesh *testc[itertime];
+	HiMesh *testc[itertime];
 	for(int i=0;i<itertime;i++){
 		testc[i] = read_mesh(argv[1]);
 	}
@@ -188,47 +186,37 @@ void profile_decoding(int argc, char **argv){
 	for(int i=0;i<itertime;i++){
 		testc[i]->completeOperation();
 	}
-	log("compress %.4f",get_time_elapsed(sst)/itertime);
-
-	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->size_of_triangles());
+	logt("compress to %d vertices %d edges %d faces",sst,compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed->size_of_triangles());
 
 	log("start decompressing");
 
-	HiMesh *himesh;
 	char path[256];
 	for(int i=start_lod;i<=end_lod;i++){
 		int lod = 10*i;
-		MyMesh *tested[itertime];
+		HiMesh *tested[itertime];
 		for(int t=0;t<itertime;t++){
-			tested[t] = hispeed::decompress_mesh(compressed, lod, false);
+			tested[t] = new HiMesh(compressed);
 		}
 		starttime = get_cur_time();
 		for(int t=0;t<itertime;t++){
-			tested[t]->completeOperation();
+			tested[t]->advance_to(lod);
 		}
 		double testedtime = get_time_elapsed(starttime,true);
-
+		logt("decompress %3d lod %5d vertices %5d edges %5d faces avg(%.4f)", starttime, lod,
+				tested[0]->size_of_vertices(), tested[0]->size_of_halfedges()/2, tested[0]->size_of_triangles(), testedtime/itertime);
+		sprintf(path,"/gisdata/lod.%d.off", lod);
+		tested[0]->writeMeshOff(path);
 		for(int t=0;t<itertime;t++){
 			delete tested[t];
 		}
-		MyMesh *decompressed = hispeed::decompress_mesh(compressed, lod);
-		decompressed->completeOperation();
-		logt("decompress %3d lod %5d vertices %5d edges %5d faces avg(%.4f)", starttime, lod,
-				decompressed->size_of_vertices(), decompressed->size_of_halfedges()/2, decompressed->size_of_triangles(), testedtime/itertime);
-		sprintf(path,"/gisdata/lod.%d.off", lod);
-		decompressed->writeMeshOff(path);
-		if(lod==100){
-			himesh = new HiMesh(decompressed);
-		}
-		delete decompressed;
 	}
-	delete compressed;
 	starttime = get_cur_time();
-	float *vertices = NULL;
+	HiMesh *himesh = new HiMesh(compressed);
 	himesh->advance_to(100);
 	logt("decompress", starttime);
+	float *vertices = NULL;
 	size_t size = himesh->fill_vertices(vertices);
-	logt("fill vertices %d with %d bytes (%ld bytes)", starttime, size, size*3*sizeof(float),himesh->dataOffset);
+	logt("fill vertices %d with %d bytes (%ld bytes)", starttime, size, size*3*sizeof(float),himesh->get_data_size());
 	char *zcomp = new char[size*3*sizeof(float)];
 	unsigned long compressedsize;
 	for(int i=1;i<10;i++){
@@ -236,12 +224,12 @@ void profile_decoding(int argc, char **argv){
 		logt("compress %d level %ld bytes",starttime,i,compressedsize);
 	}
 
-	aab box = himesh->get_box();
+	aab box = himesh->get_mbb();
 	hispeed::write_box(box, "/gisdata/box.off");
 
 	delete himesh;
+	delete compressed;
 	delete []vertices;
-
 }
 
 static void aabb(int argc, char **argv){
@@ -316,17 +304,21 @@ static void adjust_polyhedron(int argc, char **argv){
 		cout<<"usage: adjust shift shrink output_path"<<endl;
 		return;
 	}
-	int sft = atoi(argv[1]);
-	int shift[3] = {sft,sft,sft};
-	float shrink = atoi(argv[2]);;
-	Polyhedron *poly = hispeed::read_polyhedron();
-	Polyhedron apoly = adjust_polyhedron(shift,shrink,poly);
-	hispeed::write_polyhedron(&apoly, argv[3]);
-	delete poly;
+	float sft = atof(argv[1]);
+	float shrink = atof(argv[2]);
+	HiMesh *mesh = hispeed::read_mesh();
+	char path[256];
+	sprintf(path, "%s/original.off", argv[3]);
+	mesh->writeMeshOff(path);
+	mesh->shift(sft, sft, sft);
+	mesh->shrink(shrink);
+	sprintf(path, "%s/adjusted_%.2f_%.2f.off",argv[3],sft,shrink);
+	mesh->writeMeshOff(path);
+	delete mesh;
 }
 
 static void triangulate(int argc, char **argv){
-	MyMesh *mesh = read_mesh(argv[1]);
+	HiMesh *mesh = read_mesh(argv[1]);
 	mesh->completeOperation();
 	HiMesh *himesh = new HiMesh(mesh);
 	himesh->advance_to(100);
@@ -340,7 +332,7 @@ static void triangulate(int argc, char **argv){
 }
 
 static void compress(int argc, char **argv){
-	MyMesh *mesh = read_mesh(argv[1]);
+	HiMesh *mesh = read_mesh(argv[1]);
 	mesh->writeMeshOff("/gisdata/origin.off");
 	assert(mesh);
 	struct timeval start = get_cur_time();
@@ -428,6 +420,21 @@ static void print(int argc, char **argv){
 	delete tile;
 }
 
+static void print_tile_boxes(int argc, char **argv){
+	Tile *tile = new Tile(argv[1]);
+	vector<Voxel *> boxes;
+	for(int i=0;i<tile->num_objects();i++){
+		aab a = tile->get_mesh_wrapper(i)->box;
+		Voxel *vx = new Voxel();
+		for(int j=0;j<3;j++){
+			vx->low[j] = a.low[j];
+			vx->high[j] = a.high[j];
+		}
+		boxes.push_back(vx);
+	}
+	hispeed::write_voxels(boxes, argv[2]);
+}
+
 static void test(int argc, char **argv){
 
 	Tile *tile = new Tile(argv[1],1);
@@ -479,6 +486,8 @@ int main(int argc, char **argv){
 		print(argc-1,argv+1);
 	}else if(strcmp(argv[1],"intersect") == 0){
 		intersect(argc-1,argv+1);
+	}else if(strcmp(argv[1],"print_tile_boxes") == 0){
+		print_tile_boxes(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);

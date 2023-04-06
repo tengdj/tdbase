@@ -117,7 +117,7 @@ public:
 	}
 };
 
-static query_context global_ctx;
+extern query_context global_ctx;
 
 static query_context parse_args(int argc, char **argv){
 	query_context ctx;

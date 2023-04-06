@@ -479,39 +479,57 @@ struct MyItems : public CGAL::Polyhedron_items_3
 
 class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
+	// Gate queues
+	std::queue<Halfedge_handle> gateQueue;
 
+	// Processing mode: 0 for compression and 1 for decompression.
+	int i_mode;
+	bool b_jobCompleted = false; // True if the job has been completed.
+
+	unsigned i_curDecimationId = 0;
+	unsigned i_nbDecimations;
+	unsigned i_decompPercentage;
+
+	// The vertices of the edge that is the departure of the coding and decoding conquests.
+	Vertex_handle vh_departureConquest[2];
+	// Geometry symbol list.
+	std::deque<std::deque<Point> > geometrySym;
+	std::deque<std::deque<unsigned>> hausdorfSym;
+
+	// Connectivity symbol list.
+	std::deque<std::deque<unsigned> > connectFaceSym;
+	std::deque<std::deque<unsigned> > connectEdgeSym;
+
+	// Number of vertices removed during current conquest.
+	unsigned i_nbRemovedVertices;
+
+
+	// The compressed data;
+	char *p_data;
+	size_t dataOffset = 0; // the offset to read and write.
+	size_t d_capacity;
+
+
+	aab mbb; // the bounding box
+	SegTree *segment_tree = NULL;
+	TriangleTree *triangle_tree = NULL;
+	list<Segment> segments;
+	list<Triangle> triangles;
+	list<Point> vertices;
+
+	// Store the maximum Hausdorf Distance
+	vector<pair<float, float>> globalHausdorfDistance;
 public:
 	HiMesh(unsigned i_decompPercentage,
 		   const int i_mode,
 		   const char* data,
 		   long length);
+	HiMesh(char *data, size_t dsize);
+	HiMesh(HiMesh *mesh);
 
 	~HiMesh();
 
 	void completeOperation();
-
-	Vector computeNormal(Facet_const_handle f) const;
-	Vector computeVertexNormal(Halfedge_const_handle heh) const;
-
-	Point barycenter(Facet_const_handle f) const;
-
-	float getBBoxDiagonal() const;
-	Vector getBBoxCenter() const;
-
-	// General
-	void computeBoundingBox();
-
-	inline size_t count_triangle(Facet_const_iterator f){
-		size_t size = 0;
-		Halfedge_const_handle e1 = f->halfedge();
-		Halfedge_const_handle e3 = f->halfedge()->next()->next();
-		while(e3!=e1){
-			size++;
-			e3 = e3->next();
-		}
-		return size;
-	}
-	size_t size_of_triangles();
 
 	// Compression
 	void startNextCompresssionOp();
@@ -543,6 +561,9 @@ public:
 	Vector computeNormal(Halfedge_const_handle heh_gate) const;
 	Vector computeNormal(const std::vector<Vertex_const_handle> & polygon) const;
 	Vector computeNormal(Point p[3]) const;
+	Vector computeNormal(Facet_const_handle f) const;
+	Vector computeVertexNormal(Halfedge_const_handle heh) const;
+	Point barycenter(Facet_const_handle f) const;
 	Point barycenter(Halfedge_handle heh_gate) const;
 	Point barycenter(const std::vector<Vertex_const_handle> &polygon) const;
 	unsigned vertexDegreeNotNew(Vertex_const_handle vh) const;
@@ -576,67 +597,10 @@ public:
 	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
 	void profileProtruding();
 
-	// Variables.
-
-	// Gate queues
-	std::queue<Halfedge_handle> gateQueue;
-	std::queue<Halfedge_handle> problematicGateQueue;
-
-	// Processing mode: 0 for compression and 1 for decompression.
-	int i_mode;
-	bool b_jobCompleted; // True if the job has been completed.
-
-	unsigned i_curDecimationId;
-	unsigned i_nbDecimations;
-
-	// The vertices of the edge that is the departure of the coding and decoding conquests.
-	Vertex_handle vh_departureConquest[2];
-	// Geometry symbol list.
-	std::deque<std::deque<Point> > geometrySym;
-	std::deque<std::deque<unsigned>> hausdorfSym;
-
-	// Connectivity symbol list.
-	std::deque<std::deque<unsigned> > connectFaceSym;
-	std::deque<std::deque<unsigned> > connectEdgeSym;
-
-	// Number of vertices removed during current conquest.
-	unsigned i_nbRemovedVertices;
-
-	Point bbMin;
-	Point bbMax;
-	float f_bbVolume;
-
-	// Initial number of vertices and faces.
-	size_t i_nbVerticesInit;
-	size_t i_nbFacetsInit;
-
-	// The compressed data;
-	char *p_data;
-	size_t dataOffset; // the offset to read and write.
-	size_t d_capacity;
-
-	unsigned i_decompPercentage;
-
-	// Store the maximum size we cutted in each round of compression
-	vector<pair<float, float>> globalHausdorfDistance;
-	pair<float, float> getHausdorfDistance();
-	pair<float, float> getNextHausdorfDistance();
-	int processCount = 0;
-
-	/*
-	 * for 3dpro
-	 * */
-private:
-	SegTree *segment_tree = NULL;
-	TriangleTree *triangle_tree = NULL;
-	list<Segment> segments;
-	list<Triangle> triangles;
-	list<Point> vertices;
-public:
-	HiMesh(char *data, size_t dsize);
-	HiMesh(HiMesh *mesh);
-
-	aab get_box();
+	inline aab get_mbb(){
+		return mbb;
+	}
+	void compute_mbb();
 
 	Polyhedron *to_polyhedron();
 	Polyhedron *to_triangulated_polyhedron();
@@ -646,6 +610,7 @@ public:
 	vector<Voxel *> voxelization(int voxel_size);
 	string to_wkt();
 	float get_volume();
+	size_t size_of_triangles();
 
 	// get the elements
 	size_t fill_segments(float *&segments);
@@ -672,8 +637,22 @@ public:
 
 	void advance_to(int lod);
 
-	// validation
-	bool has_same_vertices();
+	pair<float, float> getHausdorfDistance();
+	pair<float, float> getNextHausdorfDistance();
+
+	bool is_compression_mode(){
+		return this->i_mode == DECOMPRESSION_MODE_ID;
+	}
+	size_t get_data_size(){
+		return dataOffset;
+	}
+	const char *get_data(){
+		return p_data;
+	}
+
+	aab shift(float x_sft, float y_sft, float z_sft);
+	aab shrink(float ratio);
+	HiMesh *clone_mesh();
 };
 
 /*
@@ -730,18 +709,18 @@ string polyhedron_to_wkt(Polyhedron *poly);
 
 // some utility functions to operate mesh polyhedrons
 extern HiMesh *parse_mesh(string input, bool complete_compress = false);
-extern HiMesh *read_mesh();
-extern HiMesh *read_mesh(char *path);
+extern HiMesh *read_mesh(bool complete_compress = false);
+extern HiMesh *read_mesh(char *path, bool complete_compress = false);
+extern vector<HiMesh *> read_meshes(const char *path, size_t maxnum = LONG_MAX);
 
-extern HiMesh *decompress_mesh(HiMesh *compressed, int lod, bool complete_operation = false);
+extern HiMesh *poly_to_mesh(Polyhedron *poly);
 
 float get_volume(Polyhedron *polyhedron);
+
+Polyhedron *parse_polyhedron(string &str);
 Polyhedron *read_polyhedron();
 extern Polyhedron *read_polyhedron(const char *path);
 vector<Polyhedron *> read_polyhedrons(const char *path, size_t load_num = LONG_MAX);
-
-Polyhedron *parse_polyhedron(string &str);
-Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o);
 
 // get the Euclid distance of two points
 inline float get_distance(const Point &p1, const Point &p2){

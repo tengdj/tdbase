@@ -199,9 +199,9 @@ void HiMesh::writeBaseMesh()
 
     // Write the bounding box min coordinate.
     for (unsigned i = 0; i < 3; ++i)
-        writeFloat((float)(bbMin[i]));
+        writeFloat((float)(mbb.low[i]));
     for (unsigned i = 0; i < 3; ++i)
-        writeFloat((float)(bbMax[i]));
+        writeFloat((float)(mbb.high[i]));
     // Write the quantization step.
 
     unsigned i_nbVerticesBaseMesh = size_of_vertices();
@@ -277,15 +277,11 @@ void HiMesh::writeBaseMesh()
 // Read the base mesh.
 void HiMesh::readBaseMesh()
 {
-    // Read the bounding box min coordinate.
-    float coord[3];
+    // Read the bounding box
     for (unsigned i = 0; i < 3; ++i)
-        coord[i] = readFloat();
-    bbMin = Point(coord[0], coord[1], coord[2]);
-
+        mbb.low[i] = readFloat();
     for (unsigned i = 0; i < 3; ++i)
-        coord[i] = readFloat();
-    bbMax = Point(coord[0], coord[1], coord[2]);
+        mbb.high[i] = readFloat();
 
     // Read the number of level of detail.
     i_nbDecimations = readInt16();

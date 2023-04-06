@@ -66,7 +66,7 @@ void SpatialJoin::intersect(query_context ctx){
 	// filtering with MBBs to get the candidate list
 	vector<candidate_entry> candidates = mbb_intersect(ctx.tile1, ctx.tile2);
 	ctx.index_time += hispeed::get_time_elapsed(start,false);
-	logt("comparing mbbs", start);
+	logt("index retrieving", start);
 
 	for(uint lod:ctx.lods){
 		ctx.cur_lod = lod;

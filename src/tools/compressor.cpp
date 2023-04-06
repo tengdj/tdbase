@@ -31,8 +31,8 @@ inline void flush_mesh_buffer(vector<HiMesh *> &mesh_buffer, vector<vector<Voxel
 	assert(mesh_buffer.size()==voxels.size());
 	pthread_mutex_lock(&output_lock);
 	for(int i=0;i<mesh_buffer.size();i++){
-		os->write((char *)&mesh_buffer[i]->dataOffset, sizeof(size_t));
-		os->write(mesh_buffer[i]->p_data, mesh_buffer[i]->dataOffset);
+		os->write((char *)&mesh_buffer[i]->get_data_size(), sizeof(size_t));
+		os->write(mesh_buffer[i]->get_data(), mesh_buffer[i]->get_data_size());
 		size_t size = voxels[i].size();
 		os->write((char *)&size, sizeof(size_t));
 		for(Voxel *v:voxels[i]){

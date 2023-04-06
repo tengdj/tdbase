@@ -199,37 +199,48 @@ HiMesh *parse_mesh(string input_line, bool complete_compress){
 	if(input_line.find("|") != std::string::npos){
 		boost::replace_all(input_line, "|", "\n");
 	}
-
 	HiMesh *mesh = new HiMesh(100, COMPRESSION_MODE_ID, input_line.c_str(), input_line.size());
-
 	if(complete_compress){
 		mesh->completeOperation();
 	}
 	return mesh;
 }
 
-HiMesh *read_mesh(){
+HiMesh *read_mesh(bool complete_compression){
 	string mesh_str = read_off_stdin();
-	HiMesh *mesh = parse_mesh(mesh_str);
+	HiMesh *mesh = parse_mesh(mesh_str, complete_compression);
 	assert(mesh && "this function must return a valid mesh");
 	return mesh;
 }
 
-HiMesh *read_mesh(char *path){
+HiMesh *read_mesh(char *path, bool complete_compression){
 	string str = read_file(path);
-	HiMesh *mesh = parse_mesh(str);
+	HiMesh *mesh = parse_mesh(str, complete_compression);
 	assert(mesh && "this function must return a valid mesh");
 	return mesh;
 }
 
-HiMesh *decompress_mesh(HiMesh *compressed, int lod, bool complete_operation){
-	HiMesh *decompressed = new HiMesh(lod,
-			 DECOMPRESSION_MODE_ID,
-			 compressed->p_data, compressed->dataOffset);
-	if(complete_operation){
-		decompressed->completeOperation();
+vector<HiMesh *> read_meshes(const char *path, size_t maxnum){
+	string input_line;
+	std::ifstream vfile(path);
+	vector<Voxel *> vessel_voxels;
+	vector<HiMesh *> ret;
+	while(std::getline(vfile, input_line)&&ret.size()<maxnum){
+		boost::replace_all(input_line, "|", "\n");
+		HiMesh *mesh = parse_mesh(input_line);
+		ret.push_back(mesh);
 	}
-	return decompressed;
+	vfile.close();
+	return ret;
+}
+
+HiMesh *poly_to_mesh(Polyhedron *poly){
+	stringstream ss;
+	ss<<*poly;
+	HiMesh *mesh = hispeed::parse_mesh(ss.str(), true);
+	HiMesh *himesh = new HiMesh(mesh);
+	delete mesh;
+	return himesh;
 }
 
 Polyhedron *parse_polyhedron(string &input){
@@ -265,48 +276,6 @@ vector<Polyhedron *> read_polyhedrons(const char *path, size_t maxnum){
 	}
 	vfile.close();
 	return ret;
-}
-
-Polyhedron adjust_polyhedron(int shift[3], float shrink, Polyhedron *poly_o){
-
-	Polyhedron poly;
-	stringstream ss;
-	ss << *poly_o;
-	ss >> poly;
-
-	double min_co[3] = {DBL_MAX,DBL_MAX,DBL_MAX};
-	double max_co[3] = {0,0,0};
-	int counter = 0;
-	int mean_co[3] = {0,0,0};
-	for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
-		Point p = vi->point();
-		for(int i=0;i<3;i++){
-			if(min_co[i]>p[i]){
-				min_co[i] = p[i];
-			}
-			if(max_co[i]<p[i]){
-				max_co[i] = p[i];
-			}
-			mean_co[i] += p[i];
-		}
-		counter++;
-	}
-
-	for(int i=0;i<3;i++){
-		mean_co[i] /= counter;
-	}
-
-	for(Polyhedron::Vertex_iterator vi=poly.vertices_begin();vi!=poly.vertices_end();vi++){
-		Point p = vi->point();
-		if(shrink>1){
-			vi->point() = Point((p[0]+shift[0]-min_co[0])/shrink+mean_co[0],
-							    (p[1]+shift[1]-min_co[1])/shrink+mean_co[1],
-								(p[2]+shift[2]-min_co[2])/shrink+mean_co[2]);
-		}else{
-			vi->point() = Point((p[0]+shift[0])/shrink, (p[1]+shift[1])/shrink, (p[2]+shift[2])/shrink);
-		}
-	}
-	return poly;
 }
 
 void cgal_simplification(Polyhedron *poly, float ratio){

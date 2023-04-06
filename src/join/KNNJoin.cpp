@@ -165,7 +165,7 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
  * the main function for getting the nearest neighbor
  *
  * */
-void SpatialJoin::nearest_neighbor(query_context ctx){
+void SpatialJoin::nearest_neighbor(query_context &ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 
