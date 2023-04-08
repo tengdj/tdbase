@@ -22,9 +22,10 @@ namespace po = boost::program_options;
 const int buffer_size = 50*(1<<20);
 vector<HiMesh *> nucleis;
 vector<vector<Voxel *>> nucleis_voxels;
-bool *vessel_taken;
 HiMesh *vessel = NULL;
-vector<Voxel *> voxels;
+vector<Voxel *> vessel_voxels;
+bool *vessel_taken;
+int total_slots = 0;
 
 aab nuclei_box;
 aab vessel_box;
@@ -63,7 +64,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		nuclei_num[i] = (int)(vessel_box.high[i]/nuclei_box.high[i]);
 	}
 
-	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
+	total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	vessel_taken = new bool[total_slots];
 	for(int i=0;i<total_slots;i++){
 		vessel_taken[i] = false;
@@ -80,10 +81,15 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		int zstart = v->low[2]/vessel_box.high[2]*nuclei_num[2];
 		int zend = v->high[2]/vessel_box.high[2]*nuclei_num[2];
 
+		xend = min(xend, nuclei_num[0]-1);
+		yend = min(yend, nuclei_num[1]-1);
+		zend = min(zend, nuclei_num[2]-1);
+
 		//log("%d %d, %d %d, %d %d", xstart, xend, ystart, yend, zstart, zend);
 		for(int z=zstart;z<=zend;z++){
 			for(int y=ystart;y<=yend;y++){
 				for(int x=xstart;x<=xend;x++){
+					assert(z*nuclei_num[0]*nuclei_num[1]+y*nuclei_num[0]+x < total_slots);
 					vessel_taken[z*nuclei_num[0]*nuclei_num[1]+y*nuclei_num[0]+x] = true;
 				}
 			}
@@ -143,7 +149,6 @@ int generate_nuclei(float base[3], char *data, size_t &offset, char *data2, size
 	}
 	float shift[3];
 	int generated = 0;
-	int total_slots = nuclei_num[0]*nuclei_num[1]*nuclei_num[2];
 	bool *taken = new bool[total_slots];
 	memcpy(taken, vessel_taken, total_slots*sizeof(bool));
 
@@ -153,9 +158,9 @@ int generate_nuclei(float base[3], char *data, size_t &offset, char *data2, size
 			taken_count++;
 		}
 	}
-	log("%d %d %d",total_slots,num_nuclei_per_vessel,taken_count);
+	//log("%d %d %d",total_slots,num_nuclei_per_vessel,taken_count);
 	assert(total_slots>num_nuclei_per_vessel+taken_count && "should have enough slots");
-	while(++generated<num_nuclei_per_vessel){
+	while(generated++<num_nuclei_per_vessel){
 		int idx = get_rand_number(total_slots);
 		int oidx = idx;
 		for(;taken[idx];idx = (idx+1)%total_slots);
@@ -216,7 +221,7 @@ void *generate_unit(void *arg){
 		size_t vessel_offset = 0;
 		float base[3] = {get<0>(job), get<1>(job), get<2>(job)};
 		int generated = generate_nuclei(base, data, offset, data2, offset2);
-		organize_data(vessel, voxels, base, vessel_data, vessel_offset);
+		organize_data(vessel, vessel_voxels, base, vessel_data, vessel_offset);
 		pthread_mutex_lock(&mylock);
 		os->write(data, offset);
 		os2->write(data2, offset2);
@@ -235,6 +240,8 @@ int main(int argc, char **argv){
 	string vessel_pt = "../data/vessel.pt";
 	string output_path;
 	int num_threads = hispeed::get_num_threads();
+
+	pthread_mutex_init(&mylock, NULL);
 
 	po::options_description desc("joiner usage");
 	desc.add_options()
@@ -293,12 +300,13 @@ int main(int argc, char **argv){
 	for(int i=0;i<x_dim;i++){
 		for(int j=0;j<y_dim;j++){
 			for(int k=0;k<z_dim;k++){
-				jobs.push(std::make_tuple(i*vessel_box.high[0], j*vessel_box.high[1], k*vessel_box.high[2]));
+				tuple<float, float, float> tp(i*vessel_box.high[0], j*vessel_box.high[1], k*vessel_box.high[2]);
+				jobs.push(tp);
 			}
 		}
 	}
 	size_t vessel_num = jobs.size();
-	voxels = vessel->generate_voxels_skeleton(voxel_size);
+	vessel_voxels = vessel->generate_voxels_skeleton(voxel_size);
 
 	pthread_t threads[num_threads];
 	for(int i=0;i<num_threads;i++){
@@ -308,21 +316,35 @@ int main(int argc, char **argv){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
-	logt("%ld vessels with %d voxels %ld nucleis are generated",start,vessel_num,voxels.size(),global_generated);
-	for(Voxel *v:voxels){
-		delete v;
-	}
-	voxels.clear();
+	logt("%ld vessels with %d voxels %ld nucleis are generated",start,vessel_num,vessel_voxels.size(),global_generated);
+
+	// close the output stream
 	v_os->close();
 	os->close();
 	os2->close();
 	delete v_os;
 	delete os;
 	delete os2;
+
+	// clear the vessel related objects
 	delete vessel;
+	for(Voxel *v:vessel_voxels){
+		delete v;
+	}
+	vessel_voxels.clear();
+
+	// clear the nuclei related objects
 	for(HiMesh *n:nucleis){
 		delete n;
 	}
 	nucleis.clear();
+	for(vector<Voxel *> &vs:nucleis_voxels){
+		for(Voxel *v:vs){
+			delete v;
+		}
+		vs.clear();
+	}
+	nucleis_voxels.clear();
+	delete []vessel_taken;
 }
 
