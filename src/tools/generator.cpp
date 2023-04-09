@@ -103,7 +103,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 void organize_data(HiMesh *mesh, vector<Voxel *> &voxels, float shift[3], char *data, size_t &offset){
 	HiMesh *nmesh = mesh->clone_mesh();
 	nmesh->shift(shift[0], shift[1], shift[2]);
-	nmesh->completeOperation();
+	nmesh->encode();
 	//hispeed::write_polyhedron(&shifted, ids++);
 	size_t size = nmesh->get_data_size();
 	memcpy(data+offset, (char *)&size, sizeof(size_t));

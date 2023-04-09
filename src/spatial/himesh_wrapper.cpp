@@ -27,15 +27,10 @@ HiMesh_Wrapper::~HiMesh_Wrapper(){
 	}
 	results.clear();
 }
-void HiMesh_Wrapper::writeMeshOff(){
-	assert(mesh);
-	stringstream ss;
-	ss<<id<<".off";
-	mesh->writeMeshOff(ss.str().c_str());
-}
+
 void HiMesh_Wrapper::advance_to(uint lod){
 	assert(mesh);
-	mesh->advance_to(lod);
+	mesh->decode(lod);
 	cur_lod = lod;
 }
 

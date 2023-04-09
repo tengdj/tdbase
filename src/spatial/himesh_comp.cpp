@@ -373,6 +373,14 @@ pair<float, float> HiMesh::getNextHausdorfDistance(){
 	return i_nbDecimations>(i_curDecimationId+1)?globalHausdorfDistance[i_nbDecimations - i_curDecimationId - 2]:std::pair<float, float>(0, 0);
 }
 
+void HiMesh::encode(int lod){
+	assert(!this->is_compression_mode());
+	b_jobCompleted = false;
+	while(!b_jobCompleted) {
+		startNextCompresssionOp();
+	}
+}
+
 /**
   * Start the next compression operation.
   */
@@ -387,27 +395,9 @@ void HiMesh::startNextCompresssionOp()
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
 		fit->resetState();
 
-    decimationStep();
-    if (i_nbRemovedVertices == 0){
-		b_jobCompleted = true;
-		i_curDecimationId--;
-		writeCompressedData();
-	} else {
-		// 3dpro: compute the hausdorf distance for all the existing faces
-		computeHausdorfDistance();
-
-		RemovedVertexCodingStep();
-		InsertedEdgeCodingStep();
-		// finish this round of decimation and start the next
-	    i_curDecimationId++; // Increment the current decimation operation id.
-	}
-}
-
-// One decimation step.
-void HiMesh::decimationStep()
-{
+	/* start next round of decimation */
 	// Select the first gate to begin the decimation.
-	// teng: we always start from the middle, DO NOT use the pushHehInit() function
+	// teng: we always start from the middle, DO NOT use the rand function
 	// size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
 	size_t i_heInitId = size_of_halfedges()/2;
 	Halfedge_iterator hitInit = halfedges_begin();
@@ -419,62 +409,84 @@ void HiMesh::decimationStep()
 	// Reset the number of removed vertices.
 	i_nbRemovedVertices = 0;
 
-    //choose a halfedge that can be processed:
-    while(!gateQueue.empty()) {
-        Halfedge_handle h = gateQueue.front();
-        gateQueue.pop();
+	//choose a halfedge that can be processed:
+	while(!gateQueue.empty()) {
+		Halfedge_handle h = gateQueue.front();
+		gateQueue.pop();
 
-        //pick a the first halfedge from the queue. f is the adjacent face.
-        assert(!h->is_border());
-        Face_handle f = h->facet();
+		//pick a the first halfedge from the queue. f is the adjacent face.
+		assert(!h->is_border());
+		Face_handle f = h->facet();
 
-        //if the face is already processed, pick the next halfedge:
-        if(f->isConquered())
-        {
-            h->removeFromQueue();
-            continue;
-        }
-        //the face is not processed. Count the number of non conquered vertices that can be split
-        bool hasRemovable = false;
-        Halfedge_handle unconqueredVertexHE;
+		//if the face is already processed, pick the next halfedge:
+		if(f->isConquered())
+		{
+			h->removeFromQueue();
+			continue;
+		}
+		//the face is not processed. Count the number of non conquered vertices that can be split
+		bool hasRemovable = false;
+		Halfedge_handle unconqueredVertexHE;
 
-        for(Halfedge_handle hh = h->next(); hh!=h; hh=hh->next())
-        {
-            if(isRemovable(hh->vertex()))
-            {
-            	hasRemovable = true;
-                unconqueredVertexHE = hh;
-                break;
-            }
-        }
+		for(Halfedge_handle hh = h->next(); hh!=h; hh=hh->next())
+		{
+			if(isRemovable(hh->vertex()))
+			{
+				hasRemovable = true;
+				unconqueredVertexHE = hh;
+				break;
+			}
+		}
 
-        //if all face vertices are conquered, then the current face is a null patch:
-        if(!hasRemovable)
-        {
-            f->setUnsplittable();
-            //and add the outer halfedges to the queue. Also mark the vertices of the face conquered
-            Halfedge_handle hh = h;
-            do
-            {
-                hh->vertex()->setConquered();
-                Halfedge_handle hOpp = hh->opposite();
-                assert(!hOpp->is_border());
-                if(!hOpp->facet()->isConquered())
-                {
-                    gateQueue.push(hOpp);
-                    hOpp->setInQueue();
-                }
-            }
-            while((hh = hh->next()) != h);
-            h->removeFromQueue();
-        } else {
-            //in that case, cornerCut that vertex.
-            h->removeFromQueue();
-            vertexCut(unconqueredVertexHE);
-        }
-    }
+		//if all face vertices are conquered, then the current face is a null patch:
+		if(!hasRemovable)
+		{
+			f->setUnsplittable();
+			//and add the outer halfedges to the queue. Also mark the vertices of the face conquered
+			Halfedge_handle hh = h;
+			do
+			{
+				hh->vertex()->setConquered();
+				Halfedge_handle hOpp = hh->opposite();
+				assert(!hOpp->is_border());
+				if(!hOpp->facet()->isConquered())
+				{
+					gateQueue.push(hOpp);
+					hOpp->setInQueue();
+				}
+			}
+			while((hh = hh->next()) != h);
+			h->removeFromQueue();
+		} else {
+			//in that case, cornerCut that vertex.
+			h->removeFromQueue();
+			vertexCut(unconqueredVertexHE);
+		}
+	}
+    if (i_nbRemovedVertices == 0){
+		b_jobCompleted = true;
+		i_nbDecimations = i_curDecimationId--;
+
+		// Write the compressed data to the buffer.
+	    writeBaseMesh();
+	    int i_deci = i_curDecimationId;
+	    assert(i_deci>0);
+	    while (i_deci>=0)
+	    {
+			encodeRemovedVertices(i_deci);
+			encodeInsertedEdges(i_deci);
+			i_deci--;
+	    }
+	} else {
+		// 3dpro: compute the hausdorf distance for all the existing faces
+		computeHausdorfDistance();
+
+		RemovedVertexCodingStep();
+		InsertedEdgeCodingStep();
+		// finish this round of decimation and start the next
+	    i_curDecimationId++; // Increment the current decimation operation id.
+	}
 }
-
 
 /**
   * Perform the re-edging and the vertex removal.
@@ -654,11 +666,10 @@ void HiMesh::RemovedVertexCodingStep()
   */
 void HiMesh::InsertedEdgeCodingStep()
 {
-
-	// Add the first halfedge to the queue.
-	pushHehInit();
 	// Resize the vector to add the current conquest symbols.
 	connectEdgeSym.push_back(std::deque<unsigned>());
+	// Add the first halfedge to the queue.
+	pushHehInit();
     while (!gateQueue.empty())
     {
         Halfedge_handle h = gateQueue.front();
@@ -700,6 +711,84 @@ void HiMesh::InsertedEdgeCodingStep()
     }
 }
 
+// Write the base mesh.
+void HiMesh::writeBaseMesh()
+{
+    // Write the bounding box min coordinate.
+    for (unsigned i = 0; i < 3; ++i)
+        writeFloat((float)(mbb.low[i]));
+    for (unsigned i = 0; i < 3; ++i)
+        writeFloat((float)(mbb.high[i]));
+    // Write the quantization step.
+
+    unsigned i_nbVerticesBaseMesh = size_of_vertices();
+    unsigned i_nbFacesBaseMesh = size_of_facets();
+
+    // Write the number of level of decimations.
+    writeInt16(i_nbDecimations);
+
+    // Write the number of vertices and faces on 16 bits.
+    writeInt(i_nbVerticesBaseMesh);
+    writeInt(i_nbFacesBaseMesh);
+
+    // Write the vertices of the edge that is the departure of the coding conquests.
+    for (unsigned j = 0; j < 2; ++j)
+    {
+        Point p = vh_departureConquest[j]->point();
+        for (unsigned i = 0; i < 3; ++i)
+        {
+        	writeFloat((float)p[i]);
+        }
+        vh_departureConquest[j]->setId(j);
+    }
+
+    // Write the other vertices.
+    size_t id = 2;
+    for (HiMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit)
+    {
+        if (vit == vh_departureConquest[0] || vit == vh_departureConquest[1])
+            continue;
+        Point p = vit->point();
+        // Write the coordinates.
+        for (unsigned i = 0; i < 3; ++i)
+        {
+        	writeFloat((float)p[i]);
+        }
+        // Set an id to the vertex.
+        vit->setId(id++);
+    }
+
+    // Write the base mesh face vertex indices.
+    for (HiMesh::Facet_iterator fit = facets_begin();
+         fit != facets_end(); ++fit)
+    {
+        unsigned i_faceDegree = fit->facet_degree();
+        writeInt(i_faceDegree);
+        Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
+        do
+        {
+            // Write the current vertex id.
+        	writeInt(hit->vertex()->getId());
+        }
+        while(++hit != end);
+    }
+
+    // Write the hausdorf distance for the base faces
+    for (HiMesh::Facet_iterator fit = facets_begin();
+         fit != facets_end(); ++fit)
+    {
+        writeFloat(fit->getHausdorfDistance().first);
+        writeFloat(fit->getHausdorfDistance().second);
+    }
+
+    // 3dpro
+    // Write the maximum volume change for each round of decimation
+    assert(globalHausdorfDistance.size()==i_nbDecimations);
+    for(unsigned i=0;i<i_nbDecimations;i++){
+    	writeFloat(globalHausdorfDistance[i].first);
+    	writeFloat(globalHausdorfDistance[i].second);
+    }
+}
 
 /**
   * Encode an inserted edge list.
@@ -744,7 +833,7 @@ void HiMesh::encodeRemovedVertices(unsigned i_operationId)
             Point p = geomSym[k];
             for (unsigned j = 0; j < 3; ++j)
             {
-            	writeFloat(p[j]);
+            	writeFloat((float)p[j]);
             }
             k++;
         }

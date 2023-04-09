@@ -11,64 +11,64 @@
 
 namespace hispeed{
 
-HiMesh::HiMesh(unsigned i_decompPercentage,
-               const int i_mode,
-			   const char* data,
-			   long length) :
-    CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(), i_mode(i_mode), i_decompPercentage(i_decompPercentage)
-{
-	assert(length>0);
+HiMesh::HiMesh(string &str, bool completeop):
+		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
 
+	boost::replace_all(str, "|", "\n");
+	assert(str.size()!=0 && "input string should not be empty!");
 	srand(PPMC_RANDOM_CONSTANT);
-    if (i_mode == COMPRESSION_MODE_ID) {
-        // Create the compressed data buffer.
-        d_capacity = 3*length;
-        p_data = new char[d_capacity];
-        // Fill the buffer with 0.
-        for (size_t i = 0; i < d_capacity; ++i) {
-           p_data[i] = 0;
-        }
-	    std::istringstream is;
-	    is.str(data);
-        is >> *this;
-        if(size_of_facets()==0){
-            std::cerr<<"failed to parse the OFF file into Polyhedron"<<endl;
-            exit(EXIT_FAILURE);
-        }
+	i_mode = COMPRESSION_MODE_ID;
+	// Create the compressed data buffer.
+	d_capacity = 3*str.size();
+	p_data = new char[d_capacity];
+	// Fill the buffer with 0.
+	for (size_t i = 0; i < d_capacity; ++i) {
+	   p_data[i] = 0;
+	}
+	std::istringstream is;
+	is.str(str.c_str());
+	is >> *this;
+	if(size_of_facets()==0){
+		std::cerr<<"failed to parse the OFF file into Polyhedron"<<endl;
+		exit(EXIT_FAILURE);
+	}
 
-		if (keep_largest_connected_components(1) != 0){
-			std::cerr << "Can't compress the mesh." << std::endl;
-			std::cerr << "The codec doesn't handle meshes with several connected components." << std::endl;
-			exit(EXIT_FAILURE);
-		}
+	if (keep_largest_connected_components(1) != 0){
+		std::cerr << "Can't compress the mesh." << std::endl;
+		std::cerr << "The codec doesn't handle meshes with several connected components." << std::endl;
+		exit(EXIT_FAILURE);
+	}
 
-		if (!is_closed()){
-			std::cerr << "Can't compress the mesh." << std::endl;
-			std::cerr << "The codec doesn't handle meshes with borders." << std::endl;
-			exit(EXIT_FAILURE);
-		}
+	if (!is_closed()){
+		std::cerr << "Can't compress the mesh." << std::endl;
+		std::cerr << "The codec doesn't handle meshes with borders." << std::endl;
+		exit(EXIT_FAILURE);
+	}
 
-		compute_mbb();
+	compute_mbb();
 
-		// Set the vertices of the edge that is the departure of the coding and decoding conquests.
-		vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
-		vh_departureConquest[1] = halfedges_begin()->vertex();
-    } else {
-		p_data = new char[length];
-		memcpy(p_data, data, length);
-    	readCompressedData();
-        // Set the vertices of the edge that is the departure of the coding and decoding conquests.
-        vh_departureConquest[0] = vertices_begin();
-        vh_departureConquest[1] = ++vertices_begin();
-    }
+	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
+	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
+	vh_departureConquest[1] = halfedges_begin()->vertex();
+
+	if(completeop){
+		encode(0);
+	}
 }
 
+// in decompression mode
 HiMesh::HiMesh(char *data, size_t dsize):
-		HiMesh(0, DECOMPRESSION_MODE_ID, data, dsize){
-}
+		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
+	assert(dsize>0);
+	srand(PPMC_RANDOM_CONSTANT);
 
-HiMesh::HiMesh(HiMesh *mesh):
-		HiMesh(mesh->p_data, mesh->dataOffset){
+	i_mode = DECOMPRESSION_MODE_ID;
+	p_data = new char[dsize];
+	memcpy(p_data, data, dsize);
+    readBaseMesh();
+	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
+	vh_departureConquest[0] = vertices_begin();
+	vh_departureConquest[1] = ++vertices_begin();
 }
 
 HiMesh::~HiMesh(){
@@ -76,34 +76,6 @@ HiMesh::~HiMesh(){
 	   delete[] p_data;
 	}
 	clear_aabb_tree();
-}
-
-
-
-void HiMesh::advance_to(int lod){
-	assert(lod>=0 && lod<=100);
-	i_decompPercentage = lod;
-	b_jobCompleted = false;
-	completeOperation();
-}
-
-/**
-  * Finish completely the current operation.
-  */
-void HiMesh::completeOperation()
-{
-
-    while (!b_jobCompleted)
-    {
-        if (i_mode == COMPRESSION_MODE_ID){
-        	//struct timeval start = get_cur_time();
-        	startNextCompresssionOp();
-        	//logt("compress", start);
-        }
-        else{
-            startNextDecompresssionOp();
-        }
-    }
 }
 
 void HiMesh::compute_mbb(){
@@ -150,8 +122,20 @@ Polyhedron *HiMesh::to_polyhedron(){
 HiMesh *HiMesh::clone_mesh(){
 	stringstream ss;
 	ss<<*this;
-	HiMesh *nmesh = parse_mesh(ss.str());
+	string str = ss.str();
+	HiMesh *nmesh = new HiMesh(str);
 	return nmesh;
+}
+
+string HiMesh::to_off(){
+	std::stringstream os;
+	os << *this;
+	return os.str();
+}
+
+void HiMesh::write_to_off(const char *path){
+	string ct = to_off();
+	hispeed::write_file(ct, path);
 }
 
 string HiMesh::to_wkt(){
@@ -186,11 +170,14 @@ string HiMesh::to_wkt(){
 	return ss.str();
 }
 
+void HiMesh::write_to_wkt(const char *path){
+	string ct = to_wkt();
+	hispeed::write_file(ct, path);
+}
+
 /*
  * some other himesh common functions
  * */
-
-
 aab HiMesh::shift(float x, float y, float z){
 	for(Vertex_iterator vi=vertices_begin();vi!=vertices_end();vi++){
 		Point p = vi->point();

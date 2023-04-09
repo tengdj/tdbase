@@ -63,29 +63,25 @@ bool HiMesh::intersect_tree(HiMesh *target){
     return false;
 }
 
+float HiMesh::distance_tree(const Point &p){
+	FT sqd = get_aabb_tree_triangle()->squared_distance(p);
+	return (double)CGAL::to_double(sqd);
+}
+
 float HiMesh::distance_tree(HiMesh *target){
 	double min_dist = DBL_MAX;
-	{
-		list<Point> vertices = get_vertices();
-		for(Point &p:vertices){
-			FT sqd = target->get_aabb_tree_triangle()->squared_distance(p);
-			double dist = (double)CGAL::to_double(sqd);
-			if(min_dist>dist){
-				min_dist = dist;
-			}
+	for(HiMesh::Vertex_iterator v = vertices_begin(); v != vertices_end(); ++v){
+		double dist = target->distance_tree(v->point());
+		if(min_dist>dist){
+			min_dist = dist;
 		}
 	}
-	{
-		list<Point> vertices = target->get_vertices();
-		for(Point &p:vertices){
-			FT sqd = get_aabb_tree_triangle()->squared_distance(p);
-			double dist = (double)CGAL::to_double(sqd);
-			if(min_dist>dist){
-				min_dist = dist;
-			}
+	for(HiMesh::Vertex_iterator v = target->vertices_begin(); v != target->vertices_end(); ++v){
+		double dist = distance_tree(v->point());
+		if(min_dist>dist){
+			min_dist = dist;
 		}
 	}
-
 	return sqrt(min_dist);
 }
 

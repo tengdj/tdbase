@@ -217,6 +217,18 @@ inline string read_file(const char *path){
 	return str;
 }
 
+inline void write_file(const string &content, const char *path){
+	std::filebuf fb;
+	fb.open(path, std::ios::out | std::ios::trunc);
+	if(fb.is_open())
+	{
+		std::ostream os(&fb);
+		os << content.c_str();
+	}else{
+		std::cerr<<"cannot find path "<<path<<std::endl;
+	}
+}
+
 
 inline void tokenize( const std::string& str, std::vector<std::string>& result,
 	const std::string& delimiters = " ,;:\t",

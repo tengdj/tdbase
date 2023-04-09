@@ -16,44 +16,11 @@
 * You should have received a copy of the GNU General Public License
 * along with PPMC.  If not, see <http://www.gnu.org/licenses/>.
 *****************************************************************************/
-
 #include <fstream>
-
 #include <unistd.h>
-
 #include "himesh.h"
 
 namespace hispeed{
-
-/**
-  * Write the compressed data to the buffer.
-  */
-void HiMesh::writeCompressedData()
-{
-
-    i_nbDecimations = i_curDecimationId + 1;
-
-    // Write the base mesh.
-    writeBaseMesh();
-    int i_deci = i_curDecimationId;
-    assert(i_deci>0);
-    while (i_deci>=0)
-    {
-		encodeRemovedVertices(i_deci);
-		encodeInsertedEdges(i_deci);
-		i_deci--;
-    }
-}
-
-
-/**
-  * Read the compressed data from the buffer.
-  */
-void HiMesh::readCompressedData()
-{
-    // Read the base mesh.
-    readBaseMesh();
-}
 
 // Write a given number of bits in a buffer.
 void writeBits(uint32_t data, unsigned i_nbBits, char *p_dest,
@@ -175,7 +142,6 @@ void HiMesh::writeuInt16(uint16_t i)
     dataOffset += sizeof(uint16_t);
 }
 
-
 /**
   * Read a byte in the data buffer.
   */
@@ -191,177 +157,6 @@ void HiMesh::writeChar(unsigned char  i)
 {
     *(unsigned char *)(p_data + dataOffset) = i;
     dataOffset += sizeof(unsigned char );
-}
-
-// Write the base mesh.
-void HiMesh::writeBaseMesh()
-{
-
-    // Write the bounding box min coordinate.
-    for (unsigned i = 0; i < 3; ++i)
-        writeFloat((float)(mbb.low[i]));
-    for (unsigned i = 0; i < 3; ++i)
-        writeFloat((float)(mbb.high[i]));
-    // Write the quantization step.
-
-    unsigned i_nbVerticesBaseMesh = size_of_vertices();
-    unsigned i_nbFacesBaseMesh = size_of_facets();
-
-    // Write the number of level of decimations.
-    writeInt16(i_nbDecimations);
-
-    // Write the number of vertices and faces on 16 bits.
-    writeInt(i_nbVerticesBaseMesh);
-    writeInt(i_nbFacesBaseMesh);
-
-    // Write the vertices of the edge that is the departure of the coding conquests.
-    for (unsigned j = 0; j < 2; ++j)
-    {
-        Point p = vh_departureConquest[j]->point();
-        for (unsigned i = 0; i < 3; ++i)
-        {
-        	writeFloat(p[i]);
-        }
-        vh_departureConquest[j]->setId(j);
-    }
-
-    // Write the other vertices.
-    size_t id = 2;
-    for (HiMesh::Vertex_iterator vit = vertices_begin(); vit != vertices_end(); ++vit)
-    {
-        if (vit == vh_departureConquest[0] || vit == vh_departureConquest[1])
-            continue;
-        Point p = vit->point();
-        // Write the coordinates.
-        for (unsigned i = 0; i < 3; ++i)
-        {
-        	writeFloat(p[i]);
-        }
-        // Set an id to the vertex.
-        vit->setId(id++);
-    }
-
-    // Write the base mesh face vertex indices.
-    for (HiMesh::Facet_iterator fit = facets_begin();
-         fit != facets_end(); ++fit)
-    {
-        unsigned i_faceDegree = fit->facet_degree();
-        writeInt(i_faceDegree);
-        Halfedge_around_facet_const_circulator hit(fit->facet_begin()), end(hit);
-        do
-        {
-            // Write the current vertex id.
-        	writeInt(hit->vertex()->getId());
-        }
-        while(++hit != end);
-    }
-
-    // Write the hausdorf distance for the base faces
-    for (HiMesh::Facet_iterator fit = facets_begin();
-         fit != facets_end(); ++fit)
-    {
-        writeFloat(fit->getHausdorfDistance().first);
-        writeFloat(fit->getHausdorfDistance().second);
-    }
-
-    // 3dpro
-    // Write the maximum volume change for each round of decimation
-    assert(globalHausdorfDistance.size()==i_nbDecimations);
-    for(unsigned i=0;i<i_nbDecimations;i++){
-    	writeFloat(globalHausdorfDistance[i].first);
-    	writeFloat(globalHausdorfDistance[i].second);
-    }
-}
-
-
-// Read the base mesh.
-void HiMesh::readBaseMesh()
-{
-    // Read the bounding box
-    for (unsigned i = 0; i < 3; ++i)
-        mbb.low[i] = readFloat();
-    for (unsigned i = 0; i < 3; ++i)
-        mbb.high[i] = readFloat();
-
-    // Read the number of level of detail.
-    i_nbDecimations = readInt16();
-
-    // Set the mesh bounding box.
-    unsigned i_nbVerticesBaseMesh = readInt();
-    unsigned i_nbFacesBaseMesh = readInt();
-
-    std::deque<Point> *p_pointDeque = new std::deque<Point>();
-    std::deque<uint32_t *> *p_faceDeque = new std::deque<uint32_t *>();
-
-    // Read the vertex positions.
-    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
-    {
-        float p[3];
-        for (unsigned j = 0; j < 3; ++j)
-            p[j] = readFloat();
-        Point pos(p[0], p[1], p[2]);
-        p_pointDeque->push_back(pos);
-    }
-
-    // Read the face vertex indices.
-    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
-    {
-        uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
-        // Write in the first cell of the array the face degree.
-        f[0] = readInt();
-        for (unsigned j = 1; j < f[0] + 1; ++j){
-        	f[j] = readInt();
-        }
-        p_faceDeque->push_back(f);
-    }
-
-    // Let the builder do its job.
-    MyMeshBaseBuilder<HalfedgeDS> builder(p_pointDeque, p_faceDeque);
-    delegate(builder);
-
-    for (HiMesh::Facet_iterator fit = facets_begin();
-         fit != facets_end(); ++fit)
-    {
-    	float hdist = readFloat();
-    	fit->setConservative(hdist);
-    	hdist = readFloat();
-    	fit->setProgressive(hdist);
-    }
-
-    // Free the memory.
-    for (unsigned i = 0; i < p_faceDeque->size(); ++i)
-        delete[] p_faceDeque->at(i);
-    delete p_faceDeque;
-    delete p_pointDeque;
-
-    // Read the maximum cutting volume
-    for(unsigned i=0;i<i_nbDecimations;i++){
-    	float conservative = readFloat();
-    	float progressive = readFloat();
-    	globalHausdorfDistance.push_back(pair<float, float>(conservative, progressive));
-    }
-}
-
-void HiMesh::writeMeshOff(const char psz_filePath[]) const
-{
-    std::filebuf fb;
-    fb.open(psz_filePath, std::ios::out | std::ios::trunc);
-    if(fb.is_open())
-    {
-        std::ostream os(&fb);
-        os << *this;
-    }else{
-    	std::cerr<<"cannot find path "<<psz_filePath<<std::endl;
-    }
-}
-
-
-void HiMesh::writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const
-{
-    // Output the current mesh in an off file.
-    std::ostringstream fileName;
-    fileName << pathPrefix << "_" << i_id << ".off";
-    writeMeshOff(fileName.str().c_str());
 }
 
 }

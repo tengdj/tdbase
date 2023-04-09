@@ -87,8 +87,8 @@
 
 #define NB_BITS_FACE_DEGREE_BASE_MESH 3
 
-#define COMPRESSION_MODE_ID 0
-#define DECOMPRESSION_MODE_ID 1
+const int COMPRESSION_MODE_ID = 0;
+const int DECOMPRESSION_MODE_ID = 1;
 
 #define INV_ALPHA 2
 #define INV_GAMMA 2
@@ -488,7 +488,7 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 
 	unsigned i_curDecimationId = 0;
 	unsigned i_nbDecimations;
-	unsigned i_decompPercentage;
+	unsigned i_decompPercentage = 0;
 
 	// The vertices of the edge that is the departure of the coding and decoding conquests.
 	Vertex_handle vh_departureConquest[2];
@@ -520,20 +520,16 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	// Store the maximum Hausdorf Distance
 	vector<pair<float, float>> globalHausdorfDistance;
 public:
-	HiMesh(unsigned i_decompPercentage,
-		   const int i_mode,
-		   const char* data,
-		   long length);
+	HiMesh(string &str, bool completeop = false);
 	HiMesh(char *data, size_t dsize);
-	HiMesh(HiMesh *mesh);
-
+	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset){}
 	~HiMesh();
 
-	void completeOperation();
+	void encode(int lod = 0);
+	void decode(int lod = 100);
 
 	// Compression
 	void startNextCompresssionOp();
-	void decimationStep();
 	void RemovedVertexCodingStep();
 	void InsertedEdgeCodingStep();
 	Halfedge_handle vertexCut(Halfedge_handle startH);
@@ -574,8 +570,6 @@ public:
 	void pushHehInit();
 
 	// IOs
-	void writeCompressedData();
-	void readCompressedData();
 	void writeFloat(float f);
 	float readFloat();
 	void writeInt16(int16_t i);
@@ -589,8 +583,6 @@ public:
 
 	void writeBaseMesh();
 	void readBaseMesh();
-	void writeMeshOff(const char psz_filePath[]) const;
-	void writeCurrentOperationMesh(std::string pathPrefix, unsigned i_id) const;
 
 	//3dpro
 	void computeHausdorfDistance();
@@ -609,6 +601,10 @@ public:
 	vector<Voxel *> generate_voxels_skeleton(int voxel_size);
 	vector<Voxel *> voxelization(int voxel_size);
 	string to_wkt();
+	string to_off();
+	void write_to_off(const char *path);
+	void write_to_wkt(const char *path);
+
 	float get_volume();
 	size_t size_of_triangles();
 
@@ -628,6 +624,7 @@ public:
 	TriangleTree *get_aabb_tree_triangle();
 	float distance(HiMesh *target);
 	float distance_tree(HiMesh *target);
+	float distance_tree(const Point &p);
 	bool intersect(HiMesh *target);
 	bool intersect_tree(HiMesh *target);
 
@@ -635,13 +632,11 @@ public:
 
 	size_t size_of_edges();
 
-	void advance_to(int lod);
-
 	pair<float, float> getHausdorfDistance();
 	pair<float, float> getNextHausdorfDistance();
 
 	bool is_compression_mode(){
-		return this->i_mode == DECOMPRESSION_MODE_ID;
+		return i_mode == COMPRESSION_MODE_ID;
 	}
 	size_t get_data_size(){
 		return dataOffset;
@@ -678,7 +673,6 @@ public:
 	HiMesh_Wrapper();
 	~HiMesh_Wrapper();
 
-	void writeMeshOff();
 	void advance_to(uint lod);
 
 	void disable_innerpart();
@@ -708,7 +702,6 @@ string read_off_stdin();
 string polyhedron_to_wkt(Polyhedron *poly);
 
 // some utility functions to operate mesh polyhedrons
-extern HiMesh *parse_mesh(string input, bool complete_compress = false);
 extern HiMesh *read_mesh(bool complete_compress = false);
 extern HiMesh *read_mesh(char *path, bool complete_compress = false);
 extern vector<HiMesh *> read_meshes(const char *path, size_t maxnum = LONG_MAX);

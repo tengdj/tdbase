@@ -26,6 +26,22 @@ namespace hispeed{
   */
 void HiMesh::startNextDecompresssionOp()
 {
+    if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
+    	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorfDistance().first, getHausdorfDistance().second);
+    }
+	if (i_curDecimationId * 100.0 / i_nbDecimations >= i_decompPercentage){
+		if(i_curDecimationId == i_nbDecimations){
+			// reset all the hausdorf distance to 0 for the highest LOD
+			// as we do not have another round of decoding to set them
+			for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+				fit->setProgressive(0.0);
+				fit->setConservative(0.0);
+			}
+		}
+		b_jobCompleted = true;
+		return;
+	}
+
 	// reset the states
     for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
@@ -33,28 +49,12 @@ void HiMesh::startNextDecompresssionOp()
     for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
-    if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
-    	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorfDistance().first, getHausdorfDistance().second);
-    }
-    if ((float)i_curDecimationId / i_nbDecimations * 100 >= i_decompPercentage){
-    	if(i_curDecimationId == i_nbDecimations){
-    		// reset all the hausdorf distance to 0 for the highest LOD
-    		// as we do not have another round of decoding to set them
-            for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-            	fit->setProgressive(0.0);
-            	fit->setConservative(0.0);
-            }
-    	}
-        b_jobCompleted = true;
-    } else {
+	undecimationStep();
+	InsertedEdgeDecodingStep();
+	insertRemovedVertices();
+	removeInsertedEdges();
 
-        undecimationStep();
-		InsertedEdgeDecodingStep();
-		insertRemovedVertices();
-		removeInsertedEdges();
-
-		i_curDecimationId++; // increment the current decimation operation id.
-    }
+	i_curDecimationId++; // increment the current decimation operation id.
 }
 
 /**
@@ -120,6 +120,87 @@ void HiMesh::undecimationStep()
 	}
 }
 
+void HiMesh::decode(int lod){
+	assert(lod>=0 && lod<=100);
+	assert(!this->is_compression_mode());
+	if(lod<i_decompPercentage){
+		return;
+	}
+	i_decompPercentage = lod;
+	b_jobCompleted = false;
+	while(!b_jobCompleted) {
+		startNextDecompresssionOp();
+	}
+}
+
+// Read the base mesh.
+void HiMesh::readBaseMesh()
+{
+    // Read the bounding box
+    for (unsigned i = 0; i < 3; ++i)
+        mbb.low[i] = readFloat();
+    for (unsigned i = 0; i < 3; ++i)
+        mbb.high[i] = readFloat();
+
+    // Read the number of level of detail.
+    i_nbDecimations = readInt16();
+
+    // Set the mesh bounding box.
+    unsigned i_nbVerticesBaseMesh = readInt();
+    unsigned i_nbFacesBaseMesh = readInt();
+
+    std::deque<Point> *p_pointDeque = new std::deque<Point>();
+    std::deque<uint32_t *> *p_faceDeque = new std::deque<uint32_t *>();
+
+    // Read the vertex positions.
+    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
+    {
+        float p[3];
+        for (unsigned j = 0; j < 3; ++j)
+            p[j] = readFloat();
+        Point pos(p[0], p[1], p[2]);
+        p_pointDeque->push_back(pos);
+    }
+
+    // Read the face vertex indices.
+    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
+    {
+        uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
+        // Write in the first cell of the array the face degree.
+        f[0] = readInt();
+        for (unsigned j = 1; j < f[0] + 1; ++j){
+        	f[j] = readInt();
+        }
+        p_faceDeque->push_back(f);
+    }
+
+    // Let the builder do its job.
+    MyMeshBaseBuilder<HalfedgeDS> builder(p_pointDeque, p_faceDeque);
+    delegate(builder);
+
+    for (HiMesh::Facet_iterator fit = facets_begin();
+         fit != facets_end(); ++fit)
+    {
+    	float hdist = readFloat();
+    	fit->setConservative(hdist);
+    	hdist = readFloat();
+    	fit->setProgressive(hdist);
+    }
+
+    // Free the memory.
+    for (unsigned i = 0; i < p_faceDeque->size(); ++i)
+        delete[] p_faceDeque->at(i);
+    delete p_faceDeque;
+    delete p_pointDeque;
+
+    // Read the maximum cutting volume
+    for(unsigned i=0;i<i_nbDecimations;i++){
+    	float conservative = readFloat();
+    	float progressive = readFloat();
+    	globalHausdorfDistance.push_back(pair<float, float>(conservative, progressive));
+    }
+}
+
 /**
   * One step of the inserted edge coding conquest.
   */
@@ -164,7 +245,6 @@ void HiMesh::InsertedEdgeDecodingStep()
     }
 }
 
-
 /**
   * Insert center vertices.
   */
@@ -173,7 +253,6 @@ void HiMesh::insertRemovedVertices()
 
     // Add the first halfedge to the queue.
     pushHehInit();
-
     while (!gateQueue.empty())
     {
         Halfedge_handle h = gateQueue.front();

@@ -192,31 +192,15 @@ string read_off_stdin(){
 	return whole_mesh;
 }
 
-HiMesh *parse_mesh(string input_line, bool complete_compress){
-	if(input_line.size()==0){
-		return NULL;
-	}
-	if(input_line.find("|") != std::string::npos){
-		boost::replace_all(input_line, "|", "\n");
-	}
-	HiMesh *mesh = new HiMesh(100, COMPRESSION_MODE_ID, input_line.c_str(), input_line.size());
-	if(complete_compress){
-		mesh->completeOperation();
-	}
-	return mesh;
-}
-
 HiMesh *read_mesh(bool complete_compression){
 	string mesh_str = read_off_stdin();
-	HiMesh *mesh = parse_mesh(mesh_str, complete_compression);
-	assert(mesh && "this function must return a valid mesh");
+	HiMesh *mesh = new HiMesh(mesh_str, complete_compression);
 	return mesh;
 }
 
 HiMesh *read_mesh(char *path, bool complete_compression){
-	string str = read_file(path);
-	HiMesh *mesh = parse_mesh(str, complete_compression);
-	assert(mesh && "this function must return a valid mesh");
+	string mesh_str = read_file(path);
+	HiMesh *mesh = new HiMesh(mesh_str, complete_compression);
 	return mesh;
 }
 
@@ -226,8 +210,7 @@ vector<HiMesh *> read_meshes(const char *path, size_t maxnum){
 	vector<Voxel *> vessel_voxels;
 	vector<HiMesh *> ret;
 	while(std::getline(vfile, input_line)&&ret.size()<maxnum){
-		boost::replace_all(input_line, "|", "\n");
-		HiMesh *mesh = parse_mesh(input_line);
+		HiMesh *mesh = new HiMesh(input_line, false);
 		ret.push_back(mesh);
 	}
 	vfile.close();
@@ -237,7 +220,8 @@ vector<HiMesh *> read_meshes(const char *path, size_t maxnum){
 HiMesh *poly_to_mesh(Polyhedron *poly){
 	stringstream ss;
 	ss<<*poly;
-	HiMesh *mesh = hispeed::parse_mesh(ss.str(), true);
+	string str = ss.str();
+	HiMesh *mesh = new HiMesh(str, true);
 	HiMesh *himesh = new HiMesh(mesh);
 	delete mesh;
 	return himesh;

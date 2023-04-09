@@ -74,23 +74,12 @@ MYMESH_SRCS := $(wildcard mymesh/*.cpp)
 MYMESH_OBJS := $(patsubst %.cpp,%.o,$(MYMESH_SRCS))
 
 all:  join generator 3dpro
-
-#compress fixer h5tooff
-
-compress: tools/compress.o $(SPATIAL_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(PPMC_OBJS) 
-	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 join: tools/joiner.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
 	
 generator: tools/generator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
-	
-fixer: tools/fixer.o $(MYMESH_OBJS)
-	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
-	
-h5tooff: tools/H5ToOFF.o
-	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@
 
 3dpro: tools/3dpro_toolkit.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -98,6 +87,9 @@ h5tooff: tools/H5ToOFF.o
 develop: tools/develop.o $(MYMESH_OBJS)
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
 	
+h5tooff: tools/H5ToOFF.o
+	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@
+		
 .PHONY: all clean
 
 clean:
