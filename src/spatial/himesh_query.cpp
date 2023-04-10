@@ -65,7 +65,7 @@ bool HiMesh::intersect_tree(HiMesh *target){
 
 float HiMesh::distance_tree(const Point &p){
 	FT sqd = get_aabb_tree_triangle()->squared_distance(p);
-	return (double)CGAL::to_double(sqd);
+	return sqrt((double)CGAL::to_double(sqd));
 }
 
 float HiMesh::distance_tree(HiMesh *target){

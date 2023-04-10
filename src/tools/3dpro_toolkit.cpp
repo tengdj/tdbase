@@ -315,7 +315,6 @@ static void compress(int argc, char **argv){
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1], true);
 	logt("compress", start);
-	printf("\n\n");
 	HiMesh *himesh = new HiMesh(mesh);
 	int lod = 100;
 	if(argc>2){
@@ -323,10 +322,12 @@ static void compress(int argc, char **argv){
 	}
 	for(uint i=0;i<=lod;i+=10){
 		himesh->decode(i);
+		logt("decode to %d", start, i);
 		//log("%d %f", i, himesh->getHausdorfDistance());
 	    std::ostringstream fileName;
 	    fileName << "/gisdata/compressed" << "_" << i << ".off";
 		himesh->write_to_off(fileName.str().c_str());
+
 
 		//log("global: %f", himesh->getHausdorfDistance().second);
 		int tris = himesh->size_of_triangles();

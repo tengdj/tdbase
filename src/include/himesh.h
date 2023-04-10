@@ -186,9 +186,12 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 {
     enum Flag {Unconquered=0, Conquered=1};
 
+	Flag flag = Unconquered;
+	unsigned int id = 0;
+	bool is_protruding = true;
   public:
-    MyVertex(): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(), flag(Unconquered), id(0), i_quantCellId(0){}
-	MyVertex(const Point &p): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(p), flag(Unconquered), id(0), i_quantCellId(0){}
+    MyVertex(): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(){}
+	MyVertex(const Point &p): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(p){}
 
 	inline void resetState()
 	{
@@ -215,16 +218,6 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 		id = nId;
 	}
 
-	inline unsigned getQuantCellId() const
-	{
-		return i_quantCellId;
-	}
-
-	inline void setQuantCellId(unsigned nId)
-	{
-		i_quantCellId = nId;
-	}
-
 	inline void setRecessing(){
 		is_protruding = false;
 	}
@@ -232,26 +225,20 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 	inline bool isProtruding(){
 		return is_protruding;
 	}
-
-  private:
-	Flag flag;
-	size_t id;
-	unsigned i_quantCellId;
-	bool is_protruding = true;
 };
 
-
-// My vertex type has a isConquered flag
 template <class Refs>
 class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 {
-    enum Flag {NotYetInQueue=0, InQueue=1, InQueue2=2, NoLongerInQueue=3};
+    enum Flag {NotYetInQueue=0, InQueue=1, NoLongerInQueue=2};
     enum Flag2 {Original, Added, New};
     enum ProcessedFlag {NotProcessed, Processed};
 
-  public:
-        MyHalfedge(): flag(NotYetInQueue), flag2(Original),
-        processedFlag(NotProcessed){}
+	Flag flag = NotYetInQueue;
+	Flag2 flag2 = Original;
+	ProcessedFlag processedFlag = NotProcessed;
+public:
+    MyHalfedge(){}
 
 	inline void resetState()
 	{
@@ -267,26 +254,10 @@ class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 	  flag=InQueue;
 	}
 
-	inline void setInProblematicQueue()
-	{
-	  assert(flag==InQueue);
-	  flag=InQueue2;
-	}
-
 	inline void removeFromQueue()
 	{
-	  assert(flag==InQueue || flag==InQueue2);
+	  assert(flag==InQueue);
 	  flag=NoLongerInQueue;
-	}
-
-	inline bool isInNormalQueue() const
-	{
-	  return flag==InQueue;
-	}
-
-	inline bool isInProblematicQueue() const
-	{
-	  return flag==InQueue2;
 	}
 
 	/* Processed flag */
@@ -334,12 +305,6 @@ class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 	{
 	  return flag2 == New;
 	}
-
-  private:
-	Flag flag;
-	Flag2 flag2;
-    ProcessedFlag processedFlag;
-
 };
 
 // My face type has a vertex flag
@@ -349,8 +314,12 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
     enum Flag {Unknown=0, Splittable=1, Unsplittable=2};
     enum ProcessedFlag {NotProcessed, Processed};
 
-  public:
-    MyFace(): flag(Unknown), processedFlag(NotProcessed){}
+	Flag flag = Unknown;
+	ProcessedFlag processedFlag = NotProcessed;
+
+	Point removedVertexPos;
+public:
+    MyFace(){}
 
 	inline void resetState()
 	{
@@ -425,7 +394,12 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 		}
 	}
 
-	inline vector<Point> getImpactPoints(){
+private:
+	vector<Point> impact_points;
+	float conservative_distance = 0.0;
+	float progressive_distance = 0.0;
+public:
+	inline vector<Point> &getImpactPoints(){
 		return impact_points;
 	}
 
@@ -444,17 +418,6 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	inline void setProgressive(float pro){
 		progressive_distance = pro;
 	}
-
-
-  private:
-	Flag flag;
-	ProcessedFlag processedFlag;
-
-	Point removedVertexPos;
-
-	vector<Point> impact_points;
-	float conservative_distance = 0.0;
-	float progressive_distance = 0.0;
 };
 
 
@@ -489,6 +452,8 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	unsigned i_curDecimationId = 0;
 	unsigned i_nbDecimations;
 	unsigned i_decompPercentage = 0;
+	// Number of vertices removed during current conquest.
+	unsigned i_nbRemovedVertices;
 
 	// The vertices of the edge that is the departure of the coding and decoding conquests.
 	Vertex_handle vh_departureConquest[2];
@@ -500,25 +465,20 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	std::deque<std::deque<unsigned> > connectFaceSym;
 	std::deque<std::deque<unsigned> > connectEdgeSym;
 
-	// Number of vertices removed during current conquest.
-	unsigned i_nbRemovedVertices;
-
 
 	// The compressed data;
 	char *p_data;
 	size_t dataOffset = 0; // the offset to read and write.
-	size_t d_capacity;
-
 
 	aab mbb; // the bounding box
 	SegTree *segment_tree = NULL;
 	TriangleTree *triangle_tree = NULL;
 	list<Segment> segments;
 	list<Triangle> triangles;
-	list<Point> vertices;
 
 	// Store the maximum Hausdorf Distance
 	vector<pair<float, float>> globalHausdorfDistance;
+	vector<Point> removedPoints;
 public:
 	HiMesh(string &str, bool completeop = false);
 	HiMesh(char *data, size_t dsize);
@@ -541,14 +501,10 @@ public:
 	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
 	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
 	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
-	float removalError(Vertex_const_handle v,
-					   const std::vector<Vertex_const_handle> &polygon) const;
+	float removalError(Vertex_const_handle v, const std::vector<Vertex_const_handle> &polygon) const;
 
 	// Decompression
 	void startNextDecompresssionOp();
-	void undecimationStep();
-
-	void DecimatedFaceDecodingStep();
 	void InsertedEdgeDecodingStep();
 	void insertRemovedVertices();
 	void removeInsertedEdges();
@@ -580,6 +536,8 @@ public:
 	int readInt();
 	unsigned char readChar();
 	void writeChar(unsigned char ch);
+	void writePoint(Point &p);
+	Point readPoint();
 
 	void writeBaseMesh();
 	void readBaseMesh();

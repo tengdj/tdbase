@@ -29,6 +29,8 @@ void HiMesh::startNextDecompresssionOp()
     if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
     	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorfDistance().first, getHausdorfDistance().second);
     }
+
+    // check if the target LOD is reached
 	if (i_curDecimationId * 100.0 / i_nbDecimations >= i_decompPercentage){
 		if(i_curDecimationId == i_nbDecimations){
 			// reset all the hausdorf distance to 0 for the highest LOD
@@ -42,27 +44,15 @@ void HiMesh::startNextDecompresssionOp()
 		return;
 	}
 
-	// reset the states
+	// 1. reset the states. note that the states of the vertices need not to be reset
     for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
 
     for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
-	undecimationStep();
-	InsertedEdgeDecodingStep();
-	insertRemovedVertices();
-	removeInsertedEdges();
-
-	i_curDecimationId++; // increment the current decimation operation id.
-}
-
-/**
-  * One undecimation step.
-  */
-void HiMesh::undecimationStep()
-{
-	// Add the first halfedge to the queue.
+    // 2. do one round of decimation
+    // Add the first halfedge to the queue.
 	pushHehInit();
 	while (!gateQueue.empty())
 	{
@@ -80,8 +70,7 @@ void HiMesh::undecimationStep()
 
 		// Add the other halfedges to the queue
 		Halfedge_handle hIt = h;
-		do
-		{
+		do {
 			Halfedge_handle hOpp = hIt->opposite();
 			assert(!hOpp->is_border());
 			if (!hOpp->facet()->isConquered())
@@ -90,14 +79,7 @@ void HiMesh::undecimationStep()
 		} while (hIt != h);
 		// Decode the geometry symbol.
 		if (sym == 1){
-			float coord[3];
-			for (unsigned i = 0; i < 3; ++i)
-			{
-				// Store the value.
-				coord[i] = readFloat();
-			}
-
-			Point rmved(coord[0], coord[1], coord[2]);
+			Point rmved = readPoint();
 			f->setSplittable();
 			f->setRemovedVertexPos(rmved);
 		} else {
@@ -118,6 +100,13 @@ void HiMesh::undecimationStep()
 			log("decode face: %d %.2f %d %.2f %d", sym, conservative, consym, progressive, prosym);
 		}
 	}
+
+	// 3. do the decoding job
+	InsertedEdgeDecodingStep();
+	insertRemovedVertices();
+	removeInsertedEdges();
+
+	i_curDecimationId++; // increment the current decimation operation id.
 }
 
 void HiMesh::decode(int lod){
@@ -155,10 +144,7 @@ void HiMesh::readBaseMesh()
     // Read the vertex positions.
     for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
     {
-        float p[3];
-        for (unsigned j = 0; j < 3; ++j)
-            p[j] = readFloat();
-        Point pos(p[0], p[1], p[2]);
+        Point pos = readPoint();
         p_pointDeque->push_back(pos);
     }
 

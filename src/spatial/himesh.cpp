@@ -19,7 +19,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 	srand(PPMC_RANDOM_CONSTANT);
 	i_mode = COMPRESSION_MODE_ID;
 	// Create the compressed data buffer.
-	d_capacity = 3*str.size();
+	const size_t d_capacity = 3*str.size();
 	p_data = new char[d_capacity];
 	// Fill the buffer with 0.
 	for (size_t i = 0; i < d_capacity; ++i) {

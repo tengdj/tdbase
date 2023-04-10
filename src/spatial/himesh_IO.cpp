@@ -89,6 +89,25 @@ float HiMesh::readFloat()
     return f;
 }
 
+// Write a floating point number in the data buffer.
+void HiMesh::writePoint(Point &p)
+{
+	for (unsigned i = 0; i < 3; ++i){
+		writeFloat(p[i]);
+	}
+}
+
+// Write a floating point number in the data buffer.
+Point HiMesh::readPoint()
+{
+	float coord[3];
+	for (unsigned i = 0; i < 3; ++i){
+		coord[i] = readFloat();
+	}
+	Point pt(coord[0], coord[1], coord[2]);
+	return pt;
+}
+
 /**
   * Read an integer in the data buffer.
   */
