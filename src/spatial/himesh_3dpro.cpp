@@ -356,11 +356,13 @@ void HiMesh::computeHausdorfDistance(){
 	double hdist = 0;
 	for(Point &p:removedPoints){
 		double dist = this->distance_tree(p);
-		triangle_tree->closest_point_and_primitive(query, hint)
+		//triangle_tree->closest_point_and_primitive(query, hint)
 		hdist = max(hdist, dist);
 	}
 	clear_aabb_tree();
-	logt("%f %d", start, hdist, removedPoints.size());
+	//logt("%f %d", start, hdist, removedPoints.size());
+
+	log("%ld groups", this->map_group.size());
 
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		if(fit->isSplittable()){
@@ -381,7 +383,7 @@ void HiMesh::computeHausdorfDistance(){
 		current_hausdorf.second = max(current_hausdorf.second, fit->getHausdorfDistance().second);
 		dist = min(dist, fit->getHausdorfDistance().second);
 	}
-	logt("%f", start, current_hausdorf.second);
+	//logt("%f", start, current_hausdorf.second);
 	globalHausdorfDistance.push_back(current_hausdorf);
 	if(global_ctx.verbose>=2){
 		log("encode %d:\t[%.2f %.2f]\t%ld", i_curDecimationId, dist, current_hausdorf.second, size_of_vertices());

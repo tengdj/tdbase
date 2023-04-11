@@ -42,4 +42,29 @@ TriangleTree *HiMesh::get_aabb_tree_triangle(){
 	return triangle_tree;
 }
 
+//Tree *HiMesh::get_aabb_tree(){
+//    Tree tree(faces(*this).first, faces(*this).second, *this);
+//    // query point
+//    Point query(0.0, 0.0, 3.0);
+//    // computes squared distance from query
+//    FT sqd = tree.squared_distance(query);
+//    std::cout << "squared distance: " << sqd << std::endl;
+//    // computes closest point
+//    Point closest = tree.closest_point(query);
+//    std::cout << "closest point: " << closest << std::endl;
+//    // computes closest point and primitive id
+//    Point_and_primitive_id pp = tree.closest_point_and_primitive(query);
+//    Point closest_point = pp.first;
+//    Polyhedron::Face_handle f = pp.second; // closest primitive id
+//
+//    std::cout << "closest point: " << closest_point << std::endl;
+//    std::cout << "closest triangle: ( "
+//              << f->halfedge()->vertex()->point() << " , "
+//              << f->halfedge()->next()->vertex()->point() << " , "
+//              << f->halfedge()->next()->next()->vertex()->point()
+//              << " )" << std::endl;
+//
+//
+//    return NULL;
+//}
 }

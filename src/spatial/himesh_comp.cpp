@@ -143,6 +143,22 @@ void HiMesh::startNextCompresssionOp()
 	}
 }
 
+HiMesh::replacing_group *merge(vector<HiMesh::replacing_group *> &reps){
+
+	HiMesh::replacing_group *ret = reps[0];
+	for(size_t i=1;i<reps.size();i++){
+		for(auto a:reps[i]->added_faces){
+			ret->added_faces.emplace(a);
+		}
+		for(auto a:reps[i]->removed_vertices){
+			ret->removed_vertices.emplace(a);
+		}
+		delete reps[i];
+	}
+	reps.clear();
+	return ret;
+}
+
 /**
   * Perform the re-edging and the vertex removal.
   * Store the position of the removed vertex.
@@ -156,6 +172,8 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 	assert(v->vertex_degree()>2);
 
 	vector<Point> impactpoints;
+	vector<Face_handle> new_faces;
+	vector<replacing_group *> rep_groups;
 	//int i = 0;
 	Halfedge_handle h = startH->opposite(), end(h);
 	do
@@ -180,6 +198,17 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 		  hCorner->setAdded();
 		  hCorner->opposite()->setAdded();
 
+		  Face_handle new_face = hCorner->face();
+		  Face_handle old_face = hCorner->opposite()->face();
+
+		  new_faces.push_back(new_face);
+
+		  // the old face will be removed in the vertex cut
+		  if(map_group.find(old_face)!=map_group.end()){
+			  rep_groups.push_back(map_group[old_face]);
+			  map_group[old_face]->added_faces.erase(old_face);
+			  map_group.erase(old_face);
+		  }
 		  //hCorner->opposite()->facet()->resetImpactPoints();
 		  //log("addr: %ld %ld %ld", f, hCorner->facet(), hCorner->opposite()->facet());
 		  //log("split: %ld %ld", hCorner->facet()->getImpactPoints().size(), hCorner->opposite()->facet()->getImpactPoints().size());
@@ -196,13 +225,30 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 
 	//remove the center vertex
 	Halfedge_handle hNewFace = erase_center_vertex(startH);
+	Face_handle added_face = hNewFace->facet();
+	new_faces.push_back(added_face);
+
+	log("%ld %ld", rep_groups.size(), new_faces.size());
+	replacing_group *rg = NULL;
+	if(rep_groups.size()==0){
+		rg = new replacing_group();
+	}else{
+		// the faces are
+		rg = merge(rep_groups);
+	}
+	assert(rg);
+	for(Face_handle nf:new_faces){
+		rg->added_faces.emplace(nf);
+		map_group[nf] = rg;
+	}
+	rg->removed_vertices.emplace(vPos);
 
 	//now mark the new face as having a removed vertex
-	hNewFace->facet()->setSplittable();
+	added_face->setSplittable();
 	// keep the removed vertex position.
-	hNewFace->facet()->setRemovedVertexPos(vPos);
-	hNewFace->facet()->addImpactPoints(impactpoints);
-	hNewFace->facet()->addImpactPoint(vPos);
+	added_face->setRemovedVertexPos(vPos);
+	added_face->addImpactPoints(impactpoints);
+	added_face->addImpactPoint(vPos);
 	//scan the outside halfedges of the new face and add them to
 	//the queue if the state of its face is unknown. Also mark it as in_queue
 	h = hNewFace;

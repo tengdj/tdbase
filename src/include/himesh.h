@@ -30,6 +30,7 @@
 #include <queue>
 #include <assert.h>
 #include <utility>
+#include <unordered_map>
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
@@ -141,6 +142,10 @@ typedef Triangulation::Tetrahedron 	Tetrahedron;
 //typedef Nef_polyhedron::Volume_const_iterator Volume_const_iterator;
 //typedef Nef_polyhedron::Shell_entry_const_iterator Shell_entry_const_iterator;
 
+typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> Primitive;
+typedef CGAL::AABB_traits<MyKernel, Primitive> Traits;
+typedef CGAL::AABB_tree<Traits> Tree;
+typedef Tree::Point_and_primitive_id Point_and_primitive_id;
 
 namespace hispeed{
 
@@ -388,8 +393,8 @@ public:
 		impact_points.push_back(p);
 	}
 
-	inline void addImpactPoints(vector<Point> ps){
-		for(Point p:ps){
+	inline void addImpactPoints(vector<Point> &ps){
+		for(Point &p:ps){
 			addImpactPoint(p);
 		}
 	}
@@ -440,8 +445,21 @@ struct MyItems : public CGAL::Polyhedron_items_3
 };
 
 
+
 class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
+public:
+	class replacing_group{
+	public:
+		~replacing_group(){
+			added_faces.clear();
+			removed_vertices.clear();
+		}
+
+		unordered_set<Face_handle> added_faces;
+		unordered_set<Point> removed_vertices;
+	};
+private:
 	// Gate queues
 	std::queue<Halfedge_handle> gateQueue;
 
@@ -479,7 +497,11 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	// Store the maximum Hausdorf Distance
 	vector<pair<float, float>> globalHausdorfDistance;
 	vector<Point> removedPoints;
+
+	//
+	unordered_map<Face_handle, replacing_group *> map_group;
 public:
+
 	HiMesh(string &str, bool completeop = false);
 	HiMesh(char *data, size_t dsize);
 	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset){}
@@ -580,6 +602,7 @@ public:
 	// query
 	SegTree *get_aabb_tree_segment();
 	TriangleTree *get_aabb_tree_triangle();
+	Tree *get_aabb_tree();
 	float distance(HiMesh *target);
 	float distance_tree(HiMesh *target);
 	float distance_tree(const Point &p);
