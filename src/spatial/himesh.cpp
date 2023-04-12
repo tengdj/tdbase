@@ -11,6 +11,8 @@
 
 namespace hispeed{
 
+int replacing_group::counter = 0;
+
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
 

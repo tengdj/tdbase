@@ -629,15 +629,22 @@ class replacing_group{
 public:
 	replacing_group(){
 		//cout<<this<<" is constructed"<<endl;
+		id = counter++;
 	}
 	~replacing_group(){
 		added_faces.clear();
 		removed_vertices.clear();
 	}
 
+	void print(){
+		log("%4d added_faces: %ld removed_vertices: %ld-%ld", id, added_faces.size(), removed_vertices.size(), rmved);
+	}
+
 	vector<HiMesh::Face_handle> added_faces;
 	unordered_set<Point> removed_vertices;
 	size_t rmved = 0;
+	static int counter;
+	int id;
 };
 
 /*

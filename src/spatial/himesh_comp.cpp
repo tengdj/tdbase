@@ -235,7 +235,7 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 	log("%ld %ld %d %ld", rep_groups.size(), new_faces.size(), removed, this->size_of_facets());
 
 	replacing_group *rg = merge(rep_groups);
-	rg->removed_vertices.emplace(vPos);
+	//rg->removed_vertices.emplace(vPos);
 	rg->rmved++;
 
 	//cout<<""<<rg->removed_vertices.size()<<endl;
