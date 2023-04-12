@@ -143,19 +143,18 @@ void HiMesh::startNextCompresssionOp()
 	}
 }
 
-HiMesh::replacing_group *merge(vector<HiMesh::replacing_group *> &reps){
-
-	HiMesh::replacing_group *ret = reps[0];
-	for(size_t i=1;i<reps.size();i++){
-		for(auto a:reps[i]->added_faces){
-			ret->added_faces.emplace(a);
-		}
-		for(auto a:reps[i]->removed_vertices){
-			ret->removed_vertices.emplace(a);
-		}
-		delete reps[i];
+replacing_group *HiMesh::merge(unordered_set<replacing_group *> &reps){
+	replacing_group *ret = new replacing_group();
+	for(replacing_group *r:reps){
+		ret->removed_vertices.insert(r->removed_vertices.begin(), r->removed_vertices.end());
+		ret->rmved += r->rmved;
+		this->map_group.erase(r);
+		delete r;
+		r = NULL;
 	}
+	//log("merged %ld reps with %ld removed vertices", reps.size(), ret->removed_vertices.size());
 	reps.clear();
+	map_group.emplace(ret);
 	return ret;
 }
 
@@ -171,23 +170,31 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 	assert(!v->isConquered());
 	assert(v->vertex_degree()>2);
 
-	vector<Point> impactpoints;
 	vector<Face_handle> new_faces;
-	vector<replacing_group *> rep_groups;
+	unordered_set<replacing_group *> rep_groups;
 	//int i = 0;
 	Halfedge_handle h = startH->opposite(), end(h);
+	int removed = 0;
 	do
 	{
 		assert(!h->is_border());
 		Face_handle f = h->facet();
 		assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
 
-		vector<Point> ips = f->getImpactPoints();
-		impactpoints.insert(impactpoints.end(), ips.begin(), ips.end());
+		// the old face will be removed in the vertex cut operation
+		// as it will be replaced with a merged one. but the replacing
+		// group information will be stored.
+		if(f->rg != NULL){
+			rep_groups.emplace(f->rg);
+			f->rg = NULL;
+		}
+
+//		vector<Point> ips = f->getImpactPoints();
+//		impactpoints.insert(impactpoints.end(), ips.begin(), ips.end());
 
 		//if the face is not a triangle, cut the corner
 		int deg_bef = f->facet_degree();
-		if(f->facet_degree()>3)
+		if(deg_bef>3)
 		{
 		  //loop around the face to find the appropriate other halfedge
 		  Halfedge_handle hSplit(h->next());
@@ -197,58 +204,60 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 		  //mark the new halfedges as added
 		  hCorner->setAdded();
 		  hCorner->opposite()->setAdded();
+		  Face_handle newface = hCorner->face();
+		  assert(newface->rg == NULL && hCorner->opposite()->face()->rg == NULL);
+		  new_faces.push_back(newface);
 
-		  Face_handle new_face = hCorner->face();
-		  Face_handle old_face = hCorner->opposite()->face();
-
-		  new_faces.push_back(new_face);
-
-		  // the old face will be removed in the vertex cut
-		  if(map_group.find(old_face)!=map_group.end()){
-			  rep_groups.push_back(map_group[old_face]);
-			  map_group[old_face]->added_faces.erase(old_face);
-			  map_group.erase(old_face);
-		  }
 		  //hCorner->opposite()->facet()->resetImpactPoints();
 		  //log("addr: %ld %ld %ld", f, hCorner->facet(), hCorner->opposite()->facet());
 		  //log("split: %ld %ld", hCorner->facet()->getImpactPoints().size(), hCorner->opposite()->facet()->getImpactPoints().size());
 		  //hCorner->facet()->addImpactPoints(ips);
-
-		  //log("%d %d",deg_bef, hCorner->opposite()->facet_degree());
+		  //log("split %d = %ld + %ld",deg_bef, f->facet_degree(), hCorner->opposite()->facet_degree());
 		}
 		//mark the vertex as conquered
 		h->vertex()->setConquered();
+		removed++;
 	} while((h=h->opposite()->next()) != end);
 
 	//copy the position of the center vertex:
 	Point vPos = startH->vertex()->point();
 
+	int bf = this->size_of_facets();
 	//remove the center vertex
 	Halfedge_handle hNewFace = erase_center_vertex(startH);
 	Face_handle added_face = hNewFace->facet();
+
+	//log("test: %d = %d - %ld (%ld)", removed, bf, this->size_of_facets(), added_face->facet_degree());
+
+	assert(added_face->rg == NULL);
 	new_faces.push_back(added_face);
 
-	log("%ld %ld", rep_groups.size(), new_faces.size());
-	replacing_group *rg = NULL;
-	if(rep_groups.size()==0){
-		rg = new replacing_group();
-	}else{
-		// the faces are
-		rg = merge(rep_groups);
-	}
-	assert(rg);
-	for(Face_handle nf:new_faces){
-		rg->added_faces.emplace(nf);
-		map_group[nf] = rg;
-	}
+	log("%ld %ld %d %ld", rep_groups.size(), new_faces.size(), removed, this->size_of_facets());
+
+	replacing_group *rg = merge(rep_groups);
 	rg->removed_vertices.emplace(vPos);
+	rg->rmved++;
+
+	//cout<<""<<rg->removed_vertices.size()<<endl;
+	for(Face_handle nf:new_faces){
+		if(nf->rg){
+			cout<<"bf nf->rg: "<<nf->rg->rmved<<endl;
+		}
+		assert(nf->rg == NULL);
+	}
+	for(Face_handle nf:new_faces){
+		nf->rg = rg;
+		//cout<<"af nf->rg: "<<nf->rg<<endl;
+	}
+	new_faces.clear();
 
 	//now mark the new face as having a removed vertex
 	added_face->setSplittable();
 	// keep the removed vertex position.
 	added_face->setRemovedVertexPos(vPos);
-	added_face->addImpactPoints(impactpoints);
-	added_face->addImpactPoint(vPos);
+//	added_face->addImpactPoints(impactpoints);
+//	added_face->addImpactPoint(vPos);
+
 	//scan the outside halfedges of the new face and add them to
 	//the queue if the state of its face is unknown. Also mark it as in_queue
 	h = hNewFace;
@@ -266,7 +275,7 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 
 	// Increment the number of removed vertices.
 	i_nbRemovedVertices++;
-
+    removedPoints.push_back(vPos);
 	return hNewFace;
 }
 
@@ -304,7 +313,6 @@ void HiMesh::RemovedVertexCodingStep()
             Point rmved = f->getRemovedVertexPos();
             geometrySym[i_curDecimationId].push_back(rmved);
         	// record the removed points during compressing.
-            removedPoints.push_back(rmved);
         }
 
         // Determine the hausdorf symbol

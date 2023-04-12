@@ -312,6 +312,9 @@ public:
 	}
 };
 
+
+class replacing_group;
+
 // My face type has a vertex flag
 template <class Refs>
 class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
@@ -423,6 +426,8 @@ public:
 	inline void setProgressive(float pro){
 		progressive_distance = pro;
 	}
+	replacing_group *rg = NULL;
+	int test_count = 0;
 };
 
 
@@ -448,18 +453,6 @@ struct MyItems : public CGAL::Polyhedron_items_3
 
 class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
-public:
-	class replacing_group{
-	public:
-		~replacing_group(){
-			added_faces.clear();
-			removed_vertices.clear();
-		}
-
-		unordered_set<Face_handle> added_faces;
-		unordered_set<Point> removed_vertices;
-	};
-private:
 	// Gate queues
 	std::queue<Halfedge_handle> gateQueue;
 
@@ -499,7 +492,7 @@ private:
 	vector<Point> removedPoints;
 
 	//
-	unordered_map<Face_handle, replacing_group *> map_group;
+	unordered_set<replacing_group *> map_group;
 public:
 
 	HiMesh(string &str, bool completeop = false);
@@ -514,6 +507,7 @@ public:
 	void startNextCompresssionOp();
 	void RemovedVertexCodingStep();
 	void InsertedEdgeCodingStep();
+	replacing_group *merge(unordered_set<replacing_group *> &reps);
 	Halfedge_handle vertexCut(Halfedge_handle startH);
 	void encodeInsertedEdges(unsigned i_operationId);
 	void encodeRemovedVertices(unsigned i_operationId);
@@ -629,6 +623,21 @@ public:
 	aab shift(float x_sft, float y_sft, float z_sft);
 	aab shrink(float ratio);
 	HiMesh *clone_mesh();
+};
+
+class replacing_group{
+public:
+	replacing_group(){
+		//cout<<this<<" is constructed"<<endl;
+	}
+	~replacing_group(){
+		added_faces.clear();
+		removed_vertices.clear();
+	}
+
+	vector<HiMesh::Face_handle> added_faces;
+	unordered_set<Point> removed_vertices;
+	size_t rmved = 0;
 };
 
 /*

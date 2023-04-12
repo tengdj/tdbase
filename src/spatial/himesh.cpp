@@ -76,6 +76,10 @@ HiMesh::~HiMesh(){
 	   delete[] p_data;
 	}
 	clear_aabb_tree();
+	for(replacing_group *rg:map_group){
+		delete rg;
+	}
+	map_group.clear();
 }
 
 void HiMesh::compute_mbb(){

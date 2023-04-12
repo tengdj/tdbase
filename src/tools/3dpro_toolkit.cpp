@@ -148,7 +148,7 @@ static void profile_distance(int argc, char **argv){
 /*
  * profiling the performance of decoding
  * */
-void profile_decoding(int argc, char **argv){
+static void profile_decoding(int argc, char **argv){
 
 	int start_lod = 0;
 	int end_lod = 10;
@@ -413,19 +413,56 @@ static void print_tile_boxes(int argc, char **argv){
 	hispeed::write_voxels(boxes, argv[2]);
 }
 
+//static replacing_group *merge1(unordered_set<replacing_group *> &reps){
+//	replacing_group *ret = new replacing_group();
+//	for(replacing_group *r:reps){
+//		ret->removed_vertices.insert(r->removed_vertices.begin(), r->removed_vertices.end());
+//		delete r;
+//		r = NULL;
+//	}
+//	for(Point p:ret->removed_vertices){
+//		cout<<p<<endl;
+//	}
+//	log("merged %ld reps with %ld removed vertices", reps.size(), ret->removed_vertices.size());
+//	reps.clear();
+//	return ret;
+//}
+
 static void test(int argc, char **argv){
+//
+//	Point p1(1,2,3);
+//	Point p2(2,3,4);
+//	Point p3(3,4,5);
+//	Point p4(4,5,6);
+//
+//	replacing_group *r1 = new replacing_group();
+//	r1->removed_vertices.emplace(p1);
+//	r1->removed_vertices.emplace(p2);
+//
+//	replacing_group *r2 = new replacing_group();
+//	r2->removed_vertices.emplace(p3);
+//	r2->removed_vertices.emplace(p4);
+//
+//	unordered_set<replacing_group *> reps;
+//	reps.emplace(r1);
+//	reps.emplace(r2);
+//	auto r3 = merge1(reps);
+//	for(auto a:r3->removed_vertices){
+//		cout<<a<<endl;
+//	}
 
-	Tile *tile = new Tile(argv[1],1);
-	HiMesh *mesh = tile->get_mesh(0);
+//	Tile *tile = new Tile(argv[1],1);
+//	HiMesh *mesh = tile->get_mesh(0);
+//
+//	cout<<sizeof(Polyhedron)<<endl;
+//
+//	if(argc>2){
+//		int lod = atoi(argv[2]);
+//		assert(lod>=0 && lod<=100);
+//		mesh->decode(lod);
+//	}
+//	cout<<*mesh<<endl;
 
-	cout<<sizeof(Polyhedron)<<endl;
-
-	if(argc>2){
-		int lod = atoi(argv[2]);
-		assert(lod>=0 && lod<=100);
-		mesh->decode(lod);
-	}
-	cout<<*mesh<<endl;
 }
 
 int main(int argc, char **argv){

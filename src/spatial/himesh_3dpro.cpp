@@ -362,7 +362,24 @@ void HiMesh::computeHausdorfDistance(){
 	clear_aabb_tree();
 	//logt("%f %d", start, hdist, removedPoints.size());
 
-	log("%ld groups", this->map_group.size());
+	int i = 0;
+	int j = 0;
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		if(fit->rg!=NULL){
+			fit->rg->added_faces.push_back(fit);
+			i++;
+		}else{
+			j++;
+		}
+	}
+
+	log("%ld groups %ld = %d + %d", map_group.size(),size_of_facets(), i, j);
+	int rmved = 0;
+	for(auto r:map_group){
+		log("added_faces: %ld removed_vertices: %ld", r->added_faces.size(), r->rmved);
+		rmved += r->rmved;
+	}
+	log("rmed: %ld %d",removedPoints.size(), rmved);
 
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		if(fit->isSplittable()){
