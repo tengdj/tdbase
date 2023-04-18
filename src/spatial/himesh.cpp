@@ -12,6 +12,7 @@
 namespace hispeed{
 
 int replacing_group::counter = 0;
+int replacing_group::alive = 0;
 
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
@@ -52,6 +53,8 @@ HiMesh::HiMesh(string &str, bool completeop):
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 	vh_departureConquest[1] = halfedges_begin()->vertex();
+
+	get_aabb_tree_triangle();
 
 	if(completeop){
 		encode(0);

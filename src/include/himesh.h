@@ -427,7 +427,6 @@ public:
 		progressive_distance = pro;
 	}
 	replacing_group *rg = NULL;
-	int test_count = 0;
 };
 
 
@@ -507,7 +506,7 @@ public:
 	void startNextCompresssionOp();
 	void RemovedVertexCodingStep();
 	void InsertedEdgeCodingStep();
-	replacing_group *merge(unordered_set<replacing_group *> &reps);
+	void merge(unordered_set<replacing_group *> &reps, replacing_group *);
 	Halfedge_handle vertexCut(Halfedge_handle startH);
 	void encodeInsertedEdges(unsigned i_operationId);
 	void encodeRemovedVertices(unsigned i_operationId);
@@ -630,21 +629,26 @@ public:
 	replacing_group(){
 		//cout<<this<<" is constructed"<<endl;
 		id = counter++;
+		alive++;
 	}
 	~replacing_group(){
 		added_faces.clear();
 		removed_vertices.clear();
+		alive--;
 	}
 
 	void print(){
-		log("%4d added_faces: %ld removed_vertices: %ld-%ld", id, added_faces.size(), removed_vertices.size(), rmved);
+		log("%5d (%2d refs %4d alive) - added_faces: %ld removed_vertices: %ld", id, ref, alive, added_faces.size(), removed_vertices.size());
 	}
 
 	vector<HiMesh::Face_handle> added_faces;
 	unordered_set<Point> removed_vertices;
-	size_t rmved = 0;
-	static int counter;
+	unordered_set<Triangle> removed_facets;
 	int id;
+	int ref = 0;
+
+	static int counter;
+	static int alive;
 };
 
 /*

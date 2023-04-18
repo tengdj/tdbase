@@ -346,45 +346,86 @@ static float point_to_face_distance(const Point &p, const HiMesh::Face_iterator 
 	return mindist;
 }
 
+static vector<Point> sample_points(const HiMesh::Face_iterator &fit, const int num_points){
+	vector<Point> points;
+	HiMesh::Halfedge_const_handle hd = fit->halfedge();
+	HiMesh::Halfedge_const_handle h = hd->next();
+	while(h->next()!=hd){
+		Point p1 = hd->vertex()->point();
+		Point p2 = h->vertex()->point();
+		Point p3 = h->next()->vertex()->point();
+		points.push_back(p1);
+		points.push_back(p2);
+		points.push_back(p3);
+		assert(num_points>=3);
+		int dimx = sqrt(2*num_points-3);
+		int dimy = dimx==0?0:(2*num_points-3+dimx-1)/dimx;
+
+		Point &v1 = p1;
+		Point v2(p2.x()-p1.x(), p2.y()-p1.y(), p2.z()-p1.z());
+		Point v3(p3.x()-p1.x(), p3.y()-p1.y(), p3.z()-p1.z());
+
+		float step_x = 1.0/(dimx+1);
+		float step_y = 1.0/(dimy+1);
+		for(float u = step_x;u<1;u += step_x){
+			for(float v = step_y;v<1-u;v += step_y){
+				points.push_back(Point(v1.x()+u*v2.x()+v*v3.x(), v1.y()+u*v2.y()+v*v3.y(), v1.z()+u*v2.z()+v*v3.z()));
+			}
+		}
+		h = h->next();
+	}
+	return points;
+}
+
 void HiMesh::computeHausdorfDistance(){
 
 	pair<float, float> current_hausdorf = pair<float, float>(0.0, 0.0);
 	float dist = DBL_MAX;
 
 	struct timeval start = get_cur_time();
-	get_aabb_tree_triangle();
-	double hdist = 0;
-	for(Point &p:removedPoints){
-		double dist = this->distance_tree(p);
-		//triangle_tree->closest_point_and_primitive(query, hint)
-		hdist = max(hdist, dist);
-	}
-	clear_aabb_tree();
-	//logt("%f %d", start, hdist, removedPoints.size());
 
-	for(auto r:map_group){
-		r->print();
-		r->added_faces.clear();
-	}
-
-	int i = 0;
-	int j = 0;
+	float hdist = 0;
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		if(fit->rg!=NULL){
-			fit->rg->added_faces.push_back(fit);
-			i++;
-		}else{
-			j++;
+		if(fit->rg){
+			vector<Point> points = sample_points(fit, 100);
+			float curhdist = 0.0;
+			for(Point &p:points){
+				float dist = this->distance_tree(p);
+				curhdist = max(curhdist, dist);
+			}
+			log("%ld points are sampled degree %ld, cur hdist %f", points.size(), fit->facet_degree(), curhdist);
+			hdist = max(hdist, curhdist);
 		}
 	}
 
-	log("%ld groups %ld = %d + %d", map_group.size(),size_of_facets(), i, j);
-	int rmved = 0;
-	for(auto r:map_group){
-		log("added_faces: %ld removed_vertices: %ld", r->added_faces.size(), r->rmved);
-		rmved += r->rmved;
+	logt("tree: %f", start, hdist);
+
+//	for(auto r:map_group){
+//		//r->print();
+//		r->added_faces.clear();
+//	}
+
+	hdist = 0;
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		if(fit->rg!=NULL){
+			vector<Point> points = sample_points(fit, 100);
+			fit->rg->added_faces.push_back(fit);
+			float hd = 0;
+			for(auto &p:fit->rg->removed_vertices){
+				float dist = point_to_face_distance(p, fit);
+				hd = max(hd, dist);
+			}
+			//log("%ld %f",fit->rg->removed_vertices.size(),hd);
+			hdist = max(hdist, hd);
+		}
 	}
-	log("rmed: %ld %d",removedPoints.size(), rmved);
+	logt("ours: %f", start, hdist);
+
+//	log("%ld groups %ld faces %ld removed points" , map_group.size(), size_of_facets(), removedPoints.size());
+//	for(auto r:map_group){
+//		r->print();
+//	}
+
 
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		if(fit->isSplittable()){
