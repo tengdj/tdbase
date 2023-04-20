@@ -162,6 +162,23 @@ void write_points(vector<Point> &skeleton, const char *path){
 	fclose(fp);
 }
 
+void write_triangles(vector<Triangle> &triangles, const char *path){
+	FILE * fp;
+	fp = fopen (path, "w");
+
+	fprintf(fp, "OFF\n");
+	fprintf(fp, "%ld %ld 0\n", triangles.size()*3, triangles.size());
+	for(Triangle &t:triangles){
+		for(int i=0;i<3;i++){
+			fprintf(fp, "%f %f %f\n",t[i].x(),t[i].y(),t[i].z());
+		}
+	}
+	for(int i=0;i<triangles.size();i++){
+		fprintf(fp, "3 %d %d %d\n", i*3, i*3+1,i*3+2);
+	}
+	fclose(fp);
+}
+
 void write_voxels(vector<Voxel *> boxes, const char *path){
 	write_polyhedron(make_cubes(boxes), path);
 }

@@ -98,12 +98,6 @@ inline float distance(const float *p1, const float *p2){
 	return cur_dist;
 }
 
-typedef struct{
-	float point[9];
-	float recessing_distance = 0.0;
-	float protruding_distance = 0.0;
-}MyTriangle;
-
 union result_type{
 	float distance;
 	bool intersected;

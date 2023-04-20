@@ -448,8 +448,6 @@ struct MyItems : public CGAL::Polyhedron_items_3
     };
 };
 
-
-
 class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
 	// Gate queues
@@ -622,6 +620,8 @@ public:
 	aab shift(float x_sft, float y_sft, float z_sft);
 	aab shrink(float ratio);
 	HiMesh *clone_mesh();
+
+	map<Point, vector<Triangle>> VFmap;
 };
 
 class replacing_group{
@@ -643,7 +643,7 @@ public:
 
 	vector<HiMesh::Face_handle> added_faces;
 	unordered_set<Point> removed_vertices;
-	unordered_set<Triangle> removed_facets;
+	//unordered_set<Triangle> removed_facets;
 	int id;
 	int ref = 0;
 
@@ -699,6 +699,7 @@ void write_polyhedron(Polyhedron *mesh, const char *path);
 void write_polyhedron(Polyhedron *mesh, int id);
 void write_voxels(vector<Voxel *> voxels, const char *path);
 void write_points(vector<Point> &skeleton, const char *path);
+void write_triangles(vector<Triangle> &triangles, const char *path);
 string read_off_stdin();
 string polyhedron_to_wkt(Polyhedron *poly);
 

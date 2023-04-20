@@ -56,6 +56,20 @@ HiMesh::HiMesh(string &str, bool completeop):
 
 	get_aabb_tree_triangle();
 
+	for(Vertex_iterator vit=vertices_begin();vit!=vertices_end();vit++){
+		Point p = vit->point();
+		Halfedge_handle startH = vit->halfedge();
+		Halfedge_handle h = startH->opposite(), end(h);
+		Face_handle f = h->face();
+
+		vector<Triangle> triangles;
+		do {
+			Triangle t(h->vertex()->point(), h->next()->vertex()->point(), h->next()->next()->vertex()->point());
+			triangles.push_back(t);
+		} while((h=h->opposite()->next()) != end);
+		VFmap[p] = triangles;
+	}
+
 	if(completeop){
 		encode(0);
 	}

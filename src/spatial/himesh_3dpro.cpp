@@ -346,30 +346,48 @@ static float point_to_face_distance(const Point &p, const HiMesh::Face_iterator 
 	return mindist;
 }
 
-static vector<Point> sample_points(const HiMesh::Face_iterator &fit, const int num_points){
-	vector<Point> points;
+inline float triangle_area(Triangle &tri){
+	float x1 = tri[1].x()-tri[0].x();
+	float y1 = tri[1].y()-tri[0].y();
+	float z1 = tri[1].z()-tri[0].z();
+	float x2 = tri[2].x()-tri[0].x();
+	float y2 = tri[2].y()-tri[0].y();
+	float z2 = tri[2].z()-tri[0].z();
+	return std::abs((y1*z2+z1*x2+x1*y2 - y2*z1-z2*x1- x2*y1)/2);
+}
+
+extern int sampled_points_num;
+
+static unordered_set<Point> sample_points(const HiMesh::Face_iterator &fit){
+	unordered_set<Point> points;
 	HiMesh::Halfedge_const_handle hd = fit->halfedge();
 	HiMesh::Halfedge_const_handle h = hd->next();
 	while(h->next()!=hd){
 		Point p1 = hd->vertex()->point();
 		Point p2 = h->vertex()->point();
 		Point p3 = h->next()->vertex()->point();
-		points.push_back(p1);
-		points.push_back(p2);
-		points.push_back(p3);
-		assert(num_points>=3);
-		int dimx = sqrt(2*num_points-3);
-		int dimy = dimx==0?0:(2*num_points-3+dimx-1)/dimx;
+		points.emplace(p1);
+		points.emplace(p2);
+		points.emplace(p3);
 
-		Point &v1 = p1;
-		Point v2(p2.x()-p1.x(), p2.y()-p1.y(), p2.z()-p1.z());
-		Point v3(p3.x()-p1.x(), p3.y()-p1.y(), p3.z()-p1.z());
+		Triangle t(p1, p2, p3);
+		float a = triangle_area(t);
+		int num_points = a/sampled_points_num;
+		if(num_points>3){
+			assert(num_points>3);
+			int dimx = sqrt(2*num_points-3);
+			int dimy = dimx==0?0:(2*num_points-3+dimx-1)/dimx;
 
-		float step_x = 1.0/(dimx+1);
-		float step_y = 1.0/(dimy+1);
-		for(float u = step_x;u<1;u += step_x){
-			for(float v = step_y;v<1-u;v += step_y){
-				points.push_back(Point(v1.x()+u*v2.x()+v*v3.x(), v1.y()+u*v2.y()+v*v3.y(), v1.z()+u*v2.z()+v*v3.z()));
+			Point &v1 = p1;
+			Point v2(p2.x()-p1.x(), p2.y()-p1.y(), p2.z()-p1.z());
+			Point v3(p3.x()-p1.x(), p3.y()-p1.y(), p3.z()-p1.z());
+
+			float step_x = 1.0/(dimx+1);
+			float step_y = 1.0/(dimy+1);
+			for(float u = step_x;u<1;u += step_x){
+				for(float v = step_y;v<1-u;v += step_y){
+					points.emplace(Point(v1.x()+u*v2.x()+v*v3.x(), v1.y()+u*v2.y()+v*v3.y(), v1.z()+u*v2.z()+v*v3.z()));
+				}
 			}
 		}
 		h = h->next();
@@ -383,43 +401,114 @@ void HiMesh::computeHausdorfDistance(){
 	float dist = DBL_MAX;
 
 	struct timeval start = get_cur_time();
-
+	struct timeval very_start = get_cur_time();
 	float hdist = 0;
+	float hdist2 = 0;
+	float hdist3 = 0;
+
+	double smp = 0;
+	double usetree = 0;
+	double collect_triangle = 0;
+	double caldist = 0;
+	double ours1 = 0;
+	double ours2 = 0;
+	size_t num_sampled_points = 0;
+	size_t num_faces = 0;
+	size_t num_vertices = 0;
+	size_t processed_faces = 0;
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		if(fit->rg){
-			vector<Point> points = sample_points(fit, 100);
-			float curhdist = 0.0;
-			for(Point &p:points){
-				float dist = this->distance_tree(p);
-				curhdist = max(curhdist, dist);
+		if(fit->rg && fit->isSplittable()){
+			unordered_set<Point> points = sample_points(fit);
+			smp += get_time_elapsed(start, true);
+			if(fit->rg->removed_vertices.size()>20){
+				float curhdist = 0.0;
+				for(Point p:points){
+					float dist = distance_tree(p);
+					curhdist = max(curhdist, dist);
+				}
+				hdist = max(hdist, curhdist);
+				current_hausdorf.second = max(current_hausdorf.second, hdist);
+
+				//log("%ld points are sampled degree %ld, tree dist %f ", points.size(), fit->facet_degree(), curhdist);
+				caldist += get_time_elapsed(start, true);
+			} else {
+				list<Triangle> triangles;
+				unordered_set<Point> processed_vertices;
+				for(Point p:fit->rg->removed_vertices){
+					for(Triangle &t:VFmap[p]){
+						bool processed = false;
+						for(int i=0;i<3;i++){
+							if(processed_vertices.find(t[i])!=processed_vertices.end()){
+								processed = true;
+								break;
+							}
+						}
+						if(!processed){
+							triangles.push_back(t);
+						}
+					}
+					processed_vertices.emplace(p);
+				}
+				collect_triangle += get_time_elapsed(start, true);
+				{
+					float hd = 0;
+					// brute-forcely calculate
+					for(auto p:points){
+						float dist = DBL_MAX;
+						for(Triangle &t:triangles){
+							dist = min(dist, hispeed::PointTriangleDist((const float *)&p, (const float *)&t));
+						}
+						hd = max(hd, dist);
+					}
+					hdist2 = max(hdist2, hd);
+					fit->setConservative(hdist2);
+					fit->setProgressive(0.0);
+					current_hausdorf.second = max(current_hausdorf.second, hdist2);
+					//log("%d removed points for %d triangles, sampled %d points with hd %f", fit->rg->removed_vertices.size(),triangles.size(), points.size(), hd);
+				}
+				caldist += get_time_elapsed(start, true);
 			}
-			log("%ld points are sampled degree %ld, cur hdist %f", points.size(), fit->facet_degree(), curhdist);
-			hdist = max(hdist, curhdist);
+
+			if(false){
+				float hd = 0;
+				// calculate with local tree
+				TriangleTree *triangle_tree = new TriangleTree(triangles.begin(), triangles.end());
+				triangle_tree->build();
+				triangle_tree->accelerate_distance_queries();
+				for(auto &p:points){
+					FT sqd = triangle_tree->squared_distance(p);
+					float dist = sqrt((float)CGAL::to_double(sqd));
+					hd = max(hd, dist);
+				}
+				delete triangle_tree;
+				hdist3 = max(hdist3, hd);
+				ours2 += get_time_elapsed(start, true);
+			}
+			if(false){
+				float hd = 0;
+				for(Point p:fit->rg->removed_vertices){
+					float dist = point_to_face_distance(p, fit);
+					hd = max(hd, dist);
+				}
+				hdist2 = max(hdist2, hd);
+				ours1 += get_time_elapsed(start, true);
+				//log("%ld %f",fit->rg->removed_vertices.size(),hd);
+			}
+			processed_faces++;
+			num_faces += triangles.size();
+			num_vertices += fit->rg->removed_vertices.size();
+			num_sampled_points += points.size();
 		}
 	}
 
-	logt("tree: %f", start, hdist);
+	logt("smp: %f tri: %f cal: %f", very_start, smp, collect_triangle, caldist);
 
-//	for(auto r:map_group){
-//		//r->print();
-//		r->added_faces.clear();
-//	}
-
-	hdist = 0;
-	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		if(fit->rg!=NULL){
-			vector<Point> points = sample_points(fit, 100);
-			fit->rg->added_faces.push_back(fit);
-			float hd = 0;
-			for(auto &p:fit->rg->removed_vertices){
-				float dist = point_to_face_distance(p, fit);
-				hd = max(hd, dist);
-			}
-			//log("%ld %f",fit->rg->removed_vertices.size(),hd);
-			hdist = max(hdist, hd);
-		}
-	}
-	logt("ours: %f", start, hdist);
+//	log("sampling: %f tree: %f (%f) ours1: %f (%f) --- "
+//			"%ld %ld %ld ---"
+//			"%ld %ld",
+//			smp, hdist, usetree, hdist2, ours1,
+//			num_faces/processed_faces,num_vertices/processed_faces,num_sampled_points/processed_faces,
+//			size_of_vertices(), get_aabb_tree_triangle()->size());
 
 //	log("%ld groups %ld faces %ld removed points" , map_group.size(), size_of_facets(), removedPoints.size());
 //	for(auto r:map_group){
@@ -427,26 +516,26 @@ void HiMesh::computeHausdorfDistance(){
 //	}
 
 
-	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		if(fit->isSplittable()){
-			vector<Point> &ps = fit->getImpactPoints();
-			if(ps.size()==0){
-			  continue;
-			}
-			float maxdist = 0.0;
-			for(Point &p:ps){
-				float dist = point_to_face_distance(p, fit);
-				maxdist = max(dist, maxdist);
-			}
-			//log("%f", farthest_point);
-			fit->setProgressive(maxdist);
-			fit->setConservative(0.0);
-			//log("%f", fit->getHausdorfDistance().second);
-		}
-		current_hausdorf.second = max(current_hausdorf.second, fit->getHausdorfDistance().second);
-		dist = min(dist, fit->getHausdorfDistance().second);
-	}
-	//logt("%f", start, current_hausdorf.second);
+//	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+//		if(fit->isSplittable()){
+//			vector<Point> &ps = fit->getImpactPoints();
+//			if(ps.size()==0){
+//			  continue;
+//			}
+//			float maxdist = 0.0;
+//			for(Point &p:ps){
+//				float dist = point_to_face_distance(p, fit);
+//				maxdist = max(dist, maxdist);
+//			}
+//			//log("%f", farthest_point);
+//			fit->setProgressive(maxdist);
+//			fit->setConservative(0.0);
+//			//log("%f", fit->getHausdorfDistance().second);
+//		}
+//		current_hausdorf.second = max(current_hausdorf.second, fit->getHausdorfDistance().second);
+//		dist = min(dist, fit->getHausdorfDistance().second);
+//	}
+//	logt("%f", start, current_hausdorf.second);
 	globalHausdorfDistance.push_back(current_hausdorf);
 	if(global_ctx.verbose>=2){
 		log("encode %d:\t[%.2f %.2f]\t%ld", i_curDecimationId, dist, current_hausdorf.second, size_of_vertices());

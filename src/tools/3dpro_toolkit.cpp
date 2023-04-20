@@ -12,8 +12,10 @@
 #include "tile.h"
 #include "util.h"
 
+using namespace std;
 using namespace hispeed;
 
+namespace hispeed{
 /*
  * print himesh to wkt
  *
@@ -311,15 +313,19 @@ static void triangulate(int argc, char **argv){
 	delete mesh;
 }
 
+int sampled_points_num = 50;
+
 static void compress(int argc, char **argv){
+	if(argc>2){
+		sampled_points_num = atoi(argv[2]);
+		log("%d",sampled_points_num);
+	}
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1], true);
 	logt("compress", start);
 	HiMesh *himesh = new HiMesh(mesh);
 	int lod = 100;
-	if(argc>2){
-		lod = atoi(argv[2]);
-	}
+
 	for(uint i=0;i<=lod;i+=10){
 		himesh->decode(i);
 		logt("decode to %d", start, i);
@@ -462,6 +468,8 @@ static void test(int argc, char **argv){
 //		mesh->decode(lod);
 //	}
 //	cout<<*mesh<<endl;
+
+}
 
 }
 
