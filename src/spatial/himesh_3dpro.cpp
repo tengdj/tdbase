@@ -346,53 +346,103 @@ static float point_to_face_distance(const Point &p, const HiMesh::Face_iterator 
 	return mindist;
 }
 
-inline float triangle_area(Triangle &tri){
-	float x1 = tri[1].x()-tri[0].x();
-	float y1 = tri[1].y()-tri[0].y();
-	float z1 = tri[1].z()-tri[0].z();
-	float x2 = tri[2].x()-tri[0].x();
-	float y2 = tri[2].y()-tri[0].y();
-	float z2 = tri[2].z()-tri[0].z();
-	return std::abs((y1*z2+z1*x2+x1*y2 - y2*z1-z2*x1- x2*y1)/2);
-}
+int HiMesh::sampled_points_num = 1000;
+int HiMesh::calculate_method = 3;
 
-extern int sampled_points_num;
-
-static unordered_set<Point> sample_points(const HiMesh::Face_iterator &fit){
-	unordered_set<Point> points;
-	HiMesh::Halfedge_const_handle hd = fit->halfedge();
-	HiMesh::Halfedge_const_handle h = hd->next();
+vector<Triangle> triangulation(const HiMesh::Face_iterator &fit){
+	vector<Triangle> ret;
+	const auto hd = fit->halfedge();
+	auto h = hd->next();
 	while(h->next()!=hd){
 		Point p1 = hd->vertex()->point();
 		Point p2 = h->vertex()->point();
 		Point p3 = h->next()->vertex()->point();
-		points.emplace(p1);
-		points.emplace(p2);
-		points.emplace(p3);
+		ret.push_back(Triangle(p1,p2,p3));
+		h = h->next();
+	}
+	return ret;
+}
 
-		Triangle t(p1, p2, p3);
-		float a = triangle_area(t);
-		int num_points = a/sampled_points_num;
-		if(num_points>3){
-			assert(num_points>3);
-			int dimx = sqrt(2*num_points-3);
-			int dimy = dimx==0?0:(2*num_points-3+dimx-1)/dimx;
+void sample_points_triangle(const Triangle &tri, unordered_set<Point> &points, int num_points){
+	const Point &p1 = tri[0];
+	const Point &p2 = tri[1];
+	const Point &p3 = tri[2];
+	points.emplace(p1);
+	points.emplace(p2);
+	points.emplace(p3);
+	if(num_points>3){
+		assert(num_points>3);
+		int dimx = sqrt(2*num_points-3);
+		int dimy = dimx==0?0:(2*num_points-3+dimx-1)/dimx;
 
-			Point &v1 = p1;
-			Point v2(p2.x()-p1.x(), p2.y()-p1.y(), p2.z()-p1.z());
-			Point v3(p3.x()-p1.x(), p3.y()-p1.y(), p3.z()-p1.z());
+		Point v1 = p1;
+		Point v2(p2.x()-p1.x(), p2.y()-p1.y(), p2.z()-p1.z());
+		Point v3(p3.x()-p1.x(), p3.y()-p1.y(), p3.z()-p1.z());
 
-			float step_x = 1.0/(dimx+1);
-			float step_y = 1.0/(dimy+1);
-			for(float u = step_x;u<1;u += step_x){
-				for(float v = step_y;v<1-u;v += step_y){
+		float step_x = 1.0/(dimx+1);
+		float step_y = 1.0/(dimy+1);
+		for(float u = 0;u<1;u += step_x){
+			for(float v = 0;v<1-u;v += step_y){
+				if(!((u==0&&v==0)||(u==1&&v==1))){
 					points.emplace(Point(v1.x()+u*v2.x()+v*v3.x(), v1.y()+u*v2.y()+v*v3.y(), v1.z()+u*v2.z()+v*v3.z()));
 				}
 			}
 		}
+	}
+}
+
+void HiMesh::sample_points(const Triangle &tri, unordered_set<Point> &points){
+	float step = sqrt(get_mbb().diagonal_length())/HiMesh::sampled_points_num;
+	int num_points = triangle_area(tri)/(step*step);
+	sample_points_triangle(tri, points, num_points);
+}
+
+void HiMesh::sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points){
+	float step = sqrt(get_mbb().diagonal_length())/HiMesh::sampled_points_num;
+	const auto hd = fit->halfedge();
+	auto h = hd->next();
+	while(h->next()!=hd){
+		Point p1 = hd->vertex()->point();
+		Point p2 = h->vertex()->point();
+		Point p3 = h->next()->vertex()->point();
+		Triangle tri(p1, p2, p3);
+		int num_points = triangle_area(tri)/(step*step);
+		sample_points_triangle(tri, points, num_points);
+
+//		float step_x = abs(p2.x()-p1.x());
+//		float step_y = abs(p2.y()-p1.y());
+//		float step_z = abs(p2.z()-p1.z());
+//
+//		float step_u = max(step_x, max(step_y, step_z));
+//		float min_u = min(step_x, min(step_y, step_z));
+//		float step_v = 0;
+//		if(step_x <= step_u && step_x >= min_u){
+//			step_v = step_x;
+//		}else if(step_y <= step_u && step_y >= min_u){
+//			step_v = step_y;
+//		}else if(step_z <= step_u && step_z >= min_u){
+//			step_v = step_z;
+//		}else{
+//			assert(false && "must be one of step_z step_y or step_z");
+//		}
+
 		h = h->next();
 	}
-	return points;
+}
+
+void HiMesh::sample_points(unordered_set<Point> &points){
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		sample_points(fit, points);
+	}
+}
+
+Triangle expand(Triangle &tri){
+	const Point &p1 = tri[0];
+	const Point &p2 = tri[1];
+	const Point &p3 = tri[2];
+	return Triangle(Point(2*p1.x()-p2.x()/2-p3.x()/2, 2*p1.y()-p2.y()/2-p3.y()/2, 2*p1.z()-p2.z()/2-p3.z()/2),
+					Point(2*p2.x()-p1.x()/2-p3.x()/2, 2*p2.y()-p1.y()/2-p3.y()/2, 2*p2.z()-p1.z()/2-p3.z()/2),
+					Point(2*p3.x()-p1.x()/2-p2.x()/2, 2*p3.y()-p1.y()/2-p2.y()/2, 2*p3.z()-p1.z()/2-p2.z()/2));
 }
 
 void HiMesh::computeHausdorfDistance(){
@@ -403,105 +453,163 @@ void HiMesh::computeHausdorfDistance(){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 	float hdist = 0;
-	float hdist2 = 0;
-	float hdist3 = 0;
 
 	double smp = 0;
 	double usetree = 0;
 	double collect_triangle = 0;
-	double caldist = 0;
+	double caldist[3] = {0,0,0};
 	double ours1 = 0;
 	double ours2 = 0;
 	size_t num_sampled_points = 0;
 	size_t num_faces = 0;
 	size_t num_vertices = 0;
 	size_t processed_faces = 0;
-	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		if(fit->rg && fit->isSplittable()){
-			unordered_set<Point> points = sample_points(fit);
-			smp += get_time_elapsed(start, true);
-			if(fit->rg->removed_vertices.size()>20){
-				float curhdist = 0.0;
-				for(Point p:points){
-					float dist = distance_tree(p);
-					curhdist = max(curhdist, dist);
-				}
-				hdist = max(hdist, curhdist);
-				current_hausdorf.second = max(current_hausdorf.second, hdist);
+	vector<Point> candidate_samples;
+	float step = sqrt(get_mbb().diagonal_length())/HiMesh::sampled_points_num;
 
-				//log("%ld points are sampled degree %ld, tree dist %f ", points.size(), fit->facet_degree(), curhdist);
-				caldist += get_time_elapsed(start, true);
-			} else {
-				list<Triangle> triangles;
+	float avghdist[3] = {0.0,0.0,0.0};
+	uint tricount = 0;
+	uint goodcount[11] = {0,0,0,0,0,0,0,0,0,0,0};
+
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+
+		if( HiMesh::calculate_method == 4|| fit->rg==NULL || !fit->isSplittable()){
+			continue;
+		}
+		vector<Triangle> tmptri= triangulation(fit);
+		for(Triangle &cur_tri:tmptri)
+		{
+			unordered_set<Point> points;
+			sample_points(cur_tri, points);
+			smp += get_time_elapsed(start, true);
+
+			// to collect the triangles removed
+			// todo: this part of the latency is involved by an earlier
+			// version of the implementation, will be removed in a future release
+			// which will matian all the removed facets instead of vertices
+			vector<Triangle *> triangles;
+			{
 				unordered_set<Point> processed_vertices;
 				for(Point p:fit->rg->removed_vertices){
 					for(Triangle &t:VFmap[p]){
 						bool processed = false;
 						for(int i=0;i<3;i++){
-							if(processed_vertices.find(t[i])!=processed_vertices.end()){
+							if(processed_vertices.find((Point)t[i])!=processed_vertices.end()){
 								processed = true;
 								break;
 							}
 						}
 						if(!processed){
-							triangles.push_back(t);
+							triangles.push_back(&t);
 						}
 					}
 					processed_vertices.emplace(p);
 				}
-				collect_triangle += get_time_elapsed(start, true);
-				{
-					float hd = 0;
-					// brute-forcely calculate
-					for(auto p:points){
-						float dist = DBL_MAX;
-						for(Triangle &t:triangles){
-							dist = min(dist, hispeed::PointTriangleDist((const float *)&p, (const float *)&t));
+			}
+			vector<Triangle *> triangles2;
+			{
+				for(Triangle *t:triangles){
+					bool inside = false;
+					unordered_set<Point> tmppoints;
+					sample_points_triangle(*t, tmppoints, 8);
+					for(Point p:tmppoints){
+						if(hispeed::PointInTriangleCylinder((const float *)&p, (const float *)&cur_tri)){
+							inside = true;
+							break;
 						}
-						hd = max(hd, dist);
+						if(inside){
+							break;
+						}
 					}
-					hdist2 = max(hdist2, hd);
-					fit->setConservative(hdist2);
-					fit->setProgressive(0.0);
-					current_hausdorf.second = max(current_hausdorf.second, hdist2);
-					//log("%d removed points for %d triangles, sampled %d points with hd %f", fit->rg->removed_vertices.size(),triangles.size(), points.size(), hd);
+					if(inside){
+						triangles2.push_back(t);
+					}
 				}
-				caldist += get_time_elapsed(start, true);
+				if(triangles2.size()==0){
+					triangles2.assign(triangles.begin(), triangles.end());
+				}
+			}
+			//log("%ld triangles are filtered out from %ld triangles", triangles2.size(),triangles.size());
+
+			collect_triangle += get_time_elapsed(start, true);
+
+			float curhdist[3] = {0.0, 0.0, 0.0};
+			if(HiMesh::calculate_method == 1 || HiMesh::calculate_method == 0 )
+			{
+				for(auto p:points){
+					float dist = distance_tree(p);
+					curhdist[0] = max(curhdist[0], dist);
+				}
+				caldist[0] += get_time_elapsed(start, true);
+			}
+			if(HiMesh::calculate_method == 2 || HiMesh::calculate_method == 0 )
+			{
+				// brute-forcely calculate
+				for(auto p:points){
+					float dist = DBL_MAX;
+					for(Triangle *t:triangles){
+						dist = min(dist, hispeed::PointTriangleDist((const float *)&p, (const float *)t));
+					}
+					curhdist[1] = max(curhdist[1], dist);
+				}
+				caldist[1] += get_time_elapsed(start, true);
+			}
+			if(HiMesh::calculate_method == 3 || HiMesh::calculate_method == 0 )
+			{
+				// brute-forcely calculate
+				for(auto p:points){
+					float dist = DBL_MAX;
+					for(Triangle *t:triangles2){
+						dist = min(dist, hispeed::PointTriangleDist((const float *)&p, (const float *)t));
+					}
+					curhdist[2] = max(curhdist[2], dist);
+				}
+
+				if(curhdist[2]!=0){
+					goodcount[min((int)(10*curhdist[0]/curhdist[2]),10)]++;
+				}else{
+					goodcount[10]++;
+				}
+
+				caldist[2] += get_time_elapsed(start, true);
 			}
 
-			if(false){
-				float hd = 0;
-				// calculate with local tree
-				TriangleTree *triangle_tree = new TriangleTree(triangles.begin(), triangles.end());
-				triangle_tree->build();
-				triangle_tree->accelerate_distance_queries();
-				for(auto &p:points){
-					FT sqd = triangle_tree->squared_distance(p);
-					float dist = sqrt((float)CGAL::to_double(sqd));
-					hd = max(hd, dist);
-				}
-				delete triangle_tree;
-				hdist3 = max(hdist3, hd);
-				ours2 += get_time_elapsed(start, true);
+			for(int i=0;i<3;i++){
+				avghdist[i] += curhdist[i];
 			}
-			if(false){
-				float hd = 0;
-				for(Point p:fit->rg->removed_vertices){
-					float dist = point_to_face_distance(p, fit);
-					hd = max(hd, dist);
-				}
-				hdist2 = max(hdist2, hd);
-				ours1 += get_time_elapsed(start, true);
-				//log("%ld %f",fit->rg->removed_vertices.size(),hd);
+			tricount++;
+
+			//if(triangles2.size()>50)
+
+			if(false && this->i_curDecimationId==3 && curhdist[2]!=0 && curhdist[0]/curhdist[2]<0.1){
+				hispeed::write_triangles(triangles2, "/gisdata/filter_triangle.off");
+				hispeed::write_triangles(triangles, "/gisdata/filter_triangle_nofilter.off");
+				hispeed::write_triangles(tmptri, "/gisdata/filter_triangle_origin.off");
+				exit(0);
 			}
+
+//			log("%d removed points %d triangles %d sampled points with hd %f-%f-%f",
+//					fit->rg->removed_vertices.size(),triangles.size(), points.size(),
+//					curhdist[0], curhdist[1], curhdist[2]);
+
+			fit->setConservative(curhdist[0]);
+			fit->setProgressive(0.0);
+			hdist = max(hdist, curhdist[0]);
+			current_hausdorf.second = max(current_hausdorf.second, hdist);
+			triangles.clear();
+
 			processed_faces++;
 			num_faces += triangles.size();
 			num_vertices += fit->rg->removed_vertices.size();
 			num_sampled_points += points.size();
 		}
 	}
-
-	logt("smp: %f tri: %f cal: %f", very_start, smp, collect_triangle, caldist);
+	logt("step: %2d smp: %f tri: %f cal: %f-%f-%f #vertices: %ld #facets: %ld %f-%f-%f %f", very_start, i_curDecimationId, smp, collect_triangle, caldist[0],caldist[1],caldist[2],
+			size_of_vertices(), size_of_facets(), avghdist[0]/tricount, avghdist[1]/tricount, avghdist[2]/tricount, step);
+//	for(int i=0;i<11;i++){
+//		cout<<(float)goodcount[i]/tricount<<" ";
+//	}
+//	cout<<endl;
 
 //	log("sampling: %f tree: %f (%f) ours1: %f (%f) --- "
 //			"%ld %ld %ld ---"
@@ -536,6 +644,33 @@ void HiMesh::computeHausdorfDistance(){
 //		dist = min(dist, fit->getHausdorfDistance().second);
 //	}
 //	logt("%f", start, current_hausdorf.second);
+
+	//			if(false){
+	//				float hd = 0;
+	//				// calculate with local tree
+	//				TriangleTree *triangle_tree = new TriangleTree(triangles.begin(), triangles.end());
+	//				triangle_tree->build();
+	//				triangle_tree->accelerate_distance_queries();
+	//				for(auto &p:points){
+	//					FT sqd = triangle_tree->squared_distance(p);
+	//					float dist = sqrt((float)CGAL::to_double(sqd));
+	//					hd = max(hd, dist);
+	//				}
+	//				delete triangle_tree;
+	//				//hdist3 = max(hdist3, hd);
+	//				ours2 += get_time_elapsed(start, true);
+	//			}
+	//			if(false){
+	//				float hd = 0;
+	//				for(Point p:fit->rg->removed_vertices){
+	//					float dist = point_to_face_distance(p, fit);
+	//					hd = max(hd, dist);
+	//				}
+	//				//hdist2 = max(hdist2, hd);
+	//				ours1 += get_time_elapsed(start, true);
+	//				//log("%ld %f",fit->rg->removed_vertices.size(),hd);
+	//			}
+
 	globalHausdorfDistance.push_back(current_hausdorf);
 	if(global_ctx.verbose>=2){
 		log("encode %d:\t[%.2f %.2f]\t%ld", i_curDecimationId, dist, current_hausdorf.second, size_of_vertices());

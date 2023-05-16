@@ -90,6 +90,16 @@ VxS(float Vr[3], const float V[3], float s)
   Vr[2] = V[2] * s;
 }
 
+inline
+void
+VdS(float Vr[3], const float V[3], float s)
+{
+	assert(s>0);
+  Vr[0] = V[0] / s;
+  Vr[1] = V[1] / s;
+  Vr[2] = V[2] / s;
+}
+
 inline float distance(const float *p1, const float *p2){
 	float cur_dist = 0;
 	for(int t=0;t<3;t++){
@@ -121,8 +131,9 @@ typedef struct geometry_param_{
 }geometry_param;
 
 
-
-
+void compute_normal(float *Norm, const float *triangle);
+bool PointInTriangleCylinder(const float *point, const float *triangle);
+void project_points_to_triangle_plane(const float *point, const float *triangle, float projected_point[3]);
 float PointTriangleDist(const float *point, const float *triangle);
 float TriDist(const float *S, const float *T);
 result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);

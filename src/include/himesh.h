@@ -312,6 +312,19 @@ public:
 	}
 };
 
+inline float triangle_area(Point p1, Point p2, Point p3){
+	float x1 = p2.x()-p1.x();
+	float y1 = p2.y()-p1.y();
+	float z1 = p2.z()-p1.z();
+	float x2 = p3.x()-p1.x();
+	float y2 = p3.y()-p1.y();
+	float z2 = p3.z()-p1.z();
+	return std::abs((y1*z2+z1*x2+x1*y2 - y2*z1-z2*x1- x2*y1)/2);
+}
+
+inline float triangle_area(const Triangle &tri){
+	return triangle_area(tri[0], tri[1], tri[2]);
+}
 
 class replacing_group;
 
@@ -326,6 +339,8 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	ProcessedFlag processedFlag = NotProcessed;
 
 	Point removedVertexPos;
+	float conservative_distance = 0.0;
+	float progressive_distance = 0.0;
 public:
     MyFace(){}
 
@@ -387,33 +402,7 @@ public:
 		removedVertexPos = p;
 	}
 
-	inline void addImpactPoint(Point p){
-		for(Point &ep:impact_points){
-			if(ep==p){
-				return;
-			}
-		}
-		impact_points.push_back(p);
-	}
-
-	inline void addImpactPoints(vector<Point> &ps){
-		for(Point &p:ps){
-			addImpactPoint(p);
-		}
-	}
-
-private:
-	vector<Point> impact_points;
-	float conservative_distance = 0.0;
-	float progressive_distance = 0.0;
 public:
-	inline vector<Point> &getImpactPoints(){
-		return impact_points;
-	}
-
-	inline void resetImpactPoints(){
-		impact_points.clear();
-	}
 
 	inline pair<float, float> getHausdorfDistance(){
 		return pair<float, float>(conservative_distance, progressive_distance);
@@ -538,6 +527,8 @@ public:
 	float faceSurface(Halfedge_handle heh) const;
 	void pushHehInit();
 
+	void alphaFolding();
+
 	// IOs
 	void writeFloat(float f);
 	float readFloat();
@@ -622,6 +613,12 @@ public:
 	HiMesh *clone_mesh();
 
 	map<Point, vector<Triangle>> VFmap;
+
+	static int sampled_points_num;
+	static int calculate_method;
+	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points);
+	void sample_points(const Triangle &tri, unordered_set<Point> &points);
+	void sample_points(unordered_set<Point> &points);
 };
 
 class replacing_group{
@@ -643,6 +640,7 @@ public:
 
 	vector<HiMesh::Face_handle> added_faces;
 	unordered_set<Point> removed_vertices;
+	unordered_set<Triangle> removed_triangles;
 	//unordered_set<Triangle> removed_facets;
 	int id;
 	int ref = 0;
@@ -700,6 +698,7 @@ void write_polyhedron(Polyhedron *mesh, int id);
 void write_voxels(vector<Voxel *> voxels, const char *path);
 void write_points(vector<Point> &skeleton, const char *path);
 void write_triangles(vector<Triangle> &triangles, const char *path);
+void write_triangles(vector<Triangle *> &triangles, const char *path);
 string read_off_stdin();
 string polyhedron_to_wkt(Polyhedron *poly);
 

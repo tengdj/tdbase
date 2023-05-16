@@ -313,36 +313,43 @@ static void triangulate(int argc, char **argv){
 	delete mesh;
 }
 
-int sampled_points_num = 50;
-
 static void compress(int argc, char **argv){
 	if(argc>2){
-		sampled_points_num = atoi(argv[2]);
-		log("%d",sampled_points_num);
+		HiMesh::sampled_points_num = atoi(argv[2]);
+		log("%d",HiMesh::sampled_points_num);
+	}
+	if(argc>3){
+		HiMesh::calculate_method = atoi(argv[3]);
 	}
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1], true);
 	logt("compress", start);
-	HiMesh *himesh = new HiMesh(mesh);
+	HiMesh *hm = new HiMesh(mesh);
 	int lod = 100;
 
+	char path[256];
 	for(uint i=0;i<=lod;i+=10){
-		himesh->decode(i);
+		hm->decode(i);
 		logt("decode to %d", start, i);
 		//log("%d %f", i, himesh->getHausdorfDistance());
-	    std::ostringstream fileName;
-	    fileName << "/gisdata/compressed" << "_" << i << ".off";
-		himesh->write_to_off(fileName.str().c_str());
+	    sprintf(path, "/gisdata/compressed_%d.off", i);
+	    hm->write_to_off(path);
 
+		unordered_set<Point> point_set;
+		hm->sample_points(point_set);
+		vector<Point> points;
+		points.assign(point_set.begin(), point_set.end());
+	    sprintf(path, "/gisdata/points_%d.off", i);
+		hispeed::write_points(points, path);
 
 		//log("global: %f", himesh->getHausdorfDistance().second);
-		int tris = himesh->size_of_triangles();
+		int tris = hm->size_of_triangles();
 		for(int j=0;j<tris;j++){
 			//log("%d\t%.2f\t%d", j, himesh->get_triangle_hausdorf(j).second, (int)(himesh->get_triangle_hausdorf(j).second*100/himesh->getHausdorfDistance().second));
 		}
 	}
 	delete mesh;
-	delete himesh;
+	delete hm;
 }
 
 static void distance(int argc, char **argv){
@@ -474,6 +481,37 @@ static void test(int argc, char **argv){
 }
 
 int main(int argc, char **argv){
+
+//	float triangle[] = {248.444000,137.498001,454.556000,
+//						252.365005, 133.500000, 456.398987,
+//						252.598007, 130.871994, 487.509003};
+//
+//	float points[][3] = {{248.940002,137.160995,472.493988},
+//							{250.354996,136.102005,467.498993},
+//							{250.501999,136.369995,477.430511},
+//							{251.289001,134.500000,471.625000},
+//							{248.432007,132.783005,482.509491},
+//							{250.054993,131.158997,487.490997},
+//							{250.639008,134.501999,461.420013},
+//							{248.501007,138.686005,464.294495},
+//							{252.498993,131.270004,456.523010},
+//							{252.501007,132.968994,467.226990},
+//							{254.479996,125.822998,457.493011},
+//							{252.552002,132.505005,480.407990},
+//							{254.503006,130.113007,484.035492},
+//							{253.501999,129.115997,460.041992},
+//							{255.498993,129.488007,473.717499},
+//							{253.501007,130.554001,470.134491},
+//							{250.089005,134.501999,480.497986},
+//							{0,0,0}};
+//	for(int i=0;i<18;i++){
+//		cout<<points[i][0]<<" "<<points[i][1]<<" "<<points[i][2]<<endl;
+//		cout<<hispeed::PointInTriangleCylinder(points[i], triangle)<<endl;
+//		//cout<<hispeed::PointTriangleDist(points[i], triangle)<<endl;
+//	}
+//
+//	return 0;
+
 	global_ctx = parse_args(argc, argv);
 	if(argc==1){
 		cout<<"usage: 3dpro function [args]"<<endl;

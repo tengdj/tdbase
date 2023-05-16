@@ -17,6 +17,7 @@ int replacing_group::alive = 0;
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
 
+	struct timeval start = get_cur_time();
 	boost::replace_all(str, "|", "\n");
 	assert(str.size()!=0 && "input string should not be empty!");
 	srand(PPMC_RANDOM_CONSTANT);
@@ -28,6 +29,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 	for (size_t i = 0; i < d_capacity; ++i) {
 	   p_data[i] = 0;
 	}
+	logt("preprocess", start);
 	std::istringstream is;
 	is.str(str.c_str());
 	is >> *this;
@@ -47,14 +49,15 @@ HiMesh::HiMesh(string &str, bool completeop):
 		std::cerr << "The codec doesn't handle meshes with borders." << std::endl;
 		exit(EXIT_FAILURE);
 	}
+	logt("load mesh", start);
 
 	compute_mbb();
-
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 	vh_departureConquest[1] = halfedges_begin()->vertex();
 
 	get_aabb_tree_triangle();
+	logt("aabb", start);
 
 	for(Vertex_iterator vit=vertices_begin();vit!=vertices_end();vit++){
 		Point p = vit->point();
@@ -69,10 +72,13 @@ HiMesh::HiMesh(string &str, bool completeop):
 		} while((h=h->opposite()->next()) != end);
 		VFmap[p] = triangles;
 	}
+	logt("init triangles", start);
 
 	if(completeop){
 		encode(0);
 	}
+	logt("encode", start);
+
 }
 
 // in decompression mode

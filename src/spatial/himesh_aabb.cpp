@@ -34,10 +34,12 @@ SegTree *HiMesh::get_aabb_tree_segment(){
 
 TriangleTree *HiMesh::get_aabb_tree_triangle(){
 	if(triangle_tree == NULL){
+		//struct timeval start = get_cur_time();
 		get_triangles();
 		triangle_tree = new TriangleTree(triangles.begin(), triangles.end());
 		triangle_tree->build();
 		triangle_tree->accelerate_distance_queries();
+		//logt("building triangle tree", start);
 	}
 	return triangle_tree;
 }

@@ -2,7 +2,7 @@ prefix=/usr/local
 
 CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS
 NVCCFLAGS	= -std=c++14 -g -O2
-INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include -I/usr/local/include/eigen3 -I/usr/local/cgal/include
+INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include -I/usr/local/include/eigen3
 LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
 
 SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
@@ -89,6 +89,9 @@ develop: tools/develop.o $(MYMESH_OBJS)
 	
 h5tooff: tools/H5ToOFF.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@
+
+wrap: tools/wrap.o
+	$(CXX) $^ $(CPPFLAGS) $(LIBS) -o ../build/$@
 		
 .PHONY: all clean
 

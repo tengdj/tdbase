@@ -719,4 +719,151 @@ float PointTriangleDist(const float *point, const float *triangle)
 	return sqrt(VdotV(closest, closest));
 }
 
+void compute_normal(float *Norm, const float *triangle){
+	const float *trianglev0 = triangle;
+	const float *trianglev1 = triangle+3;
+	const float *trianglev2 = triangle+6;
+	float A[3];
+	float B[3];
+	VmV(A, trianglev1, trianglev0);
+	VmV(B, trianglev2, trianglev0);
+	VcrossV(Norm, A, B);
+	VdS(Norm, Norm, sqrt(VdotV(Norm, Norm)));
+}
+
+void project_points_to_triangle_plane(const float *point, const float *triangle, float projected_point[3]){
+	const float *trianglev0 = triangle;
+	const float *trianglev1 = triangle+3;
+	const float *trianglev2 = triangle+6;
+	float A[3];
+	float B[3];
+	VmV(A, trianglev1, trianglev0);
+	VmV(B, trianglev2, trianglev0);
+	float Norm[3];
+	VcrossV(Norm, A, B);
+	VdS(Norm, Norm, sqrt(VdotV(Norm, Norm)));
+	float d = -VdotV(Norm, trianglev0);
+
+//	cout<<Norm[0]*trianglev0[0]+Norm[1]*trianglev0[1]+Norm[2]*trianglev0[2]+d<<endl;
+//	cout<<Norm[0]*trianglev1[0]+Norm[1]*trianglev1[1]+Norm[2]*trianglev1[2]+d<<endl;
+//	cout<<Norm[0]*trianglev2[0]+Norm[1]*trianglev2[1]+Norm[2]*trianglev2[2]+d<<endl;
+	VmV(A, point, trianglev0);
+	float dist = VdotV(A, Norm);
+	VpVxS(projected_point, point, Norm, -dist);
+}
+
+bool PointInTriangleCylinder(const float *point, const float *triangle)
+{
+	const float *trianglev0 = triangle;
+	const float *trianglev1 = triangle+3;
+	const float *trianglev2 = triangle+6;
+	float A[3];
+	float B[3];
+	VmV(A, trianglev1, trianglev0);
+	VmV(B, trianglev2, trianglev0);
+	float Norm[3];
+	VcrossV(Norm, A, B);
+	VdS(Norm, Norm, sqrt(VdotV(Norm, Norm)));
+	float d = -VdotV(Norm, trianglev0);
+
+//	cout<<Norm[0]*trianglev0[0]+Norm[1]*trianglev0[1]+Norm[2]*trianglev0[2]+d<<endl;
+//	cout<<Norm[0]*trianglev1[0]+Norm[1]*trianglev1[1]+Norm[2]*trianglev1[2]+d<<endl;
+//	cout<<Norm[0]*trianglev2[0]+Norm[1]*trianglev2[1]+Norm[2]*trianglev2[2]+d<<endl;
+	VmV(A, point, trianglev0);
+	float dist = VdotV(A, Norm);
+
+	float projected_point[3];
+	VpVxS(projected_point, point, Norm, -dist);
+	//cout<<projected_point[0]<<" "<<projected_point[1]<<" "<<projected_point[2]<<endl;
+
+	float v0v1[3];
+	float v0v2[3];
+	float v1v2[3];
+	float v0vp[3];
+	float v1vp[3];
+	VmV(v0v1,trianglev1,trianglev0);
+	VmV(v0v2,trianglev2,trianglev0);
+	VmV(v1v2,trianglev2,trianglev1);
+	VmV(v0vp,projected_point,trianglev0);
+	VmV(v1vp,projected_point,trianglev1);
+
+	VcrossV(A, v0v1, v0v2);
+	float a = sqrt(VdotV(A,A));
+
+	VcrossV(A, v0v1, v0vp);
+	float a1 = sqrt(VdotV(A,A));
+
+	VcrossV(A, v0v2, v0vp);
+	float a2 = sqrt(VdotV(A,A));
+
+	VcrossV(A, v1v2, v1vp);
+	float a3 = sqrt(VdotV(A,A));
+
+	//cout<<a1+a2+a3<<" "<<a<<endl;
+	return abs(a1+a2+a3 - a)<a/10000000.0;
+
+	VmV(A,trianglev1,trianglev0);
+	VmV(B,projected_point,trianglev0);
+	cout<<"1: "<<VdotV(A,B)<<endl;
+	if(VdotV(A,B)<=0.0){
+		return false;
+	}
+	VmV(A,trianglev2,trianglev1);
+	VmV(B,projected_point,trianglev1);
+	cout<<"2: "<<VdotV(A,B)<<endl;
+	if(VdotV(A,B)<=0.0){
+		return false;
+	}
+	VmV(A,trianglev0,trianglev2);
+	VmV(B,projected_point,trianglev2);
+	cout<<"3: "<<VdotV(A,B)<<endl;
+	if(VdotV(A,B)<=0.0){
+		return false;
+	}
+	return true;
+
+//	// The member result.sqrDistance is set in each block of the
+//	// nested if-then-else statements. The remaining members are all
+//	// set at the end of the function.
+//
+//	float const zero = static_cast<float>(0);
+//	float const one = static_cast<float>(1);
+//	float const two = static_cast<float>(2);
+//
+//
+//	VmV(diff, trianglev0, point);
+//
+//
+//	float a00 = VdotV(edge0, edge0);
+//	float a01 = VdotV(edge0, edge1);
+//	float a11 = VdotV(edge1, edge1);
+//	float b0 = VdotV(diff, edge0);
+//	float b1 = VdotV(diff, edge1);
+//	float det = std::max(a00 * a11 - a01 * a01, (float)0.0);
+//	float s = a01 * b1 - a11 * b0;
+//	float t = a01 * b0 - a00 * b1;
+//
+//	// some bad triangles
+//	if(a00==0.0||a01==0.0||a11==0.0||det==0.0){
+//		return false;
+//	}
+//
+//	if(a00==0.0||a01==0.0||a11==0.0||det==0.0){
+//		printf("%f %f %f, %f %f %f, %f %f %f\n",
+//				*(triangle+0)
+//				,*(triangle+1)
+//				,*(triangle+2)
+//				,*(triangle+3)
+//				,*(triangle+4)
+//				,*(triangle+5)
+//				,*(triangle+6)
+//				,*(triangle+7)
+//				,*(triangle+8));
+//		printf("%f %f %f %f\n", a00, a01, a11, a00 * a11 - a01 * a01);
+//	}
+//
+//	return s + t <= det && s>=zero && t>=zero;
+}
+
+
 }

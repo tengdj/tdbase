@@ -193,7 +193,7 @@ class TMesh{
 public:
 	int id = 0;
 	unordered_set<Vertex *> vertices;
-	unordered_set<Face *>	faces;
+	unordered_set<Face *> faces;
 	aab mbb;
 
 	bool owned_data = false;

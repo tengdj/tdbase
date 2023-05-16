@@ -15,77 +15,73 @@ namespace tmesh{
 vector<TMesh *> TMesh::depart(){
 	vector<TMesh *> polys;
 
-//	vector<bool> added;
-//	for(int i=0;i<vertices.size();i++){
-//		added.push_back(false);
-//	}
-//
-//	vector<map<Vertex *, bool>> ccg;
-//	while(true){
-//		map<Vertex *,bool> cur;
-//		Vertex *seed;
-//		for(int i=0;i<vertices.size();i++){
-//			if(!added[i]){
-//				seed = vertices[i];
-//				break;
-//			}
-//		}
-//
-//		// all added
-//		if(seed == NULL){
-//			break;
-//		}
-//		stack<Vertex *> ss;
-//		ss.push(seed);
-//		while(!ss.empty()){
-//			seed = ss.top();
-//			ss.pop();
-//			cur[seed] = true;
-//			added[seed->id] = true;
-//			// connect all the vertices connect to seed but not visited
-//			for(Half_Edge *h:seed->half_edges){
-//				if(cur.find(h->end_vertex)==cur.end()){
-//					ss.push(h->end_vertex);
-//				}
-//			}
-//		}
-//		ccg.push_back(cur);
-//	}
-//
-//	for(int i=0;i<ccg.size();i++){
-//		polys.push_back(new Polyhedron(i));
-//	}
-//
-//	for(int i=0;i<ccg.size();i++){
-//		for(auto a:ccg[i]){
-//			assert(a.first->id<vertices.size());
-//			a.first->id = polys[i]->vertices.size();
-//			polys[i]->vertices.push_back(a.first);
-//		}
-//		ccg[i].clear();
-//	}
-//	ccg.clear();
-//
-//	// retrieve the faces and half_edges from the vertices
-//	for(Polyhedron *p:polys){
-//		unordered_set<Half_Edge *> hedges;
-//		unordered_set<Face *> faces;
-//		for(Vertex *v:p->vertices){
-//			for(Half_Edge *h:v->half_edges){
-//				if(hedges.find(h)==hedges.end()){
-//					hedges.insert(h);
-//					p->half_edges.push_back(h);
-//				}
-//				if(faces.find(h->face)==faces.end()){
-//					faces.insert(h->face);
-//					p->faces.push_back(h->face);
-//				}
-//			}
-//		}
-//		hedges.clear();
-//		faces.clear();
-//	}
-//
+	vector<bool> added;
+	for(int i=0;i<vertices.size();i++){
+		added.push_back(false);
+	}
+
+	vector<map<Vertex *, bool>> ccg;
+	while(true){
+		map<Vertex *,bool> cur;
+		Vertex *seed;
+		for(int i=0;i<vertices.size();i++){
+			if(!added[i]){
+				seed = vertices[i];
+				break;
+			}
+		}
+
+		// all added
+		if(seed == NULL){
+			break;
+		}
+		stack<Vertex *> ss;
+		ss.push(seed);
+		while(!ss.empty()){
+			seed = ss.top();
+			ss.pop();
+			cur[seed] = true;
+			added[seed->id] = true;
+			// connect all the vertices connect to seed but not visited
+			for(Half_Edge *h:seed->half_edges){
+				if(cur.find(h->end_vertex)==cur.end()){
+					ss.push(h->end_vertex);
+				}
+			}
+		}
+		ccg.push_back(cur);
+	}
+
+	for(int i=0;i<ccg.size();i++){
+		polys.push_back(new TMesh(i));
+	}
+
+	for(int i=0;i<ccg.size();i++){
+		for(auto &a:ccg[i]){
+			assert(a.first->id<vertices.size());
+			a.first->id = polys[i]->vertices.size();
+			polys[i]->vertices.emplace(a.first);
+		}
+		ccg[i].clear();
+	}
+	ccg.clear();
+
+	// retrieve the faces and half_edges from the vertices
+	for(TMesh *p:polys){
+		unordered_set<Half_Edge *> hedges;
+		unordered_set<Face *> faces;
+		for(Vertex *v:p->vertices){
+			for(Half_Edge *h:v->half_edges){
+				if(faces.find(h->face)==faces.end()){
+					faces.insert(h->face);
+					p->faces.emplace(h->face);
+				}
+			}
+		}
+		hedges.clear();
+		faces.clear();
+	}
+
 	return polys;
 }
 
