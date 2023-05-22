@@ -445,6 +445,7 @@ Triangle expand(Triangle &tri){
 					Point(2*p3.x()-p1.x()/2-p2.x()/2, 2*p3.y()-p1.y()/2-p2.y()/2, 2*p3.z()-p1.z()/2-p2.z()/2));
 }
 
+map<float, float> hmap;
 void HiMesh::computeHausdorfDistance(){
 
 	pair<float, float> current_hausdorf = pair<float, float>(0.0, 0.0);
@@ -452,7 +453,6 @@ void HiMesh::computeHausdorfDistance(){
 
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
-	float hdist = 0;
 
 	double smp = 0;
 	double usetree = 0;
@@ -476,9 +476,20 @@ void HiMesh::computeHausdorfDistance(){
 		if( HiMesh::calculate_method == 4|| fit->rg==NULL || !fit->isSplittable()){
 			continue;
 		}
+		float fit_hdist = 0.0;
 		vector<Triangle> tmptri= triangulation(fit);
 		for(Triangle &cur_tri:tmptri)
 		{
+//			float mtri = 0.0;
+//			for(int i=0;i<9;i++){
+//				mtri += cur_tri[i/3][i%3];
+//			}
+//			if(hmap.find(mtri)!=hmap.end()){
+//				fit_hdist = max(fit_hdist, hmap[mtri]);
+//				//log("%d");
+//				continue;
+//			}
+
 			unordered_set<Point> points;
 			sample_points(cur_tri, points);
 			smp += get_time_elapsed(start, true);
@@ -573,11 +584,10 @@ void HiMesh::computeHausdorfDistance(){
 
 				caldist[2] += get_time_elapsed(start, true);
 			}
+			//hmap[mtri] = curhdist[0];
+			//hmap[mtri] = curhdist[0];
 
-			for(int i=0;i<3;i++){
-				avghdist[i] += curhdist[i];
-			}
-			tricount++;
+			fit_hdist = max(fit_hdist, curhdist[0]);
 
 			//if(triangles2.size()>50)
 
@@ -587,22 +597,26 @@ void HiMesh::computeHausdorfDistance(){
 				hispeed::write_triangles(tmptri, "/gisdata/filter_triangle_origin.off");
 				exit(0);
 			}
+			triangles.clear();
+			triangles2.clear();
 
 //			log("%d removed points %d triangles %d sampled points with hd %f-%f-%f",
 //					fit->rg->removed_vertices.size(),triangles.size(), points.size(),
 //					curhdist[0], curhdist[1], curhdist[2]);
 
-			fit->setConservative(curhdist[0]);
-			fit->setProgressive(0.0);
-			hdist = max(hdist, curhdist[0]);
-			current_hausdorf.second = max(current_hausdorf.second, hdist);
-			triangles.clear();
-
+			for(int i=0;i<3;i++){
+				avghdist[i] += curhdist[i];
+			}
+			tricount++;
 			processed_faces++;
 			num_faces += triangles.size();
 			num_vertices += fit->rg->removed_vertices.size();
 			num_sampled_points += points.size();
 		}
+		// store the hausdorf distance
+		fit->setConservative(fit_hdist);
+		fit->setProgressive(0.0);
+		current_hausdorf.second = max(current_hausdorf.second, fit_hdist);
 	}
 	logt("step: %2d smp: %f tri: %f cal: %f-%f-%f #vertices: %ld #facets: %ld %f-%f-%f %f", very_start, i_curDecimationId, smp, collect_triangle, caldist[0],caldist[1],caldist[2],
 			size_of_vertices(), size_of_facets(), avghdist[0]/tricount, avghdist[1]/tricount, avghdist[2]/tricount, step);

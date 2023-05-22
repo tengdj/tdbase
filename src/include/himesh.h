@@ -629,19 +629,16 @@ public:
 		alive++;
 	}
 	~replacing_group(){
-		added_faces.clear();
 		removed_vertices.clear();
 		alive--;
 	}
 
 	void print(){
-		log("%5d (%2d refs %4d alive) - added_faces: %ld removed_vertices: %ld", id, ref, alive, added_faces.size(), removed_vertices.size());
+		log("%5d (%2d refs %4d alive) - removed_vertices: %ld", id, ref, alive, removed_vertices.size());
 	}
 
-	vector<HiMesh::Face_handle> added_faces;
 	unordered_set<Point> removed_vertices;
-	unordered_set<Triangle> removed_triangles;
-	//unordered_set<Triangle> removed_facets;
+	//unordered_set<Triangle> removed_triangles;
 	int id;
 	int ref = 0;
 

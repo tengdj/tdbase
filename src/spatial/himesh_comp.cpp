@@ -147,6 +147,7 @@ void HiMesh::merge(unordered_set<replacing_group *> &reps, replacing_group *ret)
 	assert(ret);
 	for(replacing_group *r:reps){
 		ret->removed_vertices.insert(r->removed_vertices.begin(), r->removed_vertices.end());
+		//ret->removed_triangles.insert(r->removed_triangles.begin(), r->removed_triangles.end());
 		//ret->removed_facets.insert(r->removed_facets.begin(), r->removed_facets.end());
 		if(map_group.find(r)==map_group.end()){
 			log("%d is not found", r->id);
