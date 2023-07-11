@@ -63,12 +63,18 @@ HiMesh::HiMesh(string &str, bool completeop):
 		Point p = vit->point();
 		Halfedge_handle startH = vit->halfedge();
 		Halfedge_handle h = startH->opposite(), end(h);
-		Face_handle f = h->face();
 
-		vector<Triangle> triangles;
+		vector<MyTriangle *> triangles;
 		do {
-			Triangle t(h->vertex()->point(), h->next()->vertex()->point(), h->next()->next()->vertex()->point());
-			triangles.push_back(t);
+			Face_handle f = h->face();
+			if(f->tri == NULL){
+				Triangle t(h->vertex()->point(), h->next()->vertex()->point(), h->next()->next()->vertex()->point());
+				f->tri = new MyTriangle();
+				f->tri->tri = t;
+				original_facets.push_back(f->tri);
+				sample_points(t, f->tri->sampled_points);
+			}
+			triangles.push_back(f->tri);
 		} while((h=h->opposite()->next()) != end);
 		VFmap[p] = triangles;
 	}

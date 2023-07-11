@@ -62,6 +62,20 @@ inline string time_string(){
 	return string(buf);
 }
 
+class Timer{
+	struct timeval t;
+public:
+	Timer(){
+		t = get_cur_time();
+	}
+	double time_elapsed(bool update_start = false){
+		return get_time_elapsed(t, update_start);
+	}
+	void reset(){
+		t = get_cur_time();
+	}
+};
+
 /*
  * log functions
  * */

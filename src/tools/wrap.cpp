@@ -10,12 +10,13 @@
 #include <CGAL/alpha_wrap_3.h>
 #include <CGAL/Polygon_mesh_processing/bbox.h>
 #include <CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h>
-#include <CGAL/Real_timer.h>
 #include <iostream>
 #include <string>
+#include "util.h"
 namespace AW3 = CGAL::Alpha_wraps_3;
 namespace PMP = CGAL::Polygon_mesh_processing;
 
+using namespace hispeed;
 using K = CGAL::Exact_predicates_inexact_constructions_kernel;
 
 using Point_3 = K::Point_3;
@@ -43,13 +44,11 @@ int main(int argc, char **argv)
   const double alpha = diag_length / relative_alpha;
   const double offset = diag_length / relative_offset;
   // Construct the wrap
-  CGAL::Real_timer t;
-  t.start();
+  Timer t;
   Mesh wrap;
   CGAL::alpha_wrap_3(mesh, alpha, offset, wrap);
-  t.stop();
   std::cout << "Result: " << num_vertices(wrap) << " vertices, " << num_faces(wrap) << " faces" << std::endl;
-  std::cout << "Took " << t.time() << " s." << std::endl;
+  std::cout << "Took " << t.time_elapsed() << " s." << std::endl;
   // Save the result
   std::string input_name = std::string(filename);
   input_name = input_name.substr(input_name.find_last_of("/") + 1, input_name.length() - 1);

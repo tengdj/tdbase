@@ -328,6 +328,8 @@ inline float triangle_area(const Triangle &tri){
 
 class replacing_group;
 
+class MyTriangle;
+
 // My face type has a vertex flag
 template <class Refs>
 class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
@@ -416,6 +418,8 @@ public:
 		progressive_distance = pro;
 	}
 	replacing_group *rg = NULL;
+	vector<Triangle> triangles;
+	MyTriangle *tri = NULL;
 };
 
 
@@ -472,6 +476,8 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	TriangleTree *triangle_tree = NULL;
 	list<Segment> segments;
 	list<Triangle> triangles;
+
+	vector<MyTriangle *> original_facets;
 
 	// Store the maximum Hausdorf Distance
 	vector<pair<float, float>> globalHausdorfDistance;
@@ -612,13 +618,22 @@ public:
 	aab shrink(float ratio);
 	HiMesh *clone_mesh();
 
-	map<Point, vector<Triangle>> VFmap;
+	map<Point, vector<MyTriangle *>> VFmap;
 
 	static int sampled_points_num;
 	static int calculate_method;
 	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points);
 	void sample_points(const Triangle &tri, unordered_set<Point> &points);
 	void sample_points(unordered_set<Point> &points);
+};
+
+class MyTriangle{
+public:
+	Triangle tri;
+	int id;
+	vector<Triangle> triangles;
+	vector<HiMesh::Face_iterator> facets;
+	unordered_set<Point> sampled_points;
 };
 
 class replacing_group{
