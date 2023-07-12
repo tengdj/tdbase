@@ -178,7 +178,7 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 
 	unordered_set<replacing_group *> rep_groups;
 	replacing_group *new_rg = new replacing_group();
-	//int i = 0;
+
 	Halfedge_handle h = startH->opposite(), end(h);
 	int removed = 0;
 	do
@@ -232,7 +232,6 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 	assert(added_face->rg == NULL);
 	added_face->rg = new_rg;
 	new_rg->ref++;
-
 
 	//log("test: %d = %d - %ld merged %ld replacing groups", removed, bf, size_of_facets(), rep_groups.size());
 	merge(rep_groups, new_rg);

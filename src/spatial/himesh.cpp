@@ -59,6 +59,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 	get_aabb_tree_triangle();
 	logt("aabb", start);
 
+	int id = 0;
 	for(Vertex_iterator vit=vertices_begin();vit!=vertices_end();vit++){
 		Point p = vit->point();
 		Halfedge_handle startH = vit->halfedge();
@@ -69,8 +70,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 			Face_handle f = h->face();
 			if(f->tri == NULL){
 				Triangle t(h->vertex()->point(), h->next()->vertex()->point(), h->next()->next()->vertex()->point());
-				f->tri = new MyTriangle();
-				f->tri->tri = t;
+				f->tri = new MyTriangle(t, id++);
 				original_facets.push_back(f->tri);
 				sample_points(t, f->tri->sampled_points);
 			}

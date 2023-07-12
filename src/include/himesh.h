@@ -629,11 +629,32 @@ public:
 
 class MyTriangle{
 public:
-	Triangle tri;
+	MyTriangle(const Triangle &t, int i=0){
+		tri = t;
+		processed = false;
+		id = i;
+	}
+	// owned
 	int id;
-	vector<Triangle> triangles;
-	vector<HiMesh::Face_iterator> facets;
+	Triangle tri;
 	unordered_set<Point> sampled_points;
+
+	bool processed = false;
+	// associated
+	vector<HiMesh::Face_iterator> facets;
+	void add_facet(HiMesh::Face_iterator fit){
+		bool contained = false;
+		for(HiMesh::Face_iterator f:facets){
+			if(f==fit){
+				return;
+			}
+		}
+		facets.push_back(fit);
+	}
+	void reset(){
+		processed = false;
+		facets.clear();
+	}
 };
 
 class replacing_group{
