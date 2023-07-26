@@ -53,6 +53,7 @@ void HiMesh::startNextCompresssionOp()
 
 	// 2. do one round of decimation
 	//choose a halfedge that can be processed:
+	if(i_curDecimationId<10)
 	{
 		// teng: we always start from the middle, DO NOT use the rand function
 		// size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
@@ -167,6 +168,7 @@ void HiMesh::merge(unordered_set<replacing_group *> &reps, replacing_group *ret)
 /**
   * Perform the re-edging and the vertex removal.
   * Store the position of the removed vertex.
+  * TODO: critical
   */
 HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 {
@@ -187,9 +189,11 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 		Face_handle f = h->facet();
 		assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
 
-		/* the old facet will be removed in the vertex cut operation
-		   as it will be replaced with a merged one. but the replacing
-		   group information will be inherited by the new facet.
+		/*
+		 * the old facets around the vertex will be removed in the vertex cut operation
+		 * and being replaced with a merged one. but the replacing group information
+		 * will be inherited by the new facet.
+		 *
 		 */
 		if(f->rg != NULL){
 			rep_groups.emplace(f->rg);
@@ -206,6 +210,8 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 			//mark the new halfedges as added
 			hCorner->setAdded();
 			hCorner->opposite()->setAdded();
+			// the corner one inherit the original facet
+			// while the fRest is a newly generated facet
 			Face_handle fCorner = hCorner->face();
 			Face_handle fRest = hCorner->opposite()->face();
 			assert(fCorner->rg == f->rg);
@@ -270,7 +276,8 @@ void HiMesh::RemovedVertexCodingStep()
     // Resize the vectors to add the current conquest symbols.
     geometrySym.push_back(std::deque<Point>());
     connectFaceSym.push_back(std::deque<unsigned>());
-    hausdorfSym.push_back(std::deque<unsigned>());
+    hausdorfSym.push_back(std::deque<unsigned char>());
+    proxyhausdorfSym.push_back(std::deque<unsigned char>());
 
     // Add the first halfedge to the queue.
     pushHehInit();
@@ -300,13 +307,19 @@ void HiMesh::RemovedVertexCodingStep()
 
         // Determine the hausdorf symbol
         // the hausdorf distances for this round of decimation.
-		pair<float, float> current_hausdorf = this->globalHausdorfDistance[this->globalHausdorfDistance.size()-1];
+		const pair<float, float> current_hausdorf = globalHausdorfDistance[globalHausdorfDistance.size()-1];
 		// 3dpro, besides the symbol, we also encode the hausdorf distance into it.
-		unsigned con = current_hausdorf.first==0?0:(f->getHausdorfDistance().first/current_hausdorf.first*100.0);
-		unsigned pro = current_hausdorf.second==0?0:(f->getHausdorfDistance().second/current_hausdorf.second*100.0);
-        hausdorfSym[i_curDecimationId].push_back((con<<8)|pro);
-        if(global_ctx.verbose>=3){
-        	log("encode face: %d %.2f %d %.2f %d",sym, f->getHausdorfDistance().first, con, f->getHausdorfDistance().second, pro);
+		assert(f->getProxyHausdorf()<=current_hausdorf.first);
+		assert(f->getHausdorf()<=current_hausdorf.second);
+
+		unsigned char proxyhausdorf = current_hausdorf.first==0?0:(f->getProxyHausdorf()*255/current_hausdorf.first);
+		unsigned char hausdorf = current_hausdorf.second==0?0:(f->getHausdorf()*255/current_hausdorf.second);
+        hausdorfSym[i_curDecimationId].push_back(hausdorf);
+        proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
+
+        //if(global_ctx.verbose>=3)
+        {
+        	log("encode facet: %d %.2f %.2f",sym, f->getProxyHausdorf(), f->getHausdorf());
         }
 
         // Mark the face as processed.
@@ -432,16 +445,17 @@ void HiMesh::writeBaseMesh()
     for (HiMesh::Facet_iterator fit = facets_begin();
          fit != facets_end(); ++fit)
     {
-        writeFloat(fit->getHausdorfDistance().first);
-        writeFloat(fit->getHausdorfDistance().second);
+        writeFloat(fit->getProxyHausdorf());
+        writeFloat(fit->getHausdorf());
     }
 
     // 3dpro
-    // Write the maximum volume change for each round of decimation
+    // Write the maximum global hausdorf
     assert(globalHausdorfDistance.size()==i_nbDecimations);
     for(unsigned i=0;i<i_nbDecimations;i++){
     	writeFloat(globalHausdorfDistance[i].first);
     	writeFloat(globalHausdorfDistance[i].second);
+    	//log("encode hausdorff: %d %f %f", i, globalHausdorfDistance[i].first, globalHausdorfDistance[i].second);
     }
 }
 
@@ -469,7 +483,8 @@ void HiMesh::encodeRemovedVertices(unsigned i_operationId)
 {
     std::deque<unsigned> &connSym = connectFaceSym[i_operationId];
     std::deque<Point> &geomSym = geometrySym[i_operationId];
-    std::deque<unsigned> &hausSym = hausdorfSym[i_operationId];
+    std::deque<unsigned char> &hausSym = hausdorfSym[i_operationId];
+    std::deque<unsigned char> &proxyhausSym = proxyhausdorfSym[i_operationId];
 
     unsigned i_lenGeom = geomSym.size();
     unsigned i_lenConn = connSym.size();
@@ -486,7 +501,8 @@ void HiMesh::encodeRemovedVertices(unsigned i_operationId)
             writePoint(geomSym[k]);
             k++;
         }
-        writeuInt16(hausSym[i]);
+        writeChar(hausSym[i]);
+        writeChar(proxyhausSym[i]);
     }
 }
 

@@ -341,8 +341,8 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	ProcessedFlag processedFlag = NotProcessed;
 
 	Point removedVertexPos;
-	float conservative_distance = 0.0;
-	float progressive_distance = 0.0;
+	float proxy_hausdorf_distance = 0.0;
+	float hausdorf_distance = 0.0;
 public:
     MyFace(){}
 
@@ -350,6 +350,11 @@ public:
 	{
           flag = Unknown;
           processedFlag = NotProcessed;
+	}
+
+	inline void resetHausdorff(){
+        proxy_hausdorf_distance = 0.0;
+        hausdorf_distance = 0.0;
 	}
 
 	inline void resetProcessedFlag()
@@ -407,15 +412,23 @@ public:
 public:
 
 	inline pair<float, float> getHausdorfDistance(){
-		return pair<float, float>(conservative_distance, progressive_distance);
+		return pair<float, float>(proxy_hausdorf_distance, hausdorf_distance);
 	}
 
-	inline void setConservative(float rec){
-		conservative_distance = rec;
+	inline void setProxyHausdorf(float rec){
+		proxy_hausdorf_distance = max(rec, proxy_hausdorf_distance);
 	}
 
-	inline void setProgressive(float pro){
-		progressive_distance = pro;
+	inline void setHausdorf(float pro){
+		hausdorf_distance = max(pro, hausdorf_distance);
+	}
+
+	inline float getProxyHausdorf(){
+		return proxy_hausdorf_distance;
+	}
+
+	inline float getHausdorf(){
+		return hausdorf_distance;
 	}
 	replacing_group *rg = NULL;
 	vector<Triangle> triangles;
@@ -460,7 +473,9 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	Vertex_handle vh_departureConquest[2];
 	// Geometry symbol list.
 	std::deque<std::deque<Point> > geometrySym;
-	std::deque<std::deque<unsigned>> hausdorfSym;
+	std::deque<std::deque<unsigned char>> hausdorfSym;
+	std::deque<std::deque<unsigned char>> proxyhausdorfSym;
+
 
 	// Connectivity symbol list.
 	std::deque<std::deque<unsigned> > connectFaceSym;

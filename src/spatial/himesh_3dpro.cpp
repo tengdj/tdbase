@@ -450,7 +450,8 @@ int tt = 0;
 // TODO: a critical function, need to be further optimized
 void HiMesh::computeHausdorfDistance(){
 
-	pair<float, float> current_hausdorf = pair<float, float>(0.0, 0.0);
+	//cout<<sqrt(get_mbb().diagonal_length())/HiMesh::sampled_points_num<<endl;;
+
 	float dist = DBL_MAX;
 
 	struct timeval start = get_cur_time();
@@ -458,7 +459,8 @@ void HiMesh::computeHausdorfDistance(){
 
 	double smp = 0;
 	double usetree = 0;
-	double collect_triangle = 0;
+	double collect_triangle1 = 0;
+	double collect_triangle2 = 0;
 	double caldist[3] = {0,0,0};
 	double ours1 = 0;
 	double ours2 = 0;
@@ -466,8 +468,6 @@ void HiMesh::computeHausdorfDistance(){
 	size_t num_faces = 0;
 	size_t num_vertices = 0;
 	size_t processed_faces = 0;
-
-	float step = sqrt(get_mbb().diagonal_length())/HiMesh::sampled_points_num;
 
 	// statistics
 	float avghdist[3] = {0.0,0.0,0.0};
@@ -480,8 +480,8 @@ void HiMesh::computeHausdorfDistance(){
 		if( HiMesh::calculate_method == 4|| fit->rg==NULL || !fit->isSplittable()){
 			continue;
 		}
+		fit->resetHausdorff();
 		float fit_hdist = 0.0;
-		float fit_hdistprime = 0.0;
 		fit->triangles = triangulate(fit);
 
 		for(Triangle &cur_tri:fit->triangles) {
@@ -511,6 +511,7 @@ void HiMesh::computeHausdorfDistance(){
 				}
 			}
 			assert(triangles.size()>0);
+			collect_triangle1 += get_time_elapsed(start, true);
 
 			vector<MyTriangle *> triangles2;
 			if(HiMesh::calculate_method == 3 || HiMesh::calculate_method == 0 ){
@@ -531,10 +532,9 @@ void HiMesh::computeHausdorfDistance(){
 				t->add_facet(fit);
 			}
 			//log("%ld triangles are filtered out from %ld triangles", triangles2.size(),triangles.size());
-			collect_triangle += get_time_elapsed(start, true);
+			collect_triangle2 += get_time_elapsed(start, true);
 
 			float curhdist[3] = {0.0, 0.0, 0.0};
-			float curhdistprime = 0.0;
 			if(HiMesh::calculate_method == 1 || HiMesh::calculate_method == 0 )
 			{
 				for(auto p:points){
@@ -576,9 +576,7 @@ void HiMesh::computeHausdorfDistance(){
 			//hmap[mtri] = curhdist[0];
 			//hmap[mtri] = curhdist[0];
 
-			fit_hdist = max(fit_hdist, curhdist[0]);
-			fit_hdistprime = max(fit_hdistprime, curhdistprime);
-			//if(triangles2.size()>50)
+			fit_hdist = max(fit_hdist, curhdist[2]);
 
 //			if(false && this->i_curDecimationId==3 && curhdist[2]!=0 && curhdist[0]/curhdist[2]<0.1){
 //				hispeed::write_triangles(triangles2, "/gisdata/filter_triangle.off");
@@ -603,13 +601,10 @@ void HiMesh::computeHausdorfDistance(){
 			num_sampled_points += points.size();
 		}
 		// store the hausdorf distance
-		fit->setConservative(fit_hdist);
-		fit->setProgressive(0.0);
-		//log("%f %f", fit_hdist, fit_hdistprime);
-		current_hausdorf.second = max(current_hausdorf.second, fit_hdist);
+		fit->setHausdorf(fit_hdist);
 	}
-	logt("step: %2d smp: %f tri: %f cal: %f-%f-%f #vertices: %ld #facets: %ld %f-%f-%f %f", very_start, i_curDecimationId, smp, collect_triangle, caldist[0],caldist[1],caldist[2],
-			size_of_vertices(), size_of_triangles(), avghdist[0]/tricount, avghdist[1]/tricount, avghdist[2]/tricount, step);
+	logt("step: %2d smp: %.3f tri: %.3f-%.3f cal: %.3f-%.3f-%.3f #vertices: %ld #facets: %ld %.3f-%.3f-%.3f", very_start, i_curDecimationId, smp, collect_triangle1,collect_triangle2, caldist[0],caldist[1],caldist[2],
+			size_of_vertices(), size_of_triangles(), avghdist[0]/tricount, avghdist[1]/tricount, avghdist[2]/tricount);
 
 	/*
 	 *
@@ -644,8 +639,7 @@ void HiMesh::computeHausdorfDistance(){
 						}
 					}
 				}
-				fit->setConservative(dist);
-
+				fit->setProxyHausdorf(dist);
 				// get the maximum
 				if(hdist < dist){
 					cur_fit = fit;
@@ -679,72 +673,37 @@ void HiMesh::computeHausdorfDistance(){
 		}
 		t->reset();
 	}
-	logt("%d", very_start, ct);
-	//reverse_mapping.clear();
-//	for(int i=0;i<11;i++){
-//		cout<<(float)goodcount[i]/tricount<<" ";
-//	}
-//	cout<<endl;
 
-//	log("sampling: %f tree: %f (%f) ours1: %f (%f) --- "
-//			"%ld %ld %ld ---"
-//			"%ld %ld",
-//			smp, hdist, usetree, hdist2, ours1,
-//			num_faces/processed_faces,num_vertices/processed_faces,num_sampled_points/processed_faces,
-//			size_of_vertices(), get_aabb_tree_triangle()->size());
+	pair<float, float> current_hausdorf = pair<float, float>(0.0, 0.0);
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		current_hausdorf.second = max(current_hausdorf.second, fit->getHausdorf());
+		current_hausdorf.first = max(current_hausdorf.first, fit->getProxyHausdorf());
+	}
 
-//	log("%ld groups %ld faces %ld removed points" , map_group.size(), size_of_facets(), removedPoints.size());
-//	for(auto r:map_group){
-//		r->print();
-//	}
+	//logt("%d", very_start, ct);
 
+	// some collected statistics for presentation
+	float min_hdist = DBL_MAX;
+	float max_hdist = 0.0;
+	float avg_hdist = 0.0;
+	float min_proxy_hdist = DBL_MAX;
+	float max_proxy_hdist = 0.0;
+	float avg_proxy_hdist = 0.0;
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		float fit_hdist = fit->getHausdorf();
+		float fit_proxy_hdist = fit->getProxyHausdorf();
 
-//	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-//		if(fit->isSplittable()){
-//			vector<Point> &ps = fit->getImpactPoints();
-//			if(ps.size()==0){
-//			  continue;
-//			}
-//			float maxdist = 0.0;
-//			for(Point &p:ps){
-//				float dist = point_to_face_distance(p, fit);
-//				maxdist = max(dist, maxdist);
-//			}
-//			//log("%f", farthest_point);
-//			fit->setProgressive(maxdist);
-//			fit->setConservative(0.0);
-//			//log("%f", fit->getHausdorfDistance().second);
-//		}
-//		current_hausdorf.second = max(current_hausdorf.second, fit->getHausdorfDistance().second);
-//		dist = min(dist, fit->getHausdorfDistance().second);
-//	}
-//	logt("%f", start, current_hausdorf.second);
+		min_hdist = min(min_hdist, fit_hdist);
+		max_hdist = max(max_hdist, fit_hdist);
+		avg_hdist += fit_hdist;
+		min_proxy_hdist = min(min_proxy_hdist, fit_proxy_hdist);
+		max_proxy_hdist = max(max_proxy_hdist, fit_proxy_hdist);
+		avg_proxy_hdist += fit_proxy_hdist;
+	}
+	avg_hdist /= size_of_facets();
+	avg_proxy_hdist /= size_of_facets();
 
-	//			if(false){
-	//				float hd = 0;
-	//				// calculate with local tree
-	//				TriangleTree *triangle_tree = new TriangleTree(triangles.begin(), triangles.end());
-	//				triangle_tree->build();
-	//				triangle_tree->accelerate_distance_queries();
-	//				for(auto &p:points){
-	//					FT sqd = triangle_tree->squared_distance(p);
-	//					float dist = sqrt((float)CGAL::to_double(sqd));
-	//					hd = max(hd, dist);
-	//				}
-	//				delete triangle_tree;
-	//				//hdist3 = max(hdist3, hd);
-	//				ours2 += get_time_elapsed(start, true);
-	//			}
-	//			if(false){
-	//				float hd = 0;
-	//				for(Point p:fit->rg->removed_vertices){
-	//					float dist = point_to_face_distance(p, fit);
-	//					hd = max(hd, dist);
-	//				}
-	//				//hdist2 = max(hdist2, hd);
-	//				ours1 += get_time_elapsed(start, true);
-	//				//log("%ld %f",fit->rg->removed_vertices.size(),hd);
-	//			}
+	log("%f-%f-%f   %f-%f-%f", min_hdist, avg_hdist, max_hdist, min_proxy_hdist, avg_proxy_hdist, max_proxy_hdist);
 
 	globalHausdorfDistance.push_back(current_hausdorf);
 	if(global_ctx.verbose>=2){

@@ -335,12 +335,12 @@ static void compress(int argc, char **argv){
 	    sprintf(path, "/gisdata/compressed_%d.off", i);
 	    hm->write_to_off(path);
 
-		unordered_set<Point> point_set;
-		hm->sample_points(point_set);
-		vector<Point> points;
-		points.assign(point_set.begin(), point_set.end());
-	    sprintf(path, "/gisdata/points_%d.off", i);
-		hispeed::write_points(points, path);
+//		unordered_set<Point> point_set;
+//		hm->sample_points(point_set);
+//		vector<Point> points;
+//		points.assign(point_set.begin(), point_set.end());
+//	    sprintf(path, "/gisdata/points_%d.off", i);
+//		hispeed::write_points(points, path);
 
 		//log("global: %f", himesh->getHausdorfDistance().second);
 		int tris = hm->size_of_triangles();

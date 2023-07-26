@@ -36,8 +36,8 @@ void HiMesh::startNextDecompresssionOp()
 			// reset all the hausdorf distance to 0 for the highest LOD
 			// as we do not have another round of decoding to set them
 			for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-				fit->setProgressive(0.0);
-				fit->setConservative(0.0);
+				fit->setHausdorf(0.0);
+				fit->setProxyHausdorf(0.0);
 			}
 		}
 		b_jobCompleted = true;
@@ -87,17 +87,17 @@ void HiMesh::startNextDecompresssionOp()
 		}
 
 		// decode the hausdorf distance symbols
-		uint hsym = readuInt16();
-		uint prosym = hsym&((1<<8)-1);
-		hsym >>= 8;
-		uint consym = hsym&((1<<8)-1);
-		pair<float, float> hdist = getNextHausdorfDistance();
-		float progressive = prosym/100.0 * hdist.second;
-		float conservative = consym/100.0 * hdist.first;
-		f->setProgressive(progressive);
-		f->setConservative(conservative);
-		if(global_ctx.verbose>=3){
-			log("decode face: %d %.2f %d %.2f %d", sym, conservative, consym, progressive, prosym);
+		unsigned char hausdorff_code = readChar();
+		unsigned char proxyhausdorff_code = readChar();
+
+		pair<float, float> hdist = getHausdorfDistance();
+		float hausdorff = hausdorff_code * hdist.second/255.0;
+		float proxyhausdorff = proxyhausdorff_code * hdist.first/255.0;
+		f->setHausdorf(hausdorff);
+		f->setProxyHausdorf(proxyhausdorff);
+		//if(global_ctx.verbose>=3)
+		{
+			log("decode face: %d %.2f %.2f", sym, proxyhausdorff, hausdorff);
 		}
 	}
 
@@ -168,9 +168,9 @@ void HiMesh::readBaseMesh()
          fit != facets_end(); ++fit)
     {
     	float hdist = readFloat();
-    	fit->setConservative(hdist);
+    	fit->setProxyHausdorf(hdist);
     	hdist = readFloat();
-    	fit->setProgressive(hdist);
+    	fit->setHausdorf(hdist);
     }
 
     // Free the memory.
@@ -179,11 +179,12 @@ void HiMesh::readBaseMesh()
     delete p_faceDeque;
     delete p_pointDeque;
 
-    // Read the maximum cutting volume
+    // Read the bidirectional hausdorff distance
     for(unsigned i=0;i<i_nbDecimations;i++){
-    	float conservative = readFloat();
-    	float progressive = readFloat();
-    	globalHausdorfDistance.push_back(pair<float, float>(conservative, progressive));
+    	float proxyhausdorff = readFloat();
+    	float hausdorff = readFloat();
+    	globalHausdorfDistance.push_back(pair<float, float>(proxyhausdorff, hausdorff));
+    	//log("decode hausdorff: %d %f %f",i, proxyhausdorff, hausdorff);
     }
 }
 

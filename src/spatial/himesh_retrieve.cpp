@@ -81,9 +81,9 @@ size_t HiMesh::fill_hausdorf_distances(float *&hausdorf){
 		Halfedge_const_handle e1 = f->halfedge();
 		Halfedge_const_handle e2 = e1->next();
 		do{
-			*cur_S = f->getHausdorfDistance().first;
+			*cur_S = f->getProxyHausdorf();
 			cur_S++;
-			*cur_S = f->getHausdorfDistance().second;
+			*cur_S = f->getHausdorf();
 			cur_S++;
 			inserted++;
 			e2 = e2->next();
@@ -109,7 +109,7 @@ std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
 		Halfedge_const_handle e2 = e1->next();
 		do{
 			if(index == tri_id){
-				assert(f->getHausdorfDistance().second <= this->getHausdorfDistance().second);
+				assert(f->getHausdorf() <= this->getHausdorfDistance().second && f->getProxyHausdorf() <= this->getHausdorfDistance().first);
 				//log("%f %f",f->getHausdorfDistance().second, this->getHausdorfDistance().second);
 				return f->getHausdorfDistance();
 			}
