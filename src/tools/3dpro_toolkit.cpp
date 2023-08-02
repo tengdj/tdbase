@@ -313,10 +313,71 @@ static void triangulate(int argc, char **argv){
 	delete mesh;
 }
 
+/*
+e1.x = N[1]->x - N[0]->x;
+e1.y = N[1]->y - N[0]->y;
+e1.z = N[1]->z - N[0]->z;
+
+e2.x = N[2]->x - N[0]->x;
+e2.y = N[2]->y - N[0]->y;
+e2.z = N[2]->z - N[0]->z;
+
+calculate e3 = e1 x e2 (cross product) :
+e3.x = e1.ye2.z - e1.ze2.y;
+e3.y = e1.ze2.x - e1.xe2.z;
+e3.z = e1.xe2.y - e1.ye2.x;
+
+the tria area is the half length of the
+normal vector:
+A = 0.5sqrt(e3.xe3.x + e3.ye3.y + e3.ze3.z);
+//	Point p1(-0.0310423,0.0467686,-0.0260418);
+//	Point p2(-0.0299338,0.0468967,-0.0261593);
+//	Point p3(-0.0309867,0.0458642,-0.0271867);
+//	log("%.15f", triangle_area(p1, p2, p3));
+//	return;
+*/
+
+static void sample(int argc, char **argv){
+
+	HiMesh::sampling_rate = atoi(argv[2]);
+	int lod = 100;
+	if(argc>3){
+		lod = atoi(argv[3]);
+	}
+
+	log("sampling rate %d lod %d", HiMesh::sampling_rate, lod);
+
+	struct timeval start = get_cur_time();
+	HiMesh *final_mesh;
+	if(lod!=100){
+		HiMesh *mesh = read_mesh(argv[1], true);
+		logt("compress", start);
+		final_mesh = new HiMesh(mesh);
+		final_mesh->decode(lod);
+		logt("decompress", start);
+		delete mesh;
+	}else{
+		final_mesh = read_mesh(argv[1], false);
+	}
+
+	char path[256];
+
+	unordered_set<Point> point_set;
+	final_mesh->sample_points(point_set);
+	vector<Point> points;
+	points.assign(point_set.begin(), point_set.end());
+    sprintf(path, "/gisdata/sample.points.off");
+	hispeed::write_points(points, path);
+    sprintf(path, "/gisdata/sample.mesh.off");
+    final_mesh->write_to_off(path);
+
+	delete final_mesh;
+}
+
 static void compress(int argc, char **argv){
 	if(argc>2){
-		HiMesh::sampled_points_num = atoi(argv[2]);
-		log("%d",HiMesh::sampled_points_num);
+		HiMesh::sampling_rate = atoi(argv[2]);
+		log("%d",HiMesh::sampling_rate);
 	}
 	if(argc>3){
 		HiMesh::calculate_method = atoi(argv[3]);
@@ -332,15 +393,15 @@ static void compress(int argc, char **argv){
 		hm->decode(i);
 		logt("decode to %d", start, i);
 		//log("%d %f", i, himesh->getHausdorfDistance());
-	    sprintf(path, "/gisdata/compressed_%d.off", i);
+	    sprintf(path, "/gisdata/compressed_%d.mesh.off", i);
 	    hm->write_to_off(path);
 
-//		unordered_set<Point> point_set;
-//		hm->sample_points(point_set);
-//		vector<Point> points;
-//		points.assign(point_set.begin(), point_set.end());
-//	    sprintf(path, "/gisdata/points_%d.off", i);
-//		hispeed::write_points(points, path);
+		unordered_set<Point> point_set;
+		hm->sample_points(point_set);
+		vector<Point> points;
+		points.assign(point_set.begin(), point_set.end());
+	    sprintf(path, "/gisdata/compressed_%d.points.off", i);
+		hispeed::write_points(points, path);
 
 		//log("global: %f", himesh->getHausdorfDistance().second);
 		int tris = hm->size_of_triangles();
@@ -348,6 +409,7 @@ static void compress(int argc, char **argv){
 			//log("%d\t%.2f\t%d", j, himesh->get_triangle_hausdorf(j).second, (int)(himesh->get_triangle_hausdorf(j).second*100/himesh->getHausdorfDistance().second));
 		}
 	}
+
 	delete mesh;
 	delete hm;
 }
@@ -549,6 +611,8 @@ int main(int argc, char **argv){
 		intersect(argc-1,argv+1);
 	}else if(strcmp(argv[1],"print_tile_boxes") == 0){
 		print_tile_boxes(argc-1,argv+1);
+	}else if(strcmp(argv[1],"sample") == 0){
+		sample(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);

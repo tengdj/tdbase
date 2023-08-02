@@ -95,7 +95,7 @@ void HiMesh::startNextDecompresssionOp()
 		float proxyhausdorff = proxyhausdorff_code * hdist.first/255.0;
 		f->setHausdorf(hausdorff);
 		f->setProxyHausdorf(proxyhausdorff);
-		//if(global_ctx.verbose>=3)
+		if(global_ctx.verbose>=3)
 		{
 			log("decode face: %d %.2f %.2f", sym, proxyhausdorff, hausdorff);
 		}

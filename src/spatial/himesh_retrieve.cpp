@@ -237,7 +237,7 @@ list<Segment> HiMesh::get_segments(){
 }
 
 list<Triangle> HiMesh::get_triangles(){
-	triangles.clear();
+	list<Triangle> triangles;
 	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
 		Halfedge_const_handle e1 = f->halfedge();
 		Halfedge_const_handle e2 = e1->next();

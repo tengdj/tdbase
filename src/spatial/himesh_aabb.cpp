@@ -19,7 +19,7 @@ void HiMesh::clear_aabb_tree(){
 		delete triangle_tree;
 		triangle_tree = NULL;
 	}
-	triangles.clear();
+	aabb_triangles.clear();
 }
 
 SegTree *HiMesh::get_aabb_tree_segment(){
@@ -35,8 +35,8 @@ SegTree *HiMesh::get_aabb_tree_segment(){
 TriangleTree *HiMesh::get_aabb_tree_triangle(){
 	if(triangle_tree == NULL){
 		//struct timeval start = get_cur_time();
-		get_triangles();
-		triangle_tree = new TriangleTree(triangles.begin(), triangles.end());
+		aabb_triangles = get_triangles();
+		triangle_tree = new TriangleTree(aabb_triangles.begin(), aabb_triangles.end());
 		triangle_tree->build();
 		triangle_tree->accelerate_distance_queries();
 		//logt("building triangle tree", start);

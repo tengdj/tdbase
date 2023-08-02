@@ -193,7 +193,6 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 
 	Flag flag = Unconquered;
 	unsigned int id = 0;
-	bool is_protruding = true;
   public:
     MyVertex(): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(){}
 	MyVertex(const Point &p): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(p){}
@@ -221,14 +220,6 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 	inline void setId(size_t nId)
 	{
 		id = nId;
-	}
-
-	inline void setRecessing(){
-		is_protruding = false;
-	}
-
-	inline bool isProtruding(){
-		return is_protruding;
 	}
 };
 
@@ -312,14 +303,20 @@ public:
 	}
 };
 
-inline float triangle_area(Point p1, Point p2, Point p3){
-	float x1 = p2.x()-p1.x();
-	float y1 = p2.y()-p1.y();
-	float z1 = p2.z()-p1.z();
-	float x2 = p3.x()-p1.x();
-	float y2 = p3.y()-p1.y();
-	float z2 = p3.z()-p1.z();
-	return std::abs((y1*z2+z1*x2+x1*y2 - y2*z1-z2*x1- x2*y1)/2);
+inline float triangle_area(const Point &p1, const Point &p2, const Point &p3){
+	float x1 = (p2.x()-p1.x());
+	float y1 = (p2.y()-p1.y());
+	float z1 = (p2.z()-p1.z());
+
+	float x2 = (p3.x()-p1.x());
+	float y2 = (p3.y()-p1.y());
+	float z2 = (p3.z()-p1.z());
+
+	float x3 = y1*z2 - y2*z1;
+	float y3 = z1*x2 - z2*x1;
+	float z3 = x1*y2 - x2*y1;
+
+	return sqrt(x3*x3 + y3*y3 + z3*z3)/2;
 }
 
 inline float triangle_area(const Triangle &tri){
@@ -490,7 +487,7 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	SegTree *segment_tree = NULL;
 	TriangleTree *triangle_tree = NULL;
 	list<Segment> segments;
-	list<Triangle> triangles;
+	list<Triangle> aabb_triangles;
 
 	vector<MyTriangle *> original_facets;
 
@@ -500,6 +497,7 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 
 	//
 	unordered_set<replacing_group *> map_group;
+
 public:
 
 	HiMesh(string &str, bool completeop = false);
@@ -635,11 +633,18 @@ public:
 
 	map<Point, vector<MyTriangle *>> VFmap;
 
-	static int sampled_points_num;
+	// the sampling rate
+	// number of points sampled for each triangle
+	static uint sampling_rate;
 	static int calculate_method;
-	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points);
-	void sample_points(const Triangle &tri, unordered_set<Point> &points);
+	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit);
+	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
 	void sample_points(unordered_set<Point> &points);
+	inline float get_sample_density(){
+		uint num_triangle = this->size_of_triangles();
+		return area()/(num_triangle*sampling_rate);
+	}
+	float area();
 };
 
 class MyTriangle{

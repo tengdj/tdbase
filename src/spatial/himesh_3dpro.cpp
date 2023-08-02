@@ -280,10 +280,8 @@ bool HiMesh::isRemovable(Vertex_handle v) const
 	  while(++hit != end);
 	  //
 	  bool removable = !willViolateManifold(heh_oneRing);
-	  //&& isConvex(vh_oneRing);
-	  if(removable && !isProtruding(heh_oneRing)){
-		 v->setRecessing();
-	  }
+	  // && isProtruding(heh_oneRing);
+	  //&& isConvex(vh_oneRing)
 	  return removable;
 	}
 	return false;
@@ -346,7 +344,7 @@ static float point_to_face_distance(const Point &p, const HiMesh::Face_iterator 
 	return mindist;
 }
 
-int HiMesh::sampled_points_num = 1000;
+uint HiMesh::sampling_rate = 3;
 int HiMesh::calculate_method = 3;
 
 void sample_points_triangle(const Triangle &tri, unordered_set<Point> &points, int num_points){
@@ -358,8 +356,8 @@ void sample_points_triangle(const Triangle &tri, unordered_set<Point> &points, i
 	points.emplace(p3);
 	if(num_points>3){
 		assert(num_points>3);
-		int dimx = sqrt(2*num_points-3);
-		int dimy = dimx==0?0:(2*num_points-3+dimx-1)/dimx;
+		int dimx = sqrt(num_points-3);
+		int dimy = dimx==0?0:(num_points-3+dimx-1)/dimx;
 
 		Point v1 = p1;
 		Point v2(p2.x()-p1.x(), p2.y()-p1.y(), p2.z()-p1.z());
@@ -377,14 +375,18 @@ void sample_points_triangle(const Triangle &tri, unordered_set<Point> &points, i
 	}
 }
 
-void HiMesh::sample_points(const Triangle &tri, unordered_set<Point> &points){
-	float step = sqrt(get_mbb().diagonal_length())/HiMesh::sampled_points_num;
-	int num_points = triangle_area(tri)/(step*step);
+void HiMesh::sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit){
+	int num_points = triangle_area(tri)/area_unit;
 	sample_points_triangle(tri, points, num_points);
 }
 
-void HiMesh::sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points){
-	float step = sqrt(get_mbb().diagonal_length())/HiMesh::sampled_points_num;
+Triangle max_tri;
+Triangle min_tri;
+float max_area = 0;
+float min_area = DBL_MAX;
+
+void HiMesh::sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit){
+
 	const auto hd = fit->halfedge();
 	auto h = hd->next();
 	while(h->next()!=hd){
@@ -392,34 +394,40 @@ void HiMesh::sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point
 		Point p2 = h->vertex()->point();
 		Point p3 = h->next()->vertex()->point();
 		Triangle tri(p1, p2, p3);
-		int num_points = triangle_area(tri)/(step*step);
+		int num_points = triangle_area(tri)/area_unit+1;
+		//cout<<num_points<<endl;
+		//num_points = 10;
+		int ori = points.size();
 		sample_points_triangle(tri, points, num_points);
-
-//		float step_x = abs(p2.x()-p1.x());
-//		float step_y = abs(p2.y()-p1.y());
-//		float step_z = abs(p2.z()-p1.z());
-//
-//		float step_u = max(step_x, max(step_y, step_z));
-//		float min_u = min(step_x, min(step_y, step_z));
-//		float step_v = 0;
-//		if(step_x <= step_u && step_x >= min_u){
-//			step_v = step_x;
-//		}else if(step_y <= step_u && step_y >= min_u){
-//			step_v = step_y;
-//		}else if(step_z <= step_u && step_z >= min_u){
-//			step_v = step_z;
-//		}else{
-//			assert(false && "must be one of step_z step_y or step_z");
+//		if(num_points < 3){
+//			cout<<triangle_area(tri)<<" "<<area_unit<<" "<<num_points<<" "<<points.size()-ori<<endl;
 //		}
-
+//		if(max_area<triangle_area(tri)){
+//			max_area = triangle_area(tri);
+//			max_tri = tri;
+//		}
+//		if(min_area > triangle_area(tri)){
+//			min_area = triangle_area(tri);
+//			min_tri = tri;
+//		}
 		h = h->next();
 	}
 }
 
 void HiMesh::sample_points(unordered_set<Point> &points){
+	const float area_unit = get_sample_density();
+
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		sample_points(fit, points);
+		sample_points(fit, points, area_unit);
 	}
+	log("%.5f %.10f (%d*%d)=%d %d", area(), area_unit, size_of_triangles(), sampling_rate, size_of_triangles()*sampling_rate, points.size());
+
+//	points.clear();
+//	sample_points_triangle(max_tri, points, triangle_area(max_tri)/area_unit);
+//	sample_points_triangle(min_tri, points, 10);
+//	cout<<min_tri<<endl;
+//	log("%d %d", (int)(triangle_area(max_tri)/(step*step)), (int)(a/triangle_area(min_tri)));
+//	log("%.15f %.15f %.15f %.15f %d", triangle_area(max_tri)/(step*step), triangle_area(min_tri), area_unit, a, total_num_points);
 }
 
 Triangle expand(Triangle &tri){
@@ -474,6 +482,16 @@ void HiMesh::computeHausdorfDistance(){
 	uint tricount = 0;
 	uint goodcount[11] = {0,0,0,0,0,0,0,0,0,0,0};
 
+	//const float area_unit = get_sample_density();
+
+	uint num_triangle = size_of_triangles();
+	const float area_unit = area()/(num_triangle*1.0*sampling_rate);
+	//if(area_unit <= 0.0)
+	{
+		printf("%f %d %d %f\n",area(), num_triangle, num_triangle*sampling_rate, area()/(num_triangle*sampling_rate));
+	}
+	assert(area_unit > 0.0);
+
 	// associate each compressed facet with a list of original triangles, vice versa
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 
@@ -487,7 +505,7 @@ void HiMesh::computeHausdorfDistance(){
 		for(Triangle &cur_tri:fit->triangles) {
 
 			unordered_set<Point> points;
-			sample_points(cur_tri, points);
+			sample_points(cur_tri, points, area_unit);
 			smp += get_time_elapsed(start, true);
 
 			// to collect the triangles removed
@@ -700,10 +718,13 @@ void HiMesh::computeHausdorfDistance(){
 		max_proxy_hdist = max(max_proxy_hdist, fit_proxy_hdist);
 		avg_proxy_hdist += fit_proxy_hdist;
 	}
-	avg_hdist /= size_of_facets();
-	avg_proxy_hdist /= size_of_facets();
+	avg_hdist /= (int)size_of_facets();
+	avg_proxy_hdist /= (int)size_of_facets();
 
-	log("%f-%f-%f   %f-%f-%f", min_hdist, avg_hdist, max_hdist, min_proxy_hdist, avg_proxy_hdist, max_proxy_hdist);
+	log("hausdorff(min-avg-max): %.5f-%.5f-%.5f	proxy_hausdorff(min-avg-max): %.5f-%.5f-%.5f	sampling_rate: %.10f %.10f %.10f",
+			min_hdist, avg_hdist, max_hdist,
+			min_proxy_hdist, avg_proxy_hdist, max_proxy_hdist,
+			sqrt(area_unit), area(), area_unit);
 
 	globalHausdorfDistance.push_back(current_hausdorf);
 	if(global_ctx.verbose>=2){

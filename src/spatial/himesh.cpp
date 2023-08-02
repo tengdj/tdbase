@@ -60,6 +60,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 	logt("aabb", start);
 
 	int id = 0;
+	const float area_unit = get_sample_density();
 	for(Vertex_iterator vit=vertices_begin();vit!=vertices_end();vit++){
 		Point p = vit->point();
 		Halfedge_handle startH = vit->halfedge();
@@ -72,7 +73,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 				Triangle t(h->vertex()->point(), h->next()->vertex()->point(), h->next()->next()->vertex()->point());
 				f->tri = new MyTriangle(t, id++);
 				original_facets.push_back(f->tri);
-				sample_points(t, f->tri->sampled_points);
+				sample_points(t, f->tri->sampled_points, area_unit);
 			}
 			triangles.push_back(f->tri);
 		} while((h=h->opposite()->next()) != end);
@@ -84,7 +85,6 @@ HiMesh::HiMesh(string &str, bool completeop):
 		encode(0);
 	}
 	logt("encode", start);
-
 }
 
 // in decompression mode
@@ -233,6 +233,15 @@ aab HiMesh::shrink(float shrink){
 	}
 	compute_mbb();
 	return mbb;
+}
+
+float HiMesh::area(){
+	list<Triangle> triangles = this->get_triangles();
+	float a;
+	for(const Triangle &t:triangles){
+		a += hispeed::triangle_area(t);
+	}
+	return a;
 }
 
 }

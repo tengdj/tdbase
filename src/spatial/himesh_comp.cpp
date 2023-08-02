@@ -215,9 +215,11 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 			Face_handle fCorner = hCorner->face();
 			Face_handle fRest = hCorner->opposite()->face();
 			assert(fCorner->rg == f->rg);
-			//assert(fCorner->rg == NULL && fRest->rg == NULL);
-			fRest->rg = f->rg;
-			fRest->rg->ref++;
+			if(f->rg){
+				fRest->rg = f->rg;
+				//assert(fCorner->rg != NULL && fRest->rg == NULL);
+				fRest->rg->ref++;
+			}
 			//log("split %ld + %ld %ld", fCorner->facet_degree(), fRest->facet_degree(), f->facet_degree());
 		}
 		f->rg = NULL;
@@ -317,7 +319,7 @@ void HiMesh::RemovedVertexCodingStep()
         hausdorfSym[i_curDecimationId].push_back(hausdorf);
         proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
 
-        //if(global_ctx.verbose>=3)
+        if(global_ctx.verbose>=3)
         {
         	log("encode facet: %d %.2f %.2f",sym, f->getProxyHausdorf(), f->getHausdorf());
         }
