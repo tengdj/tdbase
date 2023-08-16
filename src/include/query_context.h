@@ -48,7 +48,7 @@ public:
 	bool use_aabb = false;
 	bool use_gpu = false;
 	bool use_multimbb = false;
-	int hausdorf_level = 2; // 0 for no hausdor, 1 for hausdorf at the mesh level, 2 for triangle level
+	int hausdorf_level = 2; // 0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level hausdorff
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
@@ -85,7 +85,7 @@ public:
 		}
 	}
 
-	void merge(query_context ctx){
+	void merge(query_context &ctx){
 		lock();
 		index_time += ctx.index_time;
 		decode_time += ctx.decode_time;
@@ -149,7 +149,7 @@ static query_context parse_args(int argc, char **argv){
 		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
-		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdor, 1 for hausdorf at the mesh level, 2 for triangle level(default)")
+		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level(default)")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -171,6 +171,8 @@ static query_context parse_args(int argc, char **argv){
 	if(vm.count("counter_clock")){
 		ctx.counter_clock = true;
 	}
+
+	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);
 
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
 		cout <<"error query type: "<< ctx.query_type <<endl;

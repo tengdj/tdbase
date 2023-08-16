@@ -304,13 +304,13 @@ public:
 };
 
 inline float triangle_area(const Point &p1, const Point &p2, const Point &p3){
-	float x1 = (p2.x()-p1.x());
-	float y1 = (p2.y()-p1.y());
-	float z1 = (p2.z()-p1.z());
+	float x1 = p2.x()-p1.x();
+	float y1 = p2.y()-p1.y();
+	float z1 = p2.z()-p1.z();
 
-	float x2 = (p3.x()-p1.x());
-	float y2 = (p3.y()-p1.y());
-	float z2 = (p3.z()-p1.z());
+	float x2 = p3.x()-p1.x();
+	float y2 = p3.y()-p1.y();
+	float z2 = p3.z()-p1.z();
 
 	float x3 = y1*z2 - y2*z1;
 	float y3 = z1*x2 - z2*x1;
@@ -338,8 +338,8 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	ProcessedFlag processedFlag = NotProcessed;
 
 	Point removedVertexPos;
-	float proxy_hausdorf_distance = 0.0;
-	float hausdorf_distance = 0.0;
+	float proxy_hausdorff_distance = 0.0;
+	float hausdorff_distance = 0.0;
 public:
     MyFace(){}
 
@@ -347,11 +347,6 @@ public:
 	{
           flag = Unknown;
           processedFlag = NotProcessed;
-	}
-
-	inline void resetHausdorff(){
-        proxy_hausdorf_distance = 0.0;
-        hausdorf_distance = 0.0;
 	}
 
 	inline void resetProcessedFlag()
@@ -409,23 +404,28 @@ public:
 public:
 
 	inline pair<float, float> getHausdorfDistance(){
-		return pair<float, float>(proxy_hausdorf_distance, hausdorf_distance);
+		return pair<float, float>(proxy_hausdorff_distance, hausdorff_distance);
 	}
 
-	inline void setProxyHausdorf(float rec){
-		proxy_hausdorf_distance = max(rec, proxy_hausdorf_distance);
+	inline void resetHausdorff(){
+		hausdorff_distance = 0.0;
+		proxy_hausdorff_distance = 0.0;
 	}
 
-	inline void setHausdorf(float pro){
-		hausdorf_distance = max(pro, hausdorf_distance);
+	inline void setProxyHausdorff(float prh){
+		proxy_hausdorff_distance = max(prh, proxy_hausdorff_distance);
 	}
 
-	inline float getProxyHausdorf(){
-		return proxy_hausdorf_distance;
+	inline void setHausdorff(float hd){
+		hausdorff_distance = max(hd, hausdorff_distance);
 	}
 
-	inline float getHausdorf(){
-		return hausdorf_distance;
+	inline float getProxyHausdorff(){
+		return proxy_hausdorff_distance;
+	}
+
+	inline float getHausdorff(){
+		return hausdorff_distance;
 	}
 	replacing_group *rg = NULL;
 	vector<Triangle> triangles;
@@ -449,6 +449,15 @@ struct MyItems : public CGAL::Polyhedron_items_3
     struct Halfedge_wrapper {
         typedef MyHalfedge<Refs> Halfedge;
     };
+};
+
+// four types of hausdorff computing methods
+enum Hausdorff_Computing_Type{
+	HCT_ALL = 0,
+	HCT_BVHTREE = 1,
+	HCT_ASSOCIATE = 2,
+	HCT_ASSOCIATE_CYLINDER = 3,
+	HCT_NULL = 4
 };
 
 class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
@@ -500,7 +509,11 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 
 public:
 
+	int id = 0;
+	// constructor for encoding
 	HiMesh(string &str, bool completeop = false);
+
+	// constructors for decoding
 	HiMesh(char *data, size_t dsize);
 	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset){}
 	~HiMesh();
@@ -512,10 +525,14 @@ public:
 	void startNextCompresssionOp();
 	void RemovedVertexCodingStep();
 	void InsertedEdgeCodingStep();
+	void HausdorffCodingStep();
+
 	void merge(unordered_set<replacing_group *> &reps, replacing_group *);
 	Halfedge_handle vertexCut(Halfedge_handle startH);
 	void encodeInsertedEdges(unsigned i_operationId);
 	void encodeRemovedVertices(unsigned i_operationId);
+	void encodeHausdorff(unsigned i_operationId);
+
 
 	// Compression geometry and connectivity tests.
 	bool isRemovable(Vertex_handle v) const;
@@ -526,7 +543,9 @@ public:
 
 	// Decompression
 	void startNextDecompresssionOp();
+	void RemovedVerticesDecodingStep();
 	void InsertedEdgeDecodingStep();
+	void HausdorffDecodingStep();
 	void insertRemovedVertices();
 	void removeInsertedEdges();
 
@@ -567,6 +586,7 @@ public:
 
 	//3dpro
 	void computeHausdorfDistance();
+	void updateVFMap();
 	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
 	void profileProtruding();
 
@@ -593,7 +613,7 @@ public:
 	size_t fill_segments(float *&segments);
 	size_t fill_triangles(float *&triangles);
 	size_t fill_hausdorf_distances(float *&hausdorf);
-	pair<float, float> get_triangle_hausdorf(int tri_id = -1);
+	pair<float, float> get_triangle_hausdorf(int tri_id);
 	size_t fill_voxels(vector<Voxel *> &voxels);
 	size_t fill_vertices(float *&vertices);
 	list<Segment> get_segments();
@@ -614,8 +634,11 @@ public:
 
 	size_t size_of_edges();
 
-	pair<float, float> getHausdorfDistance();
-	pair<float, float> getNextHausdorfDistance();
+	float getProxyHausdorffDistance();
+	float getHausdorffDistance();
+
+//	pair<float, float> getHausdorfDistance();
+//	pair<float, float> getNextHausdorfDistance();
 
 	bool is_compression_mode(){
 		return i_mode == COMPRESSION_MODE_ID;
@@ -633,9 +656,9 @@ public:
 
 	map<Point, vector<MyTriangle *>> VFmap;
 
-	// the sampling rate
-	// number of points sampled for each triangle
+	// equals the number of points sampled for each triangle
 	static uint sampling_rate;
+
 	static int calculate_method;
 	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit);
 	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
@@ -653,6 +676,10 @@ public:
 		tri = t;
 		processed = false;
 		id = i;
+	}
+	~MyTriangle(){
+		sampled_points.clear();
+		facets.clear();
 	}
 	// owned
 	int id;

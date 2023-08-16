@@ -27,7 +27,7 @@ namespace hispeed{
 void HiMesh::startNextDecompresssionOp()
 {
     if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
-    	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorfDistance().first, getHausdorfDistance().second);
+    	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorffDistance(), getProxyHausdorffDistance());
     }
 
     // check if the target LOD is reached
@@ -36,8 +36,8 @@ void HiMesh::startNextDecompresssionOp()
 			// reset all the hausdorf distance to 0 for the highest LOD
 			// as we do not have another round of decoding to set them
 			for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-				fit->setHausdorf(0.0);
-				fit->setProxyHausdorf(0.0);
+				fit->setHausdorff(0.0);
+				fit->setProxyHausdorff(0.0);
 			}
 		}
 		b_jobCompleted = true;
@@ -51,60 +51,15 @@ void HiMesh::startNextDecompresssionOp()
     for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
-    // 2. do one round of decimation
-    // Add the first halfedge to the queue.
-	pushHehInit();
-	while (!gateQueue.empty())
-	{
-		Halfedge_handle h = gateQueue.front();
-		gateQueue.pop();
-
-		Face_handle f = h->facet();
-
-		// If the face is already processed, pick the next halfedge:
-		if (f->isConquered())
-			continue;
-
-		// Decode the face symbol.
-		unsigned sym = readChar();
-
-		// Add the other halfedges to the queue
-		Halfedge_handle hIt = h;
-		do {
-			Halfedge_handle hOpp = hIt->opposite();
-			assert(!hOpp->is_border());
-			if (!hOpp->facet()->isConquered())
-				gateQueue.push(hOpp);
-			hIt = hIt->next();
-		} while (hIt != h);
-		// Decode the geometry symbol.
-		if (sym == 1){
-			Point rmved = readPoint();
-			f->setSplittable();
-			f->setRemovedVertexPos(rmved);
-		} else {
-			f->setUnsplittable();
-		}
-
-		// decode the hausdorf distance symbols
-		unsigned char hausdorff_code = readChar();
-		unsigned char proxyhausdorff_code = readChar();
-
-		pair<float, float> hdist = getHausdorfDistance();
-		float hausdorff = hausdorff_code * hdist.second/255.0;
-		float proxyhausdorff = proxyhausdorff_code * hdist.first/255.0;
-		f->setHausdorf(hausdorff);
-		f->setProxyHausdorf(proxyhausdorff);
-		if(global_ctx.verbose>=3)
-		{
-			log("decode face: %d %.2f %.2f", sym, proxyhausdorff, hausdorff);
-		}
-	}
-
-	// 3. do the decoding job
+    // 2. decoding the removed vertices and add to target facets
+    RemovedVerticesDecodingStep();
+    // 3. decoding the inserted edge and marking the ones added
 	InsertedEdgeDecodingStep();
+	// 4. truly insert the removed vertices and remove the added edges
 	insertRemovedVertices();
 	removeInsertedEdges();
+	// 5. decode the Hausdorff distances for the new facets
+	HausdorffDecodingStep();
 
 	i_curDecimationId++; // increment the current decimation operation id.
 }
@@ -164,15 +119,6 @@ void HiMesh::readBaseMesh()
     MyMeshBaseBuilder<HalfedgeDS> builder(p_pointDeque, p_faceDeque);
     delegate(builder);
 
-    for (HiMesh::Facet_iterator fit = facets_begin();
-         fit != facets_end(); ++fit)
-    {
-    	float hdist = readFloat();
-    	fit->setProxyHausdorf(hdist);
-    	hdist = readFloat();
-    	fit->setHausdorf(hdist);
-    }
-
     // Free the memory.
     for (unsigned i = 0; i < p_faceDeque->size(); ++i)
         delete[] p_faceDeque->at(i);
@@ -186,6 +132,46 @@ void HiMesh::readBaseMesh()
     	globalHausdorfDistance.push_back(pair<float, float>(proxyhausdorff, hausdorff));
     	//log("decode hausdorff: %d %f %f",i, proxyhausdorff, hausdorff);
     }
+
+    // load the Hausdorff distances for the base LOD
+	HausdorffDecodingStep();
+}
+
+void HiMesh::RemovedVerticesDecodingStep(){
+    // Add the first halfedge to the queue.
+	pushHehInit();
+	while (!gateQueue.empty())
+	{
+		Halfedge_handle h = gateQueue.front();
+		gateQueue.pop();
+
+		Face_handle f = h->facet();
+
+		// If the face is already processed, pick the next halfedge:
+		if (f->isConquered())
+			continue;
+
+		// Decode the face symbol.
+		unsigned sym = readChar();
+
+		// Add the other halfedges to the queue
+		Halfedge_handle hIt = h;
+		do {
+			Halfedge_handle hOpp = hIt->opposite();
+			assert(!hOpp->is_border());
+			if (!hOpp->facet()->isConquered())
+				gateQueue.push(hOpp);
+			hIt = hIt->next();
+		} while (hIt != h);
+		// Decode the geometry symbol.
+		if (sym == 1){
+			Point rmved = readPoint();
+			f->setSplittable();
+			f->setRemovedVertexPos(rmved);
+		} else {
+			f->setUnsplittable();
+		}
+	}
 }
 
 /**
@@ -230,6 +216,29 @@ void HiMesh::InsertedEdgeDecodingStep()
         assert(!hIt->isNew());
 
     }
+}
+
+void HiMesh::HausdorffDecodingStep(){
+
+	if(i_curDecimationId >= i_nbDecimations-1){
+		return;
+	}
+	//log("DecimationId: %d", this->i_curDecimationId);
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+		fit->resetHausdorff();
+		// decode the hausdorf distance symbols
+		unsigned char hausdorff_code = readChar();
+		unsigned char proxyhausdorff_code = readChar();
+
+		float hausdorff = hausdorff_code * getHausdorffDistance()/255.0;
+		float proxyhausdorff = proxyhausdorff_code * getProxyHausdorffDistance()/255.0;
+		fit->setHausdorff(hausdorff);
+		fit->setProxyHausdorff(proxyhausdorff);
+		if(global_ctx.verbose>=3)
+		{
+			log("decode face: %.2f %.2f", proxyhausdorff, hausdorff);
+		}
+	}
 }
 
 /**

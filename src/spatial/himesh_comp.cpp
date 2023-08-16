@@ -47,8 +47,8 @@ void HiMesh::startNextCompresssionOp()
 
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
 		fit->resetState();
-	// Reset the number of removed vertices.
-	i_nbRemovedVertices = 0;
+
+	i_nbRemovedVertices = 0; // Reset the number of removed vertices.
 
 
 	// 2. do one round of decimation
@@ -129,13 +129,15 @@ void HiMesh::startNextCompresssionOp()
 	    assert(i_deci>0);
 	    while (i_deci>=0)
 	    {
+			encodeHausdorff(i_deci);
 			encodeRemovedVertices(i_deci);
 			encodeInsertedEdges(i_deci);
 			i_deci--;
 	    }
 	} else {
-		// 3dpro: compute the hausdorf distance for all the existing faces
+		// 3dpro: compute and encode the Hausdorff distance for all the facets in this LOD
 		computeHausdorfDistance();
+		HausdorffCodingStep();
 
 		RemovedVertexCodingStep();
 		InsertedEdgeCodingStep();
@@ -278,8 +280,6 @@ void HiMesh::RemovedVertexCodingStep()
     // Resize the vectors to add the current conquest symbols.
     geometrySym.push_back(std::deque<Point>());
     connectFaceSym.push_back(std::deque<unsigned>());
-    hausdorfSym.push_back(std::deque<unsigned char>());
-    proxyhausdorfSym.push_back(std::deque<unsigned char>());
 
     // Add the first halfedge to the queue.
     pushHehInit();
@@ -307,23 +307,6 @@ void HiMesh::RemovedVertexCodingStep()
         	// record the removed points during compressing.
         }
 
-        // Determine the hausdorf symbol
-        // the hausdorf distances for this round of decimation.
-		const pair<float, float> current_hausdorf = globalHausdorfDistance[globalHausdorfDistance.size()-1];
-		// 3dpro, besides the symbol, we also encode the hausdorf distance into it.
-		assert(f->getProxyHausdorf()<=current_hausdorf.first);
-		assert(f->getHausdorf()<=current_hausdorf.second);
-
-		unsigned char proxyhausdorf = current_hausdorf.first==0?0:(f->getProxyHausdorf()*255/current_hausdorf.first);
-		unsigned char hausdorf = current_hausdorf.second==0?0:(f->getHausdorf()*255/current_hausdorf.second);
-        hausdorfSym[i_curDecimationId].push_back(hausdorf);
-        proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
-
-        if(global_ctx.verbose>=3)
-        {
-        	log("encode facet: %d %.2f %.2f",sym, f->getProxyHausdorf(), f->getHausdorf());
-        }
-
         // Mark the face as processed.
         f->setProcessedFlag();
 
@@ -339,6 +322,8 @@ void HiMesh::RemovedVertexCodingStep()
         }
         while (hIt != h);
     }
+
+
 }
 
 /**
@@ -389,6 +374,30 @@ void HiMesh::InsertedEdgeCodingStep()
         if (b_toCode)
             connectEdgeSym[i_curDecimationId].push_back(sym);
     }
+}
+
+void HiMesh::HausdorffCodingStep(){
+
+    hausdorfSym.push_back(std::deque<unsigned char>());
+    proxyhausdorfSym.push_back(std::deque<unsigned char>());
+	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+
+		// Determine the hausdorf symbol
+		// the hausdorf distances for this round of decimation.
+		const pair<float, float> current_hausdorf = globalHausdorfDistance[globalHausdorfDistance.size()-1];
+		// 3dpro, besides the symbol, we also encode the hausdorf distance into it.
+		assert(fit->getProxyHausdorff()<=current_hausdorf.first);
+		assert(fit->getHausdorff()<=current_hausdorf.second);
+
+		unsigned char proxyhausdorf = current_hausdorf.first==0?0:ceil(fit->getProxyHausdorff()*255/current_hausdorf.first);
+		unsigned char hausdorf = current_hausdorf.second==0?0:ceil(fit->getHausdorff()*255/current_hausdorf.second);
+		hausdorfSym[i_curDecimationId].push_back(hausdorf);
+		proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
+		if(global_ctx.verbose>=3)
+		{
+			log("encode facet: %.2f %.2f", fit->getProxyHausdorff(), fit->getHausdorff());
+		}
+	}
 }
 
 // Write the base mesh.
@@ -443,16 +452,8 @@ void HiMesh::writeBaseMesh()
         while(++hit != end);
     }
 
-    // Write the hausdorf distance for the base faces
-    for (HiMesh::Facet_iterator fit = facets_begin();
-         fit != facets_end(); ++fit)
-    {
-        writeFloat(fit->getProxyHausdorf());
-        writeFloat(fit->getHausdorf());
-    }
-
     // 3dpro
-    // Write the maximum global hausdorf
+    // Write the mesh-level Hausdorf
     assert(globalHausdorfDistance.size()==i_nbDecimations);
     for(unsigned i=0;i<i_nbDecimations;i++){
     	writeFloat(globalHausdorfDistance[i].first);
@@ -485,8 +486,6 @@ void HiMesh::encodeRemovedVertices(unsigned i_operationId)
 {
     std::deque<unsigned> &connSym = connectFaceSym[i_operationId];
     std::deque<Point> &geomSym = geometrySym[i_operationId];
-    std::deque<unsigned char> &hausSym = hausdorfSym[i_operationId];
-    std::deque<unsigned char> &proxyhausSym = proxyhausdorfSym[i_operationId];
 
     unsigned i_lenGeom = geomSym.size();
     unsigned i_lenConn = connSym.size();
@@ -503,6 +502,13 @@ void HiMesh::encodeRemovedVertices(unsigned i_operationId)
             writePoint(geomSym[k]);
             k++;
         }
+    }
+}
+
+void HiMesh::encodeHausdorff(unsigned i_operationId){
+    std::deque<unsigned char> &hausSym = hausdorfSym[i_operationId];
+    std::deque<unsigned char> &proxyhausSym = proxyhausdorfSym[i_operationId];
+    for(int i=0;i<hausSym.size();i++){
         writeChar(hausSym[i]);
         writeChar(proxyhausSym[i]);
     }

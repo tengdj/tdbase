@@ -41,6 +41,7 @@ void Tile::retrieve_mesh(size_t id){
 	if(wrapper->mesh==NULL){
 		timeval cur = hispeed::get_cur_time();
 		wrapper->mesh = new HiMesh(data_buffer+wrapper->offset, wrapper->data_size);
+		wrapper->mesh->id = id;
 		newmesh_time += hispeed::get_time_elapsed(cur, true);
 	}
 	assert(wrapper->mesh);

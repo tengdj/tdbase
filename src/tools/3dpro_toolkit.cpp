@@ -313,30 +313,6 @@ static void triangulate(int argc, char **argv){
 	delete mesh;
 }
 
-/*
-e1.x = N[1]->x - N[0]->x;
-e1.y = N[1]->y - N[0]->y;
-e1.z = N[1]->z - N[0]->z;
-
-e2.x = N[2]->x - N[0]->x;
-e2.y = N[2]->y - N[0]->y;
-e2.z = N[2]->z - N[0]->z;
-
-calculate e3 = e1 x e2 (cross product) :
-e3.x = e1.ye2.z - e1.ze2.y;
-e3.y = e1.ze2.x - e1.xe2.z;
-e3.z = e1.xe2.y - e1.ye2.x;
-
-the tria area is the half length of the
-normal vector:
-A = 0.5sqrt(e3.xe3.x + e3.ye3.y + e3.ze3.z);
-//	Point p1(-0.0310423,0.0467686,-0.0260418);
-//	Point p2(-0.0299338,0.0468967,-0.0261593);
-//	Point p3(-0.0309867,0.0458642,-0.0271867);
-//	log("%.15f", triangle_area(p1, p2, p3));
-//	return;
-*/
-
 static void sample(int argc, char **argv){
 
 	HiMesh::sampling_rate = atoi(argv[2]);
@@ -375,10 +351,20 @@ static void sample(int argc, char **argv){
 }
 
 static void compress(int argc, char **argv){
+
+//	Point p1(201.502, 160.057, 245.023);
+//	Point p2(221.539, 150.502, 155.167);
+//	Point p3(206.559, 152.501, 73.854);
+//
+//	cout<<triangle_area(p1, p2, p3)<<endl;
+//
+//	return;
+
 	if(argc>2){
 		HiMesh::sampling_rate = atoi(argv[2]);
 		log("%d",HiMesh::sampling_rate);
 	}
+
 	if(argc>3){
 		HiMesh::calculate_method = atoi(argv[3]);
 	}
@@ -396,18 +382,18 @@ static void compress(int argc, char **argv){
 	    sprintf(path, "/gisdata/compressed_%d.mesh.off", i);
 	    hm->write_to_off(path);
 
-		unordered_set<Point> point_set;
-		hm->sample_points(point_set);
-		vector<Point> points;
-		points.assign(point_set.begin(), point_set.end());
-	    sprintf(path, "/gisdata/compressed_%d.points.off", i);
-		hispeed::write_points(points, path);
-
-		//log("global: %f", himesh->getHausdorfDistance().second);
-		int tris = hm->size_of_triangles();
-		for(int j=0;j<tris;j++){
-			//log("%d\t%.2f\t%d", j, himesh->get_triangle_hausdorf(j).second, (int)(himesh->get_triangle_hausdorf(j).second*100/himesh->getHausdorfDistance().second));
-		}
+//		unordered_set<Point> point_set;
+//		hm->sample_points(point_set);
+//		vector<Point> points;
+//		points.assign(point_set.begin(), point_set.end());
+//	    sprintf(path, "/gisdata/compressed_%d.points.off", i);
+//		hispeed::write_points(points, path);
+//
+//		//log("global: %f", himesh->getHausdorfDistance().second);
+//		int tris = hm->size_of_triangles();
+//		for(int j=0;j<tris;j++){
+//			//log("%d\t%.2f\t%d", j, himesh->get_triangle_hausdorf(j).second, (int)(himesh->get_triangle_hausdorf(j).second*100/himesh->getHausdorfDistance().second));
+//		}
 	}
 
 	delete mesh;

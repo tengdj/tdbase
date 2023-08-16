@@ -81,9 +81,9 @@ size_t HiMesh::fill_hausdorf_distances(float *&hausdorf){
 		Halfedge_const_handle e1 = f->halfedge();
 		Halfedge_const_handle e2 = e1->next();
 		do{
-			*cur_S = f->getProxyHausdorf();
+			*cur_S = f->getProxyHausdorff();
 			cur_S++;
-			*cur_S = f->getHausdorf();
+			*cur_S = f->getHausdorff();
 			cur_S++;
 			inserted++;
 			e2 = e2->next();
@@ -93,11 +93,8 @@ size_t HiMesh::fill_hausdorf_distances(float *&hausdorf){
 	return size;
 }
 
-
 std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
-	if(global_ctx.hausdorf_level<2 || tri_id==-1){
-		return getHausdorfDistance();
-	}
+	assert(tri_id>=0);
 	size_t index = 0;
 	for ( Facet_iterator f = facets_begin(); f != facets_end(); ++f){
 		if(index+f->facet_degree()-2<tri_id){
@@ -109,7 +106,7 @@ std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
 		Halfedge_const_handle e2 = e1->next();
 		do{
 			if(index == tri_id){
-				assert(f->getHausdorf() <= this->getHausdorfDistance().second && f->getProxyHausdorf() <= this->getHausdorfDistance().first);
+				assert(f->getHausdorff() <= getHausdorffDistance() && f->getProxyHausdorff() <= getProxyHausdorffDistance());
 				//log("%f %f",f->getHausdorfDistance().second, this->getHausdorfDistance().second);
 				return f->getHausdorfDistance();
 			}
@@ -118,7 +115,7 @@ std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
 		}while(e1!=e2->next());
 	}
 	assert(false && "invalid facet ID");
-	return getHausdorfDistance();
+	return {getHausdorffDistance(), getProxyHausdorffDistance()};
 }
 
 size_t HiMesh::fill_vertices(float *&vertices){

@@ -46,10 +46,10 @@ void print_candidate(candidate_entry &cand){
 	}
 }
 
-inline void update_candidate_list_knn(candidate_entry &cand, int knn){
+inline void update_candidate_list_knn(candidate_entry &cand, query_context &ctx){
 	HiMesh_Wrapper *target = cand.mesh_wrapper;
 	int list_size = cand.candidates.size();
-	for(int i=0;i<list_size && knn>cand.candidate_confirmed;){
+	for(int i=0;i<list_size && ctx.knn>cand.candidate_confirmed;){
 		int sure_closer = 0;
 		int maybe_closer = 0;
 		for(int j=0;j<cand.candidates.size();j++){
@@ -65,7 +65,7 @@ inline void update_candidate_list_knn(candidate_entry &cand, int knn){
 				maybe_closer++;
 			}
 		}
-		int cand_left = knn-cand.candidate_confirmed;
+		int cand_left = ctx.knn-cand.candidate_confirmed;
 		if(global_ctx.verbose>=1){
 			log("%ld\t%5ld sure closer %3d maybe closer %3d (%3d +%3d)",
 					cand.mesh_wrapper->id,
@@ -96,9 +96,19 @@ inline void update_candidate_list_knn(candidate_entry &cand, int knn){
 	// the target one should be kept
 }
 
-void evaluate_candidate_lists(vector<candidate_entry> &candidates, query_context ctx){
+bool result_sort(pair<int, int> a, pair<int, int> b){
+	if(a.first<b.first){
+		return true;
+	}else if(a.first>b.first){
+		return false;
+	}else{
+		return a.second<=b.second;
+	}
+}
+
+void evaluate_candidate_lists(vector<candidate_entry> &candidates, query_context &ctx){
 	for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
-		update_candidate_list_knn(*it, ctx.knn);
+		update_candidate_list_knn(*it, ctx);
 		if(it->candidate_confirmed==ctx.knn){
 			it = candidates.erase(it);
 		}else{
@@ -165,7 +175,7 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
  * the main function for getting the nearest neighbor
  *
  * */
-void SpatialJoin::nearest_neighbor(query_context &ctx){
+void SpatialJoin::nearest_neighbor(query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 
@@ -199,8 +209,11 @@ void SpatialJoin::nearest_neighbor(query_context &ctx){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				if(ctx.use_aabb){
 					range dist = ci.distance;
-					float hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
-					float hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
+					float hdist1 = wrapper1->mesh->getHausdorffDistance();
+					float hdist2 = wrapper2->mesh->getHausdorffDistance();
+					float phdist1 = wrapper1->mesh->getProxyHausdorffDistance();
+					float phdist2 = wrapper2->mesh->getProxyHausdorffDistance();
+
 					result_container res = ctx.results[index++];
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
@@ -209,6 +222,7 @@ void SpatialJoin::nearest_neighbor(query_context &ctx){
 					}else{
 						dist.maxdist = std::min(dist.maxdist, res.result.distance);
 						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
+
 						dist.mindist = std::min(dist.mindist, dist.maxdist);
 						//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 					}
@@ -230,14 +244,19 @@ void SpatialJoin::nearest_neighbor(query_context &ctx){
 							range dist = vp.dist;
 							float hdist1;
 							float hdist2;
+							float phdist1;
+							float phdist2;
 							if(global_ctx.hausdorf_level<2){
-								hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
-								hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
+								hdist1 = wrapper1->mesh->getHausdorffDistance();
+								hdist2 = wrapper2->mesh->getHausdorffDistance();
+								phdist1 = wrapper1->mesh->getProxyHausdorffDistance();
+								phdist2 = wrapper2->mesh->getProxyHausdorffDistance();
 							}else{
-								hdist1 = vp.v1->getHausdorfDistance(res.p1).second;
-								hdist2 = vp.v2->getHausdorfDistance(res.p2).second;
+								hdist1 = vp.v1->getHausdorffDistance(res.p1);
+								hdist2 = vp.v2->getHausdorffDistance(res.p2);
+								phdist1 = vp.v1->getProxyHausdorffDistance(res.p1);
+								phdist2 = vp.v2->getProxyHausdorffDistance(res.p2);
 							}
-
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
 								dist.mindist = res.result.distance;
@@ -250,9 +269,12 @@ void SpatialJoin::nearest_neighbor(query_context &ctx){
 								dist.mindist = std::min(dist.mindist, dist.maxdist);
 							}
 
-							if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0){
-								log("%ld(%d)\t%ld(%d):\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id,res.p1, wrapper2->id,res.p2,
+							if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0)
+							{
+								log("%ld(%d)\t%ld(%d):\t[%.2f %.2f]\t[%.2f %.2f]\t[%.2f, %.2f]->[%.2f, %.2f]",
+										wrapper1->id,res.p1, wrapper2->id,res.p2,
 										hdist1, hdist2,
+										phdist1, phdist2,
 										vp.dist.mindist, vp.dist.maxdist,
 										dist.mindist, dist.maxdist);
 							}
@@ -280,6 +302,9 @@ void SpatialJoin::nearest_neighbor(query_context &ctx){
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
 	for(int i=0;i<ctx.tile1->num_objects();i++){
 		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
+//		for(int j=0;j<ctx.tile1->get_mesh_wrapper(i)->results.size();j++){
+//			cout<<ctx.tile1->get_mesh_wrapper(i)->id<<"\t"<<ctx.tile1->get_mesh_wrapper(i)->results[j]->id<<endl;
+//		}
 	}
 	ctx.obj_count += min(ctx.tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);

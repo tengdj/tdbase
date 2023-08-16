@@ -117,8 +117,8 @@ void SpatialJoin::within(query_context ctx){
 				if(ctx.use_aabb){
 					range dist = ci_iter->distance;
 					result_container res = ctx.results[index++];
-					float hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
-					float hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
+					float hdist1 = wrapper1->mesh->getHausdorffDistance();
+					float hdist2 = wrapper2->mesh->getHausdorffDistance();
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
 						dist.mindist = res.result.distance;
@@ -152,12 +152,18 @@ void SpatialJoin::within(query_context ctx){
 							range dist = vp_iter->dist;
 							float hdist1;
 							float hdist2;
+							float phdist1;
+							float phdist2;
 							if(global_ctx.hausdorf_level<2){
-								hdist1 = wrapper1->mesh->get_triangle_hausdorf().second;
-								hdist2 = wrapper2->mesh->get_triangle_hausdorf().second;
+								hdist1 = wrapper1->mesh->getHausdorffDistance();
+								hdist2 = wrapper2->mesh->getHausdorffDistance();
+								phdist1 = wrapper1->mesh->getProxyHausdorffDistance();
+								phdist2 = wrapper2->mesh->getProxyHausdorffDistance();
 							}else{
-								hdist1 = vp_iter->v1->getHausdorfDistance(res.p1).second;
-								hdist2 = vp_iter->v2->getHausdorfDistance(res.p2).second;
+								hdist1 = vp_iter->v1->getHausdorffDistance(res.p1);
+								hdist2 = vp_iter->v2->getHausdorffDistance(res.p2);
+								phdist1 = vp_iter->v1->getProxyHausdorffDistance(res.p1);
+								phdist2 = vp_iter->v2->getProxyHausdorffDistance(res.p2);
 							}
 
 							if(lod==ctx.highest_lod()){
@@ -214,6 +220,9 @@ void SpatialJoin::within(query_context ctx){
 	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
 	for(int i=0;i<ctx.tile1->num_objects();i++){
 		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
+		for(int j=0;j<ctx.tile1->get_mesh_wrapper(i)->results.size();j++){
+			//cout<<ctx.tile1->get_mesh_wrapper(i)->id<<"\t"<<ctx.tile1->get_mesh_wrapper(i)->results[j]->id<<endl;
+		}
 	}
 	ctx.obj_count += min(ctx.tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);

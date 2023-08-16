@@ -26,10 +26,6 @@ HiMesh::HiMesh(string &str, bool completeop):
 	const size_t d_capacity = 3*str.size();
 	p_data = new char[d_capacity];
 	// Fill the buffer with 0.
-	for (size_t i = 0; i < d_capacity; ++i) {
-	   p_data[i] = 0;
-	}
-	logt("preprocess", start);
 	std::istringstream is;
 	is.str(str.c_str());
 	is >> *this;
@@ -49,17 +45,45 @@ HiMesh::HiMesh(string &str, bool completeop):
 		std::cerr << "The codec doesn't handle meshes with borders." << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	logt("load mesh", start);
 
 	compute_mbb();
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 	vh_departureConquest[1] = halfedges_begin()->vertex();
+	//logt("load mesh", start);
 
-	get_aabb_tree_triangle();
-	logt("aabb", start);
+	if(HiMesh::calculate_method == HCT_BVHTREE || HiMesh::calculate_method == HCT_ALL){
+		get_aabb_tree_triangle();
+		//logt("aabb", start);
+	}
 
-	int id = 0;
+	if(HiMesh::calculate_method != HCT_NULL){
+		updateVFMap();
+		//logt("init triangles", start);
+	}
+
+	if(completeop){
+		encode(0);
+		//logt("encode", start);
+	}
+}
+
+void HiMesh::updateVFMap(){
+
+	//cout<<VFmap.size()<<endl;
+	for(auto &vf:VFmap){
+		vf.second.clear();
+	}
+	VFmap.clear();
+	for(MyTriangle *tri:original_facets){
+		delete tri;
+	}
+	original_facets.clear();
+
+	for(Facet_iterator fit=facets_begin();fit!=facets_end();fit++){
+		fit->tri = NULL;
+	}
+
 	const float area_unit = get_sample_density();
 	for(Vertex_iterator vit=vertices_begin();vit!=vertices_end();vit++){
 		Point p = vit->point();
@@ -71,20 +95,16 @@ HiMesh::HiMesh(string &str, bool completeop):
 			Face_handle f = h->face();
 			if(f->tri == NULL){
 				Triangle t(h->vertex()->point(), h->next()->vertex()->point(), h->next()->next()->vertex()->point());
-				f->tri = new MyTriangle(t, id++);
+				f->tri = new MyTriangle(t, original_facets.size());
 				original_facets.push_back(f->tri);
 				sample_points(t, f->tri->sampled_points, area_unit);
 			}
 			triangles.push_back(f->tri);
 		} while((h=h->opposite()->next()) != end);
-		VFmap[p] = triangles;
+		if(triangles.size()>0){
+			VFmap[p] = triangles;
+		}
 	}
-	logt("init triangles", start);
-
-	if(completeop){
-		encode(0);
-	}
-	logt("encode", start);
 }
 
 // in decompression mode
@@ -219,6 +239,7 @@ aab HiMesh::shift(float x, float y, float z){
 		vi->point() = Point(p[0]+x, p[1]+y, p[2]+z);
 	}
 	compute_mbb();
+	updateVFMap();
 	return mbb;
 }
 
@@ -232,12 +253,13 @@ aab HiMesh::shrink(float shrink){
 
 	}
 	compute_mbb();
+	updateVFMap();
 	return mbb;
 }
 
 float HiMesh::area(){
 	list<Triangle> triangles = this->get_triangles();
-	float a;
+	float a = 0.0;
 	for(const Triangle &t:triangles){
 		a += hispeed::triangle_area(t);
 	}

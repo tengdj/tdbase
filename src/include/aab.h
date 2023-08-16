@@ -271,9 +271,14 @@ public:
 		return data!=NULL;
 	}
 
-	pair<float, float> getHausdorfDistance(int offset){
+	float getHausdorffDistance(int offset){
 		assert(data);
-		return pair<float, float>(*(data->hausdorf+offset*2),*(data->hausdorf+offset*2+1));
+		return *(data->hausdorf+offset*2+1);
+	}
+
+	float getProxyHausdorffDistance(int offset){
+		assert(data);
+		return *(data->hausdorf+offset*2);
 	}
 };
 

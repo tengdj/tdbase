@@ -256,6 +256,8 @@ int main(int argc, char **argv){
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
+		("sample_rate", po::value<uint>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
+		("calculate_method", po::value<int>(&HiMesh::calculate_method), "hausdorff distance calculating method [0ALL|1BVH|2ASSOCIATE|3ASSOCIATE_CYLINDER|4NULL]")
 		;
 
 	po::variables_map vm;
@@ -273,7 +275,10 @@ int main(int argc, char **argv){
 	char nuclei_output[256];
 	char nuclei_output2[256];
 	char config[100];
-	sprintf(config,"nv%d_nu%d_s%d_vs%d_r%d",num_vessel,num_nuclei_per_vessel,(int)shrink, voxel_size,shifted_range);
+	sprintf(config,"nv%d_nu%d_s%d_vs%d_sr%d_r%d_cm%d",
+			num_vessel, num_nuclei_per_vessel,
+			(int)shrink, voxel_size, shifted_range,
+			HiMesh::sampling_rate, HiMesh::calculate_method);
 
 	sprintf(vessel_output,"%s_v_%s.mt",output_path.c_str(),config);
 	remove(vessel_output);
