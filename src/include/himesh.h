@@ -453,11 +453,10 @@ struct MyItems : public CGAL::Polyhedron_items_3
 
 // four types of hausdorff computing methods
 enum Hausdorff_Computing_Type{
-	HCT_ALL = 0,
+	HCT_NULL = 0,
 	HCT_BVHTREE = 1,
 	HCT_ASSOCIATE = 2,
-	HCT_ASSOCIATE_CYLINDER = 3,
-	HCT_NULL = 4
+	HCT_ASSOCIATE_CYLINDER = 3
 };
 
 class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >

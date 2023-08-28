@@ -52,7 +52,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 	vh_departureConquest[1] = halfedges_begin()->vertex();
 	//logt("load mesh", start);
 
-	if(HiMesh::calculate_method == HCT_BVHTREE || HiMesh::calculate_method == HCT_ALL){
+	if(HiMesh::calculate_method == HCT_BVHTREE){
 		get_aabb_tree_triangle();
 		//logt("aabb", start);
 	}
