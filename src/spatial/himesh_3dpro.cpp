@@ -609,6 +609,7 @@ void HiMesh::computeHausdorfDistance(){
 		tree->build();
 		tree->accelerate_distance_queries();
 		float phdist = 0.0;
+		struct timeval ss = get_cur_time();
 		for(MyTriangle *t:original_facets){
 			// for each sampled point, find the closest facet to it
 			// and it will be proxy facet of that point
@@ -617,6 +618,7 @@ void HiMesh::computeHausdorfDistance(){
 				phdist = max(phdist, dist);
 			}
 		}
+		logt("BVH %f", ss, sqrt(phdist));
 		phdist = sqrt(phdist);
 	}
 

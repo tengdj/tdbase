@@ -54,13 +54,17 @@ bool Tile::parse_raw(){
 	size_t index = 0;
 	fseek(dt_fs, 0, SEEK_SET);
 	while(fread((void *)&dsize, sizeof(size_t), 1, dt_fs)>0){
-		fseek(dt_fs, dsize, SEEK_CUR);
-		HiMesh_Wrapper *w = new HiMesh_Wrapper();
 		offset += sizeof(size_t);
+
+		// create a wrapper with the meta information
+		HiMesh_Wrapper *w = new HiMesh_Wrapper();
 		w->offset = offset;
 		w->data_size = dsize;
 		w->id = index++;
 		w->box.id = w->id;
+
+		// next dsize bytes are for the mesh, skip them
+		fseek(dt_fs, dsize, SEEK_CUR);
 		// read the voxels into the wrapper
 		fread((void *)&dsize, sizeof(size_t), 1, dt_fs);
 		for(int i=0;i<dsize;i++){
@@ -73,7 +77,8 @@ bool Tile::parse_raw(){
 		}
 		objects.push_back(w);
 		box.update(w->box);
-		// update the offset for next
+
+		// update the offset for next object
 		offset += w->data_size+sizeof(size_t)+9*sizeof(float)*dsize;
 	}
 	fclose(dt_fs);
