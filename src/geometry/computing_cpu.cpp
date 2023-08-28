@@ -440,14 +440,14 @@ float TriDist(const float *S, const float *T)
 
 result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2){
 	result_container ret;
-	ret.result.distance = DBL_MAX;
+	ret.distance = DBL_MAX;
 	for(size_t i=0;i<size1;i++){
 		for(size_t j=0;j<size2;j++){
 			// get distance of current triangle pair
 			// each triangle contains three points
 			float dist = TriDist(data1+i*9, data2+j*9);
-			if(dist < ret.result.distance){
-				ret.result.distance = dist;
+			if(dist < ret.distance){
+				ret.distance = dist;
 				ret.p1 = i;
 				ret.p2 = j;
 			}
@@ -462,16 +462,20 @@ result_container TriDist_single(const float *data1, const float *data2, size_t s
 	return ret;
 }
 
-result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2){
+result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1, const float *hausdorff2){
 	result_container res;
-	res.result.intersected = false;
+	res.intersected = false;
+
+	float phdist = DBL_MAX;
+
 	for(size_t i=0;i<size1;i++){
 		for(size_t j=0;j<size2;j++){
 			//todo: the TriInt function does not work correctly
 			//if(TriInt(data1+9*i, data2+9*j))
-			if(TriDist(data1+9*i, data2+9*j)==0)
+			float dist = TriDist(data1+9*i, data2+9*j);
+			if(dist==0)
 			{
-				res.result.intersected = true;
+				res.intersected = true;
 				res.p1 = i;
 				res.p2 = j;
 				//log("computed %d",counter);
@@ -479,7 +483,17 @@ result_container TriInt_single(const float *data1, const float *data2, size_t si
 //				print_triangle(data2+9*i);
 				return res;
 			}
+			if(hausdorff1 != NULL && hausdorff2 != NULL){
+				float phdist1 = *(hausdorff1+2*i);
+				float phdist2 = *(hausdorff2+2*j);
+				//cout<<dist<<"\t"<<phdist1<<"\t"<<phdist2<<endl;
+				phdist = min(phdist, dist - phdist1 - phdist2);
+			}
 		}
+	}
+
+	if(hausdorff1 != NULL && hausdorff2 != NULL){
+		res.distance = phdist;
 	}
 	return res;
 }

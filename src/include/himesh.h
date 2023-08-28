@@ -413,10 +413,18 @@ public:
 	}
 
 	inline void setProxyHausdorff(float prh){
-		proxy_hausdorff_distance = max(prh, proxy_hausdorff_distance);
+		proxy_hausdorff_distance = prh;
 	}
 
 	inline void setHausdorff(float hd){
+		hausdorff_distance = hd;
+	}
+
+	inline void updateProxyHausdorff(float prh){
+		proxy_hausdorff_distance = max(prh, proxy_hausdorff_distance);
+	}
+
+	inline void updateHausdorff(float hd){
 		hausdorff_distance = max(hd, hausdorff_distance);
 	}
 

@@ -108,27 +108,42 @@ inline float distance(const float *p1, const float *p2){
 	return cur_dist;
 }
 
-union result_type{
-	float distance;
-	bool intersected;
-} ;
-
 typedef struct result_container_{
-	result_type result;
 	uint p1;
 	uint p2;
+	bool intersected;
+	float distance;
 } result_container;
 
-typedef struct geometry_param_{
-	int id;
-	uint pair_num;
-	uint element_num;;
-	size_t element_pair_num;
-	float *data;
+class geometry_param{
+public:
+	geometry_param(){
+
+	}
+	~geometry_param(){
+		if(data!=NULL){
+			delete data;
+			data = NULL;
+		}
+		if(hausdorff!=NULL){
+			delete hausdorff;
+			hausdorff = NULL;
+		}
+		if(offset_size!=NULL){
+			delete offset_size;
+			offset_size = NULL;
+		}
+	}
+	int id = 0;
+	uint pair_num = 0;
+	uint element_num = 0;
+	size_t element_pair_num = 0;
+	float *data = NULL;
+	float *hausdorff = NULL;
 	// the offset and size of the computing pairs
-	uint *offset_size;
-	result_container *results;
-}geometry_param;
+	uint *offset_size = NULL;
+	result_container *results = NULL;
+};
 
 
 void compute_normal(float *Norm, const float *triangle);
@@ -140,7 +155,7 @@ result_container TriDist_single(const float *data1, const float *data2, size_t s
 void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 		               result_container *result, const uint pair_num, const uint element_num);
 
-result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2);
+result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 		result_container *result, const uint batch_num, const uint triangle_num);
 

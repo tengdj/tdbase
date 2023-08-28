@@ -594,8 +594,8 @@ void HiMesh::computeHausdorfDistance(){
 			fit_hdist = max(fit_hdist, curhdist);
 			triangles.clear();
 		}
-		// store the hausdorf distance
-		fit->setHausdorff(fit_hdist);
+		// update the hausdorff distance
+		fit->updateHausdorff(fit_hdist);
 	}
 	start = get_cur_time();
 	/*
@@ -645,7 +645,7 @@ void HiMesh::computeHausdorfDistance(){
 							}
 						}
 					}
-					fit->setProxyHausdorff(dist);
+					fit->updateProxyHausdorff(dist);
 					// get the maximum
 					if(hdist < dist){
 						hdist = dist;

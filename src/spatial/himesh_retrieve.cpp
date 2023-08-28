@@ -152,7 +152,6 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 
 	num_of_element = fill_triangles(data_buffer);
 	fill_hausdorf_distances(hausdorf_buffer);
-
 	// for the special case only one voxel exist
 	if(voxels.size()==1){
 		data_holder *bf = new data_holder();

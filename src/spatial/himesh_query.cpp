@@ -28,13 +28,13 @@ bool HiMesh::intersect(HiMesh *target){
 	size_t s1 = fill_triangles(tri1);
 	size_t s2 = target->fill_triangles(tri2);
 	result_container res = TriInt_single(tri1, tri2, s1, s2);
-	if(res.result.intersected && global_ctx.verbose>=1){
+	if(res.intersected && global_ctx.verbose>=1){
 		print_triangles(tri1+res.p1*9, 1);
 		print_triangles(tri2+res.p2*9, 1);
 	}
 	delete []tri1;
 	delete []tri2;
-	return res.result.intersected;
+	return res.intersected;
 }
 
 float HiMesh::distance(HiMesh *target){
@@ -50,7 +50,7 @@ float HiMesh::distance(HiMesh *target){
 	delete []tri1;
 	delete []tri2;
 
-	return res.result.distance;
+	return res.distance;
 }
 
 bool HiMesh::intersect_tree(HiMesh *target){

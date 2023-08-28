@@ -113,7 +113,7 @@ public:
 				(t*(computation_time+packing_time+updatelist_time)/overall_time)/repeated_times);
 		cout<<"decode:\t"<<decode_time<<endl;
 		cout<<"packing:\t"<<packing_time<<endl;
-		printf("#objects:\t%ld\n results:\t%.2f\n", obj_count, 1.0*result_count/obj_count);
+		printf("#objects:\t%ld\n results:%ld(\t%.3f)\n", obj_count, result_count, 1.0*result_count/obj_count);
 	}
 };
 

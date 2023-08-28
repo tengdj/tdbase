@@ -121,10 +121,10 @@ void SpatialJoin::within(query_context ctx){
 					float hdist2 = wrapper2->mesh->getHausdorffDistance();
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
-						dist.mindist = res.result.distance;
-						dist.maxdist = res.result.distance;
+						dist.mindist = res.distance;
+						dist.maxdist = res.distance;
 					}else{
-						dist.maxdist = std::min(dist.maxdist, res.result.distance);
+						dist.maxdist = std::min(dist.maxdist, res.distance);
 						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 						if(global_ctx.verbose>=1){
 							log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
@@ -168,10 +168,10 @@ void SpatialJoin::within(query_context ctx){
 
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
-								dist.mindist = res.result.distance;
-								dist.maxdist = res.result.distance;
+								dist.mindist = res.distance;
+								dist.maxdist = res.distance;
 							}else{
-								dist.maxdist = std::min(dist.maxdist, res.result.distance);
+								dist.maxdist = std::min(dist.maxdist, res.distance);
 								if(global_ctx.hausdorf_level>0){
 									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 									if(global_ctx.verbose>=1){

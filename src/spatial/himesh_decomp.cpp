@@ -225,6 +225,7 @@ void HiMesh::HausdorffDecodingStep(){
 		return;
 	}
 	//log("DecimationId: %d", this->i_curDecimationId);
+	int idx = 0;
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		fit->resetHausdorff();
 		// decode the hausdorf distance symbols
@@ -233,11 +234,12 @@ void HiMesh::HausdorffDecodingStep(){
 
 		float hausdorff = hausdorff_code * getHausdorffDistance()/255.0;
 		float proxyhausdorff = proxyhausdorff_code * getProxyHausdorffDistance()/255.0;
+
 		fit->setHausdorff(hausdorff);
 		fit->setProxyHausdorff(proxyhausdorff);
 		if(global_ctx.verbose>=3)
 		{
-			log("decode face: %.2f %.2f", proxyhausdorff, hausdorff);
+			log("decode face %d:\t%.2f %.2f", idx++, proxyhausdorff, hausdorff);
 		}
 	}
 }

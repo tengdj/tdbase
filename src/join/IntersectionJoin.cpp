@@ -86,18 +86,35 @@ void SpatialJoin::intersect(query_context ctx){
 		// report results if necessary
 		int index = 0;
 		start = get_cur_time();
+
 		for(auto ce_iter=candidates.begin();ce_iter!=candidates.end();){
 			HiMesh_Wrapper *wrapper1 = ce_iter->mesh_wrapper;
 			//print_candidate_within(*ce_iter);
 			for(auto ci_iter=ce_iter->candidates.begin();ci_iter!=ce_iter->candidates.end();){
 				bool determined = false;
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
+				int cand_count = 0;
 				for(voxel_pair &vp:ci_iter->voxel_pairs){
-					determined |= ctx.results[index++].result.intersected;
+					determined |= ctx.results[index].intersected;
+					cand_count += (ctx.results[index].distance>0);
+					index++;
 				}
+				if(lod == 100){
+					static int cter = 0;
+					char path[256];
+					sprintf(path, "/gisdata/mesh1_%d.OFF", cter);
+					wrapper1->mesh->write_to_off(path);
+					sprintf(path, "/gisdata/mesh2_%d.OFF", cter++);
+					wrapper2->mesh->write_to_off(path);
+				}
+
 				//log("%d %d %d",wrapper1->id, wrapper2->id,determined);
 				if(determined){
+					// must intersect
 					wrapper1->report_result(wrapper2);
+					ce_iter->candidates.erase(ci_iter);
+				}else if(cand_count == ci_iter->voxel_pairs.size()){
+					// must not intersect
 					ce_iter->candidates.erase(ci_iter);
 				}else{
 					ci_iter++;

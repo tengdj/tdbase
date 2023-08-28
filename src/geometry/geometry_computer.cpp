@@ -156,7 +156,9 @@ void *TriInt_unit(void *params_void){
 		param->results[i] = TriInt_single(param->data+param->offset_size[4*i]*9,
 									    param->data+param->offset_size[4*i+2]*9,
 									    param->offset_size[4*i+1],
-									    param->offset_size[4*i+3]);
+									    param->offset_size[4*i+3],
+										param->hausdorff+param->offset_size[4*i]*2,
+										param->hausdorff+param->offset_size[4*i+2]*2);
 	}
 	return NULL;
 }
@@ -164,7 +166,7 @@ void *TriInt_unit(void *params_void){
 void geometry_computer::get_intersect_cpu(geometry_param &cc){
 
 	pthread_t threads[max_thread_num];
-	geometry_param params[max_thread_num];
+	geometry_param *params[max_thread_num];
 	int each_thread = cc.pair_num/max_thread_num+1;
 	int tnum = 0;
 	for(tnum=0;tnum<max_thread_num;tnum++){
@@ -172,17 +174,23 @@ void geometry_computer::get_intersect_cpu(geometry_param &cc){
 		if(start>=cc.pair_num){
 			break;
 		}
-		params[tnum].pair_num = min(each_thread, (int)cc.pair_num-start);
-		params[tnum].offset_size = cc.offset_size+start*4;
-		params[tnum].data = cc.data;
-		params[tnum].id = tnum+1;
-		params[tnum].results = cc.results+start;
-		pthread_create(&threads[tnum], NULL, TriInt_unit, (void *)&params[tnum]);
+		params[tnum] = new geometry_param();
+		params[tnum]->pair_num = min(each_thread, (int)cc.pair_num-start);
+		params[tnum]->offset_size = cc.offset_size+start*4;
+		params[tnum]->data = cc.data;
+		params[tnum]->hausdorff = cc.hausdorff;
+		params[tnum]->id = tnum+1;
+		params[tnum]->results = cc.results+start;
+		pthread_create(&threads[tnum], NULL, TriInt_unit, (void *)params[tnum]);
 	}
 	log("%d threads started", max_thread_num);
 	for(int i = 0; i < tnum; i++){
 		void *status;
 		pthread_join(threads[i], &status);
+		params[tnum]->offset_size = NULL;
+		params[tnum]->data = NULL;
+		params[tnum]->hausdorff = NULL;
+		//delete params[tnum];
 	}
 }
 

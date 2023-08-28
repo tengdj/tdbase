@@ -217,10 +217,10 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 					result_container res = ctx.results[index++];
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
-						dist.mindist = res.result.distance;
-						dist.maxdist = res.result.distance;
+						dist.mindist = res.distance;
+						dist.maxdist = res.distance;
 					}else{
-						dist.maxdist = std::min(dist.maxdist, res.result.distance);
+						dist.maxdist = std::min(dist.maxdist, res.distance);
 						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 
 						dist.mindist = std::min(dist.mindist, dist.maxdist);
@@ -259,10 +259,10 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							}
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
-								dist.mindist = res.result.distance;
-								dist.maxdist = res.result.distance;
+								dist.mindist = res.distance;
+								dist.maxdist = res.distance;
 							}else{
-								dist.maxdist = std::min(dist.maxdist, res.result.distance);
+								dist.maxdist = std::min(dist.maxdist, res.distance);
 								if(global_ctx.hausdorf_level>0){
 									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 								}
