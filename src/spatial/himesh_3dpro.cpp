@@ -717,7 +717,7 @@ void HiMesh::computeHausdorfDistance(){
 	avg_proxy_hdist /= (int)size_of_facets();
 	globalHausdorfDistance.push_back(current_hausdorf);
 
-	//if(global_ctx.verbose>=2)
+	if(global_ctx.verbose>=2)
 	{
 		log("step: %2d smp: %.3f tri: %.3f h_cal: %.3f ph_cal:%.3f avg_hdist#vertices: %ld #facets: %ld",
 				i_curDecimationId,

@@ -360,6 +360,7 @@ static void compress(int argc, char **argv){
 //
 //	return;
 
+	global_ctx.verbose = 2;
 	if(argc>2){
 		HiMesh::sampling_rate = atoi(argv[2]);
 		log("%d",HiMesh::sampling_rate);
