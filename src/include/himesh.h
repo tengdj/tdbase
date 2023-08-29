@@ -74,6 +74,8 @@
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
 
+
+#include <CGAL/config.h>
 #include <boost/algorithm/string/replace.hpp>
 
 

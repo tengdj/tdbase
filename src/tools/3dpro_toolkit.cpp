@@ -503,6 +503,10 @@ void *generate_unit(void *arg){
 
 static void decode(int argc, char **argv){
 
+#ifdef CGAL_HAS_THREADS
+	log("terry is good");
+#endif
+
 	jobs = 0;
 	num_jobs = atoi(argv[2]);
 
