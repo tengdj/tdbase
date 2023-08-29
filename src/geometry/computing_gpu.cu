@@ -421,8 +421,8 @@ void TriDist_cuda(const float *data, const uint *offset_size, result_container *
 	const float *cur_T = data+9*(offset2+cur_offset_2);
 	float dd = TriDist_kernel(cur_S, cur_T);
 
-	if((cur_offset_1==0&&cur_offset_2==0)||dist[batch_id].result.distance>dd){
-		dist[batch_id].result.distance = dd;
+	if((cur_offset_1==0&&cur_offset_2==0)||dist[batch_id].distance>dd){
+		dist[batch_id].distance = dd;
 		dist[batch_id].p1 = cur_offset_1;
 		dist[batch_id].p2 = cur_offset_2;
 	}
@@ -442,7 +442,7 @@ void TriInt_cuda(const float *data, const uint *offset_size, result_container *i
 	}
 
 	// determined
-	if(intersect[batch_id].result.intersected){
+	if(intersect[batch_id].intersected){
 		return;
 	}
 
@@ -453,7 +453,7 @@ void TriInt_cuda(const float *data, const uint *offset_size, result_container *i
 
 	float dd = TriDist_kernel(cur_S, cur_T);
 	if(dd==0.0){
-		intersect[batch_id].result.intersected = 1;
+		intersect[batch_id].intersected = 1;
 		intersect[batch_id].p1 = cur_offset_1;
 		intersect[batch_id].p2 = cur_offset_2;
 		return;
@@ -523,7 +523,7 @@ void clear_resultset(result_container *result, uint pairnum){
 	if(id>=pairnum){
 		return;
 	}
-	result[id].result.intersected = 0;
+	result[id].intersected = 0;
 }
 
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
