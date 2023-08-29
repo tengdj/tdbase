@@ -73,9 +73,11 @@ void HiMesh::decode(int lod){
 	i_decompPercentage = lod;
 	b_jobCompleted = false;
 
+	process_lock();
 	while(!b_jobCompleted) {
 		startNextDecompresssionOp();
 	}
+	process_unlock();
 }
 
 // Read the base mesh.
