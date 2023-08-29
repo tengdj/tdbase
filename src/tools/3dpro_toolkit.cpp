@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <zlib.h>
+#include <thread>
 
 #include "himesh.h"
 #include "tile.h"
@@ -460,22 +461,131 @@ static void print(int argc, char **argv){
 	delete tile;
 }
 
+
+char *data;
+size_t data_size;
+int jobs;
+int num_jobs;
+
+queue<Tile *> tiles;
+
+pthread_mutex_t mylock;
+int next_report = 10;
+
+void *generate_unit(void *arg){
+	while(true){
+		Tile *tile = NULL;
+		pthread_mutex_lock(&mylock);
+		if(!tiles.empty()){
+			tile = tiles.front();
+			tiles.pop();
+		}
+		pthread_mutex_unlock(&mylock);
+		if(tile == NULL){
+			break;
+		}
+
+		timeval cur = get_cur_time();
+		for(int i=0;i<tile->num_objects();i++){
+			HiMesh *mesh = tile->get_mesh(i);
+			mesh->decode(100);
+		}
+		delete tile;
+		logt("decode", cur);
+	}
+	return NULL;
+}
+
 static void decode(int argc, char **argv){
-	Tile *tile = new Tile(argv[1], 1);
-	char *data = tile->retrieve_data(0);
-	size_t data_size = tile->get_object_data_size(0);
 
-	size_t no = atoi(argv[2]);
-
-#pragma omp parallel for
-	for(size_t i=0;i<no;i++){
-		struct timeval start = get_cur_time();
-		HiMesh *mesh = new HiMesh(data, data_size);
-		mesh->decode(100);
-		logt("decoding %ld", start, i);
+	for(int i=0;i<atoi(argv[2]);i++){
+		tiles.push(new Tile(argv[1]));
 	}
 
+	unsigned int num_threads = std::thread::hardware_concurrency();
+
+	if(argc>3){
+		num_threads = atoi(argv[3]);
+	}
+
+	pthread_t threads[num_threads];
+
+	for(int i=0;i<num_threads;i++){
+		pthread_create(&threads[i], NULL, generate_unit, NULL);
+	}
+	log("%d threads started", num_threads);
+	for(int i = 0; i < num_threads; i++ ){
+		void *status;
+		pthread_join(threads[i], &status);
+	}
 }
+
+//void *generate_unit(void *arg){
+//	while(true){
+//		int job;
+//		Tile *tile = NULL;
+//		pthread_mutex_lock(&mylock);
+//		job = jobs--;
+//		if(job>=0 && (num_jobs-job)*100/num_jobs>=next_report){
+//			log("%d%%", (num_jobs-job)*100/num_jobs);
+//			next_report += 10;
+//		}
+//		pthread_mutex_unlock(&mylock);
+//		if(job<0){
+//			break;
+//		}
+//		timeval cur = get_cur_time();
+//		HiMesh *mesh = new HiMesh(data, data_size);
+//		mesh->decode(100);
+//		delete mesh;
+//		//logt("decode %d", cur, job);
+//
+//	}
+//	return NULL;
+//}
+//
+//static void decode(int argc, char **argv){
+//	Tile *tile = new Tile(argv[1], 1);
+//	data = tile->retrieve_data(0);
+//	data_size = tile->get_object_data_size(0);
+//
+//	num_jobs = atoi(argv[2]);
+//	jobs = num_jobs;
+//
+//	unsigned int num_threads = std::thread::hardware_concurrency();
+//
+//	if(argc>3){
+//		num_threads = atoi(argv[3]);
+//	}
+//
+//	pthread_t threads[num_threads];
+//
+//	for(int i=0;i<num_threads;i++){
+//		pthread_create(&threads[i], NULL, generate_unit, NULL);
+//	}
+//	log("%d threads started", num_threads);
+//	for(int i = 0; i < num_threads; i++ ){
+//		void *status;
+//		pthread_join(threads[i], &status);
+//	}
+//}
+
+//static void decode(int argc, char **argv){
+//	Tile *tile = new Tile(argv[1], 1);
+//	char *data = tile->retrieve_data(0);
+//	size_t data_size = tile->get_object_data_size(0);
+//
+//	size_t no = atoi(argv[2]);
+//
+//#pragma omp parallel for
+//	for(size_t i=0;i<no;i++){
+//		struct timeval start = get_cur_time();
+//		HiMesh *mesh = new HiMesh(data, data_size);
+//		mesh->decode(100);
+//		logt("decoding %ld", start, i);
+//	}
+//
+//}
 
 //static void decode(int argc, char **argv){
 //
