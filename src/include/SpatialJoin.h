@@ -76,7 +76,7 @@ public:
 	void decode_data(vector<candidate_entry> &candidates, query_context &ctx);
 	void fill_voxels(vector<candidate_entry> &candidates, query_context &ctx);
 
-	geometry_param *packing_data(vector<candidate_entry> &candidates, query_context &ctx);
+	geometry_param packing_data(vector<candidate_entry> &candidates, query_context &ctx);
 	void calculate_distance(vector<candidate_entry> &candidates, query_context &ctx);
 	void check_intersection(vector<candidate_entry> &candidates, query_context &ctx);
 	void nearest_neighbor(query_context ctx);

@@ -106,12 +106,12 @@ void SpatialJoin::fill_voxels(vector<candidate_entry> &candidates, query_context
 	}// end for candidates
 }
 
-geometry_param *SpatialJoin::packing_data(vector<candidate_entry> &candidates, query_context &ctx){
-	geometry_param *gp = new geometry_param();
-	gp->pair_num = get_pair_num(candidates);
-	gp->element_num = 0;
-	gp->element_pair_num = 0;
-	gp->results = ctx.results;
+geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, query_context &ctx){
+	geometry_param gp;
+	gp.pair_num = get_pair_num(candidates);
+	gp.element_num = 0;
+	gp.element_pair_num = 0;
+	gp.results = ctx.results;
 	map<Voxel *, std::pair<uint, uint>> voxel_map;
 
 	fill_voxels(candidates, ctx);
@@ -123,15 +123,15 @@ geometry_param *SpatialJoin::packing_data(vector<candidate_entry> &candidates, q
 				assert(vp.v1->data);
 				assert(vp.v2->data);
 				//log("%d %d",vp.v1->data->size, vp.v2->data->size);
-				gp->element_pair_num += vp.v1->data->size*vp.v2->data->size;
+				gp.element_pair_num += vp.v1->data->size*vp.v2->data->size;
 				// update the voxel map
 				for(int i=0;i<2;i++){
 					Voxel *tv = (i==0?vp.v1:vp.v2);
 					if(voxel_map.find(tv)==voxel_map.end()){
 						std::pair<uint, uint> p;
-						p.first = gp->element_num;
+						p.first = gp.element_num;
 						p.second = tv->data->size;
-						gp->element_num += tv->data->size;
+						gp.element_num += tv->data->size;
 						voxel_map[tv] = p;
 					}
 				}
@@ -139,32 +139,31 @@ geometry_param *SpatialJoin::packing_data(vector<candidate_entry> &candidates, q
 		}
 	}
 
+	gp.allocate_buffer();
+
 	// now we allocate the space and store the data in the buffer
-	gp->data = new float[9*gp->element_num];
-	gp->hausdorff = new float[2*gp->element_num];
 	for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin(); it!=voxel_map.end(); ++it){
 		assert(it->first->data);
 		if(it->first->data->size>0){
-			memcpy(gp->data+it->second.first*9, it->first->data->data, it->first->data->size*9*sizeof(float));
-			memcpy(gp->hausdorff+it->second.first*2, it->first->data->hausdorf, it->first->data->size*2*sizeof(float));
+			memcpy(gp.data+it->second.first*9, it->first->data->data, it->first->data->size*9*sizeof(float));
+			memcpy(gp.hausdorff+it->second.first*2, it->first->data->hausdorf, it->first->data->size*2*sizeof(float));
 		}
 	}
 
 	// organize the data for computing
-	gp->offset_size = new uint[4*gp->pair_num];
 	int index = 0;
 	for(candidate_entry c:candidates){
 		for(candidate_info &info:c.candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
-				gp->offset_size[4*index] = voxel_map[vp.v1].first;
-				gp->offset_size[4*index+1] = voxel_map[vp.v1].second;
-				gp->offset_size[4*index+2] = voxel_map[vp.v2].first;
-				gp->offset_size[4*index+3] = voxel_map[vp.v2].second;
+				gp.offset_size[4*index] = voxel_map[vp.v1].first;
+				gp.offset_size[4*index+1] = voxel_map[vp.v1].second;
+				gp.offset_size[4*index+2] = voxel_map[vp.v2].first;
+				gp.offset_size[4*index+3] = voxel_map[vp.v2].second;
 				index++;
 			}
 		}
 	}
-	assert(index==gp->pair_num);
+	assert(index==gp.pair_num);
 	voxel_map.clear();
 	return gp;
 }
@@ -207,10 +206,10 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 		}
 		ctx.computation_time += logt("computation for distance computation", start);
 	}else{
-		geometry_param *gp = packing_data(candidates, ctx);
-		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, gp->element_num, gp->element_pair_num);
-		computer->get_intersect(*gp);
-		delete gp;
+		geometry_param gp = packing_data(candidates, ctx);
+		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, gp.element_num, gp.element_pair_num);
+		computer->get_intersect(gp);
+		gp.clear_buffer();
 		ctx.computation_time += logt("computation for checking intersection", start);
 	}
 }
@@ -257,10 +256,10 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 		ctx.computation_time += logt("computation for distance computation", start);
 
 	}else{
-		geometry_param *gp = packing_data(candidates, ctx);
-		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, gp->element_num, gp->element_pair_num);
-		computer->get_distance(*gp);
-		delete gp;
+		geometry_param gp = packing_data(candidates, ctx);
+		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, gp.element_num, gp.element_pair_num);
+		computer->get_distance(gp);
+		gp.clear_buffer();
 		ctx.computation_time += logt("computation for distance computation", start);
 	}
 }

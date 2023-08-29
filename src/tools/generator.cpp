@@ -44,7 +44,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	aab mbb = vessel->get_mbb();
 	vessel_box = vessel->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
 
-	// load the nucleis
+	// load the nuclei
 	nucleis = read_meshes(nuclei_path, 1);
 	for(HiMesh *mesh:nucleis){
 		mbb = mesh->shrink(shrink);
@@ -53,9 +53,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		vector<Voxel *> vxls = mesh->generate_voxels_skeleton(mesh->size_of_vertices()/voxel_size);
 		nucleis_voxels.push_back(vxls);
 	}
-
-	vessel_box.print();
-	nuclei_box.print();
 
 	// how many slots in each dimension can one vessel holds
 	int nuclei_num[3];
@@ -242,8 +239,8 @@ int main(int argc, char **argv){
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
-		("sample_rate", po::value<uint>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
-		("calculate_method", po::value<int>(&HiMesh::calculate_method), "hausdorff distance calculating method [0ALL|1BVH|2ASSOCIATE|3ASSOCIATE_CYLINDER|4NULL]")
+		("sample_rate,r", po::value<uint>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
+		("calculate_method,m", po::value<int>(&HiMesh::calculate_method), "hausdorff distance calculating method [0ALL|1BVH|2ASSOCIATE|3ASSOCIATE_CYLINDER|4NULL]")
 		;
 
 	po::variables_map vm;

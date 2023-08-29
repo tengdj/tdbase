@@ -117,23 +117,6 @@ typedef struct result_container_{
 
 class geometry_param{
 public:
-	geometry_param(){
-
-	}
-	~geometry_param(){
-		if(data!=NULL){
-			delete data;
-			data = NULL;
-		}
-		if(hausdorff!=NULL){
-			delete hausdorff;
-			hausdorff = NULL;
-		}
-		if(offset_size!=NULL){
-			delete offset_size;
-			offset_size = NULL;
-		}
-	}
 	int id = 0;
 	uint pair_num = 0;
 	uint element_num = 0;
@@ -143,6 +126,22 @@ public:
 	// the offset and size of the computing pairs
 	uint *offset_size = NULL;
 	result_container *results = NULL;
+	void allocate_buffer(){
+		data = new float[9*element_num];
+		hausdorff = new float[2*element_num];
+		offset_size = new uint[4*pair_num];
+	}
+	void clear_buffer(){
+		if(data){
+			delete []data;
+		}
+		if(hausdorff){
+			delete []hausdorff;
+		}
+		if(offset_size){
+			delete []offset_size;
+		}
+	}
 };
 
 
