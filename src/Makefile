@@ -6,7 +6,7 @@ INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include -I/usr/local/inc
 LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
 
 SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
-CGALFLAGS	= -Wl,-rpath -frounding-math
+CGALFLAGS	= -Wl,-rpath -frounding-math -DCGAL_HAS_THREADS
 
 ifndef DEBUG
     CPPFLAGS += -DNDEBUG

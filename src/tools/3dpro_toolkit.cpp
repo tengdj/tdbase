@@ -467,7 +467,7 @@ size_t data_size;
 int jobs;
 int num_jobs;
 
-queue<Tile *> tiles;
+vector<Tile *> tiles;
 
 pthread_mutex_t mylock;
 int next_report = 10;
@@ -475,15 +475,20 @@ int next_report = 10;
 void *generate_unit(void *arg){
 	while(true){
 		Tile *tile = NULL;
+		int job = -1;
 		pthread_mutex_lock(&mylock);
-		if(!tiles.empty()){
-			tile = tiles.front();
-			tiles.pop();
+		if(jobs < num_jobs){
+			job = jobs++;
+			if(jobs*100/num_jobs>=next_report){
+				log("%d%%", jobs*100/num_jobs);
+				next_report += 10;
+			}
 		}
 		pthread_mutex_unlock(&mylock);
-		if(tile == NULL){
+		if(job < 0){
 			break;
 		}
+		tile = tiles[job];
 
 		timeval cur = get_cur_time();
 		for(int i=0;i<tile->num_objects();i++){
@@ -491,15 +496,18 @@ void *generate_unit(void *arg){
 			mesh->decode(100);
 		}
 		delete tile;
-		logt("decode", cur);
+		logt("decode %d", cur, job);
 	}
 	return NULL;
 }
 
 static void decode(int argc, char **argv){
 
-	for(int i=0;i<atoi(argv[2]);i++){
-		tiles.push(new Tile(argv[1]));
+	jobs = 0;
+	num_jobs = atoi(argv[2]);
+
+	for(int i=0;i<num_jobs;i++){
+		tiles.push_back(new Tile(argv[1]));
 	}
 
 	unsigned int num_threads = std::thread::hardware_concurrency();
