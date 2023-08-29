@@ -36,7 +36,7 @@ Tile::~Tile(){
 
 // retrieve the mesh of the voxel group with ID id on demand
 void Tile::retrieve_mesh(size_t id){
-	assert(id>=0&&id<objects.size());
+	assert(id>=0 && id<objects.size());
 	HiMesh_Wrapper *wrapper = objects[id];
 	if(wrapper->mesh==NULL){
 		timeval cur = hispeed::get_cur_time();
@@ -73,6 +73,10 @@ char *Tile::retrieve_data(int id){
 	char *ret = new char[objects[id]->data_size];
 	memcpy(ret, data_buffer+objects[id]->offset, objects[id]->data_size);
 	return ret;
+}
+
+size_t Tile::get_object_data_size(int id){
+	return objects[id]->data_size;
 }
 
 OctreeNode *Tile::build_octree(size_t leaf_size){

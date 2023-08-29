@@ -460,6 +460,40 @@ static void print(int argc, char **argv){
 	delete tile;
 }
 
+static void decode(int argc, char **argv){
+	Tile *tile = new Tile(argv[1], 1);
+	char *data = tile->retrieve_data(0);
+	size_t data_size = tile->get_object_data_size(0);
+
+	size_t no = atoi(argv[2]);
+
+#pragma omp parallel for
+	for(size_t i=0;i<no;i++){
+		struct timeval start = get_cur_time();
+		HiMesh *mesh = new HiMesh(data, data_size);
+		mesh->decode(100);
+		logt("decoding %ld", start, i);
+	}
+
+}
+
+//static void decode(int argc, char **argv){
+//
+//	int nt = atoi(argv[2]);
+//#pragma omp parallel for
+//	for(int t=0;t<nt;t++){
+//		Tile *tile = new Tile(argv[1]);
+//		for(size_t i=0;i<tile->num_objects();i++){
+//			struct timeval start = get_cur_time();
+//			HiMesh *mesh = tile->get_mesh(i);
+//			mesh->decode(100);
+//			logt("decoding %d-%ld", start, t, i);
+//		}
+//		delete tile;
+//	}
+//
+//}
+
 static void print_tile_boxes(int argc, char **argv){
 	Tile *tile = new Tile(argv[1]);
 	vector<Voxel *> boxes;
@@ -600,6 +634,8 @@ int main(int argc, char **argv){
 		print_tile_boxes(argc-1,argv+1);
 	}else if(strcmp(argv[1],"sample") == 0){
 		sample(argc-1,argv+1);
+	}else if(strcmp(argv[1],"decode") == 0){
+		decode(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);

@@ -521,7 +521,7 @@ public:
 	HiMesh(string &str, bool completeop = false);
 
 	// constructors for decoding
-	HiMesh(char *data, size_t dsize);
+	HiMesh(const char *data, size_t dsize);
 	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset){}
 	~HiMesh();
 

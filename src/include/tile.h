@@ -53,6 +53,7 @@ public:
 	void retrieve_all();
 	void advance_all(int lod = 100);
 	char *retrieve_data(int id);
+	size_t get_object_data_size(int id);
 	OctreeNode *build_octree(size_t num_tiles);
 
 	// for profiling performance

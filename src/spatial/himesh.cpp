@@ -108,7 +108,7 @@ void HiMesh::updateVFMap(){
 }
 
 // in decompression mode
-HiMesh::HiMesh(char *data, size_t dsize):
+HiMesh::HiMesh(const char *data, size_t dsize):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
 	assert(dsize>0);
 	srand(PPMC_RANDOM_CONSTANT);

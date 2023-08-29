@@ -24,8 +24,7 @@ namespace hispeed{
 /**
   * Start the next decompression operation.
   */
-void HiMesh::startNextDecompresssionOp()
-{
+void HiMesh::startNextDecompresssionOp() {
     if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
     	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorffDistance(), getProxyHausdorffDistance());
     }
@@ -33,7 +32,7 @@ void HiMesh::startNextDecompresssionOp()
     // check if the target LOD is reached
 	if (i_curDecimationId * 100.0 / i_nbDecimations >= i_decompPercentage){
 		if(i_curDecimationId == i_nbDecimations){
-			// reset all the hausdorf distance to 0 for the highest LOD
+			// reset all the hausdorff distance to 0 for the highest LOD
 			// as we do not have another round of decoding to set them
 			for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 				fit->setHausdorff(0.0);
@@ -47,7 +46,6 @@ void HiMesh::startNextDecompresssionOp()
 	// 1. reset the states. note that the states of the vertices need not to be reset
     for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit)
         hit->resetState();
-
     for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
@@ -55,10 +53,11 @@ void HiMesh::startNextDecompresssionOp()
     RemovedVerticesDecodingStep();
     // 3. decoding the inserted edge and marking the ones added
 	InsertedEdgeDecodingStep();
-	// 4. truly insert the removed vertices and remove the added edges
+	// 4. truly insert the removed vertices
 	insertRemovedVertices();
+	// 5. truly remove the added edges
 	removeInsertedEdges();
-	// 5. decode the Hausdorff distances for the new facets
+	// 6. decode the Hausdorff distances for all the facets in this LOD
 	HausdorffDecodingStep();
 
 	i_curDecimationId++; // increment the current decimation operation id.
@@ -73,11 +72,9 @@ void HiMesh::decode(int lod){
 	i_decompPercentage = lod;
 	b_jobCompleted = false;
 
-	process_lock();
 	while(!b_jobCompleted) {
 		startNextDecompresssionOp();
 	}
-	process_unlock();
 }
 
 // Read the base mesh.
@@ -154,9 +151,6 @@ void HiMesh::RemovedVerticesDecodingStep(){
 		if (f->isConquered())
 			continue;
 
-		// Decode the face symbol.
-		unsigned sym = readChar();
-
 		// Add the other halfedges to the queue
 		Halfedge_handle hIt = h;
 		do {
@@ -166,7 +160,9 @@ void HiMesh::RemovedVerticesDecodingStep(){
 				gateQueue.push(hOpp);
 			hIt = hIt->next();
 		} while (hIt != h);
-		// Decode the geometry symbol.
+
+		// Decode the face symbol.
+		unsigned sym = readChar();
 		if (sym == 1){
 			Point rmved = readPoint();
 			f->setSplittable();
@@ -180,11 +176,9 @@ void HiMesh::RemovedVerticesDecodingStep(){
 /**
   * One step of the inserted edge coding conquest.
   */
-void HiMesh::InsertedEdgeDecodingStep()
-{
+void HiMesh::InsertedEdgeDecodingStep() {
     pushHehInit();
-    while (!gateQueue.empty())
-    {
+    while (!gateQueue.empty()) {
         Halfedge_handle h = gateQueue.front();
         gateQueue.pop();
 
@@ -198,8 +192,7 @@ void HiMesh::InsertedEdgeDecodingStep()
 
         // Test if there is a symbol for this edge.
         // There is no symbol if the two faces of an edge are unsplitable.
-        if (h->facet()->isSplittable() || h->opposite()->facet()->isSplittable())
-        {
+        if (h->facet()->isSplittable() || h->opposite()->facet()->isSplittable()) {
             // Decode the edge symbol.
             unsigned sym = readChar();
             // Determine if the edge is original or not.
@@ -210,14 +203,12 @@ void HiMesh::InsertedEdgeDecodingStep()
 
         // Add the other halfedges to the queue
         Halfedge_handle hIt = h->next();
-        while (hIt->opposite() != h)
-        {
+        while (hIt->opposite() != h) {
             if (!hIt->isProcessed() && !hIt->isNew())
                 gateQueue.push(hIt);
             hIt = hIt->opposite()->next();
         }
         assert(!hIt->isNew());
-
     }
 }
 
@@ -249,13 +240,11 @@ void HiMesh::HausdorffDecodingStep(){
 /**
   * Insert center vertices.
   */
-void HiMesh::insertRemovedVertices()
-{
+void HiMesh::insertRemovedVertices() {
 
     // Add the first halfedge to the queue.
     pushHehInit();
-    while (!gateQueue.empty())
-    {
+    while (!gateQueue.empty()) {
         Halfedge_handle h = gateQueue.front();
         gateQueue.pop();
 
@@ -270,20 +259,16 @@ void HiMesh::insertRemovedVertices()
 
         // Add the other halfedges to the queue
         Halfedge_handle hIt = h;
-        do
-        {
+        do {
             Halfedge_handle hOpp = hIt->opposite();
             assert(!hOpp->is_border());
             if (!hOpp->facet()->isProcessed())
                 gateQueue.push(hOpp);
             hIt = hIt->next();
-        }
-        while (hIt != h);
-
+        } while (hIt != h);
         assert(!h->isNew());
 
-        if (f->isSplittable())
-        {
+        if (f->isSplittable()) {
             // Insert the vertex.
             Halfedge_handle hehNewVertex = create_center_vertex(h);
             hehNewVertex->vertex()->point() = f->getRemovedVertexPos();
@@ -291,8 +276,7 @@ void HiMesh::insertRemovedVertices()
             // Mark all the created edges as new.
             Halfedge_around_vertex_circulator Hvc = hehNewVertex->vertex_begin();
             Halfedge_around_vertex_circulator Hvc_end = Hvc;
-            CGAL_For_all(Hvc, Hvc_end)
-            {
+            CGAL_For_all(Hvc, Hvc_end) {
                 Hvc->setNew();
                 Hvc->opposite()->setNew();
             }
@@ -300,15 +284,11 @@ void HiMesh::insertRemovedVertices()
     }
 }
 
-
 /**
   * Remove all the marked edges.
   */
-void HiMesh::removeInsertedEdges()
-{
-    for (HiMesh::Halfedge_iterator hit = halfedges_begin();
-         hit!=halfedges_end(); ++hit)
-    {
+void HiMesh::removeInsertedEdges() {
+    for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit) {
         if(hit->isAdded()){
         	join_facet(hit);
         }
