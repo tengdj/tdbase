@@ -239,8 +239,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 					for(voxel_pair &vp:ci.voxel_pairs){
 						result_container res = ctx.results[index++];
 						// update the distance
-						assert(vp.v1->data && vp.v2->data);
-						if(vp.v1->data->size>0&&vp.v2->data->size>0){
+						if(vp.v1->num_triangles>0&&vp.v2->num_triangles>0){
 							range dist = vp.dist;
 							float hdist1;
 							float hdist2;

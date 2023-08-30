@@ -63,20 +63,6 @@ range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, doubl
 	return ret;
 }
 
-void SpatialJoin::clear_data(vector<candidate_entry> &candidates, query_context &ctx){
-	for(candidate_entry &c:candidates){
-		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
-		for(candidate_info &info:c.candidates){
-			for(Voxel *v:wrapper1->voxels){
-				v->reset();
-			}
-			for(Voxel *v:info.mesh_wrapper->voxels){
-				v->reset();
-			}
-		}// end for distance_candiate list
-	}// end for candidates
-}
-
 void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context &ctx){
 	for(candidate_entry &c:candidates){
 		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
@@ -91,48 +77,28 @@ void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context
 	}// end for candidates
 }
 
-void SpatialJoin::fill_voxels(vector<candidate_entry> &candidates, query_context &ctx){
-	for(candidate_entry &c:candidates){
-		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
-		for(candidate_info &info:c.candidates){
-			for(voxel_pair &vp:info.voxel_pairs){
-				assert(vp.v1&&vp.v2);
-				// not filled yet
-				// ensure the mesh is extracted
-				wrapper1->fill_voxels();
-				info.mesh_wrapper->fill_voxels();
-			}// end for voxel_pairs
-		}// end for distance_candiate list
-	}// end for candidates
-}
-
 geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, query_context &ctx){
 	geometry_param gp;
 	gp.pair_num = get_pair_num(candidates);
 	gp.element_num = 0;
 	gp.element_pair_num = 0;
 	gp.results = ctx.results;
-	map<Voxel *, std::pair<uint, uint>> voxel_map;
-
-	fill_voxels(candidates, ctx);
+	map<Voxel *, uint> voxel_offset_map;
 
 	for(candidate_entry &c:candidates){
 		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
 		for(candidate_info &info:c.candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
-				assert(vp.v1->data);
-				assert(vp.v2->data);
 				//log("%d %d",vp.v1->data->size, vp.v2->data->size);
-				gp.element_pair_num += vp.v1->data->size*vp.v2->data->size;
-				// update the voxel map
+				gp.element_pair_num += vp.v1->num_triangles*vp.v2->num_triangles;
+				// update the voxel offset map
 				for(int i=0;i<2;i++){
 					Voxel *tv = (i==0?vp.v1:vp.v2);
-					if(voxel_map.find(tv)==voxel_map.end()){
-						std::pair<uint, uint> p;
-						p.first = gp.element_num;
-						p.second = tv->data->size;
-						gp.element_num += tv->data->size;
-						voxel_map[tv] = p;
+					// first time visited this voxel
+					if(voxel_offset_map.find(tv)==voxel_offset_map.end()){
+						// the voxel is inserted into the map with an offset
+						voxel_offset_map[tv] = gp.element_num;
+						gp.element_num += tv->num_triangles;
 					}
 				}
 			}
@@ -142,11 +108,11 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, qu
 	gp.allocate_buffer();
 
 	// now we allocate the space and store the data in the buffer
-	for (map<Voxel *, std::pair<uint, uint>>::iterator it=voxel_map.begin(); it!=voxel_map.end(); ++it){
-		assert(it->first->data);
-		if(it->first->data->size>0){
-			memcpy(gp.data+it->second.first*9, it->first->data->data, it->first->data->size*9*sizeof(float));
-			memcpy(gp.hausdorff+it->second.first*2, it->first->data->hausdorf, it->first->data->size*2*sizeof(float));
+	for (map<Voxel *, uint>::iterator it=voxel_offset_map.begin(); it!=voxel_offset_map.end(); ++it){
+		Voxel *v = it->first;
+		if(v->num_triangles > 0){
+			memcpy(gp.data+voxel_offset_map[v]*9, v->triangles, v->num_triangles*9*sizeof(float));
+			memcpy(gp.hausdorff+voxel_offset_map[v]*2, v->hausdorff, v->num_triangles*2*sizeof(float));
 		}
 	}
 
@@ -155,16 +121,16 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, qu
 	for(candidate_entry c:candidates){
 		for(candidate_info &info:c.candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
-				gp.offset_size[4*index] = voxel_map[vp.v1].first;
-				gp.offset_size[4*index+1] = voxel_map[vp.v1].second;
-				gp.offset_size[4*index+2] = voxel_map[vp.v2].first;
-				gp.offset_size[4*index+3] = voxel_map[vp.v2].second;
+				gp.offset_size[4*index] = voxel_offset_map[vp.v1];
+				gp.offset_size[4*index+1] = vp.v1->num_triangles;
+				gp.offset_size[4*index+2] = voxel_offset_map[vp.v2];
+				gp.offset_size[4*index+3] = vp.v2->num_triangles;
 				index++;
 			}
 		}
 	}
 	assert(index==gp.pair_num);
-	voxel_map.clear();
+	voxel_offset_map.clear();
 	return gp;
 }
 
@@ -177,7 +143,7 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 	for(int i=0;i<pair_num;i++){
 		ctx.results[i].intersected = false;
 	}
-	clear_data(candidates, ctx);
+
 	decode_data(candidates, ctx);
 	ctx.decode_time += logt("decode data", start);
 
@@ -225,7 +191,6 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 		ctx.results[i].distance = 0;
 	}
 
-	clear_data(candidates, ctx);
 	decode_data(candidates, ctx);
 	ctx.decode_time += logt("decode data", start);
 

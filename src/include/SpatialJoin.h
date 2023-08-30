@@ -72,9 +72,7 @@ public:
 	vector<candidate_entry> mbb_within(Tile *tile1, Tile *tile2, query_context &ctx);
 	range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist);
 
-	void clear_data(vector<candidate_entry> &candidates, query_context &ctx);
 	void decode_data(vector<candidate_entry> &candidates, query_context &ctx);
-	void fill_voxels(vector<candidate_entry> &candidates, query_context &ctx);
 
 	geometry_param packing_data(vector<candidate_entry> &candidates, query_context &ctx);
 	void calculate_distance(vector<candidate_entry> &candidates, query_context &ctx);

@@ -62,10 +62,10 @@ void Tile::retrieve_all(){
 	}
 }
 
-void Tile::advance_all(int lod){
+void Tile::decode_all(int lod){
 	retrieve_all();
 	for(HiMesh_Wrapper *w:objects){
-		w->advance_to(lod);
+		w->decode_to(lod);
 	}
 }
 
@@ -95,7 +95,7 @@ void Tile::decode_to(size_t id, uint lod){
 	timeval start = hispeed::get_cur_time();
 	retrieve_mesh(id);
 	retrieve_time += hispeed::get_time_elapsed(cur,true);
-	objects[id]->advance_to(lod);
+	objects[id]->decode_to(lod);
 	advance_time += hispeed::get_time_elapsed(cur,true);
 	decode_time += hispeed::get_time_elapsed(start,true);
 }

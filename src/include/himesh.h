@@ -738,12 +738,21 @@ public:
 	static int alive;
 };
 
+enum Decoding_Type{
+	COMPRESSED,
+	RAW
+};
+
 /*
  * a wrapper for describing a mesh. for some cases we may not need to truly
  * parse the mesh out from disk, but use the bounding box is good enough.
  * */
 class HiMesh_Wrapper{
 public:
+
+	// the data mode
+	const Decoding_Type type = COMPRESSED;
+
 	// description of the polyhedron
 	size_t id = -1;
 	weighted_aab box;
@@ -758,17 +767,15 @@ public:
 	vector<HiMesh_Wrapper *> results;
 	int cur_lod = 0;
 public:
-	HiMesh_Wrapper();
+	HiMesh_Wrapper(Decoding_Type t = COMPRESSED);
 	~HiMesh_Wrapper();
 
-	void advance_to(uint lod);
+	void decode_to(uint lod);
 
 	void disable_innerpart();
 	// fill the triangles into voxels
-	size_t fill_voxels();
+	void clear_voxels();
 
-	size_t num_vertices();
-	void reset();
 	void report_result(HiMesh_Wrapper *result);
 
 };

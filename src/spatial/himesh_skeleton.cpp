@@ -129,8 +129,6 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 	if(voxel_num<=1){
 		Voxel *v = new Voxel();
 		v->set_box(box);
-		v->data = new data_holder();
-		v->data->size = size_of_edges();
 		voxels.push_back(v);
 		return voxels;
 	}
@@ -141,24 +139,19 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 	vector<Point> skeleton_points = get_skeleton_points(voxel_num);
 	for(int i=0;i<skeleton_points.size();i++){
 		Voxel *v = new Voxel();
-		v->data = new data_holder();
 		v->core[0] = skeleton_points[i][0];
 		v->core[1] = skeleton_points[i][1];
 		v->core[2] = skeleton_points[i][2];
-		v->data->size = 0;
 		voxels.push_back(v);
 	}
 	// return one single box if less than 2 points are sampled
 	if(voxels.size()==0){
 		Voxel *v = new Voxel();
 		v->set_box(box);
-		v->data = new data_holder();
-		v->data->size = size_of_edges();
 		voxels.push_back(v);
 		return voxels;
 	}else if(voxels.size()==1){
 		voxels[0]->set_box(box);
-		voxels[0]->data->size = size_of_edges();
 		return voxels;
 	}
 
@@ -182,16 +175,20 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		voxels[gid]->update(p1.x(),p1.y(),p1.z());
 		voxels[gid]->update(p2.x(),p2.y(),p2.z());
 		voxels[gid]->update(p3.x(),p3.y(),p3.z());
-		voxels[gid]->data->size++;
+
+		// we do not need the facets in each voxel, such that we do not need to insert one facet
+		voxels[gid]->num_triangles++;
 	}
 
 	// erase the one without any data in it
 	int vs=voxels.size();
 	for(int i=0;i<vs;){
-		if(voxels[i]->data->size==0){
+		if(voxels[i]->num_triangles==0){
 			voxels.erase(voxels.begin()+i);
 			vs--;
 		}else{
+			// reset to 0 as we never truly inserted any facets
+			voxels[i]->num_triangles = 0;
 			i++;
 		}
 	}

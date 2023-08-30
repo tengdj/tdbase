@@ -26,7 +26,7 @@ static void himesh_to_wkt(int argc, char **argv){
 	Tile *tile = new Tile(argv[1]);
 	const char *prefix = argv[2];
 	tile->retrieve_all();
-	tile->advance_all(100);
+	tile->decode_all(100);
 	char path[256];
 	for(int i=0;i<tile->num_objects();i++){
 		sprintf(path, "%s_%d.OFF", prefix, i);
@@ -134,8 +134,8 @@ static void profile_distance(int argc, char **argv){
 	Tile *tile2 = new Tile(argv[2]);
 
 	for(int i=10;i<=100;i+=10){
-		tile1->advance_all(i);
-		tile2->advance_all(i);
+		tile1->decode_all(i);
+		tile2->decode_all(i);
 		double dist = 0;
 		for(int j=0;j<tile2->num_objects();j++) {
 			float d = tile1->get_mesh(0)->distance(tile2->get_mesh(j));
@@ -232,7 +232,7 @@ static void aabb(int argc, char **argv){
 	Tile *tile1 = new Tile(argv[1], num);
 	Tile *tile2 = new Tile(argv[2],1);
 	tile1->retrieve_all();
-	tile1->advance_all(100);
+	tile1->decode_all(100);
 	logt("load tiles", start);
 
 	char c;
@@ -251,7 +251,7 @@ static void aabb(int argc, char **argv){
 	start = get_cur_time();
 
 	tile2->retrieve_all();
-	tile2->advance_all(100);
+	tile2->decode_all(100);
 	HiMesh *nuc = tile2->get_mesh(0);
 	list<Point> vertices = nuc->get_vertices();
 	double mdist = DBL_MAX;
@@ -415,8 +415,8 @@ static void distance(int argc, char **argv){
 		lod = atoi(argv[5]);
 	}
 
-	tile1->advance_all(lod);
-	tile2->advance_all(lod);
+	tile1->decode_all(lod);
+	tile2->decode_all(lod);
 
 	HiMesh *mesh1 = tile1->get_mesh(n1);
 	HiMesh *mesh2 = tile2->get_mesh(n2);
@@ -439,8 +439,8 @@ static void intersect(int argc, char **argv){
 		lod = atoi(argv[5]);
 	}
 
-	tile1->advance_all(lod);
-	tile2->advance_all(lod);
+	tile1->decode_all(lod);
+	tile2->decode_all(lod);
 
 	HiMesh *mesh1 = tile1->get_mesh(n1);
 	HiMesh *mesh2 = tile2->get_mesh(n2);

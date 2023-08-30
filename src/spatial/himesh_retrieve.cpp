@@ -138,45 +138,38 @@ size_t HiMesh::fill_vertices(float *&vertices){
 	return size;
 }
 
+/*
+ * fill the triangles into proper voxels
+ *
+ * */
 size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	assert(voxels.size()>0);
-	// already filled
-	if(voxels[0]->is_decoded()){
-		return this->size_of_triangles();
-	}
 
-	size_t num_of_element = 0;
-	const int  size_of_element = 9;
-	float *data_buffer = NULL;
+	size_t num_of_element = size_of_triangles();
+	float *triangle_buffer = NULL;
 	float *hausdorf_buffer = NULL;
-
-	num_of_element = fill_triangles(data_buffer);
+	fill_triangles(triangle_buffer);
 	fill_hausdorf_distances(hausdorf_buffer);
+
 	// for the special case only one voxel exist
 	if(voxels.size()==1){
-		data_holder *bf = new data_holder();
-		bf->size = num_of_element;
-		bf->data = data_buffer;
-		bf->hausdorf = hausdorf_buffer;
-		voxels[0]->data = bf;
+		voxels[0]->batch_load(triangle_buffer, hausdorf_buffer, num_of_element);
+		delete []triangle_buffer;
+		delete []hausdorf_buffer;
 		return num_of_element;
 	}
 
 	// now reorganize the data with the voxel information given
-	// assign each segment to a proper group
-	// we tried voronoi graph, but for some reason it's
-	// even slower than the brute force method
+	// assign each triangle to a proper group
+	// we tried voronoi graph, but it's even slower than the brute force method
 	int *groups = new int[num_of_element];
 	int *group_count = new int[voxels.size()];
 	for(int i=0;i<voxels.size();i++){
-		voxels[i]->data = new data_holder();
-		//log("%d %d",i,voxels.size());
 		group_count[i] = 0;
 	}
 	for(int i=0;i<num_of_element;i++){
-		// for both segment and triangle, we assign it with only the first
-		// point
-		float *p1 = data_buffer+i*size_of_element;
+		// for both segment and triangle, we assign it with only the first point
+		float *p1 = triangle_buffer+i*9;
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<voxels.size();j++){
@@ -193,29 +186,20 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 		group_count[gid]++;
 	}
 
-
+	// reserve enough space for holding the assigned triangles
 	for(int i=0;i<voxels.size();i++){
-		if(group_count[i]>0){
-			voxels[i]->data->data = new float[group_count[i]*size_of_element];
-			voxels[i]->data->hausdorf = new float[group_count[i]*2];
-		}
+		voxels[i]->reserve(group_count[i]);
 	}
 
-	// copy the data to the proper position in the segment_buffer
+	// copy the data to the proper position in the buffers
 	for(int i=0;i<num_of_element;i++){
-		Voxel *v = voxels[groups[i]];
-		memcpy((void *)(v->data->data+v->data->size*size_of_element),
-			   (void *)(data_buffer+i*size_of_element),
-			   size_of_element*sizeof(float));
-		memcpy((void *)(v->data->hausdorf+v->data->size*2),
-			   (void *)(hausdorf_buffer+i*2),
-			   2*sizeof(float));
-		v->data->size++;
+		voxels[groups[i]]->insert(triangle_buffer+i*9, hausdorf_buffer+i*2);
 	}
 
+	// clean the buffer
 	delete []groups;
 	delete []group_count;
-	delete []data_buffer;
+	delete []triangle_buffer;
 	delete []hausdorf_buffer;
 	return num_of_element;
 }

@@ -17,9 +17,9 @@ void *TriDist_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
 	for(int i=0;i<param->pair_num;i++){
 		param->results[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
-											param->data+param->offset_size[4*i+2]*9,
-											param->offset_size[4*i+1],
-											param->offset_size[4*i+3]);
+										   param->data+param->offset_size[4*i+2]*9,
+										   param->offset_size[4*i+1],
+										   param->offset_size[4*i+3]);
 	}
 	return NULL;
 }

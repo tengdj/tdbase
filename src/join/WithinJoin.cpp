@@ -101,7 +101,6 @@ void SpatialJoin::within(query_context ctx){
 		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per candidate",
 				candidates.size(), candidate_num, pair_num, (1.0*pair_num)/candidates.size());
 
-
 		// do the computation
 		calculate_distance(candidates, ctx);
 
@@ -144,11 +143,10 @@ void SpatialJoin::within(query_context ctx){
 					}
 				}else{
 					for(auto vp_iter = ci_iter->voxel_pairs.begin();vp_iter!=ci_iter->voxel_pairs.end();){
-						assert(vp_iter->v1->data && vp_iter->v2->data);
-
 						result_container res = ctx.results[index++];
+						//cout<<vp_iter->v1->num_triangles<<"  "<<res.p1<<" "<<vp_iter->v2->num_triangles<<" "<<res.p2<<" "<<res.distance<<endl;
 						// update the distance
-						if(!determined && vp_iter->v1->data->size>0&&vp_iter->v2->data->size>0){
+						if(!determined && vp_iter->v1->num_triangles>0&&vp_iter->v2->num_triangles>0){
 							range dist = vp_iter->dist;
 							float hdist1;
 							float hdist2;
@@ -172,7 +170,8 @@ void SpatialJoin::within(query_context ctx){
 								dist.maxdist = res.distance;
 							}else{
 								dist.maxdist = std::min(dist.maxdist, res.distance);
-								if(global_ctx.hausdorf_level>0){
+								if(global_ctx.hausdorf_level>0)
+								{
 									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 									if(global_ctx.verbose>=1){
 										log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,

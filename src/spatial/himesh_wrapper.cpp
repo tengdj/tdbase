@@ -14,7 +14,7 @@ namespace hispeed{
  * himesh wrapper functions
  * */
 
-HiMesh_Wrapper::HiMesh_Wrapper(){
+HiMesh_Wrapper::HiMesh_Wrapper(Decoding_Type t):type(t){
 	pthread_mutex_init(&lock, NULL);
 }
 HiMesh_Wrapper::~HiMesh_Wrapper(){
@@ -28,10 +28,19 @@ HiMesh_Wrapper::~HiMesh_Wrapper(){
 	results.clear();
 }
 
-void HiMesh_Wrapper::advance_to(uint lod){
-	assert(mesh);
-	mesh->decode(lod);
+void HiMesh_Wrapper::decode_to(uint lod){
+	if(lod <= cur_lod){
+		return;
+	}
+	for(Voxel *v:voxels){
+		v->clear();
+	}
 	cur_lod = lod;
+	if(type == COMPRESSED){
+		assert(mesh);
+		mesh->decode(lod);
+		mesh->fill_voxels(voxels);
+	}
 }
 
 void HiMesh_Wrapper::disable_innerpart(){
@@ -47,26 +56,6 @@ void HiMesh_Wrapper::disable_innerpart(){
 		}
 		voxels.push_back(v);
 	}
-}
-
-// fill the triangles into voxels
-size_t HiMesh_Wrapper::fill_voxels(){
-	assert(mesh);
-	size_t sz = mesh->fill_voxels(voxels);
-	return sz;
-}
-
-size_t HiMesh_Wrapper::num_vertices(){
-	return mesh->size_of_vertices();
-}
-
-void HiMesh_Wrapper::reset(){
-	pthread_mutex_lock(&lock);
-	for(Voxel *v:voxels){
-		v->reset();
-	}
-	results.clear();
-	pthread_mutex_unlock(&lock);
 }
 
 void HiMesh_Wrapper::report_result(HiMesh_Wrapper *result){

@@ -51,7 +51,7 @@ public:
 	void decode_to(size_t id, uint lod);
 	HiMesh *get_mesh(int id);
 	void retrieve_all();
-	void advance_all(int lod = 100);
+	void decode_all(int lod = 100);
 	char *retrieve_data(int id);
 	size_t get_object_data_size(int id);
 	OctreeNode *build_octree(size_t num_tiles);
