@@ -516,6 +516,7 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	//
 	unordered_set<replacing_group *> map_group;
 
+	bool own_data = true;
 public:
 
 	int id = 0;
@@ -523,8 +524,8 @@ public:
 	HiMesh(string &str, bool completeop = false);
 
 	// constructors for decoding
-	HiMesh(const char *data, size_t dsize);
-	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset){}
+	HiMesh(char *data, size_t dsize, bool own_data = true);
+	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset, true){}
 	~HiMesh();
 
 	void encode(int lod = 0);
@@ -749,9 +750,8 @@ enum Decoding_Type{
  * */
 class HiMesh_Wrapper{
 public:
-
+	Decoding_Type type;
 	// the data mode
-	const Decoding_Type type = COMPRESSED;
 
 	// description of the polyhedron
 	size_t id = -1;
@@ -760,14 +760,14 @@ public:
 
 	// used for retrieving compressed data from disk
 	HiMesh *mesh = NULL;
-	size_t offset = 0;
+	char *data_buffer = NULL;
 	size_t data_size = 0;
 
 	pthread_mutex_t lock;
 	vector<HiMesh_Wrapper *> results;
 	int cur_lod = 0;
 public:
-	HiMesh_Wrapper(Decoding_Type t = COMPRESSED);
+	HiMesh_Wrapper(char *dt, size_t sz, size_t id, Decoding_Type t = COMPRESSED);
 	~HiMesh_Wrapper();
 
 	void decode_to(uint lod);

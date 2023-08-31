@@ -25,7 +25,6 @@ static void himesh_to_wkt(int argc, char **argv){
 
 	Tile *tile = new Tile(argv[1]);
 	const char *prefix = argv[2];
-	tile->retrieve_all();
 	tile->decode_all(100);
 	char path[256];
 	for(int i=0;i<tile->num_objects();i++){
@@ -231,7 +230,6 @@ static void aabb(int argc, char **argv){
 	global_ctx.use_multimbb = false;
 	Tile *tile1 = new Tile(argv[1], num);
 	Tile *tile2 = new Tile(argv[2],1);
-	tile1->retrieve_all();
 	tile1->decode_all(100);
 	logt("load tiles", start);
 
@@ -250,7 +248,6 @@ static void aabb(int argc, char **argv){
 	std::cin >> c;
 	start = get_cur_time();
 
-	tile2->retrieve_all();
 	tile2->decode_all(100);
 	HiMesh *nuc = tile2->get_mesh(0);
 	list<Point> vertices = nuc->get_vertices();

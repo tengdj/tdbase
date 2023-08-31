@@ -70,8 +70,8 @@ void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context
 			for(voxel_pair &vp:info.voxel_pairs){
 				assert(vp.v1&&vp.v2);
 				// ensure the mesh is extracted and decoded
-				ctx.tile1->decode_to(wrapper1->id, ctx.cur_lod);
-				ctx.tile2->decode_to(info.mesh_wrapper->id, ctx.cur_lod);
+				wrapper1->decode_to(ctx.cur_lod);
+				info.mesh_wrapper->decode_to(ctx.cur_lod);
 			}// end for voxel_pairs
 		}// end for distance_candiate list
 	}// end for candidates

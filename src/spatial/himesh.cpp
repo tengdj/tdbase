@@ -108,14 +108,19 @@ void HiMesh::updateVFMap(){
 }
 
 // in decompression mode
-HiMesh::HiMesh(const char *data, size_t dsize):
+HiMesh::HiMesh(char *data, size_t dsize, bool owndata):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
 	assert(dsize>0);
 	srand(PPMC_RANDOM_CONSTANT);
 
+	own_data = owndata;
 	i_mode = DECOMPRESSION_MODE_ID;
-	p_data = new char[dsize];
-	memcpy(p_data, data, dsize);
+	if(owndata){
+		p_data = new char[dsize];
+		memcpy(p_data, data, dsize);
+	}else{
+		p_data = data;
+	}
     readBaseMesh();
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = vertices_begin();
@@ -123,7 +128,7 @@ HiMesh::HiMesh(const char *data, size_t dsize):
 }
 
 HiMesh::~HiMesh(){
-	if(p_data!=NULL){
+	if(own_data && p_data!=NULL){
 	   delete[] p_data;
 	}
 	clear_aabb_tree();

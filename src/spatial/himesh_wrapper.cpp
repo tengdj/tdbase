@@ -14,9 +14,18 @@ namespace hispeed{
  * himesh wrapper functions
  * */
 
-HiMesh_Wrapper::HiMesh_Wrapper(Decoding_Type t):type(t){
+HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t sz, size_t i, Decoding_Type t){
+	type = t;
+	id = i;
+	box.id = i;
+	// the mesh use the memory space stored in the Tile class, avoid one copy
+	mesh = new HiMesh(dt, sz, false);
+	mesh->id = id;
+	data_buffer = dt;
+	data_size = sz;
 	pthread_mutex_init(&lock, NULL);
 }
+
 HiMesh_Wrapper::~HiMesh_Wrapper(){
 	for(Voxel *v:voxels){
 		delete v;

@@ -18,18 +18,15 @@ using namespace std;
 namespace hispeed{
 
 class Tile{
-	aab box;
+	aab space;
 	std::vector<HiMesh_Wrapper *> objects;
 	char *data_buffer = NULL;
+	size_t data_size = 0;
 	size_t tile_capacity = INT_MAX;
 	string tile_path;
 
 	void init();
-	bool load(string meta_path, int max_objects=INT_MAX);
-	bool persist(string meta_path);
-	bool parse_raw();
-	// retrieve the data of the mesh with ID id on demand
-	void retrieve_mesh(size_t id);
+
 public:
 	// for building tile instead of load from file
 	Tile(std::string path, size_t capacity=LONG_MAX);
@@ -48,12 +45,8 @@ public:
 		return objects.size();
 	}
 
-	void decode_to(size_t id, uint lod);
 	HiMesh *get_mesh(int id);
-	void retrieve_all();
 	void decode_all(int lod = 100);
-	char *retrieve_data(int id);
-	size_t get_object_data_size(int id);
 	OctreeNode *build_octree(size_t num_tiles);
 
 	// for profiling performance
