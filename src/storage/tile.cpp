@@ -55,11 +55,10 @@ void Tile::init(){
 	size_t offset = 0;
 	size_t index = 0;
 	while(offset < data_size){
-		size_t dsize = *(size_t *)(data_buffer + offset);
-		offset += sizeof(size_t);
+
 		// create a wrapper with the meta information
-		HiMesh_Wrapper * w = new HiMesh_Wrapper(data_buffer + offset, dsize, index++, dtype);
-		offset += w->data_size + w->voxel_meta_size;
+		HiMesh_Wrapper * w = new HiMesh_Wrapper(data_buffer + offset, index++, dtype);
+		offset += w->data_size + w->meta_size + sizeof(size_t);
 		objects.push_back(w);
 		space.update(w->box);
 	}
@@ -78,8 +77,13 @@ void Tile::convert_raw(const char *path){
 
 		const size_t st_offset = offset;
 
-		for(int lod=0;lod<=100;lod+=10){
+		map<int, float> hausdorffs;
+		map<int, float> proxyhausdorffs;
+		for(int lod=20;lod<=100;lod+=20){
 			wr->decode_to(lod);
+			hausdorffs[lod] = wr->mesh->getHausdorffDistance();
+			proxyhausdorffs[lod] = wr->mesh->getProxyHausdorffDistance();
+
 			for(Voxel *v:wr->voxels){
 				v->offset_lod[lod] = offset - st_offset;
 				v->volumn_lod[lod] = v->num_triangles;
@@ -91,8 +95,20 @@ void Tile::convert_raw(const char *path){
 		}
 		// update the data size
 		*dsize_holder = offset-st_offset;
+
+		// store the voxel number (put it here for aligning with the decoding mode)
 		*(size_t *)(buffer + offset) = wr->voxels.size();
 		offset += sizeof(size_t);
+
+		// store the polyhedron-level hausdorff information for all the LODs
+		for(int lod=20;lod<=100;lod+=20){
+			*(float *)(buffer + offset) = hausdorffs[lod];
+			offset += sizeof(float);
+			*(float *)(buffer + offset) = proxyhausdorffs[lod];
+			offset += sizeof(float);
+		}
+
+		// store the voxel information
 		for(Voxel *v:wr->voxels){
 			memcpy(buffer+offset, v->low, sizeof(float)*3);
 			offset += 3*sizeof(float);
@@ -100,7 +116,7 @@ void Tile::convert_raw(const char *path){
 			offset += 3*sizeof(float);
 			memcpy(buffer+offset, v->core, sizeof(float)*3);
 			offset += 3*sizeof(float);
-			for(int lod=0;lod<=100;lod+=10){
+			for(int lod=20;lod<=100;lod+=20){
 				*(size_t *)(buffer+offset) = v->offset_lod[lod];
 				offset += sizeof(size_t);
 				*(size_t *)(buffer+offset) = v->volumn_lod[lod];

@@ -749,6 +749,9 @@ enum Decoding_Type{
  * parse the mesh out from disk, but use the bounding box is good enough.
  * */
 class HiMesh_Wrapper{
+
+	map<int, float> hausdorffs;
+	map<int, float> proxyhausdorffs;
 public:
 	Decoding_Type type;
 	// the data mode
@@ -763,14 +766,15 @@ public:
 	char *data_buffer = NULL;
 	size_t data_size = 0;
 
-	char *voxel_meta_buffer = NULL;
-	size_t voxel_meta_size = 0;
+	char *meta_buffer = NULL;
+	size_t meta_size = 0;
 
 	pthread_mutex_t lock;
 	vector<HiMesh_Wrapper *> results;
 	int cur_lod = -1;
+
 public:
-	HiMesh_Wrapper(char *dt, size_t sz, size_t id, Decoding_Type t = COMPRESSED);
+	HiMesh_Wrapper(char *dt, size_t id, Decoding_Type t = COMPRESSED);
 	~HiMesh_Wrapper();
 
 	void decode_to(int lod);
@@ -779,6 +783,9 @@ public:
 	// for RAW data mode
 	size_t get_voxel_offset(int id, int lod);
 	size_t get_voxel_size(int id, int lod);
+
+	float getHausdorffDistance();
+	float getProxyHausdorffDistance();
 
 	void report_result(HiMesh_Wrapper *result);
 };

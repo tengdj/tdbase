@@ -209,10 +209,10 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				if(ctx.use_aabb){
 					range dist = ci.distance;
-					float hdist1 = wrapper1->mesh->getHausdorffDistance();
-					float hdist2 = wrapper2->mesh->getHausdorffDistance();
-					float phdist1 = wrapper1->mesh->getProxyHausdorffDistance();
-					float phdist2 = wrapper2->mesh->getProxyHausdorffDistance();
+					float hdist1 = wrapper1->getHausdorffDistance();
+					float hdist2 = wrapper2->getHausdorffDistance();
+					float phdist1 = wrapper1->getProxyHausdorffDistance();
+					float phdist2 = wrapper2->getProxyHausdorffDistance();
 
 					result_container res = ctx.results[index++];
 					if(lod==ctx.highest_lod()){
@@ -246,10 +246,10 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							float phdist1;
 							float phdist2;
 							if(global_ctx.hausdorf_level<2){
-								hdist1 = wrapper1->mesh->getHausdorffDistance();
-								hdist2 = wrapper2->mesh->getHausdorffDistance();
-								phdist1 = wrapper1->mesh->getProxyHausdorffDistance();
-								phdist2 = wrapper2->mesh->getProxyHausdorffDistance();
+								hdist1 = wrapper1->getHausdorffDistance();
+								hdist2 = wrapper2->getHausdorffDistance();
+								phdist1 = wrapper1->getProxyHausdorffDistance();
+								phdist2 = wrapper2->getProxyHausdorffDistance();
 							}else{
 								hdist1 = vp.v1->getHausdorffDistance(res.p1);
 								hdist2 = vp.v2->getHausdorffDistance(res.p2);

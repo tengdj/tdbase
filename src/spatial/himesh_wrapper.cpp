@@ -14,51 +14,60 @@ namespace hispeed{
  * himesh wrapper functions
  * */
 
-HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t sz, size_t i, Decoding_Type t){
+HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 	type = t;
 	id = i;
 	box.id = i;
-	data_buffer = dt;
-	data_size = sz;
-	size_t vnum = *(size_t *)(data_buffer + data_size);
-	voxel_meta_buffer = data_buffer+data_size;
-	voxel_meta_size = sizeof(vnum);
+	data_size = *(size_t *)(dt);
+
+	data_buffer = dt + sizeof(size_t);
+	meta_buffer = data_buffer + data_size;
+
+	size_t vnum = *(size_t *)meta_buffer;
+	meta_size = sizeof(vnum);
 	if(type == COMPRESSED){
 		// the mesh reuses the memory space stored in the Tile class
 		mesh = new HiMesh(data_buffer, data_size, false);
 		mesh->id = id;
+
 		for(int i=0;i<vnum;i++){
 			Voxel *v = new Voxel();
-			memcpy(v->low, voxel_meta_buffer+voxel_meta_size, 3*sizeof(float));
-			voxel_meta_size += 3*sizeof(float);
-			memcpy(v->high, voxel_meta_buffer+voxel_meta_size, 3*sizeof(float));
-			voxel_meta_size += 3*sizeof(float);
-			memcpy(v->core, voxel_meta_buffer+voxel_meta_size, 3*sizeof(float));
-			voxel_meta_size += 3*sizeof(float);
+			memcpy(v->low, meta_buffer+meta_size, 3*sizeof(float));
+			meta_size += 3*sizeof(float);
+			memcpy(v->high, meta_buffer+meta_size, 3*sizeof(float));
+			meta_size += 3*sizeof(float);
+			memcpy(v->core, meta_buffer+meta_size, 3*sizeof(float));
+			meta_size += 3*sizeof(float);
 			voxels.push_back(v);
 			box.update(*v);
 		}
 	}else{
+		for(int lod=20;lod<=100;lod+=20){
+			this->hausdorffs[lod] = *(float *)(meta_buffer+meta_size);
+			meta_size += sizeof(float);
+			this->proxyhausdorffs[lod] = *(float *)(meta_buffer+meta_size);
+			meta_size += sizeof(float);
+		}
+
 		// record the decoded data for different voxels in different LODs
 		for(int i=0;i<vnum;i++){
 			Voxel *v = new Voxel();
 			// load the space information
-			memcpy(v->low, voxel_meta_buffer+voxel_meta_size, 3*sizeof(float));
-			voxel_meta_size += 3*sizeof(float);
-			memcpy(v->high, voxel_meta_buffer+voxel_meta_size, 3*sizeof(float));
-			voxel_meta_size += 3*sizeof(float);
-			memcpy(v->core, voxel_meta_buffer+voxel_meta_size, 3*sizeof(float));
-			voxel_meta_size += 3*sizeof(float);
+			memcpy(v->low, meta_buffer+meta_size, 3*sizeof(float));
+			meta_size += 3*sizeof(float);
+			memcpy(v->high, meta_buffer+meta_size, 3*sizeof(float));
+			meta_size += 3*sizeof(float);
+			memcpy(v->core, meta_buffer+meta_size, 3*sizeof(float));
+			meta_size += 3*sizeof(float);
 
 			// load the offset and volume information for varying LODs
-			for(int lod=0;lod<=100;lod+=10){
-				size_t of = *(size_t *)(voxel_meta_buffer+voxel_meta_size);
-				voxel_meta_size += sizeof(size_t);
-				size_t vl = *(size_t *)(voxel_meta_buffer+voxel_meta_size);
-				voxel_meta_size += sizeof(size_t);
+			for(int lod=20;lod<=100;lod+=20){
+				size_t of = *(size_t *)(meta_buffer+meta_size);
+				meta_size += sizeof(size_t);
+				size_t vl = *(size_t *)(meta_buffer+meta_size);
+				meta_size += sizeof(size_t);
 				v->offset_lod[lod] = of;
 				v->volumn_lod[lod] = vl;
-
 				//printf("%ld\t%ld\t%ld\t%ld\t%ld\n", id, i, lod, v->offset_lod[lod], v->volumn_lod[lod]);
 			}
 
@@ -104,9 +113,26 @@ void HiMesh_Wrapper::decode_to(int lod){
 	}
 	if(global_ctx.verbose>=2){
 		for(int i=0;i<voxels.size();i++){
-			printf("%d %d %d %d %d\n", id, i, lod, voxels[i]->offset_lod[lod], voxels[i]->volumn_lod[lod]);
+			printf("id: %ld\t voxel_id: %d\t lod: %d\t offset: %ld\t volume: %ld\n", id, i, lod, voxels[i]->offset_lod[lod], voxels[i]->volumn_lod[lod]);
 			voxels[i]->print();
 		}
+	}
+}
+
+float HiMesh_Wrapper::getHausdorffDistance(){
+	if(type == COMPRESSED){
+		return mesh->getHausdorffDistance();
+	}else{
+		assert(hausdorffs.find(cur_lod)!=hausdorffs.end());
+		return hausdorffs[cur_lod];
+	}
+}
+float HiMesh_Wrapper::getProxyHausdorffDistance(){
+	if(type == COMPRESSED){
+		return mesh->getProxyHausdorffDistance();
+	}else{
+		assert(hausdorffs.find(cur_lod)!=hausdorffs.end());
+		return proxyhausdorffs[cur_lod];
 	}
 }
 

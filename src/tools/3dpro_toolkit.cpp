@@ -630,7 +630,9 @@ static void print_tile_boxes(int argc, char **argv){
 
 static void convert(int argc, char **argv){
 	Tile *tile = new Tile(argv[1]);
-	tile->convert_raw(argv[2]);
+	char path[256];
+	sprintf(path, "%s.raw", argv[1]);
+	tile->convert_raw(path);
 	delete tile;
 }
 
@@ -767,6 +769,8 @@ int main(int argc, char **argv){
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);
 	}
+
+	int *abc = new int[1000];
 	return 0;
 }
 
