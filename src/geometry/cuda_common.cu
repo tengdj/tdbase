@@ -17,6 +17,8 @@ vector<gpu_info *> get_gpus(){
 	vector<gpu_info *> gpus;
 	int num_gpus = 0;
 	cudaGetDeviceCount(&num_gpus);
+	// use only one gpu, for experiments
+	num_gpus = 1;
 	for (int i = 0; i < num_gpus; i++) {
 		cudaDeviceProp prop;
 		cudaGetDeviceProperties(&prop, i);
@@ -25,8 +27,8 @@ vector<gpu_info *> get_gpus(){
 		info->mem_size = prop.totalGlobalMem/1024/1024*4/5;
 		info->device_id = i;
 		// we allocate 2G mem for each gpu
-		if(info->mem_size>2048){
-			info->mem_size = 2048;
+		if(info->mem_size>4096){
+			info->mem_size = 4096;
 		}
 		gpus.push_back(info);
 	}
