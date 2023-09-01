@@ -178,6 +178,21 @@ Voxel::~Voxel(){
 	clear();
 }
 
+// clear the buffer
+void Voxel::clear(){
+	if(owned && triangles){
+		delete []triangles;
+		triangles = NULL;
+	}
+	if(owned && hausdorff){
+		delete []hausdorff;
+		hausdorff = NULL;
+	}
+	capacity = 0;
+	owned = false;
+}
+
+// create buffer if needed
 void Voxel::reserve(size_t size){
 	num_triangles = 0;
 	if(size<=capacity){
@@ -187,6 +202,7 @@ void Voxel::reserve(size_t size){
 	capacity = size;
 	triangles = new float[9*size];
 	hausdorff = new float[2*size];
+	owned = true;
 }
 
 void Voxel::insert(const float *t, const float *h){
@@ -198,6 +214,7 @@ void Voxel::insert(const float *t, const float *h){
 }
 
 void Voxel::print(){
+	aab::print();
 	if(num_triangles == 0){
 		printf("voxel is empty\n");
 		return;
@@ -214,6 +231,8 @@ void Voxel::print(){
 		printf(")|(%.3f, %.3f)\n",*(hausdorff+i*2),*(hausdorff+i*2+1));
 	}
 }
+
+// copy to the buffer
 void Voxel::batch_load(const float *t, const float *h, size_t s){
 	reserve(s);
 	memcpy(triangles, t, s*9*sizeof(float));
@@ -223,16 +242,13 @@ void Voxel::batch_load(const float *t, const float *h, size_t s){
 //	log("");
 }
 
-void Voxel::clear(){
-	if(triangles){
-		delete []triangles;
-		triangles = NULL;
-	}
-	if(hausdorff){
-		delete []hausdorff;
-		hausdorff = NULL;
-	}
-	capacity = 0;
+// link the buffer to external spaces
+void Voxel::external_load(float *t, float *h, size_t s){
+	clear();
+	// should not be freed in the deconstructor
+	triangles = t;
+	hausdorff = h;
+	num_triangles = s;
 }
 
 float Voxel::getHausdorffDistance(int offset){

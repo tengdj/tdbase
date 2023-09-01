@@ -54,6 +54,7 @@ public:
 	vector<int> lods;
 	int verbose = 0;
 	bool counter_clock = false;
+	bool use_raw = false;
 
 	uint cur_lod = 0;
 	Tile *tile1 = NULL;
@@ -148,6 +149,7 @@ static query_context parse_args(int argc, char **argv){
 		("verbose,v", po::value<int>(&ctx.verbose), "verbose level")
 		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
+		("use_raw", "using the raw decoded data")
 		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
 		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level(default)")
 		;
@@ -170,6 +172,9 @@ static query_context parse_args(int argc, char **argv){
 	}
 	if(vm.count("counter_clock")){
 		ctx.counter_clock = true;
+	}
+	if(vm.count("use_raw")){
+		ctx.use_raw = true;
 	}
 
 	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);

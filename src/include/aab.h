@@ -113,6 +113,11 @@ public:
 	size_t num_triangles = 0;
 	size_t capacity = 0;
 
+	// offset and volumn information
+	map<int, size_t> offset_lod;
+	map<int, size_t> volumn_lod;
+
+	bool owned = false;
 public:
 	~Voxel();
 	void clear();
@@ -120,6 +125,7 @@ public:
 
 	void insert(const float *t, const float *h);
 	void batch_load(const float *t, const float *h, size_t s);
+	void external_load(float *t, float *h, size_t s);
 	void print();
 
 	float getHausdorffDistance(int offset);

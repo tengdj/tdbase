@@ -763,21 +763,24 @@ public:
 	char *data_buffer = NULL;
 	size_t data_size = 0;
 
+	char *voxel_meta_buffer = NULL;
+	size_t voxel_meta_size = 0;
+
 	pthread_mutex_t lock;
 	vector<HiMesh_Wrapper *> results;
-	int cur_lod = 0;
+	int cur_lod = -1;
 public:
 	HiMesh_Wrapper(char *dt, size_t sz, size_t id, Decoding_Type t = COMPRESSED);
 	~HiMesh_Wrapper();
 
-	void decode_to(uint lod);
-
-	void disable_innerpart();
-	// fill the triangles into voxels
+	void decode_to(int lod);
 	void clear_voxels();
 
-	void report_result(HiMesh_Wrapper *result);
+	// for RAW data mode
+	size_t get_voxel_offset(int id, int lod);
+	size_t get_voxel_size(int id, int lod);
 
+	void report_result(HiMesh_Wrapper *result);
 };
 
 // some general utility functions

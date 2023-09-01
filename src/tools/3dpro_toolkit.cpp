@@ -628,6 +628,12 @@ static void print_tile_boxes(int argc, char **argv){
 	hispeed::write_voxels(boxes, argv[2]);
 }
 
+static void convert(int argc, char **argv){
+	Tile *tile = new Tile(argv[1]);
+	tile->convert_raw(argv[2]);
+	delete tile;
+}
+
 //static replacing_group *merge1(unordered_set<replacing_group *> &reps){
 //	replacing_group *ret = new replacing_group();
 //	for(replacing_group *r:reps){
@@ -755,6 +761,8 @@ int main(int argc, char **argv){
 		sample(argc-1,argv+1);
 	}else if(strcmp(argv[1],"decode") == 0){
 		decode(argc-1,argv+1);
+	}else if(strcmp(argv[1],"convert") == 0){
+		convert(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);

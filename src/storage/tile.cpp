@@ -18,7 +18,8 @@
 namespace hispeed{
 
 // load meta data from file and construct the hierarchy structure
-Tile::Tile(std::string path, size_t capacity){
+Tile::Tile(std::string path, size_t capacity, Decoding_Type dt){
+	dtype = dt;
 	tile_path = path;
 	tile_capacity = capacity;
 	init();
@@ -40,9 +41,7 @@ void Tile::init(){
 		log("%s does not exist", tile_path.c_str());
 		exit(-1);
 	}
-	// load the meta data from the raw file or the cached meta file
-	string meta_path = tile_path;
-	boost::replace_all(meta_path, ".dt", ".mt");
+
 	process_lock();
 	// load the raw data into the buffer
 	data_size = file_size(tile_path.c_str());
@@ -58,39 +57,62 @@ void Tile::init(){
 	while(offset < data_size){
 		size_t dsize = *(size_t *)(data_buffer + offset);
 		offset += sizeof(size_t);
-
 		// create a wrapper with the meta information
-		HiMesh_Wrapper *w = new HiMesh_Wrapper(data_buffer + offset, dsize, index++);
-
-		// next dsize bytes are for the mesh, skip them
-		offset += dsize;
-		// read the voxels into the wrapper
-		size_t vnum = *(size_t *)(data_buffer + offset);
-		offset += sizeof(size_t);
-
-		for(int i=0;i<vnum;i++){
-			Voxel *v = new Voxel();
-			memcpy(v->low, data_buffer+offset, 3*sizeof(float));
-			offset += 3*sizeof(float);
-			memcpy(v->high, data_buffer+offset, 3*sizeof(float));
-			offset += 3*sizeof(float);
-			memcpy(v->core, data_buffer+offset, 3*sizeof(float));
-			offset += 3*sizeof(float);
-
-			w->voxels.push_back(v);
-			w->box.update(*v);
-		}
+		HiMesh_Wrapper * w = new HiMesh_Wrapper(data_buffer + offset, dsize, index++, dtype);
+		offset += w->data_size + w->voxel_meta_size;
 		objects.push_back(w);
 		space.update(w->box);
 	}
 
-	// disable the feature of inner partitioning if configured
-	if(!global_ctx.use_multimbb){
-		for(auto *hmesh:objects){
-			hmesh->disable_innerpart();
+	logt("loaded %ld polyhedra in tile %s", start, objects.size(), tile_path.c_str());
+}
+
+void Tile::convert_raw(const char *path){
+	assert(dtype == COMPRESSED);
+	size_t offset = 0;
+	char *buffer = new char[data_size*20];
+
+	for(HiMesh_Wrapper *wr:objects){
+		size_t *dsize_holder = (size_t *)(buffer+offset);
+		offset += sizeof(size_t);
+
+		const size_t st_offset = offset;
+
+		for(int lod=0;lod<=100;lod+=10){
+			wr->decode_to(lod);
+			for(Voxel *v:wr->voxels){
+				v->offset_lod[lod] = offset - st_offset;
+				v->volumn_lod[lod] = v->num_triangles;
+				memcpy(buffer+offset, v->triangles, v->num_triangles*sizeof(float)*9);
+				offset += v->num_triangles*sizeof(float)*9;
+				memcpy(buffer+offset, v->hausdorff, v->num_triangles*sizeof(float)*2);
+				offset += v->num_triangles*sizeof(float)*2;
+			}
+		}
+		// update the data size
+		*dsize_holder = offset-st_offset;
+		*(size_t *)(buffer + offset) = wr->voxels.size();
+		offset += sizeof(size_t);
+		for(Voxel *v:wr->voxels){
+			memcpy(buffer+offset, v->low, sizeof(float)*3);
+			offset += 3*sizeof(float);
+			memcpy(buffer+offset, v->high, sizeof(float)*3);
+			offset += 3*sizeof(float);
+			memcpy(buffer+offset, v->core, sizeof(float)*3);
+			offset += 3*sizeof(float);
+			for(int lod=0;lod<=100;lod+=10){
+				*(size_t *)(buffer+offset) = v->offset_lod[lod];
+				offset += sizeof(size_t);
+				*(size_t *)(buffer+offset) = v->volumn_lod[lod];
+				offset += sizeof(size_t);
+			}
 		}
 	}
-	logt("loaded %ld polyhedra in tile %s", start, objects.size(), tile_path.c_str());
+
+	ofstream *os = new std::ofstream(path, std::ios::out | std::ios::binary);
+	os->write(buffer, offset);
+	os->close();
+	delete os;
 }
 
 HiMesh *Tile::get_mesh(int id){
