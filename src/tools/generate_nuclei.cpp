@@ -49,9 +49,9 @@ void organize_data(HiMesh *mesh, vector<Voxel *> &voxels, float shift[3], char *
 	nmesh->encode();
 
 	process_lock();
-	char path[256];
-	sprintf(path, "/gisdata/nuclei_%d.off", idx++);
-	nmesh->write_to_off(path);
+//	char path[256];
+//	sprintf(path, "/gisdata/nuclei_%d.off", idx++);
+//	nmesh->write_to_off(path);
 	//hispeed::write_polyhedron(&shifted, ids++);
 	size_t size = nmesh->get_data_size();
 	memcpy(data+offset, (char *)&size, sizeof(size_t));
