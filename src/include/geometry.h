@@ -155,8 +155,7 @@ void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size
 		               result_container *result, const uint pair_num, const uint element_num);
 
 result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
-void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
-		result_container *result, const uint batch_num, const uint triangle_num);
+void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size, const float *hausdorff, result_container *result, const uint batch_num, const uint triangle_num);
 
 class geometry_computer{
 	pthread_mutex_t gpu_lock;

@@ -78,10 +78,10 @@ bool geometry_computer::init_gpus(){
 }
 
 void geometry_computer::get_distance_gpu(geometry_param &cc){
-	gpu_info *gpu = request_gpu(cc.element_num*9*sizeof(float)/1024/1024, true);
+	gpu_info *gpu = request_gpu(cc.element_num*11*sizeof(float)/1024/1024, true);
 	assert(gpu);
 	log("GPU %d started to get distance", gpu->device_id);
-	hispeed::TriDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.results, cc.pair_num, cc.element_num);
+	hispeed::TriDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.hausdorff, cc.results, cc.pair_num, cc.element_num);
 	release_gpu(gpu);
 }
 
@@ -90,7 +90,7 @@ void geometry_computer::get_intersect_gpu(geometry_param &cc){
 	gpu_info *gpu = request_gpu(cc.element_num*9*sizeof(float)/1024/1024, true);
 	assert(gpu);
 	log("GPU %d started to check intersect", gpu->device_id);
-	hispeed::TriInt_batch_gpu(gpu, cc.data, cc.offset_size, cc.results, cc.pair_num, cc.element_num);
+	hispeed::TriInt_batch_gpu(gpu, cc.data, cc.offset_size, cc.hausdorff, cc.results, cc.pair_num, cc.element_num);
 	release_gpu(gpu);
 }
 

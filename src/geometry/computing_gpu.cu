@@ -429,7 +429,7 @@ void TriDist_cuda(const float *data, const uint *offset_size, result_container *
 }
 
 __global__
-void TriInt_cuda(const float *data, const uint *offset_size, result_container *intersect, uint cur_offset_1, uint cur_offset_2_start){
+void TriInt_cuda(const float *data, const float *hausdorff, const uint *offset_size, result_container *intersect, uint cur_offset_1, uint cur_offset_2_start){
 
 	int batch_id = blockIdx.x;
 	uint cur_offset_2 = threadIdx.x+cur_offset_2_start;
@@ -450,13 +450,18 @@ void TriInt_cuda(const float *data, const uint *offset_size, result_container *i
 	uint offset2 = offset_size[batch_id*4+2];
 	const float *cur_S = data+9*(offset1+cur_offset_1);
 	const float *cur_T = data+9*(offset2+cur_offset_2);
-
+	const float phdist1 = *(hausdorff+2*(offset1+cur_offset_1));
+	const float phdist2 = *(hausdorff+2*(offset2+cur_offset_2));
+	
 	float dd = TriDist_kernel(cur_S, cur_T);
 	if(dd==0.0){
 		intersect[batch_id].intersected = 1;
 		intersect[batch_id].p1 = cur_offset_1;
 		intersect[batch_id].p2 = cur_offset_2;
 		return;
+	}else{ // otherwise, check if the two polyhedrons can intersect
+		float phdist = dd - phdist1 - phdist2;
+		atomicMin(&intersect[batch_id].distance, phdist);
 	}
 }
 
@@ -526,7 +531,7 @@ void clear_resultset(result_container *result, uint pairnum){
 	result[id].intersected = 0;
 }
 
-void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
+void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size, const float *hausdorff, 
 		result_container *intersection, const uint pair_num, const uint triangle_num){
 
 	assert(gpu);
@@ -551,6 +556,9 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 	// segment data in device
 	float *d_data = (float *)(cur_d_cuda);
 	cur_d_cuda += 9*triangle_num*sizeof(float);
+	float *d_hausdorff = (float *)(cur_d_cuda);
+	cur_d_cuda += 2*triangle_num*sizeof(float);
+	
 	// space for the results in GPU
 	result_container *d_intersect = (result_container *)(cur_d_cuda);
 	cur_d_cuda += sizeof(result_container)*pair_num;
@@ -558,6 +566,7 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 	uint *d_os = (uint *)(cur_d_cuda);
 
 	CUDA_SAFE_CALL(cudaMemcpy(d_data, data, triangle_num*9*sizeof(float), cudaMemcpyHostToDevice));
+	CUDA_SAFE_CALL(cudaMemcpy(d_hausdorff, hausdorff, triangle_num*2*sizeof(float), cudaMemcpyHostToDevice));
 	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, pair_num*4*sizeof(uint), cudaMemcpyHostToDevice));
 	//logt("copying data to GPU", start);
 
@@ -567,7 +576,7 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 	for(uint cur_offset_2=0;cur_offset_2<max_size_2;cur_offset_2+=1024){
 		uint dim2 = min(max_size_2-cur_offset_2, (uint)1024);
 		for(uint cur_offset_1=0;cur_offset_1<max_size_1;cur_offset_1++){
-			TriInt_cuda<<<pair_num, dim2>>>(d_data, d_os, d_intersect, cur_offset_1,cur_offset_2);
+			TriInt_cuda<<<pair_num, dim2>>>(d_data, d_hausdorff, d_os, d_intersect, cur_offset_1,cur_offset_2);
 			check_execution();
 		}
 	}
