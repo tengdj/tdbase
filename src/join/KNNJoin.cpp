@@ -120,7 +120,7 @@ void evaluate_candidate_lists(vector<candidate_entry> &candidates, query_context
 vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx){
 	vector<candidate_entry> candidates;
 	vector<pair<int, range>> candidate_ids;
-	OctreeNode *tree = tile2->build_octree(20);
+	OctreeNode *tree = tile2->get_octree();
 	size_t tile1_size = min(tile1->num_objects(), ctx.max_num_objects1);
 	for(int i=0;i<tile1_size;i++){
 		// for each object
@@ -167,7 +167,6 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
 	// the candidates list need be evaluated after checking with the mbb
 	// some queries might be answered with only querying the index
 	evaluate_candidate_lists(candidates, ctx);
-	delete tree;
 	return candidates;
 }
 

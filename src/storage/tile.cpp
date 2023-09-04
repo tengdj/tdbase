@@ -22,7 +22,6 @@ Tile::Tile(std::string path, size_t capacity, Decoding_Type dt){
 	dtype = dt;
 	tile_path = path;
 	tile_capacity = capacity;
-	init();
 }
 
 Tile::~Tile(){
@@ -31,6 +30,9 @@ Tile::~Tile(){
 	}
 	if(data_buffer!=NULL){
 		delete []data_buffer;
+	}
+	if(tree){
+		delete tree;
 	}
 }
 
@@ -55,7 +57,6 @@ void Tile::init(){
 	size_t offset = 0;
 	size_t index = 0;
 	while(offset < data_size){
-
 		// create a wrapper with the meta information
 		HiMesh_Wrapper * w = new HiMesh_Wrapper(data_buffer + offset, index++, dtype);
 		offset += w->data_size + w->meta_size + sizeof(size_t);
@@ -63,6 +64,7 @@ void Tile::init(){
 		space.update(w->box);
 	}
 
+	tree = build_octree(10);
 	logt("loaded %ld polyhedra in tile %s", start, objects.size(), tile_path.c_str());
 }
 

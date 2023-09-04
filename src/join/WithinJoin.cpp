@@ -24,7 +24,7 @@ inline void print_candidate_within(candidate_entry &cand){
 vector<candidate_entry> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_context &ctx){
 	vector<candidate_entry> candidates;
 	vector<pair<int, range>> candidate_ids;
-	OctreeNode *tree = tile2->build_octree(20);
+	OctreeNode *tree = tile2->get_octree();
 	size_t tile1_size = min(tile1->num_objects(), ctx.max_num_objects1);
 	for(int i=0;i<tile1_size;i++){
 		vector<candidate_info> candidate_list;
@@ -73,7 +73,6 @@ vector<candidate_entry> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_
 		}
 		candidate_ids.clear();
 	}
-	delete tree;
 	return candidates;
 }
 

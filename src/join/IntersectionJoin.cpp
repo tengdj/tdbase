@@ -11,7 +11,7 @@ namespace hispeed{
 
 vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 	vector<candidate_entry> candidates;
-	OctreeNode *tree = tile2->build_octree(20);
+	OctreeNode *tree = tile2->get_octree();
 	vector<int> candidate_ids;
 	for(int i=0;i<tile1->num_objects();i++){
 		vector<candidate_info> candidate_list;
@@ -48,7 +48,6 @@ vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 		// save the candidate list
 		candidates.push_back(candidate_entry(wrapper1, candidate_list));
 	}
-	delete tree;
 	candidate_ids.clear();
 
 	return candidates;

@@ -58,7 +58,18 @@ int main(int argc, char **argv){
 		assert(tile1&&tile2);
 		tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
 	}
-	logt("load tiles", start);
+	logt("create tiles", start);
+
+#pragma omp parallel for
+	for(int i=0;i<global_ctx.repeated_times;i++){
+		Tile *t1 = tile_pairs[i].first;
+		Tile *t2 = tile_pairs[i].second;
+		t1->init();
+		if(t2 != t1){
+			t2->init();
+		}
+	}
+	logt("init tiles", start);
 
 	SpatialJoin *joiner = new SpatialJoin(gc);
 	joiner->join(tile_pairs);
