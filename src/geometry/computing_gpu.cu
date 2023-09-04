@@ -428,6 +428,17 @@ void TriDist_cuda(const float *data, const uint *offset_size, result_container *
 	}
 }
 
+__device__ static float atomicMax(float* address, float val) {
+    int* address_as_i = (int*) address;
+    int old = *address_as_i, assumed;
+    do {
+        assumed = old;
+        old = ::atomicCAS(address_as_i, assumed,
+            __float_as_int(::fmaxf(val, __int_as_float(assumed))));
+    } while (assumed != old);
+    return __int_as_float(old);
+}
+
 __global__
 void TriInt_cuda(const float *data, const float *hausdorff, const uint *offset_size, result_container *intersect, uint cur_offset_1, uint cur_offset_2_start){
 
