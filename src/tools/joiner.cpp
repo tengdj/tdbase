@@ -32,26 +32,33 @@ int main(int argc, char **argv){
 
 	char path1[256];
 	char path2[256];
+	if(global_ctx.use_raw){
+		sprintf(path1, "%s.raw", global_ctx.tile1_path.c_str());
+		if(!hispeed::file_exist(path1)){
+			Tile *tile = new Tile(global_ctx.tile1_path.c_str());
+			tile->convert_raw(path1);
+			delete tile;
+		}
+		if(global_ctx.tile2_path.size()>0){
+			sprintf(path2, "%s.raw", global_ctx.tile2_path.c_str());
+			if(!hispeed::file_exist(path2)){
+				Tile *tile = new Tile(global_ctx.tile2_path.c_str());
+				tile->convert_raw(path2);
+				delete tile;
+			}
+		}
+	}else {
+		sprintf(path1, "%s", global_ctx.tile1_path.c_str());
+		sprintf(path2, "%s", global_ctx.tile2_path.c_str());
+	}
 
 	vector<pair<Tile *, Tile *>> tile_pairs;
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *tile1, *tile2;
 		if(global_ctx.tile2_path.size()>0){
-			if(global_ctx.use_raw){
-				sprintf(path1, "%s.raw", global_ctx.tile1_path.c_str());
-				sprintf(path2, "%s.raw", global_ctx.tile2_path.c_str());
-			}else {
-				sprintf(path1, "%s", global_ctx.tile1_path.c_str());
-				sprintf(path2, "%s", global_ctx.tile2_path.c_str());
-			}
 			tile1 = new Tile(path1, global_ctx.max_num_objects1, global_ctx.use_raw?RAW:COMPRESSED, false);
 			tile2 = new Tile(path2, global_ctx.max_num_objects2, global_ctx.use_raw?RAW:COMPRESSED, false);
 		}else{
-			if(global_ctx.use_raw){
-				sprintf(path1, "%s.raw", global_ctx.tile1_path.c_str());
-			}else {
-				sprintf(path1, "%s", global_ctx.tile1_path.c_str());
-			}
 			tile1 = new Tile(path1, LONG_MAX, global_ctx.use_raw?RAW:COMPRESSED, false);
 			tile2 = tile1;
 		}
