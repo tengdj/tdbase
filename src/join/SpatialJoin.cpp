@@ -264,10 +264,10 @@ void *join_unit(void *param){
 		}else{
 			log("wrong query type: %s", nnparam->ctx.query_type.c_str());
 		}
-		if(p.second!=p.first){
-			delete p.second;
-		}
-		delete p.first;
+//		if(p.second!=p.first){
+//			delete p.second;
+//		}
+//		delete p.first;
 		log("%d tile pairs left for processing",nnparam->tile_queue->size());
 	}
 	return NULL;

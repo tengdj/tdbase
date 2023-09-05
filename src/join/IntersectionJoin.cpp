@@ -105,14 +105,6 @@ void SpatialJoin::intersect(query_context ctx){
 					}
 					index++;
 				}
-//				if(lod < 100 && determined){
-//					static int cter = 0;
-//					char path[256];
-//					sprintf(path, "/gisdata/%d_mesh1_%d.OFF", lod, cter);
-//					wrapper1->mesh->write_to_off(path);
-//					sprintf(path, "/gisdata/%d_mesh2_%d.OFF", lod, cter++);
-//					wrapper2->mesh->write_to_off(path);
-//				}
 
 				//log("%d %d %d",wrapper1->id, wrapper2->id,determined);
 				if(determined){
