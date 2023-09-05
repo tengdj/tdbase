@@ -134,6 +134,7 @@ void Tile::convert_raw(const char *path){
 	os->write(buffer, offset);
 	os->close();
 	delete os;
+	log("converted to %s",path);
 }
 
 HiMesh *Tile::get_mesh(int id){
