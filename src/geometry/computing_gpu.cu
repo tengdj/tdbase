@@ -471,7 +471,7 @@ void TriInt_cuda(const float *data, const float *hausdorff, const uint *offset_s
 	}
 
 	// otherwise, check if the two polyhedrons can intersect
-	if(global_ctx.hausdorff_level==2){ 
+	if(hausdorff){ 
 		const float phdist1 = *(hausdorff+2*(offset1+cur_offset_1));
 		const float phdist2 = *(hausdorff+2*(offset2+cur_offset_2));
 		dd = dd - phdist1 - phdist2;
@@ -571,7 +571,7 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 	float *d_data = (float *)(cur_d_cuda);
 	cur_d_cuda += 9*triangle_num*sizeof(float);
 	float *d_hausdorff = NULL;
-	if(global_ctx.hausdorff_level == 2){
+	if(hausdorff){
 		d_hausdorff = (float *)(cur_d_cuda);
 		cur_d_cuda += 2*triangle_num*sizeof(float);
 		CUDA_SAFE_CALL(cudaMemcpy(d_hausdorff, hausdorff, triangle_num*2*sizeof(float), cudaMemcpyHostToDevice));
