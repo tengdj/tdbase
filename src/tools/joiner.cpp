@@ -75,7 +75,18 @@ int main(int argc, char **argv){
 	joiner->join(tile_pairs);
 	double join_time = hispeed::get_time_elapsed(start,false);
 	logt("join", start);
+
+#pragma omp parallel for
+	for(int i=0;i<global_ctx.repeated_times;i++){
+		Tile *t1 = tile_pairs[i].first;
+		Tile *t2 = tile_pairs[i].second;
+		if(t2 != t1){
+			delete t2;
+		}
+		delete t1;
+	}
 	tile_pairs.clear();
+	logt("clearing tiles", start);
 	delete joiner;
 	delete gc;
 }
