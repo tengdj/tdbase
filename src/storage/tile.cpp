@@ -18,10 +18,13 @@
 namespace hispeed{
 
 // load meta data from file and construct the hierarchy structure
-Tile::Tile(std::string path, size_t capacity, Decoding_Type dt){
+Tile::Tile(std::string path, size_t capacity, Decoding_Type dt, bool active_init){
 	dtype = dt;
 	tile_path = path;
 	tile_capacity = capacity;
+	if(active_init){
+		init();
+	}
 }
 
 Tile::~Tile(){

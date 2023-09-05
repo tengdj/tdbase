@@ -44,15 +44,15 @@ int main(int argc, char **argv){
 				sprintf(path1, "%s", global_ctx.tile1_path.c_str());
 				sprintf(path2, "%s", global_ctx.tile2_path.c_str());
 			}
-			tile1 = new Tile(path1, global_ctx.max_num_objects1, global_ctx.use_raw?RAW:COMPRESSED);
-			tile2 = new Tile(path2, global_ctx.max_num_objects2, global_ctx.use_raw?RAW:COMPRESSED);
+			tile1 = new Tile(path1, global_ctx.max_num_objects1, global_ctx.use_raw?RAW:COMPRESSED, false);
+			tile2 = new Tile(path2, global_ctx.max_num_objects2, global_ctx.use_raw?RAW:COMPRESSED, false);
 		}else{
 			if(global_ctx.use_raw){
 				sprintf(path1, "%s.raw", global_ctx.tile1_path.c_str());
 			}else {
 				sprintf(path1, "%s", global_ctx.tile1_path.c_str());
 			}
-			tile1 = new Tile(path1, LONG_MAX, global_ctx.use_raw?RAW:COMPRESSED);
+			tile1 = new Tile(path1, LONG_MAX, global_ctx.use_raw?RAW:COMPRESSED, false);
 			tile2 = tile1;
 		}
 		assert(tile1&&tile2);

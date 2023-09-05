@@ -30,7 +30,7 @@ class Tile{
 	OctreeNode *tree = NULL;
 public:
 	// for building tile instead of load from file
-	Tile(std::string path, size_t capacity=LONG_MAX, Decoding_Type dt = COMPRESSED);
+	Tile(std::string path, size_t capacity=LONG_MAX, Decoding_Type dt = COMPRESSED, bool active_init=true);
 	~Tile();
 	void init();
 
