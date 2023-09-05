@@ -466,15 +466,24 @@ result_container TriInt_single(const float *data1, const float *data2, size_t si
 	result_container res;
 	res.intersected = false;
 
-	float phdist = DBL_MAX;
+	res.distance = DBL_MAX;
 
 	for(size_t i=0;i<size1;i++){
 		for(size_t j=0;j<size2;j++){
 			//todo: the TriInt function does not work correctly
 			//if(TriInt(data1+9*i, data2+9*j))
 			float dist = TriDist(data1+9*i, data2+9*j);
-			if(dist==0)
-			{
+
+			if(hausdorff1 != NULL && hausdorff2 != NULL){
+				float phdist1 = *(hausdorff1+2*i);
+				float phdist2 = *(hausdorff2+2*j);
+				//cout<<dist<<"\t"<<phdist1<<"\t"<<phdist2<<endl;
+				res.distance = min(res.distance, dist - phdist1 - phdist2);
+			}else{
+				res.distance = min(res.distance, dist);
+			}
+
+			if(dist==0) {
 				res.intersected = true;
 				res.p1 = i;
 				res.p2 = j;
@@ -483,18 +492,9 @@ result_container TriInt_single(const float *data1, const float *data2, size_t si
 //				print_triangle(data2+9*i);
 				return res;
 			}
-			if(hausdorff1 != NULL && hausdorff2 != NULL){
-				float phdist1 = *(hausdorff1+2*i);
-				float phdist2 = *(hausdorff2+2*j);
-				//cout<<dist<<"\t"<<phdist1<<"\t"<<phdist2<<endl;
-				phdist = min(phdist, dist - phdist1 - phdist2);
-			}
 		}
 	}
 
-	if(hausdorff1 != NULL && hausdorff2 != NULL){
-		res.distance = phdist;
-	}
 	return res;
 }
 

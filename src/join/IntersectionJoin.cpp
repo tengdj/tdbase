@@ -95,7 +95,14 @@ void SpatialJoin::intersect(query_context ctx){
 				int cand_count = 0;
 				for(voxel_pair &vp:ci_iter->voxel_pairs){
 					determined |= ctx.results[index].intersected;
-					cand_count += (ctx.results[index].distance>0);
+					if(global_ctx.hausdorf_level==1){
+						ctx.results[index].distance -= wrapper1->getProxyHausdorffDistance();
+						ctx.results[index].distance -= wrapper2->getProxyHausdorffDistance();
+						cand_count += (ctx.results[index].distance>0);
+					}else if(global_ctx.hausdorf_level==2){
+						// the minimum possible distance already been computed
+						cand_count += (ctx.results[index].distance>0);
+					}
 					index++;
 				}
 //				if(lod < 100 && determined){
@@ -112,7 +119,8 @@ void SpatialJoin::intersect(query_context ctx){
 					// must intersect
 					wrapper1->report_result(wrapper2);
 					ce_iter->candidates.erase(ci_iter);
-				}else if(cand_count == ci_iter->voxel_pairs.size()){
+					// all voxel pairs must not intersect
+				}else if(global_ctx.hausdorf_level>=1 && cand_count == ci_iter->voxel_pairs.size()){
 					// must not intersect
 					ce_iter->candidates.erase(ci_iter);
 				}else{

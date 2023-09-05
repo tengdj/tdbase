@@ -158,8 +158,8 @@ void *TriInt_unit(void *params_void){
 									    param->data+param->offset_size[4*i+2]*9,
 									    param->offset_size[4*i+1],
 									    param->offset_size[4*i+3],
-										param->hausdorff+param->offset_size[4*i]*2,
-										param->hausdorff+param->offset_size[4*i+2]*2);
+										global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i]*2):NULL,
+										global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i+2]*2):NULL);
 	}
 	return NULL;
 }
