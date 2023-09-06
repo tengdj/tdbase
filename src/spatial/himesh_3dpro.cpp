@@ -317,12 +317,12 @@ void HiMesh::profileProtruding(){
 
 float HiMesh::getHausdorffDistance(){
 	assert(i_nbDecimations>=i_curDecimationId);
-	return i_nbDecimations>i_curDecimationId?globalHausdorfDistance[i_nbDecimations - i_curDecimationId-1].second:0;
+	return i_nbDecimations>i_curDecimationId?globalHausdorfDistance[i_curDecimationId].second:0;
 }
 
 float HiMesh::getProxyHausdorffDistance(){
 	assert(i_nbDecimations>=i_curDecimationId);
-	return i_nbDecimations>i_curDecimationId?globalHausdorfDistance[i_nbDecimations - i_curDecimationId-1].first:0;
+	return i_nbDecimations>i_curDecimationId?globalHausdorfDistance[i_curDecimationId].first:0;
 }
 
 //pair<float, float> HiMesh::getNextHausdorfDistance(){
@@ -351,6 +351,7 @@ static float point_to_face_distance(const Point &p, const HiMesh::Face_iterator 
 
 uint HiMesh::sampling_rate = 3;
 int HiMesh::calculate_method = 3;
+bool HiMesh::use_byte_coding = true;
 
 void sample_points_triangle(const Triangle &tri, unordered_set<Point> &points, int num_points){
 	const Point &p1 = tri[0];

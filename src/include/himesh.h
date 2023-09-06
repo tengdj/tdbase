@@ -489,7 +489,6 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	// Geometry symbol list.
 	std::deque<std::deque<Point> > geometrySym;
 
-	bool use_byte_coding = true;
 	std::deque<std::deque<unsigned char>> hausdorfSym;
 	std::deque<std::deque<unsigned char>> proxyhausdorfSym;
 
@@ -675,6 +674,8 @@ public:
 	static uint sampling_rate;
 
 	static int calculate_method;
+	static bool use_byte_coding;
+
 	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit);
 	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
 	void sample_points(unordered_set<Point> &points);

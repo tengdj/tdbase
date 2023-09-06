@@ -17,7 +17,6 @@ int replacing_group::alive = 0;
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
 
-	use_byte_coding = false;
 	struct timeval start = get_cur_time();
 	boost::replace_all(str, "|", "\n");
 	assert(str.size()!=0 && "input string should not be empty!");
@@ -111,7 +110,6 @@ void HiMesh::updateVFMap(){
 // in decompression mode
 HiMesh::HiMesh(char *data, size_t dsize, bool owndata):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
-	use_byte_coding = false;
 	assert(dsize>0);
 	srand(PPMC_RANDOM_CONSTANT);
 

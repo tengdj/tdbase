@@ -49,6 +49,8 @@ void HiMesh::startNextDecompresssionOp() {
     for (HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit)
         fit->resetState();
 
+	i_curDecimationId++; // increment the current decimation operation id.
+
     // 2. decoding the removed vertices and add to target facets
     RemovedVerticesDecodingStep();
     // 3. decoding the inserted edge and marking the ones added
@@ -60,7 +62,6 @@ void HiMesh::startNextDecompresssionOp() {
 	// 6. decode the Hausdorff distances for all the facets in this LOD
 	HausdorffDecodingStep();
 
-	i_curDecimationId++; // increment the current decimation operation id.
 }
 
 void HiMesh::decode(int lod){
@@ -214,25 +215,24 @@ void HiMesh::InsertedEdgeDecodingStep() {
 
 void HiMesh::HausdorffDecodingStep(){
 
-	if(i_curDecimationId >= i_nbDecimations-1){
+	if(i_curDecimationId >= i_nbDecimations){
 		return;
 	}
 	//log("DecimationId: %d", this->i_curDecimationId);
 	int idx = 0;
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		fit->resetHausdorff();
-		float hausdorff, proxyhausdorff;
+		unsigned char hausdorff_code = readChar();
+		unsigned char proxyhausdorff_code = readChar();
+		float hausdorff = readFloat();
+		float proxyhausdorff = readFloat();
 
 		if(use_byte_coding){
 			// decode the hausdorf distance symbols
-			char hausdorff_code = readChar();
-			char proxyhausdorff_code = readChar();
-
+			//printf("%f %f -> ", hausdorff, proxyhausdorff);
 			hausdorff = hausdorff_code * getHausdorffDistance()/255.0;
 			proxyhausdorff = proxyhausdorff_code * getProxyHausdorffDistance()/255.0;
-		}else{
-			hausdorff = readFloat();
-			proxyhausdorff = readFloat();
+			//printf("%f %f (%f %f)\n", hausdorff, proxyhausdorff, getHausdorffDistance(), getProxyHausdorffDistance());
 		}
 
 		fit->setHausdorff(hausdorff);
