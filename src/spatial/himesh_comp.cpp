@@ -378,24 +378,37 @@ void HiMesh::InsertedEdgeCodingStep()
 
 void HiMesh::HausdorffCodingStep(){
 
-    hausdorfSym.push_back(std::deque<unsigned char>());
-    proxyhausdorfSym.push_back(std::deque<unsigned char>());
-	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+	if(use_byte_coding){
+		hausdorfSym.push_back(std::deque<unsigned char>());
+		proxyhausdorfSym.push_back(std::deque<unsigned char>());
+		for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 
-		// Determine the hausdorf symbol
-		// the hausdorf distances for this round of decimation.
-		const pair<float, float> current_hausdorf = globalHausdorfDistance[globalHausdorfDistance.size()-1];
-		// 3dpro, besides the symbol, we also encode the hausdorf distance into it.
-		assert(fit->getProxyHausdorff()<=current_hausdorf.first);
-		assert(fit->getHausdorff()<=current_hausdorf.second);
+			// Determine the hausdorf symbol
+			// the hausdorf distances for this round of decimation.
+			const pair<float, float> current_hausdorf = globalHausdorfDistance[globalHausdorfDistance.size()-1];
+			// 3dpro, besides the symbol, we also encode the hausdorf distance into it.
+			assert(fit->getProxyHausdorff()<=current_hausdorf.first);
+			assert(fit->getHausdorff()<=current_hausdorf.second);
 
-		unsigned char proxyhausdorf = current_hausdorf.first==0?0:ceil(fit->getProxyHausdorff()*255/current_hausdorf.first);
-		unsigned char hausdorf = current_hausdorf.second==0?0:ceil(fit->getHausdorff()*255/current_hausdorf.second);
-		hausdorfSym[i_curDecimationId].push_back(hausdorf);
-		proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
-		if(global_ctx.verbose>=3)
-		{
-			log("encode facet: %.2f %.2f", fit->getProxyHausdorff(), fit->getHausdorff());
+			unsigned char proxyhausdorf = current_hausdorf.first==0?0:ceil(fit->getProxyHausdorff()*255/current_hausdorf.first);
+			unsigned char hausdorf = current_hausdorf.second==0?0:ceil(fit->getHausdorff()*255/current_hausdorf.second);
+			hausdorfSym[i_curDecimationId].push_back(hausdorf);
+			proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
+			if(global_ctx.verbose>=3)
+			{
+				log("encode facet: %.2f %.2f", fit->getProxyHausdorff(), fit->getHausdorff());
+			}
+		}
+	}else{
+		hausdorfSym_float.push_back(std::deque<float>());
+		proxyhausdorfSym_float.push_back(std::deque<float>());
+		for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+			hausdorfSym_float[i_curDecimationId].push_back(fit->getHausdorff());
+			proxyhausdorfSym_float[i_curDecimationId].push_back(fit->getProxyHausdorff());
+			if(global_ctx.verbose>=3)
+			{
+				log("encode facet: %.2f %.2f", fit->getProxyHausdorff(), fit->getHausdorff());
+			}
 		}
 	}
 }
@@ -506,12 +519,21 @@ void HiMesh::encodeRemovedVertices(unsigned i_operationId)
 }
 
 void HiMesh::encodeHausdorff(unsigned i_operationId){
-    std::deque<unsigned char> &hausSym = hausdorfSym[i_operationId];
-    std::deque<unsigned char> &proxyhausSym = proxyhausdorfSym[i_operationId];
-    for(int i=0;i<hausSym.size();i++){
-        writeChar(hausSym[i]);
-        writeChar(proxyhausSym[i]);
-    }
+	if(use_byte_coding){
+		std::deque<unsigned char> &hausSym = hausdorfSym[i_operationId];
+		std::deque<unsigned char> &proxyhausSym = proxyhausdorfSym[i_operationId];
+		for(int i=0;i<hausSym.size();i++){
+			writeChar(hausSym[i]);
+			writeChar(proxyhausSym[i]);
+		}
+	}else{
+		std::deque<float> &hausSym = hausdorfSym_float[i_operationId];
+		std::deque<float> &proxyhausSym = proxyhausdorfSym_float[i_operationId];
+		for(int i=0;i<hausSym.size();i++){
+			writeFloat(hausSym[i]);
+			writeFloat(proxyhausSym[i]);
+		}
+	}
 }
 
 }

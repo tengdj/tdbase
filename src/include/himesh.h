@@ -488,9 +488,13 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	Vertex_handle vh_departureConquest[2];
 	// Geometry symbol list.
 	std::deque<std::deque<Point> > geometrySym;
+
+	bool use_byte_coding = true;
 	std::deque<std::deque<unsigned char>> hausdorfSym;
 	std::deque<std::deque<unsigned char>> proxyhausdorfSym;
 
+	std::deque<std::deque<float>> hausdorfSym_float;
+	std::deque<std::deque<float>> proxyhausdorfSym_float;
 
 	// Connectivity symbol list.
 	std::deque<std::deque<unsigned> > connectFaceSym;

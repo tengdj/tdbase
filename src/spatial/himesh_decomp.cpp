@@ -221,12 +221,19 @@ void HiMesh::HausdorffDecodingStep(){
 	int idx = 0;
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		fit->resetHausdorff();
-		// decode the hausdorf distance symbols
-		unsigned char hausdorff_code = readChar();
-		unsigned char proxyhausdorff_code = readChar();
+		float hausdorff, proxyhausdorff;
 
-		float hausdorff = hausdorff_code * getHausdorffDistance()/255.0;
-		float proxyhausdorff = proxyhausdorff_code * getProxyHausdorffDistance()/255.0;
+		if(use_byte_coding){
+			// decode the hausdorf distance symbols
+			char hausdorff_code = readChar();
+			char proxyhausdorff_code = readChar();
+
+			hausdorff = hausdorff_code * getHausdorffDistance()/255.0;
+			proxyhausdorff = proxyhausdorff_code * getProxyHausdorffDistance()/255.0;
+		}else{
+			hausdorff = readFloat();
+			proxyhausdorff = readFloat();
+		}
 
 		fit->setHausdorff(hausdorff);
 		fit->setProxyHausdorff(proxyhausdorff);
