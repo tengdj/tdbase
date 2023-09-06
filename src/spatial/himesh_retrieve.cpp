@@ -231,6 +231,34 @@ list<Triangle> HiMesh::get_triangles(){
 	return triangles;
 }
 
+float encode_triangle(Triangle &tri){
+	const float *t = (const float *)&tri;
+	float ret = 0.0;
+	for(int i=0;i<9;i++){
+		ret += i*(*(t+i));
+	}
+	return ret;
+}
+
+map<float, HiMesh::Face_iterator> HiMesh::get_fits(){
+	map<float, HiMesh::Face_iterator> fits;
+	for ( Facet_iterator f = facets_begin(); f != facets_end(); ++f){
+		Halfedge_const_handle e1 = f->halfedge();
+		Halfedge_const_handle e2 = e1->next();
+		do{
+			Triangle t(e1->vertex()->point(),
+						 e2->vertex()->point(),
+						 e2->next()->vertex()->point());
+
+			float fs = encode_triangle(t);
+			fits[fs] = f;
+			e2 = e2->next();
+		}while(e1!=e2->next());
+	}
+	return fits;
+}
+
+
 list<Point> HiMesh::get_vertices(){
 	list<Point> vertices;
 	for(HiMesh::Vertex_iterator v = vertices_begin(); v != vertices_end(); ++v){

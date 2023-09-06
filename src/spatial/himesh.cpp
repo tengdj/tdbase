@@ -54,7 +54,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 
 	if(HiMesh::calculate_method == HCT_BVHTREE){
 		get_aabb_tree_triangle();
-		//logt("aabb", start);
+		//logt("building aabb tree", start);
 	}
 
 	if(HiMesh::calculate_method != HCT_NULL){
@@ -245,6 +245,12 @@ aab HiMesh::shift(float x, float y, float z){
 	}
 	compute_mbb();
 	updateVFMap();
+	if(triangle_tree){
+		aabb_triangles.clear();
+		delete triangle_tree;
+		triangle_tree = NULL;
+		this->get_aabb_tree_triangle();
+	}
 	return mbb;
 }
 
@@ -259,6 +265,12 @@ aab HiMesh::shrink(float shrink){
 	}
 	compute_mbb();
 	updateVFMap();
+	if(triangle_tree){
+		aabb_triangles.clear();
+		delete triangle_tree;
+		triangle_tree = NULL;
+		this->get_aabb_tree_triangle();
+	}
 	return mbb;
 }
 

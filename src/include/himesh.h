@@ -628,6 +628,7 @@ public:
 	size_t fill_vertices(float *&vertices);
 	list<Segment> get_segments();
 	list<Triangle> get_triangles();
+	map<float, Face_iterator> get_fits();
 	list<Point> get_vertices();
 
 	// query

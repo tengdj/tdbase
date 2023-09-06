@@ -459,7 +459,14 @@ vector<Triangle> triangulate(HiMesh::Face_iterator fit){
 }
 
 int tt = 0;
-
+float encode_triangle2(Triangle &tri){
+	const float *t = (const float *)&tri;
+	float ret = 0.0;
+	for(int i=0;i<9;i++){
+		ret += i*(*(t+i));
+	}
+	return ret;
+}
 // TODO: a critical function, need to be further optimized
 void HiMesh::computeHausdorfDistance(){
 	// do not compute
@@ -589,13 +596,12 @@ void HiMesh::computeHausdorfDistance(){
 			}
 
 			//log("#triangles: %ld-%d hdist: %.3f-%.3f-%.3f", original_num, triangles.size(), curhdist[0], curhdist[1], curhdist[2]);
-
 			// collect results
 			fit_hdist = max(fit_hdist, curhdist);
 			triangles.clear();
 		}
 		// update the hausdorff distance
-		fit->updateHausdorff(fit_hdist);
+		fit->setHausdorff(fit_hdist);
 	}
 	start = get_cur_time();
 	/*
@@ -605,6 +611,7 @@ void HiMesh::computeHausdorfDistance(){
 	 * */
 	if(HiMesh::calculate_method == HCT_BVHTREE){
 		list<Triangle> triangles = get_triangles();
+		map<float, HiMesh::Face_iterator> fits = get_fits();
 		TriangleTree *tree = new TriangleTree(triangles.begin(), triangles.end());
 		tree->build();
 		tree->accelerate_distance_queries();
@@ -614,11 +621,20 @@ void HiMesh::computeHausdorfDistance(){
 			// for each sampled point, find the closest facet to it
 			// and it will be proxy facet of that point
 			for(const Point &p:t->sampled_points){
-				float dist = tree->squared_distance(p);
+
+				TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
+				float dist = hispeed::distance((const float *)&p, (const float *)&ppid.first);
+				Triangle tri = *ppid.second;
+				float fs = encode_triangle2(tri);
+				assert(fits.find(fs)!=fits.end());
+				fits[fs]->updateProxyHausdorff(sqrt(dist));
+
+//				assert(fits.find(*ppid.second) != fits.end());
+//				fits[*ppid.second]->updateProxyHausdorff(sqrt(dist));
 				phdist = max(phdist, dist);
 			}
 		}
-		logt("BVH %f", ss, sqrt(phdist));
+		//logt("BVH %f", ss, sqrt(phdist));
 		phdist = sqrt(phdist);
 	}
 
@@ -712,7 +728,9 @@ void HiMesh::computeHausdorfDistance(){
 //		if(this->size_of_facets()<100){
 //			log("%f\t%f", fit->getProxyHausdorff(), fit->getHausdorff());
 //		}
+
 	}
+
 	avg_hdist /= (int)size_of_facets();
 	avg_proxy_hdist /= (int)size_of_facets();
 	globalHausdorfDistance.push_back(current_hausdorf);
