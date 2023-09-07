@@ -30,6 +30,8 @@ int main(int argc, char **argv){
 		gc->set_thread_num(global_ctx.num_compute_thread);
 	}
 
+	HiMesh::use_byte_coding = !global_ctx.disable_byte_encoding;
+
 	char path1[256];
 	char path2[256];
 	if(global_ctx.use_raw){
