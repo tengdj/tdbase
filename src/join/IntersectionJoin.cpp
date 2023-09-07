@@ -9,8 +9,8 @@
 
 namespace hispeed{
 
-vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
-	vector<candidate_entry> candidates;
+vector<candidate_entry *> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
+	vector<candidate_entry *> candidates;
 	OctreeNode *tree = tile2->get_octree();
 	vector<int> candidate_ids;
 	for(int i=0;i<tile1->num_objects();i++){
@@ -46,7 +46,7 @@ vector<candidate_entry> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 		}
 		candidate_ids.clear();
 		// save the candidate list
-		candidates.push_back(candidate_entry(wrapper1, candidate_list));
+		candidates.push_back(new candidate_entry(wrapper1, candidate_list));
 	}
 	candidate_ids.clear();
 
@@ -63,7 +63,7 @@ void SpatialJoin::intersect(query_context ctx){
 	struct timeval very_start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<candidate_entry> candidates = mbb_intersect(ctx.tile1, ctx.tile2);
+	vector<candidate_entry *> candidates = mbb_intersect(ctx.tile1, ctx.tile2);
 	ctx.index_time += hispeed::get_time_elapsed(start,false);
 	logt("index retrieving", start);
 
@@ -87,9 +87,9 @@ void SpatialJoin::intersect(query_context ctx){
 		start = get_cur_time();
 
 		for(auto ce_iter=candidates.begin();ce_iter!=candidates.end();){
-			HiMesh_Wrapper *wrapper1 = ce_iter->mesh_wrapper;
+			HiMesh_Wrapper *wrapper1 = (*ce_iter)->mesh_wrapper;
 			//print_candidate_within(*ce_iter);
-			for(auto ci_iter=ce_iter->candidates.begin();ci_iter!=ce_iter->candidates.end();){
+			for(auto ci_iter=(*ce_iter)->candidates.begin();ci_iter!=(*ce_iter)->candidates.end();){
 				bool determined = false;
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
 				int cand_count = 0;
@@ -110,16 +110,16 @@ void SpatialJoin::intersect(query_context ctx){
 				if(determined){
 					// must intersect
 					wrapper1->report_result(wrapper2);
-					ce_iter->candidates.erase(ci_iter);
+					(*ce_iter)->candidates.erase(ci_iter);
 					// all voxel pairs must not intersect
 				}else if(global_ctx.hausdorf_level>=1 && cand_count == ci_iter->voxel_pairs.size()){
 					// must not intersect
-					ce_iter->candidates.erase(ci_iter);
+					(*ce_iter)->candidates.erase(ci_iter);
 				}else{
 					ci_iter++;
 				}
 			}
-			if(ce_iter->candidates.size()==0){
+			if((*ce_iter)->candidates.size()==0){
 				candidates.erase(ce_iter);
 			}else{
 				ce_iter++;

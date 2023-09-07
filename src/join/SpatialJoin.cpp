@@ -18,20 +18,20 @@ namespace hispeed{
 
 /*facilitate functions*/
 
-size_t get_pair_num(vector<candidate_entry> &candidates){
+size_t get_pair_num(vector<candidate_entry *> &candidates){
 	size_t pair_num = 0;
-	for(candidate_entry &p:candidates){
-		for(candidate_info &c:p.candidates){
+	for(candidate_entry *p:candidates){
+		for(candidate_info &c:p->candidates){
 			pair_num += c.voxel_pairs.size();
 		}
 	}
 	return pair_num;
 }
 
-size_t get_candidate_num(vector<candidate_entry> &candidates){
+size_t get_candidate_num(vector<candidate_entry *> &candidates){
 	size_t candidate_num = 0;
-	for(candidate_entry &p:candidates){
-		candidate_num += p.candidates.size();
+	for(candidate_entry *p:candidates){
+		candidate_num += p->candidates.size();
 	}
 	return candidate_num;
 }
@@ -63,10 +63,10 @@ range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, doubl
 	return ret;
 }
 
-void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context &ctx){
-	for(candidate_entry &c:candidates){
-		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
-		for(candidate_info &info:c.candidates){
+void SpatialJoin::decode_data(vector<candidate_entry *> &candidates, query_context &ctx){
+	for(candidate_entry *c:candidates){
+		HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
+		for(candidate_info &info:c->candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
 				assert(vp.v1&&vp.v2);
 				// ensure the mesh is extracted and decoded
@@ -77,7 +77,7 @@ void SpatialJoin::decode_data(vector<candidate_entry> &candidates, query_context
 	}// end for candidates
 }
 
-geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, query_context &ctx){
+geometry_param SpatialJoin::packing_data(vector<candidate_entry *> &candidates, query_context &ctx){
 	geometry_param gp;
 	gp.pair_num = get_pair_num(candidates);
 	gp.element_num = 0;
@@ -85,9 +85,9 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, qu
 	gp.results = ctx.results;
 	map<Voxel *, uint> voxel_offset_map;
 
-	for(candidate_entry &c:candidates){
-		HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
-		for(candidate_info &info:c.candidates){
+	for(candidate_entry *c:candidates){
+		HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
+		for(candidate_info &info:c->candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
 				//log("%d %d",vp.v1->data->size, vp.v2->data->size);
 				gp.element_pair_num += vp.v1->num_triangles*vp.v2->num_triangles;
@@ -118,8 +118,8 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, qu
 
 	// organize the data for computing
 	int index = 0;
-	for(candidate_entry c:candidates){
-		for(candidate_info &info:c.candidates){
+	for(candidate_entry *c:candidates){
+		for(candidate_info &info:c->candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
 				gp.offset_size[4*index] = voxel_offset_map[vp.v1];
 				gp.offset_size[4*index+1] = vp.v1->num_triangles;
@@ -134,7 +134,7 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry> &candidates, qu
 	return gp;
 }
 
-void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_context &ctx){
+void SpatialJoin::check_intersection(vector<candidate_entry *> &candidates, query_context &ctx){
 	struct timeval start = hispeed::get_cur_time();
 
 	const int pair_num = get_pair_num(candidates);
@@ -149,24 +149,24 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 
 	if(ctx.use_aabb){
 		// build the AABB tree
-		for(candidate_entry &c:candidates){
-			for(candidate_info &info:c.candidates){
+		for(candidate_entry *c:candidates){
+			for(candidate_info &info:c->candidates){
 				info.mesh_wrapper->mesh->get_aabb_tree_triangle();
 			}
 		}
 		ctx.packing_time += logt("building aabb tree", start);
 
 		int index = 0;
-		for(candidate_entry &c:candidates){
-			c.mesh_wrapper->mesh->get_segments();
-			for(candidate_info &info:c.candidates){
+		for(candidate_entry *c:candidates){
+			c->mesh_wrapper->mesh->get_segments();
+			for(candidate_info &info:c->candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.results[index++].intersected = c.mesh_wrapper->mesh->intersect_tree(info.mesh_wrapper->mesh);
+				ctx.results[index++].intersected = c->mesh_wrapper->mesh->intersect_tree(info.mesh_wrapper->mesh);
 			}// end for candidate list
 		}// end for candidates
 		// clear the trees for current LOD
-		for(candidate_entry &c:candidates){
-			for(candidate_info &info:c.candidates){
+		for(candidate_entry *c:candidates){
+			for(candidate_info &info:c->candidates){
 				info.mesh_wrapper->mesh->clear_aabb_tree();
 			}
 		}
@@ -182,7 +182,7 @@ void SpatialJoin::check_intersection(vector<candidate_entry> &candidates, query_
 
 
 //utility function to calculate the distances between voxel pairs in batch
-void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_context &ctx){
+void SpatialJoin::calculate_distance(vector<candidate_entry *> &candidates, query_context &ctx){
 	struct timeval start = hispeed::get_cur_time();
 
 	const int pair_num = get_pair_num(candidates);
@@ -196,27 +196,27 @@ void SpatialJoin::calculate_distance(vector<candidate_entry> &candidates, query_
 
 	if(ctx.use_aabb){
 		// build the AABB tree
-		for(candidate_entry &c:candidates){
-			for(candidate_info &info:c.candidates){
+		for(candidate_entry *c:candidates){
+			for(candidate_info &info:c->candidates){
 				info.mesh_wrapper->mesh->get_aabb_tree_triangle();
 			}
-			c.mesh_wrapper->mesh->get_aabb_tree_triangle();
+			c->mesh_wrapper->mesh->get_aabb_tree_triangle();
 		}
 		ctx.packing_time += logt("building aabb tree", start);
 
 		int index = 0;
-		for(candidate_entry &c:candidates){
-			for(candidate_info &info:c.candidates){
+		for(candidate_entry *c:candidates){
+			for(candidate_info &info:c->candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.results[index++].distance = c.mesh_wrapper->mesh->distance_tree(info.mesh_wrapper->mesh);
+				ctx.results[index++].distance = c->mesh_wrapper->mesh->distance_tree(info.mesh_wrapper->mesh);
 			}// end for distance_candiate list
 		}// end for candidates
 		// clear the trees for current LOD
-		for(candidate_entry &c:candidates){
-			for(candidate_info &info:c.candidates){
+		for(candidate_entry *c:candidates){
+			for(candidate_info &info:c->candidates){
 				info.mesh_wrapper->mesh->clear_aabb_tree();
 			}
-			c.mesh_wrapper->mesh->clear_aabb_tree();
+			c->mesh_wrapper->mesh->clear_aabb_tree();
 		}
 		ctx.computation_time += logt("computation for distance computation", start);
 

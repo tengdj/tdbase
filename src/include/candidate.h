@@ -43,7 +43,7 @@ public:
 class candidate_entry{
 public:
 	candidate_entry(){}
-	candidate_entry(HiMesh_Wrapper *m, vector<candidate_info> c){
+	candidate_entry(HiMesh_Wrapper *m, vector<candidate_info> &c){
 		mesh_wrapper = m;
 		candidates = c;
 	}
@@ -52,8 +52,8 @@ public:
 	int candidate_confirmed = 0;
 };
 
-size_t get_pair_num(vector<candidate_entry> &candidates);
-size_t get_candidate_num(vector<candidate_entry> &candidates);
+size_t get_pair_num(vector<candidate_entry *> &candidates);
+size_t get_candidate_num(vector<candidate_entry *> &candidates);
 
 }
 

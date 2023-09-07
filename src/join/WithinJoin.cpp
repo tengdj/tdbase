@@ -9,20 +9,20 @@
 
 namespace hispeed{
 
-inline void print_candidate_within(candidate_entry &cand){
+inline void print_candidate_within(candidate_entry *cand){
 	if(global_ctx.verbose>=1){
-		printf("%ld (%ld candidates)\n", cand.mesh_wrapper->id, cand.candidates.size());
-		for(int i=0;i<cand.candidates.size();i++){
-			printf("%d:\t%ld\t%ld\n",i,cand.candidates[i].mesh_wrapper->id,cand.candidates[i].voxel_pairs.size());
-			for(auto &vp:cand.candidates[i].voxel_pairs){
+		printf("%ld (%ld candidates)\n", cand->mesh_wrapper->id, cand->candidates.size());
+		for(int i=0;i<cand->candidates.size();i++){
+			printf("%d:\t%ld\t%ld\n",i,cand->candidates[i].mesh_wrapper->id,cand->candidates[i].voxel_pairs.size());
+			for(auto &vp:cand->candidates[i].voxel_pairs){
 				printf("\t[%f,%f]\n",vp.dist.mindist,vp.dist.maxdist);
 			}
 		}
 	}
 }
 
-vector<candidate_entry> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_context &ctx){
-	vector<candidate_entry> candidates;
+vector<candidate_entry *> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_context &ctx){
+	vector<candidate_entry *> candidates;
 	vector<pair<int, range>> candidate_ids;
 	OctreeNode *tree = tile2->get_octree();
 	size_t tile1_size = min(tile1->num_objects(), ctx.max_num_objects1);
@@ -69,7 +69,7 @@ vector<candidate_entry> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_
 		}
 		// save the candidate list
 		if(candidate_list.size()>0){
-			candidates.push_back(candidate_entry(wrapper1, candidate_list));
+			candidates.push_back(new candidate_entry(wrapper1, candidate_list));
 		}
 		candidate_ids.clear();
 	}
@@ -84,7 +84,7 @@ void SpatialJoin::within(query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
 	// filtering with MBBs to get the candidate list
-	vector<candidate_entry> candidates = mbb_within(ctx.tile1, ctx.tile2, ctx);
+	vector<candidate_entry *> candidates = mbb_within(ctx.tile1, ctx.tile2, ctx);
 	ctx.index_time += get_time_elapsed(start, false);
 	logt("comparing mbbs with %d candidate pairs", start, get_candidate_num(candidates));
 
@@ -107,9 +107,9 @@ void SpatialJoin::within(query_context ctx){
 		int index = 0;
 		start = get_cur_time();
 		for(auto ce_iter=candidates.begin();ce_iter!=candidates.end();){
-			HiMesh_Wrapper *wrapper1 = ce_iter->mesh_wrapper;
+			HiMesh_Wrapper *wrapper1 = (*ce_iter)->mesh_wrapper;
 			//print_candidate_within(*ce_iter);
-			for(auto ci_iter=ce_iter->candidates.begin();ci_iter!=ce_iter->candidates.end();){
+			for(auto ci_iter=(*ce_iter)->candidates.begin();ci_iter!=(*ce_iter)->candidates.end();){
 				bool determined = false;
 				HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
 				if(ctx.use_aabb){
@@ -197,12 +197,13 @@ void SpatialJoin::within(query_context ctx){
 				}
 				if(determined || ci_iter->voxel_pairs.size()==0){
 					// must closer than or farther than
-					ce_iter->candidates.erase(ci_iter);
+					(*ce_iter)->candidates.erase(ci_iter);
 				}else{
 					ci_iter++;
 				}
 			}
-			if(ce_iter->candidates.size()==0){
+			if((*ce_iter)->candidates.size()==0){
+				delete (*ce_iter);
 				candidates.erase(ce_iter);
 			}else{
 				//print_candidate_within(*ce_iter);

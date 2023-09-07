@@ -36,50 +36,50 @@ inline range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minm
 	return ret;
 }
 
-void print_candidate(candidate_entry &cand){
+void print_candidate(candidate_entry *cand){
 	if(global_ctx.verbose>=1){
-		log("%ld (%d + %ld)", cand.mesh_wrapper->id, cand.candidate_confirmed, cand.candidates.size());
+		log("%ld (%d + %ld)", cand->mesh_wrapper->id, cand->candidate_confirmed, cand->candidates.size());
 		int i=0;
-		for(candidate_info &ci:cand.candidates){
+		for(candidate_info &ci:cand->candidates){
 			log("%d\t%ld:\t[%f,%f]",i++,ci.mesh_wrapper->id,ci.distance.mindist,ci.distance.maxdist);
 		}
 	}
 }
 
-inline void update_candidate_list_knn(candidate_entry &cand, query_context &ctx){
-	HiMesh_Wrapper *target = cand.mesh_wrapper;
-	int list_size = cand.candidates.size();
-	for(int i=0;i<list_size && ctx.knn>cand.candidate_confirmed;){
+inline void update_candidate_list_knn(candidate_entry *cand, query_context &ctx){
+	HiMesh_Wrapper *target = cand->mesh_wrapper;
+	int list_size = cand->candidates.size();
+	for(int i=0;i<list_size && ctx.knn>cand->candidate_confirmed;){
 		int sure_closer = 0;
 		int maybe_closer = 0;
-		for(int j=0;j<cand.candidates.size();j++){
+		for(int j=0;j<cand->candidates.size();j++){
 			if(i==j){
 				continue;
 			}
 			// count how many candidates that are surely closer than this one
-			if(cand.candidates[i].distance>=cand.candidates[j].distance) {
+			if(cand->candidates[i].distance>=cand->candidates[j].distance) {
 				sure_closer++;
 			}
 			// count how many candidates that are possibly closer than this one
-			if(!(cand.candidates[i].distance<=cand.candidates[j].distance)) {
+			if(!(cand->candidates[i].distance<=cand->candidates[j].distance)) {
 				maybe_closer++;
 			}
 		}
-		int cand_left = ctx.knn-cand.candidate_confirmed;
+		int cand_left = ctx.knn-cand->candidate_confirmed;
 		if(global_ctx.verbose>=1){
 			log("%ld\t%5ld sure closer %3d maybe closer %3d (%3d +%3d)",
-					cand.mesh_wrapper->id,
-					cand.candidates[i].mesh_wrapper->id,
+					cand->mesh_wrapper->id,
+					cand->candidates[i].mesh_wrapper->id,
 					sure_closer,
 					maybe_closer,
-					cand.candidate_confirmed,
+					cand->candidate_confirmed,
 					cand_left);
 		}
 		// the rank makes sure this one is confirmed
 		if(maybe_closer < cand_left){
-			target->report_result(cand.candidates[i].mesh_wrapper);
-			cand.candidate_confirmed++;
-			cand.candidates.erase(cand.candidates.begin()+i);
+			target->report_result(cand->candidates[i].mesh_wrapper);
+			cand->candidate_confirmed++;
+			cand->candidates.erase(cand->candidates.begin()+i);
 			list_size--;
 			//log("ranked %d, %d confirmed", rank, target->candidate_confirmed);
 			continue;
@@ -87,7 +87,7 @@ inline void update_candidate_list_knn(candidate_entry &cand, query_context &ctx)
 
 		// the rank makes sure this one should be removed
 		if(sure_closer >= cand_left){
-			cand.candidates.erase(cand.candidates.begin()+i);
+			cand->candidates.erase(cand->candidates.begin()+i);
 			list_size--;
 			continue;
 		}
@@ -106,10 +106,11 @@ bool result_sort(pair<int, int> a, pair<int, int> b){
 	}
 }
 
-void evaluate_candidate_lists(vector<candidate_entry> &candidates, query_context &ctx){
-	for(vector<candidate_entry>::iterator it=candidates.begin();it!=candidates.end();){
+void evaluate_candidate_lists(vector<candidate_entry *> &candidates, query_context &ctx){
+	for(vector<candidate_entry *>::iterator it=candidates.begin();it!=candidates.end();){
 		update_candidate_list_knn(*it, ctx);
-		if(it->candidate_confirmed==ctx.knn){
+		if((*it)->candidate_confirmed==ctx.knn){
+			delete *it;
 			it = candidates.erase(it);
 		}else{
 			it++;
@@ -117,8 +118,8 @@ void evaluate_candidate_lists(vector<candidate_entry> &candidates, query_context
 	}
 }
 
-vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx){
-	vector<candidate_entry> candidates;
+vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx){
+	vector<candidate_entry *> candidates;
 	vector<pair<int, range>> candidate_ids;
 	OctreeNode *tree = tile2->get_octree();
 	size_t tile1_size = min(tile1->num_objects(), ctx.max_num_objects1);
@@ -160,7 +161,7 @@ vector<candidate_entry> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_con
 		//log("%ld %ld", candidate_ids.size(),candidate_list.size());
 		// save the candidate list
 		if(candidate_list.size()>0){
-			candidates.push_back(candidate_entry(wrapper1, candidate_list));
+			candidates.push_back(new candidate_entry(wrapper1, candidate_list));
 		}
 		candidate_ids.clear();
 	}
@@ -179,7 +180,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 	struct timeval very_start = get_cur_time();
 
 	// filtering with MBBs to get the candidate list
-	vector<candidate_entry> candidates = mbb_knn(ctx.tile1, ctx.tile2, ctx);
+	vector<candidate_entry *> candidates = mbb_knn(ctx.tile1, ctx.tile2, ctx);
 	ctx.index_time += logt("index retrieving", start);
 
 	// now we start to get the distances with progressive level of details
@@ -202,9 +203,9 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 		// now update the distance range with the new distances
 		int index = 0;
 		start = get_cur_time();
-		for(candidate_entry &c:candidates){
-			HiMesh_Wrapper *wrapper1 = c.mesh_wrapper;
-			for(candidate_info &ci:c.candidates){
+		for(candidate_entry *c:candidates){
+			HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
+			for(candidate_info &ci:c->candidates){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				if(ctx.use_aabb){
 					range dist = ci.distance;
