@@ -262,9 +262,9 @@ int main(int argc, char **argv){
 			(int)shrink, voxel_size,
 			HiMesh::sampling_rate, HiMesh::calculate_method);
 
-	sprintf(vessel_output,"%s_v_%s.mt",output_path.c_str(),config);
+	sprintf(vessel_output,"%s_v_%s.dt.raw",output_path.c_str(),config);
 	remove(vessel_output);
-	sprintf(nuclei_output,"%s_n_%s.mt",output_path.c_str(),config);
+	sprintf(nuclei_output,"%s_n_%s.dt.raw",output_path.c_str(),config);
 	remove(nuclei_output);
 
 	sprintf(vessel_output,"%s_v_%s.dt",output_path.c_str(),config);
