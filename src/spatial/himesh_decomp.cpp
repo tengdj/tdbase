@@ -107,10 +107,11 @@ void HiMesh::readBaseMesh()
     // Read the face vertex indices.
     for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
     {
-        uint32_t *f = new uint32_t[(1 << NB_BITS_FACE_DEGREE_BASE_MESH) + 3];
+    	int nv = readInt();
+        uint32_t *f = new uint32_t[nv + 1];
         // Write in the first cell of the array the face degree.
-        f[0] = readInt();
-        for (unsigned j = 1; j < f[0] + 1; ++j){
+        f[0] = nv;
+        for (unsigned j = 1; j < nv + 1; ++j){
         	f[j] = readInt();
         }
         p_faceDeque->push_back(f);
@@ -121,8 +122,9 @@ void HiMesh::readBaseMesh()
     delegate(builder);
 
     // Free the memory.
-    for (unsigned i = 0; i < p_faceDeque->size(); ++i)
-        delete[] p_faceDeque->at(i);
+    for (unsigned i = 0; i < p_faceDeque->size(); ++i){
+    	delete[] p_faceDeque->at(i);
+    }
     delete p_faceDeque;
     delete p_pointDeque;
 
@@ -295,11 +297,17 @@ void HiMesh::insertRemovedVertices() {
   * Remove all the marked edges.
   */
 void HiMesh::removeInsertedEdges() {
-    for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); ++hit) {
-        if(hit->isAdded()){
-        	join_facet(hit);
-        }
-    }
+	bool anyadded = false;
+	do{
+		anyadded = false;
+		for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); hit++) {
+			if(hit->isAdded()){
+				join_facet(hit);
+				anyadded = true;
+				break;
+			}
+		}
+	}while(anyadded);
 }
 
 }

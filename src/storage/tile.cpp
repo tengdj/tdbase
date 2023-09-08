@@ -47,14 +47,14 @@ void Tile::init(){
 		exit(-1);
 	}
 
-	process_lock();
+	//process_lock();
 	// load the raw data into the buffer
 	data_size = file_size(tile_path.c_str());
 	data_buffer = new char[data_size];
 	FILE *dt_fs = fopen(tile_path.c_str(), "r");
 	assert(fread((void *)data_buffer, sizeof(char), data_size, dt_fs) == data_size);
 	fclose(dt_fs);
-	process_unlock();
+	//process_unlock();
 
 	// parsing the metadata from the dt file
 	size_t offset = 0;
@@ -134,6 +134,7 @@ void Tile::convert_raw(const char *path){
 	os->write(buffer, offset);
 	os->close();
 	delete os;
+	delete []buffer;
 	log("converted to %s",path);
 }
 

@@ -21,6 +21,7 @@ public:
 	Voxel *v1;
 	Voxel *v2;
 	range dist;
+public:
 	voxel_pair(Voxel *v1, Voxel *v2, range dist){
 		this->v1 = v1;
 		this->v2 = v2;
@@ -35,7 +36,14 @@ public:
 
 class candidate_info{
 public:
-	HiMesh_Wrapper *mesh_wrapper;
+	candidate_info(HiMesh_Wrapper *m){
+		mesh_wrapper = m;
+	}
+	~candidate_info(){
+		mesh_wrapper = NULL;
+		voxel_pairs.clear();
+	}
+	HiMesh_Wrapper *mesh_wrapper = NULL;
 	range distance;
 	vector<voxel_pair> voxel_pairs;
 };
@@ -43,12 +51,21 @@ public:
 class candidate_entry{
 public:
 	candidate_entry(){}
-	candidate_entry(HiMesh_Wrapper *m, vector<candidate_info> &c){
+	candidate_entry(HiMesh_Wrapper *m){
 		mesh_wrapper = m;
-		candidates = c;
 	}
+	~candidate_entry(){
+		for(candidate_info *ci:candidates){
+			delete ci;
+		}
+		candidates.clear();
+	}
+	void add_candidate(candidate_info *ci){
+		candidates.push_back(ci);
+	}
+
 	HiMesh_Wrapper *mesh_wrapper = NULL;
-	vector<candidate_info> candidates;
+	vector<candidate_info *> candidates;
 	int candidate_confirmed = 0;
 };
 

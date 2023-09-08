@@ -41,7 +41,7 @@ public:
 	std::string tile1_path;
 	std::string tile2_path;
 	int knn = 1;
-	double max_dist = 1000;
+	double within_dist = 1000;
 	int num_thread = 0;
 	int num_compute_thread = 1;
 	int repeated_times = 1;
@@ -161,7 +161,7 @@ static query_context parse_args(int argc, char **argv){
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("use_raw", "using the raw decoded data")
 		("disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones")
-		("max_dist", po::value<double>(&ctx.max_dist), "the maximum distance for within query")
+		("within_dist", po::value<double>(&ctx.within_dist), "the maximum distance for within query")
 		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level(default)")
 		;
 	po::variables_map vm;

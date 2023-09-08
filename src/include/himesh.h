@@ -88,8 +88,6 @@
 // for configuration
 #define BUFFER_SIZE 10 * 1024 * 1024
 
-#define NB_BITS_FACE_DEGREE_BASE_MESH 3
-
 const int COMPRESSION_MODE_ID = 0;
 const int DECOMPRESSION_MODE_ID = 1;
 
