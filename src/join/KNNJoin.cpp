@@ -135,9 +135,9 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 		assert(candidate_ids.size()>=ctx.knn);
 
 		if(candidate_ids.size() == ctx.knn){
-			for(pair<int, range> &p:candidate_ids){
-				wrapper1->report_result(tile2->get_mesh_wrapper(p.first));
-			}
+//			for(pair<int, range> &p:candidate_ids){
+//				wrapper1->report_result(tile2->get_mesh_wrapper(p.first));
+//			}
 			candidate_ids.clear();
 			continue;
 		}
