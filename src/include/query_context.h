@@ -67,7 +67,6 @@ public:
 	result_container *results = NULL;
 
 	query_context(){
-		num_compute_thread = hispeed::get_num_threads();
 		num_thread = hispeed::get_num_threads();
 		pthread_mutex_init(&lk, NULL);
 	}
@@ -209,6 +208,8 @@ static query_context parse_args(int argc, char **argv){
 			ctx.lods.push_back(top_lod);
 		}
 	}
+
+	global_ctx.num_thread = min(global_ctx.num_thread, global_ctx.repeated_times);
 
 	return ctx;
 }
