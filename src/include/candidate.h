@@ -41,7 +41,7 @@ public:
 	}
 	~candidate_info(){
 		mesh_wrapper = NULL;
-		voxel_pairs.clear();
+		//voxel_pairs.clear();
 	}
 	HiMesh_Wrapper *mesh_wrapper = NULL;
 	range distance;
@@ -55,17 +55,18 @@ public:
 		mesh_wrapper = m;
 	}
 	~candidate_entry(){
-		for(candidate_info *ci:candidates){
-			delete ci;
-		}
+//		for(candidate_info *ci:candidates){
+//			delete ci;
+//		}
 		candidates.clear();
 	}
-	void add_candidate(candidate_info *ci){
+	void add_candidate(candidate_info &ci){
 		candidates.push_back(ci);
 	}
 
 	HiMesh_Wrapper *mesh_wrapper = NULL;
-	vector<candidate_info *> candidates;
+	//vector<candidate_info *> candidates;
+	vector<candidate_info> candidates;
 	int candidate_confirmed = 0;
 };
 

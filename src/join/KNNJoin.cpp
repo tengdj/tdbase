@@ -40,8 +40,8 @@ void print_candidate(candidate_entry *cand){
 	if(global_ctx.verbose>=1){
 		log("%ld (%d + %ld)", cand->mesh_wrapper->id, cand->candidate_confirmed, cand->candidates.size());
 		int i=0;
-		for(candidate_info *ci:cand->candidates){
-			log("%d\t%ld:\t[%f,%f]",i++,ci->mesh_wrapper->id,ci->distance.mindist,ci->distance.maxdist);
+		for(candidate_info &ci:cand->candidates){
+			log("%d\t%ld:\t[%f,%f]",i++,ci.mesh_wrapper->id,ci.distance.mindist,ci.distance.maxdist);
 		}
 	}
 }
@@ -57,11 +57,11 @@ inline void update_candidate_list_knn(candidate_entry *cand, query_context &ctx)
 				continue;
 			}
 			// count how many candidates that are surely closer than this one
-			if(cand->candidates[i]->distance>=cand->candidates[j]->distance) {
+			if(cand->candidates[i].distance>=cand->candidates[j].distance) {
 				sure_closer++;
 			}
 			// count how many candidates that are possibly closer than this one
-			if(!(cand->candidates[i]->distance<=cand->candidates[j]->distance)) {
+			if(!(cand->candidates[i].distance<=cand->candidates[j].distance)) {
 				maybe_closer++;
 			}
 		}
@@ -69,7 +69,7 @@ inline void update_candidate_list_knn(candidate_entry *cand, query_context &ctx)
 		if(global_ctx.verbose>=1){
 			log("%ld\t%5ld sure closer %3d maybe closer %3d (%3d +%3d)",
 					cand->mesh_wrapper->id,
-					cand->candidates[i]->mesh_wrapper->id,
+					cand->candidates[i].mesh_wrapper->id,
 					sure_closer,
 					maybe_closer,
 					cand->candidate_confirmed,
@@ -77,9 +77,9 @@ inline void update_candidate_list_knn(candidate_entry *cand, query_context &ctx)
 		}
 		// the rank makes sure this one is confirmed
 		if(maybe_closer < cand_left){
-			target->report_result(cand->candidates[i]->mesh_wrapper);
+			target->report_result(cand->candidates[i].mesh_wrapper);
 			cand->candidate_confirmed++;
-			delete cand->candidates[i];
+			//delete cand->candidates[i];
 			cand->candidates.erase(cand->candidates.begin()+i);
 			list_size--;
 			//log("ranked %d, %d confirmed", rank, target->candidate_confirmed);
@@ -88,7 +88,7 @@ inline void update_candidate_list_knn(candidate_entry *cand, query_context &ctx)
 
 		// the rank makes sure this one should be removed as it must not be qualified
 		if(sure_closer >= cand_left){
-			delete cand->candidates[i];
+			//delete cand->candidates[i];
 			cand->candidates.erase(cand->candidates.begin()+i);
 			list_size--;
 			continue;
@@ -148,7 +148,7 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 		// 	 the candidate list in a finer grain
 		for(pair<int, range> &p:candidate_ids){
 			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(p.first);
-			candidate_info *ci = new candidate_info(wrapper2);
+			candidate_info ci(wrapper2);
 			float min_maxdist = DBL_MAX;
 			for(Voxel *v1:wrapper1->voxels){
 				for(Voxel *v2:wrapper2->voxels){
@@ -157,14 +157,14 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 						continue;
 					}
 					// wait for later evaluation
-					ci->voxel_pairs.push_back(voxel_pair(v1, v2, dist_vox));
+					ci.voxel_pairs.push_back(voxel_pair(v1, v2, dist_vox));
 					min_maxdist = min(min_maxdist, dist_vox.maxdist);
 				}
 			}
 			// form the distance range of objects with the evaluations of voxel pairs
-			ci->distance = update_voxel_pair_list(ci->voxel_pairs, min_maxdist);
-			assert(ci->voxel_pairs.size()>0);
-			assert(ci->distance.mindist<=ci->distance.maxdist);
+			ci.distance = update_voxel_pair_list(ci.voxel_pairs, min_maxdist);
+			assert(ci.voxel_pairs.size()>0);
+			assert(ci.distance.mindist<=ci.distance.maxdist);
 			ce->add_candidate(ci);
 		}
 
@@ -217,10 +217,10 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 		start = get_cur_time();
 		for(candidate_entry *c:candidates){
 			HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
-			for(candidate_info *ci:c->candidates){
-				HiMesh_Wrapper *wrapper2 = ci->mesh_wrapper;
+			for(candidate_info &ci:c->candidates){
+				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 				if(ctx.use_aabb){
-					range dist = ci->distance;
+					range dist = ci.distance;
 					float hdist1 = wrapper1->getHausdorffDistance();
 					float hdist2 = wrapper2->getHausdorffDistance();
 					float phdist1 = wrapper1->getProxyHausdorffDistance();
@@ -242,13 +242,13 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 					if(global_ctx.verbose>=1){
 						log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
 								hdist1, hdist2,
-								ci->distance.mindist, ci->distance.maxdist,
+								ci.distance.mindist, ci.distance.maxdist,
 								dist.mindist, dist.maxdist);
 					}
-					ci->distance = dist;
+					ci.distance = dist;
 				}else{
 					double vox_minmaxdist = DBL_MAX;
-					for(voxel_pair &vp:ci->voxel_pairs){
+					for(voxel_pair &vp:ci.voxel_pairs){
 						result_container res = ctx.results[index++];
 						// update the distance
 						if(vp.v1->num_triangles>0&&vp.v2->num_triangles>0){
@@ -295,9 +295,9 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 						}
 					}
 					// after each round, some voxels need to be evicted
-					ci->distance = update_voxel_pair_list(ci->voxel_pairs, vox_minmaxdist);
-					assert(ci->voxel_pairs.size()>0);
-					assert(ci->distance.mindist<=ci->distance.maxdist);
+					ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
+					assert(ci.voxel_pairs.size()>0);
+					assert(ci.distance.mindist<=ci.distance.maxdist);
 				}
 			}
 		}

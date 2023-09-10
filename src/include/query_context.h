@@ -55,6 +55,7 @@ public:
 	int verbose = 0;
 	bool counter_clock = false;
 	bool use_raw = false;
+	bool reload_raw = false;
 	bool disable_byte_encoding = false;
 
 	uint cur_lod = 0;
@@ -159,6 +160,7 @@ static query_context parse_args(int argc, char **argv){
 		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
 		("use_raw", "using the raw decoded data")
+		("reload_raw", "remove the old raw file and reload from the encoded file")
 		("disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones")
 		("within_dist", po::value<double>(&ctx.within_dist), "the maximum distance for within query")
 		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level(default)")
@@ -188,6 +190,9 @@ static query_context parse_args(int argc, char **argv){
 	}
 	if(vm.count("disable_byte_encoding")){
 		ctx.disable_byte_encoding = true;
+	}
+	if(vm.count("reload_raw")){
+		ctx.reload_raw = true;
 	}
 
 	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);

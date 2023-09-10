@@ -31,20 +31,20 @@ vector<candidate_entry *> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 				continue;
 			}
 			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(tile2_id);
-			candidate_info *ci = new candidate_info(wrapper2);
+			candidate_info ci(wrapper2);
 			for(Voxel *v1:wrapper1->voxels){
 				for(Voxel *v2:wrapper2->voxels){
 					if(v1->intersect(*v2)){
 						// a candidate not sure
-						ci->voxel_pairs.push_back(voxel_pair(v1, v2));
+						ci.voxel_pairs.push_back(voxel_pair(v1, v2));
 					}
 				}
 			}
 			// some voxel pairs need be further evaluated
-			if(ci->voxel_pairs.size()>0){
+			if(ci.voxel_pairs.size()>0){
 				ce->add_candidate(ci);
 			}else{
-				delete ci;
+				//delete ci;
 			}
 			former = tile2_id;
 		}
@@ -100,9 +100,9 @@ void SpatialJoin::intersect(query_context ctx){
 			//print_candidate_within(*ce_iter);
 			for(auto ci_iter=(*ce_iter)->candidates.begin();ci_iter!=(*ce_iter)->candidates.end();){
 				bool determined = false;
-				HiMesh_Wrapper *wrapper2 = (*ci_iter)->mesh_wrapper;
+				HiMesh_Wrapper *wrapper2 = (ci_iter)->mesh_wrapper;
 				int cand_count = 0;
-				for(voxel_pair &vp:(*ci_iter)->voxel_pairs){
+				for(voxel_pair &vp:(ci_iter)->voxel_pairs){
 					determined |= ctx.results[index].intersected;
 					if(global_ctx.hausdorf_level==1){
 						ctx.results[index].distance -= wrapper1->getProxyHausdorffDistance();
@@ -119,10 +119,10 @@ void SpatialJoin::intersect(query_context ctx){
 				if(determined){
 					// must intersect
 					wrapper1->report_result(wrapper2);
-					delete *ci_iter;
+					//delete *ci_iter;
 					(*ce_iter)->candidates.erase(ci_iter);
 					// all voxel pairs must not intersect
-				}else if(global_ctx.hausdorf_level>=1 && cand_count == (*ci_iter)->voxel_pairs.size()){
+				}else if(global_ctx.hausdorf_level>=1 && cand_count == (ci_iter)->voxel_pairs.size()){
 					// must not intersect
 					(*ce_iter)->candidates.erase(ci_iter);
 				}else{

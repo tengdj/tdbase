@@ -36,17 +36,21 @@ int main(int argc, char **argv){
 	char path2[256];
 	if(global_ctx.use_raw){
 		sprintf(path1, "%s.raw", global_ctx.tile1_path.c_str());
-		remove(path1);
-		Tile *tile = new Tile(global_ctx.tile1_path.c_str());
-		tile->convert_raw(path1);
-		delete tile;
+		if(!file_exist(path1) || global_ctx.reload_raw){
+			remove(path1);
+			Tile *tile = new Tile(global_ctx.tile1_path.c_str());
+			tile->convert_raw(path1);
+			delete tile;
+		}
 
 		if(global_ctx.tile2_path.size()>0){
 			sprintf(path2, "%s.raw", global_ctx.tile2_path.c_str());
-			remove(path2);
-			tile = new Tile(global_ctx.tile2_path.c_str());
-			tile->convert_raw(path2);
-			delete tile;
+			if(!file_exist(path2) || global_ctx.reload_raw){
+				remove(path2);
+				Tile *tile = new Tile(global_ctx.tile2_path.c_str());
+				tile->convert_raw(path2);
+				delete tile;
+			}
 		}
 	}else {
 		sprintf(path1, "%s", global_ctx.tile1_path.c_str());
