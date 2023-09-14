@@ -17,9 +17,12 @@ int replacing_group::alive = 0;
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
 
-	struct timeval start = get_cur_time();
+
 	boost::replace_all(str, "|", "\n");
 	assert(str.size()!=0 && "input string should not be empty!");
+
+	struct timeval start = get_cur_time();
+	auto very_start = start;
 	srand(PPMC_RANDOM_CONSTANT);
 	i_mode = COMPRESSION_MODE_ID;
 	// Create the compressed data buffer.
@@ -50,22 +53,30 @@ HiMesh::HiMesh(string &str, bool completeop):
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 	vh_departureConquest[1] = halfedges_begin()->vertex();
-	//logt("load mesh", start);
-
+	if(global_ctx.verbose >= 2){
+		logt("load mesh", start);
+	}
 	if(HiMesh::calculate_method == HCT_BVHTREE){
 		get_aabb_tree_triangle();
-		//logt("building aabb tree", start);
+		if(global_ctx.verbose >= 2){
+			logt("building aabb tree", start);
+		}
 	}
 
 	if(HiMesh::calculate_method != HCT_NULL){
 		updateVFMap();
-		//logt("init triangles", start);
+		if(global_ctx.verbose >= 2){
+			logt("init triangles", start);
+		}
 	}
 
 	if(completeop){
 		encode(0);
-		//logt("encode", start);
+		if(global_ctx.verbose >= 2){
+			logt("encode", start);
+		}
 	}
+	logt("loading one mesh", very_start);
 }
 
 void HiMesh::updateVFMap(){

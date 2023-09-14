@@ -738,15 +738,26 @@ void HiMesh::computeHausdorfDistance(){
 
 	if(global_ctx.verbose>=2)
 	{
-		log("step: %2d smp: %.3f tri: %.3f h_cal: %.3f ph_cal:%.3f avg_hdist#vertices: %ld #facets: %ld",
-				i_curDecimationId,
-				smp_tm, collect_triangle_tm, caldist_tm,ph_caldist_tm,
-				size_of_vertices(), size_of_triangles());
-		log("hausdorff(min-avg-max): %.5f-%.5f-%.5f	proxy_hausdorff(min-avg-max): %.5f-%.5f-%.5f	sampling_rate: %.10f",
-				min_hdist, avg_hdist, max_hdist,
-				min_proxy_hdist, avg_proxy_hdist, max_proxy_hdist,
-				sqrt(area_unit)/sqrt(2));
-		log("encode %d:\t[%.2f %.2f]\t%ld", i_curDecimationId, current_hausdorf.first, current_hausdorf.second, size_of_vertices());
+		if(i_curDecimationId%2!=0){
+//			log("step: %2d smp: %.3f tri: %.3f h_cal: %.3f ph_cal:%.3f avg_hdist#vertices: %ld #facets: %ld",
+//					i_curDecimationId,
+//					smp_tm, collect_triangle_tm, caldist_tm,ph_caldist_tm,
+//					size_of_vertices(), size_of_triangles());
+//			log("hausdorff(min-avg-max): %.5f-%.5f-%.5f	proxy_hausdorff(min-avg-max): %.5f-%.5f-%.5f	sampling_rate: %.10f",
+//					min_hdist, avg_hdist, max_hdist,
+//					min_proxy_hdist, avg_proxy_hdist, max_proxy_hdist,
+//					sqrt(area_unit)/sqrt(2));
+//			log("encode %d:\t[%.2f %.2f]\t%ld", i_curDecimationId, current_hausdorf.first, current_hausdorf.second, size_of_vertices());
+
+//			printf("%2d\t%.3f\t%.3f\t%.3f\n",
+//					i_curDecimationId,
+//					caldist_tm,ph_caldist_tm,caldist_tm+ph_caldist_tm);
+
+			printf("%.3f\t%.3f\t",
+					caldist_tm,ph_caldist_tm);
+		}
+
+
 	}
 }
 
