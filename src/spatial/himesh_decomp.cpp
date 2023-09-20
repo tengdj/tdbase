@@ -232,8 +232,8 @@ void HiMesh::HausdorffDecodingStep(){
 		if(use_byte_coding){
 			// decode the hausdorf distance symbols
 			//printf("%f %f -> ", hausdorff, proxyhausdorff);
-			hausdorff = hausdorff_code * getHausdorffDistance()/255.0;
-			proxyhausdorff = proxyhausdorff_code * getProxyHausdorffDistance()/255.0;
+			hausdorff = hausdorff_code * getHausdorffDistance()/127.0;
+			proxyhausdorff = proxyhausdorff_code * getProxyHausdorffDistance()/127.0;
 			//printf("%f %f (%f %f)\n", hausdorff, proxyhausdorff, getHausdorffDistance(), getProxyHausdorffDistance());
 		}
 

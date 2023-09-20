@@ -392,8 +392,8 @@ void HiMesh::HausdorffCodingStep(){
 		assert(fit->getProxyHausdorff()<=current_hausdorf.first);
 		assert(fit->getHausdorff()<=current_hausdorf.second);
 
-		unsigned char proxyhausdorf = current_hausdorf.first==0?0:ceil(fit->getProxyHausdorff()/current_hausdorf.first*255);
-		unsigned char hausdorf = current_hausdorf.second==0?0:ceil(fit->getHausdorff()/current_hausdorf.second*255);
+		unsigned char proxyhausdorf = current_hausdorf.first==0?0:ceil(fit->getProxyHausdorff()/current_hausdorf.first*127);
+		unsigned char hausdorf = current_hausdorf.second==0?0:ceil(fit->getHausdorff()/current_hausdorf.second*127);
 		hausdorfSym[i_curDecimationId].push_back(hausdorf);
 		proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
 		hausdorfSym_float[i_curDecimationId].push_back(fit->getHausdorff());
