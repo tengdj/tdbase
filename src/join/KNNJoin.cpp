@@ -219,6 +219,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 			HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
 			for(candidate_info &ci:c->candidates){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
+
 				if(ctx.use_aabb){
 					range dist = ci.distance;
 					float hdist1 = wrapper1->getHausdorffDistance();
@@ -273,21 +274,24 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 								dist.mindist = res.distance;
 								dist.maxdist = res.distance;
 							}else{
+								dist.mindist = res.min_dist;
+//								dist.maxdist = res.max_dist;
 								dist.maxdist = std::min(dist.maxdist, res.distance);
-								if(global_ctx.hausdorf_level>0){
-									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-								}
-								dist.mindist = std::min(dist.mindist, dist.maxdist);
+//								if(global_ctx.hausdorf_level>0){
+//									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
+//								}
+//								dist.mindist = std::min(dist.mindist, dist.maxdist);
 							}
 
 							if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0)
 							{
-								log("%ld(%d)\t%ld(%d):\t[%.2f %.2f]\t[%.2f %.2f]\t[%.2f, %.2f]->[%.2f, %.2f]",
+								log("%ld(%d)\t%ld(%d):\t[%.2f %.2f]\t[%.2f %.2f]\t[%.2f, %.2f]->[%.2f, %.2f] [%.2f, %.2f, %.2f]",
 										wrapper1->id,res.p1, wrapper2->id,res.p2,
 										hdist1, hdist2,
 										phdist1, phdist2,
 										vp.dist.mindist, vp.dist.maxdist,
-										dist.mindist, dist.maxdist);
+										dist.mindist, dist.maxdist,
+										res.min_dist, res.distance, res.max_dist);
 							}
 							vp.dist = dist;
 							vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
@@ -300,6 +304,11 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 					assert(ci.distance.mindist<=ci.distance.maxdist);
 				}
 			}
+
+			if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0){
+				log("");
+			}
+
 		}
 		// update the list after processing each LOD
 		evaluate_candidate_lists(candidates, ctx);

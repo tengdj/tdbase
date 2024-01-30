@@ -112,7 +112,9 @@ typedef struct result_container_{
 	uint p1;
 	uint p2;
 	bool intersected;
-	float distance;
+	float distance; // for normal distance
+	float min_dist; // for distance range
+	float max_dist;
 } result_container;
 
 class geometry_param{
@@ -150,7 +152,7 @@ bool PointInTriangleCylinder(const float *point, const float *triangle);
 void project_points_to_triangle_plane(const float *point, const float *triangle, float projected_point[3]);
 float PointTriangleDist(const float *point, const float *triangle);
 float TriDist(const float *S, const float *T);
-result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2);
+result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
 void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 		               result_container *result, const uint pair_num, const uint element_num);
 

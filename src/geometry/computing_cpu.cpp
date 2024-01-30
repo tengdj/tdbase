@@ -438,9 +438,11 @@ float TriDist(const float *S, const float *T)
 	}
 }
 
-result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2){
+result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1, const float *hausdorff2){
 	result_container ret;
 	ret.distance = DBL_MAX;
+	ret.min_dist = DBL_MAX;
+	ret.max_dist = DBL_MAX;
 	for(size_t i=0;i<size1;i++){
 		for(size_t j=0;j<size2;j++){
 			// get distance of current triangle pair
@@ -451,6 +453,22 @@ result_container TriDist_single(const float *data1, const float *data2, size_t s
 				ret.p1 = i;
 				ret.p2 = j;
 			}
+
+			if(hausdorff1 == NULL || hausdorff2 == NULL){
+				continue;
+			}
+
+			// with hausdorff distances under consideration
+			float phdist1 = *(hausdorff1+2*i);
+			float phdist2 = *(hausdorff2+2*j);
+			float hdist1 = *(hausdorff1+2*i+1);
+			float hdist2 = *(hausdorff2+2*j+1);
+
+			float low_dist = std::max(dist-phdist1-phdist2, (float)0.0);
+			float high_dist = dist+hdist1+hdist2;
+			ret.min_dist = min(ret.min_dist, low_dist);
+			ret.max_dist = min(ret.max_dist, high_dist);
+
 //			const float *tdata1 = data1+i*9;
 //			const float *tdata2 = data2+j*9;
 //			printf("(%f %f %f, %f %f %f, %f %f %f) (%f %f %f, %f %f %f, %f %f %f) %f\n"
@@ -473,15 +491,13 @@ result_container TriInt_single(const float *data1, const float *data2, size_t si
 			//todo: the TriInt function does not work correctly
 			//if(TriInt(data1+9*i, data2+9*j))
 			float dist = TriDist(data1+9*i, data2+9*j);
-
+			float phdist1 = 0;
+			float phdist2 = 0;
 			if(hausdorff1 != NULL && hausdorff2 != NULL){
-				float phdist1 = *(hausdorff1+2*i);
-				float phdist2 = *(hausdorff2+2*j);
-				//cout<<dist<<"\t"<<phdist1<<"\t"<<phdist2<<endl;
-				res.distance = min(res.distance, dist - phdist1 - phdist2);
-			}else{
-				res.distance = min(res.distance, dist);
+				phdist1 = *(hausdorff1+2*i);
+				phdist2 = *(hausdorff2+2*j);
 			}
+			res.distance = min(res.distance, dist - phdist1 - phdist2);
 
 			if(dist==0) {
 				res.intersected = true;

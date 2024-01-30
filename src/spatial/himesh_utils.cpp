@@ -230,5 +230,69 @@ float HiMesh::removalError(Vertex_const_handle v,
     return f_metric;
 }
 
+vector<Voxel *> HiMesh::voxelization(int voxel_size){
+	vector<Voxel *> voxels;
+	if(voxel_size<=1){
+		Voxel *vox = new Voxel();
+		vox->set_box(get_mbb());
+		voxels.push_back(vox);
+	}
+
+	aab box = get_mbb();
+	float min_dim = std::min(box.high[2]-box.low[2], std::min(box.high[1]-box.low[1], box.high[0]-box.low[0]));
+	float div = (box.high[2]-box.low[2])*(box.high[1]-box.low[1])*(box.high[0]-box.low[0])/(min_dim*min_dim*min_dim);
+	float multi = std::pow(1.0*voxel_size/div, 1.0/3);
+
+	int dim[3];
+	for(int i=0;i<3;i++){
+		dim[i] = ((box.high[i]-box.low[i])*multi/min_dim+0.5);
+		assert(dim[i]>0);
+	}
+
+	log("%d %d %d",dim[0],dim[1],dim[2]);
+
+	bool *taken = new bool[dim[0]*dim[1]*dim[2]];
+	for(int i=0;i<dim[0]*dim[1]*dim[2];i++){
+		taken[i] = false;
+	}
+
+	unordered_set<Point> points;
+	int old_sampled_rate = sampling_rate;
+	sampling_rate = 40;
+	sample_points(points);
+	sampling_rate = old_sampled_rate;
+
+	for(Point p:points){
+		int x = (p.x()-box.low[0])*dim[0]/(box.high[0]-box.low[0]);
+		int y = (p.y()-box.low[1])*dim[1]/(box.high[1]-box.low[1]);
+		int z = (p.z()-box.low[2])*dim[2]/(box.high[2]-box.low[2]);
+
+		if(x==dim[0]){
+			x = dim[0]-1;
+		}
+		if(y==dim[1]){
+			y = dim[1]-1;
+		}
+		if(z==dim[2]){
+			z = dim[2]-1;
+		}
+		assert(x<dim[0] && y<dim[1] && z<dim[2]);
+
+		int idx = z*dim[1]*dim[0]+y*dim[0]+x;
+		if(!taken[idx]){
+			Voxel *vox = new Voxel();
+			vox->low[0] = x*(box.high[0]-box.low[0])/dim[0];
+			vox->low[1] = y*(box.high[1]-box.low[1])/dim[1];
+			vox->low[2] = z*(box.high[2]-box.low[2])/dim[2];
+			vox->high[0] = (x+1)*(box.high[0]-box.low[0])/dim[0];
+			vox->high[1] = (y+1)*(box.high[1]-box.low[1])/dim[1];
+			vox->high[2] = (z+1)*(box.high[2]-box.low[2])/dim[2];
+			voxels.push_back(vox);
+		}
+		taken[idx] = true;
+	}
+	return voxels;
+}
+
 }
 

@@ -19,7 +19,9 @@ void *TriDist_unit(void *params_void){
 		param->results[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
 										   param->data+param->offset_size[4*i+2]*9,
 										   param->offset_size[4*i+1],
-										   param->offset_size[4*i+3]);
+										   param->offset_size[4*i+3],
+										   global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i]*2):NULL,
+										   global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i+2]*2):NULL);
 	}
 	return NULL;
 }
@@ -126,6 +128,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].pair_num = min(each_thread, (int)cc.pair_num-start);
 		params[i].offset_size = cc.offset_size+start*4;
 		params[i].data = cc.data;
+		params[i].hausdorff = cc.hausdorff;
 		params[i].id = i+1;
 		params[i].results = cc.results+start;
 		pthread_create(&threads[i], NULL, TriDist_unit, (void *)&params[i]);

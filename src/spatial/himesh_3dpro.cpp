@@ -280,8 +280,8 @@ bool HiMesh::isRemovable(Vertex_handle v) const
 	  while(++hit != end);
 	  //
 	  bool removable = !willViolateManifold(heh_oneRing);
-	  // && isProtruding(heh_oneRing);
-	  //&& isConvex(vh_oneRing)
+	  //removable &= isProtruding(heh_oneRing);
+	  //removable &= isConvex(vh_oneRing);
 	  return removable;
 	}
 	return false;

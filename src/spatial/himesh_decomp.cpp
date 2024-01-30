@@ -61,7 +61,6 @@ void HiMesh::startNextDecompresssionOp() {
 	removeInsertedEdges();
 	// 6. decode the Hausdorff distances for all the facets in this LOD
 	HausdorffDecodingStep();
-
 }
 
 void HiMesh::decode(int lod){

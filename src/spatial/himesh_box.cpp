@@ -138,7 +138,7 @@ float aab::diagonal_length(){
 	for(int i=0;i<3;i++){
 		dl += (high[i]-low[i])*(high[i]-low[i]);
 	}
-	return dl;
+	return sqrt(dl);
 }
 float aab::volume(){
 	return (high[0]-low[0])*(high[1]-low[1])*(high[2]-low[2]);
