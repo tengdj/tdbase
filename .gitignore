@@ -1,6 +1,7 @@
 .project
 .cproject
 .settings/
+.vs/
 *.dt
 *.mt
 *.wkt
