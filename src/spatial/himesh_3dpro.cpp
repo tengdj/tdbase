@@ -349,7 +349,7 @@ static float point_to_face_distance(const Point &p, const HiMesh::Face_iterator 
 	return mindist;
 }
 
-uint HiMesh::sampling_rate = 3;
+uint32_t HiMesh::sampling_rate = 3;
 int HiMesh::calculate_method = 3;
 bool HiMesh::use_byte_coding = true;
 
@@ -488,7 +488,7 @@ void HiMesh::computeHausdorfDistance(){
 	double caldist_tm = 0;
 	double ph_caldist_tm = 0.0;
 
-	uint num_triangle = size_of_triangles();
+	uint32_t num_triangle = size_of_triangles();
 	const float area_unit = area()/(num_triangle*sampling_rate);
 
 	// associate each compressed facet with a list of original triangles, vice versa
@@ -557,7 +557,7 @@ void HiMesh::computeHausdorfDistance(){
 				caldist_tm += get_time_elapsed(start, true);
 			}
 
-			uint original_num = triangles.size();
+			uint32_t original_num = triangles.size();
 			// further filter with the Triangle Cylinder
 			if(HiMesh::calculate_method == HCT_ASSOCIATE_CYLINDER){
 				for(vector<MyTriangle *>::iterator iter = triangles.begin();iter!=triangles.end();){

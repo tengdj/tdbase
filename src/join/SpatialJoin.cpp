@@ -80,7 +80,7 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry *> &candidates, 
 	gp.element_num = 0;
 	gp.element_pair_num = 0;
 	gp.results = ctx.results;
-	map<Voxel *, uint> voxel_offset_map;
+	map<Voxel *, uint32_t> voxel_offset_map;
 
 	for(candidate_entry *c:candidates){
 		HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
@@ -105,7 +105,7 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry *> &candidates, 
 	gp.allocate_buffer();
 
 	// now we allocate the space and store the data in the buffer
-	for (map<Voxel *, uint>::iterator it=voxel_offset_map.begin(); it!=voxel_offset_map.end(); ++it){
+	for (map<Voxel *, uint32_t>::iterator it=voxel_offset_map.begin(); it!=voxel_offset_map.end(); ++it){
 		Voxel *v = it->first;
 		if(v->num_triangles > 0){
 			memcpy(gp.data+voxel_offset_map[v]*9, v->triangles, v->num_triangles*9*sizeof(float));

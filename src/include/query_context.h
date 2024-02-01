@@ -58,7 +58,7 @@ public:
 	bool reload_raw = false;
 	bool disable_byte_encoding = false;
 
-	uint cur_lod = 0;
+	uint32_t cur_lod = 0;
 	Tile *tile1 = NULL;
 	Tile *tile2 = NULL;
 
@@ -137,7 +137,7 @@ static query_context parse_args(int argc, char **argv){
 	int lod_gap = 50;
 	int top_lod = 100;
 
-	po::options_description desc("joiner usage");
+	/*po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
 		("query,q", po::value<string>(&ctx.query_type),"query type can be intersect|nn|within")
@@ -212,7 +212,7 @@ static query_context parse_args(int argc, char **argv){
 		if(ctx.lods[ctx.lods.size()-1]<top_lod){
 			ctx.lods.push_back(top_lod);
 		}
-	}
+	}*/
 
 	global_ctx.num_thread = min(global_ctx.num_thread, global_ctx.repeated_times);
 

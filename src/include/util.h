@@ -4,10 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/stat.h>
 #include <string.h>
 #include <sstream>
 #include <vector>
@@ -15,23 +13,59 @@
 #include <iostream>
 #include <stdarg.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/syscall.h>
 #include <time.h>
 #include <string>
 #include <fstream>
 #include <streambuf>
 #include <random>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#if __linux
+#include <sys/syscall.h>
+#include <sys/time.h>
+#elif defined(_WIN32) || defined(_WIN64)
+#include <windows.h>       // Or something like it. 
+#endif
 
 using namespace std;
 
 namespace hispeed{
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 /*
  * timer functions
  * */
 #define TENG_RANDOM_NUMBER 0315
 #define INIT_TIME struct timeval start = get_cur_time();
+
+#if defined(_WIN32) || defined(_WIN64)
+inline int gettimeofday(struct timeval* tp, struct timezone* tzp)
+{
+	// Note: some broken versions only have 8 trailing zero's, the correct epoch has 9 trailing zero's
+	// This magic number is the number of 100 nanosecond intervals since January 1, 1601 (UTC)
+	// until 00:00:00 January 1, 1970 
+	static const uint64_t EPOCH = ((uint64_t)116444736000000000ULL);
+
+	SYSTEMTIME  system_time;
+	FILETIME    file_time;
+	uint64_t    time;
+
+	GetSystemTime(&system_time);
+	SystemTimeToFileTime(&system_time, &file_time);
+	time = ((uint64_t)file_time.dwLowDateTime);
+	time += ((uint64_t)file_time.dwHighDateTime) << 32;
+
+	tp->tv_sec = (long)((time - EPOCH) / 10000000L);
+	tp->tv_usec = (long)(system_time.wMilliseconds * 1000);
+	return 0;
+}
+#endif
+
+
 inline struct timeval get_cur_time(){
 	struct timeval t1;
 	gettimeofday(&t1, NULL);
@@ -56,7 +90,13 @@ inline string time_string(){
 	struct tm *nowtm;
 	char tmbuf[100];
 	char buf[256];
+#if defined(_WIN32) || defined(_WIN64)
+	long long tvsec = tv.tv_sec;
+	nowtm = localtime(&tvsec);
+#else
 	nowtm = localtime(&tv.tv_sec);
+#endif
+
 	strftime(tmbuf, sizeof tmbuf, "%H:%M:%S", nowtm);
 	sprintf(buf,"%s.%04ld", tmbuf, tv.tv_usec/1000);
 	return string(buf);
@@ -89,7 +129,14 @@ inline double logt(const char *format, struct timeval &start, ...){
 	char sprint_buf[200];
 	int n = vsprintf(sprint_buf, format, args);
 	va_end(args);
-	fprintf(stderr,"%s thread %ld:\t%s", time_string().c_str(), syscall(__NR_gettid),sprint_buf);
+	int tid = 0;
+#if __linux
+	tid = syscall(__NR_gettid);
+#elif defined(_WIN32) || defined(_WIN64)
+	tid = GetCurrentThreadId();
+#endif
+
+	fprintf(stderr,"%s thread %ld:\t%s", time_string().c_str(), tid,sprint_buf);
 
 	double mstime = get_time_elapsed(start, true);
 	if(mstime>1000){
@@ -110,7 +157,13 @@ inline void log(const char *format, ...){
 	char sprint_buf[200];
 	int n = vsprintf(sprint_buf, format, args);
 	va_end(args);
-	fprintf(stderr,"%s thread %ld:\t%s\n", time_string().c_str(), syscall(__NR_gettid),sprint_buf);
+	int tid = 0;
+#if __linux
+	tid = syscall(__NR_gettid);
+#elif defined(_WIN32) || defined(_WIN64)
+	tid = GetCurrentThreadId();
+#endif
+	fprintf(stderr,"%s thread %ld:\t%s\n", time_string().c_str(), tid,sprint_buf);
 	fflush(stderr);
 	pthread_mutex_unlock(&print_lock);
 }

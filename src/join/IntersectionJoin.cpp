@@ -75,7 +75,7 @@ void SpatialJoin::intersect(query_context ctx){
 	ctx.index_time += hispeed::get_time_elapsed(start,false);
 	logt("index retrieving", start);
 
-	for(uint lod:ctx.lods){
+	for(uint32_t lod:ctx.lods){
 		ctx.cur_lod = lod;
 		struct timeval iter_start = start;
 		size_t pair_num = get_pair_num(candidates);

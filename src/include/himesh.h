@@ -669,7 +669,7 @@ public:
 	map<Point, vector<MyTriangle *>> VFmap;
 
 	// equals the number of points sampled for each triangle
-	static uint sampling_rate;
+	static uint32_t sampling_rate;
 
 	static int calculate_method;
 	static bool use_byte_coding;
@@ -678,7 +678,7 @@ public:
 	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
 	void sample_points(unordered_set<Point> &points);
 	inline float get_sample_density(){
-		uint num_triangle = this->size_of_triangles();
+		uint32_t num_triangle = this->size_of_triangles();
 		return area()/(num_triangle*sampling_rate);
 	}
 	float area();

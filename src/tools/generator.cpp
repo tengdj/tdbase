@@ -239,7 +239,7 @@ int main(int argc, char **argv){
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
-		("sample_rate,r", po::value<uint>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
+		("sample_rate,r", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
 		("calculate_method,m", po::value<int>(&HiMesh::calculate_method), "hausdorff distance calculating method [0ALL|1BVH|2ASSOCIATE|3ASSOCIATE_CYLINDER|4NULL]")
 		;
 

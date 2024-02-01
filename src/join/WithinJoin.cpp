@@ -100,7 +100,7 @@ void SpatialJoin::within(query_context ctx){
 	logt("comparing mbbs with %d candidate pairs", start, get_candidate_num(candidates));
 
 	// now we start to get the distances with progressive level of details
-	for(uint lod:ctx.lods){
+	for(uint32_t lod:ctx.lods){
 		ctx.cur_lod = lod;
 		struct timeval iter_start = get_cur_time();
 		const int pair_num = get_pair_num(candidates);

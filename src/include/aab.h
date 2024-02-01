@@ -95,7 +95,7 @@ public:
 class weighted_aab:public aab{
 public:
 	int id;
-	uint size = 1;
+	uint32_t size = 1;
 };
 
 /*

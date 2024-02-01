@@ -109,8 +109,8 @@ inline float distance(const float *p1, const float *p2){
 }
 
 typedef struct result_container_{
-	uint p1;
-	uint p2;
+	uint32_t p1;
+	uint32_t p2;
 	bool intersected;
 	float distance; // for normal distance
 	float min_dist; // for distance range
@@ -120,18 +120,18 @@ typedef struct result_container_{
 class geometry_param{
 public:
 	int id = 0;
-	uint pair_num = 0;
-	uint element_num = 0;
+	uint32_t pair_num = 0;
+	uint32_t element_num = 0;
 	size_t element_pair_num = 0;
 	float *data = NULL;
 	float *hausdorff = NULL;
 	// the offset and size of the computing pairs
-	uint *offset_size = NULL;
+	uint32_t *offset_size = NULL;
 	result_container *results = NULL;
 	void allocate_buffer(){
 		data = new float[9*element_num];
 		hausdorff = new float[2*element_num];
-		offset_size = new uint[4*pair_num];
+		offset_size = new uint32_t[4*pair_num];
 	}
 	void clear_buffer(){
 		if(data){
@@ -153,11 +153,11 @@ void project_points_to_triangle_plane(const float *point, const float *triangle,
 float PointTriangleDist(const float *point, const float *triangle);
 float TriDist(const float *S, const float *T);
 result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
-void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
-		               result_container *result, const uint pair_num, const uint element_num);
+void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size,
+		               result_container *result, const uint32_t pair_num, const uint32_t element_num);
 
 result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
-void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size, const float *hausdorff, result_container *result, const uint batch_num, const uint triangle_num);
+void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float *hausdorff, result_container *result, const uint32_t batch_num, const uint32_t triangle_num);
 
 class geometry_computer{
 	pthread_mutex_t gpu_lock;
@@ -188,7 +188,7 @@ public:
 	void get_intersect_gpu(geometry_param &param);
 	void get_intersect_cpu(geometry_param &param);
 	void get_intersect(geometry_param &param);
-	void set_thread_num(uint num){
+	void set_thread_num(uint32_t num){
 		max_thread_num = num;
 	}
 };

@@ -1,6 +1,9 @@
 prefix=/usr/local
+CC = gcc
+CXX = g++
+NVCC = nvcc
 
-CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS -DCGAL_HAS_THREADS -DBOOST_HAS_THREADS -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON -fopenmp -frounding-math
+CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result -Wno-warnings -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS -DCGAL_HAS_THREADS -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON -fopenmp -frounding-math
 NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include
 LIBS		= -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
@@ -19,12 +22,25 @@ endif
 ifdef CGAL_MCFSKEL_DEBUG
 	CPPFLAGS += -DCGAL_MCFSKEL_DEBUG -DCGAL_MCFSKEL_INFO
 endif 
- 
-   
-CC = gcc
-CXX = g++
-NVCC = nvcc
 
+ifeq ($(OS),Windows_NT)
+	USE_GPU = TRUE
+	INCFLAGS	= -I.\include -I C:\Boost\include\boost-1_84
+	INCFLAGS	+= -I C:\Users\Lenovo\Documents\GitHub\vcpkg\packages\cgal_x64-windows\include 
+	INCFLAGS	+= -I C:\Users\Lenovo\Documents\GitHub\vcpkg\packages\eigen3_x64-windows\include 
+	INCFLAGS	+= -I C:\Users\Lenovo\Documents\GitHub\vcpkg\packages\zlib_x64-windows\include
+	INCFLAGS	+= -I "$(CUDA_PATH)\include"
+	LIBS		= -L C:\Users\Lenovo\Documents\GitHub\vcpkg\packages\zlib_x64-windows\lib 
+	LIBS		+= -L C:\Users\Lenovo\Documents\GitHub\vcpkg\packages\gmp_x64-windows\lib 
+	LIBS		+= -L C:\Users\Lenovo\Documents\GitHub\vcpkg\packages\mpfr_x64-windows\lib 
+	LIBS		+= -L C:\Boost\lib
+	LIBS		+= -lgmp -lmpfr -lpthread -lstdc++ -lzlib# -lboost_program_options   
+	CXX = C:\TDM-GCC-64\bin\g++
+	CPPFLAGS += -DUSE_GPU
+	LIBS  += -L "$(CUDA_PATH)\lib\x64" -lcuda -lcudart
+else
+	CPPFLAGS += -DBOOST_HAS_THREADS
+endif
 
 #compile all the cpp files
 SRCS := $(wildcard */*.cpp)
@@ -98,5 +114,9 @@ wrap: tools/wrap.o
 .PHONY: all clean
 
 clean:
+ifeq ($(OS),Windows_NT)
+	del /S *.o
+else
 	rm -rf *.o */*.o */*/*.o
+endif
 

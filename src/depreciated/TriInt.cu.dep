@@ -284,19 +284,19 @@ inline bool TriInt(const float *data1, const float *data2){
 
 
 __global__
-void TriInt_cuda(const float *data, const uint *offset_size, result_container *intersect, uint pair_num){
+void TriInt_cuda(const float *data, const uint32_t *offset_size, result_container *intersect, uint32_t pair_num){
 
 	int idx = blockIdx.x*1024+threadIdx.x;
 	if(idx>=pair_num){
 		return;
 	}
 
-	uint offset1 = offset_size[idx*4];
-	uint size_1 = offset_size[idx*4+1];
-	uint offset2 = offset_size[idx*4+2];
-	uint size_2 = offset_size[idx*4+3];
-	for(uint s1 = 0;s1<size_1;s1++){
-		for(uint s2=0;s2<size_2;s2++){
+	uint32_t offset1 = offset_size[idx*4];
+	uint32_t size_1 = offset_size[idx*4+1];
+	uint32_t offset2 = offset_size[idx*4+2];
+	uint32_t size_2 = offset_size[idx*4+3];
+	for(uint32_t s1 = 0;s1<size_1;s1++){
+		for(uint32_t s2=0;s2<size_2;s2++){
 			const float *t1 = data + 9*(offset1+s1);
 			const float *t2 = data + 9*(offset2+s2);
 			if(TriInt(t1,t2)){
@@ -311,8 +311,8 @@ void TriInt_cuda(const float *data, const uint *offset_size, result_container *i
 }
 
 
-void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
-		result_container *intersection, const uint pair_num, const uint triangle_num){
+void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size,
+		result_container *intersection, const uint32_t pair_num, const uint32_t triangle_num){
 
 	assert(gpu);
 	cudaSetDevice(gpu->device_id);
@@ -327,10 +327,10 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 	result_container *d_intersect = (result_container *)(cur_d_cuda);
 	cur_d_cuda += sizeof(result_container)*pair_num;
 	// space for the offset and size information in GPU
-	uint *d_os = (uint *)(cur_d_cuda);
+	uint32_t *d_os = (uint32_t *)(cur_d_cuda);
 
 	CUDA_SAFE_CALL(cudaMemcpy(d_data, data, triangle_num*9*sizeof(float), cudaMemcpyHostToDevice));
-	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, pair_num*4*sizeof(uint), cudaMemcpyHostToDevice));
+	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, pair_num*4*sizeof(uint32_t), cudaMemcpyHostToDevice));
 	//logt("copying data to GPU", start);
 
 	// check the intersection
@@ -338,7 +338,7 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint *offset_size,
 	TriInt_cuda<<<(pair_num/1024+1), 1024>>>(d_data, d_os, d_intersect, pair_num);
 	check_execution();
 
-	//cout<<pair_num<<" "<<triangle_num<<" "<<sizeof(uint)<<endl;
+	//cout<<pair_num<<" "<<triangle_num<<" "<<sizeof(uint32_t)<<endl;
 	cudaDeviceSynchronize();
 	//logt("distances computations", start);
 

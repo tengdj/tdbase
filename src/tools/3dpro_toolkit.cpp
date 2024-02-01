@@ -380,7 +380,7 @@ static void compress(int argc, char **argv){
 	int lod = 100;
 
 	char path[256];
-	for(uint i=0;i<=lod;i+=10){
+	for(uint32_t i=0;i<=lod;i+=10){
 		hm->decode(i);
 		logt("decode to %d", start, i);
 		//log("%d %f", i, himesh->getHausdorfDistance());

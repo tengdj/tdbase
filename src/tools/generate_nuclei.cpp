@@ -155,7 +155,7 @@ int main(int argc, char **argv){
 		("num_objects", po::value<int>(&num_objects), "number of objects")
 		("density,d", po::value<int>(&density), "the density of objects (the gap between objects)")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
-		("sample_rate", po::value<uint>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
+		("sample_rate", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
 		("calculate_method", po::value<int>(&HiMesh::calculate_method), "hausdorff distance calculating method [0ALL|1BVH|2ASSOCIATE|3ASSOCIATE_CYLINDER|4NULL]")
 		;
 
