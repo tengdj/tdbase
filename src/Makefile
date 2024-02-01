@@ -2,10 +2,9 @@ prefix=/usr/local
 
 CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS -DCGAL_HAS_THREADS -DBOOST_HAS_THREADS -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON -fopenmp -frounding-math
 NVCCFLAGS	= -std=c++14 -g -O2
-INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include -I/usr/local/include/eigen3
-LIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
+INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include
+LIBS		= -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
 
-SLIBS		= -L/usr/local/cgal/lib -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lz -lstdc++
 CGALFLAGS	= -Wl,-rpath -frounding-math 
 
 ifndef DEBUG
