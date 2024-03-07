@@ -8,7 +8,6 @@
 #ifndef MYGPU_H_
 #define MYGPU_H_
 
-#include <pthread.h>
 #include <vector>
 using namespace std;
 

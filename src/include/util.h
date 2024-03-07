@@ -4,15 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <unistd.h>
-#include <dirent.h>
 #include <string.h>
 #include <sstream>
 #include <vector>
 #include <thread>
 #include <iostream>
 #include <stdarg.h>
-#include <pthread.h>
 #include <time.h>
 #include <string>
 #include <fstream>
@@ -20,15 +17,20 @@
 #include <random>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <filesystem>
 
 #if __linux
 #include <sys/syscall.h>
 #include <sys/time.h>
+#include <unistd.h>
+#include <pthread.h>
+
 #elif defined(_WIN32) || defined(_WIN64)
 #include <windows.h>       // Or something like it. 
 #endif
 
 using namespace std;
+namespace fs = std::filesystem;
 
 namespace hispeed{
 

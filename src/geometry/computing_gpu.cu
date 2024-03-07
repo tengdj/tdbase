@@ -5,7 +5,6 @@
  *      Author: teng
  */
 
-#include <pthread.h>
 #include "geometry.h"
 #include "cuda_util.cuh"
 namespace hispeed{

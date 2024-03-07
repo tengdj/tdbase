@@ -3,7 +3,7 @@ CC = gcc
 CXX = g++
 NVCC = nvcc
 
-CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result -Wno-warnings -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS -DCGAL_HAS_THREADS -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON -fopenmp -frounding-math
+CPPFLAGS	= -std=c++14 -g -O2 -Wno-unused-result -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS -DCGAL_HAS_THREADS -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON -fopenmp -frounding-math
 NVCCFLAGS	= -std=c++14 -g -O2
 INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include
 LIBS		= -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
