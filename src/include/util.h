@@ -17,20 +17,22 @@
 #include <random>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <filesystem>
 
 #if __linux
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <unistd.h>
 #include <pthread.h>
-
+#include <dirent.h>
+#include <cstdint>
 #elif defined(_WIN32) || defined(_WIN64)
 #include <windows.h>       // Or something like it. 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 #endif
 
 using namespace std;
-namespace fs = std::filesystem;
 
 namespace hispeed{
 
@@ -131,7 +133,7 @@ inline double logt(const char *format, struct timeval &start, ...){
 	char sprint_buf[200];
 	int n = vsprintf(sprint_buf, format, args);
 	va_end(args);
-	int tid = 0;
+	long tid = 0;
 #if __linux
 	tid = syscall(__NR_gettid);
 #elif defined(_WIN32) || defined(_WIN64)
@@ -159,7 +161,7 @@ inline void log(const char *format, ...){
 	char sprint_buf[200];
 	int n = vsprintf(sprint_buf, format, args);
 	va_end(args);
-	int tid = 0;
+	long tid = 0;
 #if __linux
 	tid = syscall(__NR_gettid);
 #elif defined(_WIN32) || defined(_WIN64)

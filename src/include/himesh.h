@@ -31,7 +31,9 @@
 #include <assert.h>
 #include <utility>
 #include <unordered_map>
+#include <map>
 
+#include <CGAL/Kernel/interface_macros.h>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/circulator.h>
@@ -69,7 +71,7 @@
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
 #include <CGAL/Surface_mesh_simplification/Edge_collapse_visitor_base.h>
 #include <CGAL/Polyhedron_items_with_id_3.h>
-#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_count_ratio_stop_predicate.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_ratio_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
@@ -595,11 +597,14 @@ public:
 	void writeBaseMesh();
 	void readBaseMesh();
 
-	//3dpro
+	//tdbase
 	void computeHausdorfDistance();
 	void updateVFMap();
 	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
 	void profileProtruding();
+
+	pair<float, float> collectGlobalHausdorff();
+	void computeHausdorfDistance(HiMesh *original);
 
 	inline aab get_mbb(){
 		return mbb;
@@ -745,7 +750,8 @@ public:
 
 enum Decoding_Type{
 	COMPRESSED,
-	RAW
+	RAW,
+	MULTIMESH
 };
 
 /*
@@ -756,6 +762,10 @@ class HiMesh_Wrapper{
 
 	map<int, float> hausdorffs;
 	map<int, float> proxyhausdorffs;
+	map<int, HiMesh *> meshes;
+
+	HiMesh *mesh = NULL;
+
 public:
 	Decoding_Type type;
 	// the data mode
@@ -766,7 +776,6 @@ public:
 	vector<Voxel *> voxels;
 
 	// used for retrieving compressed data from disk
-	HiMesh *mesh = NULL;
 	char *data_buffer = NULL;
 	size_t data_size = 0;
 
@@ -778,8 +787,24 @@ public:
 	int cur_lod = -1;
 
 public:
+	HiMesh_Wrapper(vector<HiMesh *> &ms, vector<Voxel *> &vxls, size_t id);
 	HiMesh_Wrapper(char *dt, size_t id, Decoding_Type t = COMPRESSED);
 	~HiMesh_Wrapper();
+
+	HiMesh *get_mesh(){
+		if(type == COMPRESSED){
+			return mesh;
+		}else if(type == MULTIMESH){
+			assert(meshes.find(cur_lod)!=meshes.end());
+			return meshes[cur_lod];
+		}
+		assert(false);
+		return NULL;
+	}
+
+	map<int, HiMesh *> get_meshes(){
+		return meshes;
+	}
 
 	void decode_to(int lod);
 	void clear_voxels();

@@ -27,6 +27,16 @@ Tile::Tile(std::string path, size_t capacity, Decoding_Type dt, bool active_init
 	}
 }
 
+Tile::Tile(std::vector<HiMesh_Wrapper *> objs){
+	objects.assign(objs.begin(), objs.end());
+	for(HiMesh_Wrapper *wr:objs){
+		for(auto mesh:wr->get_meshes()){
+			data_size += mesh.second->get_data_size();
+		}
+	}
+	tree = build_octree(10);
+}
+
 Tile::~Tile(){
 	for(HiMesh_Wrapper *h:objects){
 		delete h;
@@ -72,11 +82,15 @@ void Tile::init(){
 }
 
 void Tile::convert_raw(const char *path){
-	assert(dtype == COMPRESSED);
+	assert(dtype != RAW && "already be in raw format");
+
 	size_t offset = 0;
+	ofstream *os = new std::ofstream(path, std::ios::out | std::ios::binary);
+
 	char *buffer = new char[data_size*20];
 
 	for(HiMesh_Wrapper *wr:objects){
+
 		size_t *dsize_holder = (size_t *)(buffer+offset);
 		offset += sizeof(size_t);
 
@@ -86,12 +100,12 @@ void Tile::convert_raw(const char *path){
 		map<int, float> proxyhausdorffs;
 		for(int lod=20;lod<=100;lod+=20){
 			wr->decode_to(lod);
-			hausdorffs[lod] = wr->mesh->getHausdorffDistance();
-			proxyhausdorffs[lod] = wr->mesh->getProxyHausdorffDistance();
+			hausdorffs[lod] = wr->get_mesh()->getHausdorffDistance();
+			proxyhausdorffs[lod] = wr->get_mesh()->getProxyHausdorffDistance();
 
 			for(Voxel *v:wr->voxels){
 				v->offset_lod[lod] = offset - st_offset;
-				v->volumn_lod[lod] = v->num_triangles;
+				v->volume_lod[lod] = v->num_triangles;
 				memcpy(buffer+offset, v->triangles, v->num_triangles*sizeof(float)*9);
 				offset += v->num_triangles*sizeof(float)*9;
 				memcpy(buffer+offset, v->hausdorff, v->num_triangles*sizeof(float)*2);
@@ -124,13 +138,13 @@ void Tile::convert_raw(const char *path){
 			for(int lod=20;lod<=100;lod+=20){
 				*(size_t *)(buffer+offset) = v->offset_lod[lod];
 				offset += sizeof(size_t);
-				*(size_t *)(buffer+offset) = v->volumn_lod[lod];
+				*(size_t *)(buffer+offset) = v->volume_lod[lod];
 				offset += sizeof(size_t);
 			}
 		}
 	}
 
-	ofstream *os = new std::ofstream(path, std::ios::out | std::ios::binary);
+
 	os->write(buffer, offset);
 	os->close();
 	delete os;
@@ -139,7 +153,7 @@ void Tile::convert_raw(const char *path){
 }
 
 HiMesh *Tile::get_mesh(int id){
-	return objects[id]->mesh;
+	return objects[id]->get_mesh();
 }
 
 void Tile::decode_all(int lod){

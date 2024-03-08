@@ -19,6 +19,7 @@
 #include <immintrin.h>
 #include <map>
 #include <assert.h>
+#include <cstdint>
 using namespace std;
 
 namespace hispeed{
@@ -113,9 +114,9 @@ public:
 	size_t num_triangles = 0;
 	size_t capacity = 0;
 
-	// offset and volumn information
+	// offset and volume information
 	map<int, size_t> offset_lod;
-	map<int, size_t> volumn_lod;
+	map<int, size_t> volume_lod;
 
 	bool owned = false;
 public:

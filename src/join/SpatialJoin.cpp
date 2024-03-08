@@ -148,23 +148,23 @@ void SpatialJoin::check_intersection(vector<candidate_entry *> &candidates, quer
 		// build the AABB tree
 		for(candidate_entry *c:candidates){
 			for(candidate_info &info:c->candidates){
-				info.mesh_wrapper->mesh->get_aabb_tree_triangle();
+				info.mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 			}
 		}
 		ctx.packing_time += logt("building aabb tree", start);
 
 		int index = 0;
 		for(candidate_entry *c:candidates){
-			c->mesh_wrapper->mesh->get_segments();
+			c->mesh_wrapper->get_mesh()->get_segments();
 			for(candidate_info &info:c->candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.results[index++].intersected = c->mesh_wrapper->mesh->intersect_tree(info.mesh_wrapper->mesh);
+				ctx.results[index++].intersected = c->mesh_wrapper->get_mesh()->intersect_tree(info.mesh_wrapper->get_mesh());
 			}// end for candidate list
 		}// end for candidates
 		// clear the trees for current LOD
 		for(candidate_entry *c:candidates){
 			for(candidate_info &info:c->candidates){
-				info.mesh_wrapper->mesh->clear_aabb_tree();
+				info.mesh_wrapper->get_mesh()->clear_aabb_tree();
 			}
 		}
 		ctx.computation_time += logt("computation for distance computation", start);
@@ -195,9 +195,9 @@ void SpatialJoin::calculate_distance(vector<candidate_entry *> &candidates, quer
 		// build the AABB tree
 		for(candidate_entry *c:candidates){
 			for(candidate_info &info:c->candidates){
-				info.mesh_wrapper->mesh->get_aabb_tree_triangle();
+				info.mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 			}
-			c->mesh_wrapper->mesh->get_aabb_tree_triangle();
+			c->mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 		}
 		ctx.packing_time += logt("building aabb tree", start);
 
@@ -205,15 +205,15 @@ void SpatialJoin::calculate_distance(vector<candidate_entry *> &candidates, quer
 		for(candidate_entry *c:candidates){
 			for(candidate_info &info:c->candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.results[index++].distance = c->mesh_wrapper->mesh->distance_tree(info.mesh_wrapper->mesh);
+				ctx.results[index++].distance = c->mesh_wrapper->get_mesh()->distance_tree(info.mesh_wrapper->get_mesh());
 			}// end for distance_candiate list
 		}// end for candidates
 		// clear the trees for current LOD
 		for(candidate_entry *c:candidates){
 			for(candidate_info &info:c->candidates){
-				info.mesh_wrapper->mesh->clear_aabb_tree();
+				info.mesh_wrapper->get_mesh()->clear_aabb_tree();
 			}
-			c->mesh_wrapper->mesh->clear_aabb_tree();
+			c->mesh_wrapper->get_mesh()->clear_aabb_tree();
 		}
 		ctx.computation_time += logt("computation for distance computation", start);
 

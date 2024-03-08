@@ -30,6 +30,7 @@ class Tile{
 	OctreeNode *tree = NULL;
 public:
 	// for building tile instead of load from file
+	Tile(std::vector<HiMesh_Wrapper *> objs);
 	Tile(std::string path, size_t capacity=LONG_MAX, Decoding_Type dt = COMPRESSED, bool active_init=true);
 	~Tile();
 	void init();
@@ -51,7 +52,7 @@ public:
 	void decode_all(int lod = 100);
 	OctreeNode *build_octree(size_t num_tiles);
 	inline OctreeNode *get_octree(){
-		return tree;;
+		return tree;
 	}
 
 	void convert_raw(const char *path);

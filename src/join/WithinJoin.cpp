@@ -151,7 +151,7 @@ void SpatialJoin::within(query_context ctx){
 						// not possible
 						determined = true;
 					}
-				}else{
+				}else{ // end aabb
 					for(auto vp_iter = (ci_iter)->voxel_pairs.begin();vp_iter!=(ci_iter)->voxel_pairs.end();){
 						result_container res = ctx.results[index++];
 						//cout<<vp_iter->v1->num_triangles<<"  "<<res.p1<<" "<<vp_iter->v2->num_triangles<<" "<<res.p2<<" "<<res.distance<<endl;

@@ -9,6 +9,7 @@
 #include <zlib.h>
 #include <thread>
 
+#include "SpatialJoin.h"
 #include "himesh.h"
 #include "tile.h"
 #include "util.h"
@@ -384,7 +385,7 @@ static void compress(int argc, char **argv){
 		hm->decode(i);
 		logt("decode to %d", start, i);
 		//log("%d %f", i, himesh->getHausdorfDistance());
-	    sprintf(path, "/gisdata/compressed_%d.mesh.off", i);
+	    sprintf(path, "compressed_%d.mesh.off", i);
 	    hm->write_to_off(path);
 
 //	    printf("%d\t%ld\t%ld\t%ld\t%ld\n",
@@ -561,20 +562,92 @@ static void convert(int argc, char **argv){
 	delete tile;
 }
 
-//static replacing_group *merge1(unordered_set<replacing_group *> &reps){
-//	replacing_group *ret = new replacing_group();
-//	for(replacing_group *r:reps){
-//		ret->removed_vertices.insert(r->removed_vertices.begin(), r->removed_vertices.end());
-//		delete r;
-//		r = NULL;
-//	}
-//	for(Point p:ret->removed_vertices){
-//		cout<<p<<endl;
-//	}
-//	log("merged %ld reps with %ld removed vertices", reps.size(), ret->removed_vertices.size());
-//	reps.clear();
-//	return ret;
-//}
+static void join(int argc, char **argv){
+	struct timeval start = get_cur_time();
+
+	geometry_computer *gc = new geometry_computer();
+	if(global_ctx.use_gpu){
+#ifdef USE_GPU
+		initialize();
+		gc->init_gpus();
+#endif
+	}
+	if(global_ctx.num_compute_thread>0){
+		gc->set_thread_num(global_ctx.num_compute_thread);
+	}
+
+	HiMesh::use_byte_coding = !global_ctx.disable_byte_encoding;
+
+	char path1[256];
+	char path2[256];
+	if(global_ctx.use_raw){
+		sprintf(path1, "%s.raw", global_ctx.tile1_path.c_str());
+		if(!file_exist(path1) || global_ctx.reload_raw){
+			remove(path1);
+			Tile *tile = new Tile(global_ctx.tile1_path.c_str());
+			tile->convert_raw(path1);
+			delete tile;
+		}
+
+		if(global_ctx.tile2_path.size()>0){
+			sprintf(path2, "%s.raw", global_ctx.tile2_path.c_str());
+			if(!file_exist(path2) || global_ctx.reload_raw){
+				remove(path2);
+				Tile *tile = new Tile(global_ctx.tile2_path.c_str());
+				tile->convert_raw(path2);
+				delete tile;
+			}
+		}
+	}else {
+		sprintf(path1, "%s", global_ctx.tile1_path.c_str());
+		sprintf(path2, "%s", global_ctx.tile2_path.c_str());
+	}
+
+	vector<pair<Tile *, Tile *>> tile_pairs;
+	for(int i=0;i<global_ctx.repeated_times;i++){
+		Tile *tile1, *tile2;
+		if(global_ctx.tile2_path.size()>0){
+			tile1 = new Tile(path1, global_ctx.max_num_objects1, global_ctx.use_raw?RAW:COMPRESSED, false);
+			tile2 = new Tile(path2, global_ctx.max_num_objects2, global_ctx.use_raw?RAW:COMPRESSED, false);
+		}else{
+			tile1 = new Tile(path1, LONG_MAX, global_ctx.use_raw?RAW:COMPRESSED, false);
+			tile2 = tile1;
+		}
+		assert(tile1&&tile2);
+		tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
+	}
+	logt("create tiles", start);
+
+#pragma omp parallel for
+	for(int i=0;i<global_ctx.repeated_times;i++){
+		Tile *t1 = tile_pairs[i].first;
+		Tile *t2 = tile_pairs[i].second;
+		t1->init();
+		if(t2 != t1){
+			t2->init();
+		}
+	}
+	logt("init tiles", start);
+
+	SpatialJoin *joiner = new SpatialJoin(gc);
+	joiner->join(tile_pairs);
+	double join_time = hispeed::get_time_elapsed(start,false);
+	logt("join", start);
+
+#pragma omp parallel for
+	for(int i=0;i<global_ctx.repeated_times;i++){
+		Tile *t1 = tile_pairs[i].first;
+		Tile *t2 = tile_pairs[i].second;
+		if(t2 != t1){
+			delete t2;
+		}
+		delete t1;
+	}
+	tile_pairs.clear();
+	logt("clearing tiles", start);
+	delete joiner;
+	delete gc;
+}
 
 static void test(int argc, char **argv){
 //
@@ -611,6 +684,15 @@ static void test(int argc, char **argv){
 //	}
 //	cout<<*mesh<<endl;
 
+}
+
+static void hausdorff(int argc, char **argv){
+	HiMesh *low = hispeed::read_mesh(argv[1], false);
+	HiMesh *high = hispeed::read_mesh(argv[2], false);
+	if(argc>3){
+		HiMesh::sampling_rate = atoi(argv[3]);
+	}
+	low->computeHausdorfDistance(high);
 }
 
 }
@@ -652,7 +734,10 @@ int main(int argc, char **argv){
 		cout<<"usage: 3dpro function [args]"<<endl;
 		exit(0);
 	}
-	if(strcmp(argv[1],"himesh_to_wkt") == 0){
+
+	if(strcmp(argv[1],"join") == 0){
+		join(argc-1,argv+1);
+	}else if(strcmp(argv[1],"himesh_to_wkt") == 0){
 		himesh_to_wkt(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_protruding") == 0){
 		profile_protruding(argc-1,argv+1);
@@ -690,6 +775,8 @@ int main(int argc, char **argv){
 		decode(argc-1,argv+1);
 	}else if(strcmp(argv[1],"convert") == 0){
 		convert(argc-1,argv+1);
+	}else if(strcmp(argv[1],"hausdorff") == 0){
+		hausdorff(argc-1,argv+1);
 	}else{
 		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
 		exit(0);

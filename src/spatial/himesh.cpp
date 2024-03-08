@@ -76,7 +76,9 @@ HiMesh::HiMesh(string &str, bool completeop):
 			logt("encode", start);
 		}
 	}
-	logt("loading one mesh", very_start);
+	if(global_ctx.verbose >= 2){
+		logt("loading one mesh", very_start);
+	}
 }
 
 void HiMesh::updateVFMap(){

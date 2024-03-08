@@ -133,7 +133,7 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		return voxels;
 	}
 
-	//log("%d %d %d cores",size_of_vertices(), voxel_size, num_cores);
+	//log("%d %d ",size_of_vertices(), voxel_num);
 	//assert(num_cores>3);
 	// this step takes 99 percent of the computation load
 	vector<Point> skeleton_points = get_skeleton_points(voxel_num);
@@ -144,6 +144,7 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		v->core[2] = skeleton_points[i][2];
 		voxels.push_back(v);
 	}
+
 	// return one single box if less than 2 points are sampled
 	if(voxels.size()==0){
 		Voxel *v = new Voxel();
@@ -192,8 +193,8 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 			i++;
 		}
 	}
-
 	skeleton_points.clear();
+
 	return voxels;
 }
 
