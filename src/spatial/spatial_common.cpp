@@ -232,7 +232,7 @@ HiMesh *read_mesh(bool complete_compression){
 	return mesh;
 }
 
-HiMesh *read_mesh(char *path, bool complete_compression){
+HiMesh *read_mesh(const char *path, bool complete_compression){
 	string mesh_str = read_file(path);
 	HiMesh *mesh = new HiMesh(mesh_str, complete_compression);
 	return mesh;

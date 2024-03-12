@@ -49,15 +49,18 @@ HiMesh::HiMesh(string &str, bool completeop):
 		exit(EXIT_FAILURE);
 	}
 
-	compute_mbb();
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 	vh_departureConquest[1] = halfedges_begin()->vertex();
 	if(global_ctx.verbose >= 2){
 		logt("load mesh", start);
 	}
+
+	// update the temporary data structures
+	updateMbb();
+
 	if(HiMesh::calculate_method == HCT_BVHTREE){
-		get_aabb_tree_triangle();
+		updateBVH();
 		if(global_ctx.verbose >= 2){
 			logt("building aabb tree", start);
 		}
@@ -71,7 +74,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 	}
 
 	if(completeop){
-		encode(0);
+		encode();
 		if(global_ctx.verbose >= 2){
 			logt("encode", start);
 		}
@@ -97,7 +100,7 @@ void HiMesh::updateVFMap(){
 		fit->tri = NULL;
 	}
 
-	const float area_unit = get_sample_density();
+	const float area_unit = sampling_gap();
 	for(Vertex_iterator vit=vertices_begin();vit!=vertices_end();vit++){
 		Point p = vit->point();
 		Halfedge_handle startH = vit->halfedge();
@@ -151,12 +154,26 @@ HiMesh::~HiMesh(){
 	map_group.clear();
 }
 
-void HiMesh::compute_mbb(){
+void HiMesh::updateMbb(){
 	mbb.reset();
 	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
 		Point p = vit->point();
 		mbb.update(p.x(), p.y(), p.z());
 	}
+}
+
+void HiMesh::updateBVH(){
+	if(triangle_tree){
+		aabb_triangles.clear();
+		delete triangle_tree;
+		triangle_tree = NULL;
+	}
+	//struct timeval start = get_cur_time();
+	aabb_triangles = get_triangles();
+	triangle_tree = new TriangleTree(aabb_triangles.begin(), aabb_triangles.end());
+	triangle_tree->build();
+	triangle_tree->accelerate_distance_queries();
+	//logt("building triangle tree", start);
 }
 
 size_t HiMesh::size_of_edges(){
@@ -256,14 +273,9 @@ aab HiMesh::shift(float x, float y, float z){
 		Point p = vi->point();
 		vi->point() = Point(p[0]+x, p[1]+y, p[2]+z);
 	}
-	compute_mbb();
+	updateMbb();
 	updateVFMap();
-	if(triangle_tree){
-		aabb_triangles.clear();
-		delete triangle_tree;
-		triangle_tree = NULL;
-		this->get_aabb_tree_triangle();
-	}
+	updateBVH();
 	return mbb;
 }
 
@@ -276,14 +288,10 @@ aab HiMesh::shrink(float shrink){
 							(p[2]-mean_loc[2])/shrink+mean_loc[2]);
 
 	}
-	compute_mbb();
+	updateMbb();
 	updateVFMap();
-	if(triangle_tree){
-		aabb_triangles.clear();
-		delete triangle_tree;
-		triangle_tree = NULL;
-		this->get_aabb_tree_triangle();
-	}
+	updateBVH();
+
 	return mbb;
 }
 

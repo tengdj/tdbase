@@ -25,15 +25,13 @@ class Tile{
 	size_t tile_capacity = INT_MAX;
 	string tile_path;
 
-	Decoding_Type dtype = COMPRESSED;
-
 	OctreeNode *tree = NULL;
 public:
 	// for building tile instead of load from file
-	Tile(std::vector<HiMesh_Wrapper *> objs);
-	Tile(std::string path, size_t capacity=LONG_MAX, Decoding_Type dt = COMPRESSED, bool active_init=true);
+	Tile(std::vector<HiMesh_Wrapper *> &objs);
+	Tile(std::string path, size_t capacity=LONG_MAX, bool active_load=true);
 	~Tile();
-	void init();
+	void load();
 
 	inline HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
@@ -55,7 +53,8 @@ public:
 		return tree;
 	}
 
-	void convert_raw(const char *path);
+	void dump_compressed(const char *path);
+	void dump_raw(const char *path);
 
 	// for profiling performance
 private:

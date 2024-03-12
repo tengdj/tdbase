@@ -9,100 +9,139 @@
 
 namespace hispeed{
 
+// do the initialization job
+void Tile::load(){
+	struct timeval start = get_cur_time();
+	if(!file_exist(tile_path.c_str())){
+		log("%s does not exist", tile_path.c_str());
+		exit(-1);
+	}
 
+	// load the raw data into the buffer
+	data_size = file_size(tile_path.c_str());
+	data_buffer = new char[data_size];
+	//process_lock();
+	FILE *dt_fs = fopen(tile_path.c_str(), "r");
+	assert(fread((void *)data_buffer, sizeof(char), data_size, dt_fs) == data_size);
+	fclose(dt_fs);
+	//process_unlock();
 
-//// parse the metadata
-//bool Tile::parse_raw(){
-//	FILE *dt_fs = fopen(tile_path.c_str(), "r");
-//	assert(dt_fs);
-//	size_t dsize = 0;
-//	long offset = 0;
-//	size_t index = 0;
-//	fseek(dt_fs, 0, SEEK_SET);
-//	while(fread((void *)&dsize, sizeof(size_t), 1, dt_fs)>0){
-//		offset += sizeof(size_t);
-//
-//		// create a wrapper with the meta information
-//		HiMesh_Wrapper *w = new HiMesh_Wrapper();
-//		w->offset = offset;
-//		w->data_size = dsize;
-//		w->id = index++;
-//		w->box.id = w->id;
-//
-//		// next dsize bytes are for the mesh, skip them
-//		fseek(dt_fs, dsize, SEEK_CUR);
-//		// read the voxels into the wrapper
-//		fread((void *)&dsize, sizeof(size_t), 1, dt_fs);
-//		for(int i=0;i<dsize;i++){
-//			Voxel *v = new Voxel();
-//			fread((void *)v->low, sizeof(float), 3, dt_fs);
-//			fread((void *)v->high, sizeof(float), 3, dt_fs);
-//			fread((void *)v->core, sizeof(float), 3, dt_fs);
-//			w->voxels.push_back(v);
-//			w->box.update(*v);
-//		}
-//		objects.push_back(w);
-//		space.update(w->box);
-//
-//		// update the offset for next object
-//		offset += w->data_size+sizeof(size_t)+9*sizeof(float)*dsize;
-//	}
-//	fclose(dt_fs);
-//	return true;
-//}
-//
-//// persist the meta data for current tile as a cache
-//bool Tile::persist(string path){
-//	FILE *mt_fs = fopen(path.c_str(), "wb+");
-//	assert(mt_fs);
-//	for(HiMesh_Wrapper *w:objects){
-//		fwrite((void *)&w->offset, sizeof(size_t), 1, mt_fs);
-//		fwrite((void *)&w->data_size, sizeof(size_t), 1, mt_fs);
-//		size_t dsize = w->voxels.size();
-//		fwrite((void *)&dsize, sizeof(size_t), 1, mt_fs);
-//		for(Voxel *v:w->voxels){
-//			fwrite((void *)v->low, sizeof(float), 3, mt_fs);
-//			fwrite((void *)v->high, sizeof(float), 3, mt_fs);
-//			fwrite((void *)v->core, sizeof(float), 3, mt_fs);
-//		}
-//	}
-//	fclose(mt_fs);
-//	return true;
-//}
-//
-//// load from the cached meta data
-//bool Tile::load(string path, int capacity){
-//	FILE *mt_fs = fopen(path.c_str(), "r");
-//	if(mt_fs==NULL){
-//		log("%s cannot be opened, error: %s",path.c_str(),strerror(errno));
-//		exit(0);
-//	}
-//	assert(mt_fs);
-//
-//	size_t dsize = 0;
-//	size_t index = 0;
-//	while(index<capacity&&fread((void *)&dsize, sizeof(size_t), 1, mt_fs)>0){
-//		HiMesh_Wrapper *w = new HiMesh_Wrapper();
-//		w->offset = dsize;
-//		fread((void *)&w->data_size, sizeof(size_t), 1, mt_fs);
-//		w->id = index++;
-//		w->box.id = w->id;
-//		// read the voxels into the wrapper
-//		fread((void *)&dsize, sizeof(size_t), 1, mt_fs);
-//		for(int i=0;i<dsize;i++){
-//			Voxel *v = new Voxel();
-//			fread((void *)v->low, sizeof(float), 3, mt_fs);
-//			fread((void *)v->high, sizeof(float), 3, mt_fs);
-//			fread((void *)v->core, sizeof(float), 3, mt_fs);
-//			w->voxels.push_back(v);
-//			w->box.update(*v);
-//		}
-//		objects.push_back(w);
-//		space.update(w->box);
-//	}
-//	fclose(mt_fs);
-//	return true;
-//}
+	// parsing the metadata from the dt file
+	Decoding_Type dtype = (Decoding_Type)data_buffer[0];
+	size_t offset = 1;// the first byte is the file type, raw or compressed
+	size_t index = 0;
+	while(offset < data_size){
+		// create a wrapper with the meta information
+		HiMesh_Wrapper * w = new HiMesh_Wrapper(data_buffer + offset, index++, dtype);
+		offset += w->data_size + w->meta_size + sizeof(size_t);
+		objects.push_back(w);
+		space.update(w->box);
+	}
+
+	tree = build_octree(10);
+	logt("loaded %ld polyhedra in tile %s", start, objects.size(), tile_path.c_str());
+}
+
+void Tile::dump_compressed(const char *path){
+	ofstream *os = new std::ofstream(path, std::ios::out | std::ios::binary);
+	assert(os);
+	char type = (char)COMPRESSED;
+	os->write(&type, 1);
+	for(HiMesh_Wrapper *wr:objects){
+		assert(wr->type == COMPRESSED);
+		HiMesh *nmesh = wr->get_mesh();
+		//hispeed::write_polyhedron(&shifted, ids++);
+		size_t size = nmesh->get_data_size();
+		os->write((char *)&size, sizeof(size_t));
+		os->write(nmesh->get_data(), nmesh->get_data_size());
+		size = wr->voxels.size();
+		os->write((char *)&size, sizeof(size_t));
+		for(Voxel *v:wr->voxels){
+			os->write((char *)v->low, 3*sizeof(float));
+			os->write((char *)v->high, 3*sizeof(float));
+			os->write((char *)v->core, 3*sizeof(float));
+		}
+	}
+	os->close();
+}
+
+// dump to a raw format tile file
+void Tile::dump_raw(const char *path){
+
+	ofstream *os = new std::ofstream(path, std::ios::out | std::ios::binary);
+
+	char *buffer = new char[data_size*20];
+	size_t offset = 0;
+	buffer[0] = (char)RAW;
+	offset++;
+
+	for(HiMesh_Wrapper *wr:objects){
+		assert(wr->type != RAW && "already be in raw format");
+
+		size_t *dsize_holder = (size_t *)(buffer+offset);
+		offset += sizeof(size_t);
+
+		const size_t st_offset = offset;
+
+		map<int, float> hausdorffs;
+		map<int, float> proxyhausdorffs;
+		for(int lod=20;lod<=100;lod+=20){
+			wr->decode_to(lod);
+				if(lod!=100){
+				hausdorffs[lod] = wr->get_mesh()->collectGlobalHausdorff().second;
+				proxyhausdorffs[lod] = wr->get_mesh()->collectGlobalHausdorff().first;
+			}else{
+				hausdorffs[lod] = 0;
+				proxyhausdorffs[lod] = 0;
+			}
+
+			for(Voxel *v:wr->voxels){
+				v->offset_lod[lod] = offset - st_offset;
+				v->volume_lod[lod] = v->num_triangles;
+				memcpy(buffer+offset, v->triangles, v->num_triangles*sizeof(float)*9);
+				offset += v->num_triangles*sizeof(float)*9;
+				memcpy(buffer+offset, v->hausdorff, v->num_triangles*sizeof(float)*2);
+				offset += v->num_triangles*sizeof(float)*2;
+			}
+		}
+		// update the data size
+		*dsize_holder = offset-st_offset;
+
+		// store the voxel number (put it here for aligning with the decoding mode)
+		*(size_t *)(buffer + offset) = wr->voxels.size();
+		offset += sizeof(size_t);
+
+		// store the polyhedron-level hausdorff information for all the LODs
+		for(int lod=20;lod<=100;lod+=20){
+			*(float *)(buffer + offset) = hausdorffs[lod];
+			offset += sizeof(float);
+			*(float *)(buffer + offset) = proxyhausdorffs[lod];
+			offset += sizeof(float);
+		}
+
+		// store the voxel information
+		for(Voxel *v:wr->voxels){
+			memcpy(buffer+offset, v->low, sizeof(float)*3);
+			offset += 3*sizeof(float);
+			memcpy(buffer+offset, v->high, sizeof(float)*3);
+			offset += 3*sizeof(float);
+			memcpy(buffer+offset, v->core, sizeof(float)*3);
+			offset += 3*sizeof(float);
+			for(int lod=20;lod<=100;lod+=20){
+				*(size_t *)(buffer+offset) = v->offset_lod[lod];
+				offset += sizeof(size_t);
+				*(size_t *)(buffer+offset) = v->volume_lod[lod];
+				offset += sizeof(size_t);
+			}
+		}
+	}
+
+	os->write(buffer, offset);
+	os->close();
+	delete os;
+	delete []buffer;
+	log("converted to %s",path);
+}
 
 }
 

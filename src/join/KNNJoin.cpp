@@ -280,7 +280,8 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 //								if(global_ctx.hausdorf_level>0){
 //									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
 //								}
-//								dist.mindist = std::min(dist.mindist, dist.maxdist);
+								// todo: in very rare cases min > max
+								dist.mindist = std::min(dist.mindist, dist.maxdist);
 							}
 
 							if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0)

@@ -90,7 +90,10 @@ MYMESH_OBJS := $(patsubst %.cpp,%.o,$(MYMESH_SRCS))
 
 all:  simulator tdbase
 	
-simulator: tools/simulator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS)
+simulator: tools/simulator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS) $(STORAGE_OBJS) 
+	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
+
+simulator_multi: tools/simulator_multi.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS) $(STORAGE_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
 	
 nuclei_generator: tools/generate_nuclei.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS)

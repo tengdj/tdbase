@@ -25,7 +25,7 @@
 namespace hispeed{
 
 
-void HiMesh::encode(int lod){
+void HiMesh::encode(){
 	assert(is_compression_mode());
 	b_jobCompleted = false;
 	while(!b_jobCompleted) {
@@ -138,7 +138,6 @@ void HiMesh::startNextCompresssionOp()
 		// 3dpro: compute and encode the Hausdorff distance for all the facets in this LOD
 		computeHausdorfDistance();
 		HausdorffCodingStep();
-
 		RemovedVertexCodingStep();
 		InsertedEdgeCodingStep();
 		// finish this round of decimation and start the next

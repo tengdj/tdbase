@@ -12,6 +12,7 @@
 #include <fstream>
 #include <tuple>
 #include "himesh.h"
+#include "tile.h"
 
 using namespace hispeed;
 using namespace std;
@@ -20,40 +21,42 @@ namespace po = boost::program_options;
 
 // 50M for each vessel and the nucleis around it
 const int buffer_size = 50*(1<<20);
-vector<HiMesh *> nucleis;
-vector<vector<Voxel *>> nucleis_voxels;
 HiMesh *vessel = NULL;
-vector<Voxel *> vessel_voxels;
-bool *vessel_taken;
-int total_slots = 0;
+HiMesh *nuclei = NULL;
 
 aab nuclei_box;
 aab vessel_box;
 
+vector<Voxel *> vessel_voxels;
+vector<Voxel *> nuclei_voxels;
+
+bool *vessel_taken;
+int total_slots = 0;
+
 int num_nuclei_per_vessel = 100;
 int num_vessel = 50;
-float shrink = 10;
 int voxel_size = 100;
+
+vector<HiMesh_Wrapper *> generated_nucleis;
+vector<HiMesh_Wrapper *> generated_vessels;
+
+pthread_mutex_t mylock;
+
 
 void load_prototype(const char *nuclei_path, const char *vessel_path){
 
 	// load the vessel
-	vector<HiMesh *> vessels = read_meshes(vessel_path, 1);
-	assert(vessels.size()==1);
-	vessel = vessels[0];
+	vessel = read_mesh(vessel_path);
+	assert(vessel);
 	aab mbb = vessel->get_mbb();
 	vessel_box = vessel->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
 
 	// load the nuclei
-	nucleis = read_meshes(nuclei_path, 1);
-
-	for(HiMesh *mesh:nucleis){
-		mbb = mesh->shrink(shrink);
-		mbb = mesh->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
-		nuclei_box.update(mbb);
-		vector<Voxel *> vxls = mesh->generate_voxels_skeleton(mesh->size_of_vertices()/voxel_size);
-		nucleis_voxels.push_back(vxls);
-	}
+	nuclei = read_mesh(nuclei_path);
+	assert(nuclei);
+	mbb = nuclei->get_mbb();
+	nuclei_box = nuclei->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
+	nuclei_voxels = nuclei->generate_voxels_skeleton(nuclei->size_of_vertices()/voxel_size);
 
 	// how many slots in each dimension can one vessel holds
 	int nuclei_num[3];
@@ -96,44 +99,29 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	}
 }
 
-/*
- * generate the binary data for a polyhedron and its voxels
- * */
-void organize_data(HiMesh *mesh, vector<Voxel *> &voxels, float shift[3], char *data, size_t &offset){
-	HiMesh *nmesh = mesh->clone_mesh();
-	nmesh->shift(shift[0], shift[1], shift[2]);
-	nmesh->encode();
-	//hispeed::write_polyhedron(&shifted, ids++);
-	size_t size = nmesh->get_data_size();
-	memcpy(data+offset, (char *)&size, sizeof(size_t));
-	offset += sizeof(size_t);
-	memcpy(data+offset, nmesh->get_data(), nmesh->get_data_size());
-	offset += nmesh->get_data_size();
-	size = voxels.size();
-	memcpy(data+offset, (char *)&size, sizeof(size_t));
-	offset += sizeof(size_t);
-	float box_tmp[3];
+HiMesh_Wrapper *organize_data(HiMesh *mesh, vector<Voxel *> &voxels, float shift[3]){
+
+	vector<Voxel *> local_voxels;
+
+	HiMesh *local_mesh = mesh->clone_mesh();
+	local_mesh->shift(shift[0], shift[1], shift[2]);
+	local_mesh->encode();
 	for(Voxel *v:voxels){
+		Voxel *vv = new Voxel();
 		for(int i=0;i<3;i++){
-			box_tmp[i] = v->low[i]+shift[i];
+			vv->low[i] = v->low[i]+shift[i];
 		}
-		memcpy(data+offset, (char *)box_tmp, 3*sizeof(float));
-		offset += 3*sizeof(float);
-
 		for(int i=0;i<3;i++){
-			box_tmp[i] = v->high[i]+shift[i];
+			vv->high[i] = v->high[i]+shift[i];
 		}
-		memcpy(data+offset, (char *)box_tmp, 3*sizeof(float));
-		offset += 3*sizeof(float);
-
 		for(int i=0;i<3;i++){
-			box_tmp[i] = v->core[i]+shift[i];
+			vv->core[i] = v->core[i]+shift[i];
 		}
-		memcpy(data+offset, (char *)box_tmp, 3*sizeof(float));
-		offset += 3*sizeof(float);
+		local_voxels.push_back(vv);
 	}
-	assert(offset<buffer_size);
-	delete nmesh;
+
+	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_mesh, local_voxels);
+	return wr;
 }
 
 /*
@@ -141,7 +129,7 @@ void organize_data(HiMesh *mesh, vector<Voxel *> &voxels, float shift[3], char *
  * a given shift base
  *
  * */
-int generate_nuclei(float base[3], char *data, size_t &offset){
+int generate_nuclei(float base[3]){
 	int nuclei_num[3];
 	for(int i=0;i<3;i++){
 		nuclei_num[i] = (int)(vessel_box.high[i]/nuclei_box.high[i]);
@@ -173,26 +161,21 @@ int generate_nuclei(float base[3], char *data, size_t &offset){
 		shift[1] = y*nuclei_box.high[1]+base[1];
 		shift[2] = z*nuclei_box.high[2]+base[2];
 
-		int polyid = get_rand_number(nucleis.size()-1);
-		organize_data(nucleis[polyid], nucleis_voxels[polyid], shift, data, offset);
-
+		HiMesh_Wrapper *wr = organize_data(nuclei, nuclei_voxels, shift);
+		pthread_mutex_lock(&mylock);
+		generated_nucleis.push_back(wr);
+		pthread_mutex_unlock(&mylock);
 		//log("%d %d %d %d",idx,oidx,polyid,polyid2);
 	}
 	return generated;
 }
 
-ofstream *v_os = NULL;
-ofstream *os = NULL;
-
 queue<tuple<float, float, float>> jobs;
-pthread_mutex_t mylock;
 
 long global_generated = 0;
 
 void *generate_unit(void *arg){
 	log("thread is started");
-	char *vessel_data = new char[buffer_size];
-	char *data = new char[buffer_size];
 	bool complete = false;
 	while(true){
 		tuple<float, float, float> job;
@@ -210,16 +193,13 @@ void *generate_unit(void *arg){
 		size_t offset = 0;
 		size_t vessel_offset = 0;
 		float base[3] = {get<0>(job), get<1>(job), get<2>(job)};
-		int generated = generate_nuclei(base, data, offset);
-		organize_data(vessel, vessel_voxels, base, vessel_data, vessel_offset);
+		int generated = generate_nuclei(base);
+		HiMesh_Wrapper *wr = organize_data(vessel, vessel_voxels, base);
 		pthread_mutex_lock(&mylock);
-		os->write(data, offset);
-		v_os->write(vessel_data, vessel_offset);
 		global_generated += generated;
+		generated_vessels.push_back(wr);
 		pthread_mutex_unlock(&mylock);
 	}
-	delete vessel_data;
-	delete data;
 	return NULL;
 }
 
@@ -231,21 +211,22 @@ int main(int argc, char **argv){
 
 	pthread_mutex_init(&mylock, NULL);
 
+	int cm = HiMesh::calculate_method;
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
 		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
 		("vessel,v", po::value<string>(&vessel_pt), "path to the vessel prototype file")
 		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
-		("shrink,s", po::value<float>(&shrink), "shrink the size of nuclei by how many times")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
 		("nv", po::value<int>(&num_vessel), "number of vessels")
 		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
-		("sample_rate,r", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation")
-		("calculate_method,m", po::value<int>(&HiMesh::calculate_method), "hausdorff distance calculating method [0ALL|1BVH|2ASSOCIATE|3ASSOCIATE_CYLINDER|4NULL]")
+		("sample_rate,r", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation (default 30)")
+		("calculate_method,m", po::value<int>(&cm), "hausdorff distance calculating method [0NULL|1BVH(default)|2ASSOCIATE|3ASSOCIATE_CYLINDER]")
 		;
+	HiMesh::calculate_method = (Hausdorff_Computing_Type)cm;
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -261,21 +242,12 @@ int main(int argc, char **argv){
 	char vessel_output[256];
 	char nuclei_output[256];
 	char config[100];
-	sprintf(config,"nv%d_nu%d_s%d_vs%d_r%d_cm%d",
-			num_vessel, num_nuclei_per_vessel,
-			(int)shrink, voxel_size,
+	sprintf(config,"nv%d_nu%d_vs%d_r%d_cm%d",
+			num_vessel, num_nuclei_per_vessel, voxel_size,
 			HiMesh::sampling_rate, HiMesh::calculate_method);
-
-	sprintf(vessel_output,"%s_v_%s.dt.raw",output_path.c_str(),config);
-	remove(vessel_output);
-	sprintf(nuclei_output,"%s_n_%s.dt.raw",output_path.c_str(),config);
-	remove(nuclei_output);
 
 	sprintf(vessel_output,"%s_v_%s.dt",output_path.c_str(),config);
 	sprintf(nuclei_output,"%s_n_%s.dt",output_path.c_str(),config);
-
-	v_os = new std::ofstream(vessel_output, std::ios::out | std::ios::binary);
-	os = new std::ofstream(nuclei_output, std::ios::out | std::ios::binary);
 
 	// generate some job for worker to process
 	int x_dim = (int)pow((float)num_vessel, (float)1.0/3);
@@ -306,11 +278,11 @@ int main(int argc, char **argv){
 	}
 	logt("%ld vessels with %d voxels %ld nucleis are generated",start,vessel_num,vessel_voxels.size(),global_generated);
 
-	// close the output stream
-	v_os->close();
-	os->close();
-	delete v_os;
-	delete os;
+	Tile *nuclei_tile = new Tile(generated_nucleis);
+	Tile *vessel_tile = new Tile(generated_vessels);
+
+	nuclei_tile->dump_compressed(nuclei_output);
+	vessel_tile->dump_compressed(vessel_output);
 
 	// clear the vessel related objects
 	delete vessel;
@@ -320,17 +292,12 @@ int main(int argc, char **argv){
 	vessel_voxels.clear();
 
 	// clear the nuclei related objects
-	for(HiMesh *n:nucleis){
-		delete n;
+	delete nuclei;
+	for(Voxel *v:nuclei_voxels){
+		delete v;
 	}
-	nucleis.clear();
-	for(vector<Voxel *> &vs:nucleis_voxels){
-		for(Voxel *v:vs){
-			delete v;
-		}
-		vs.clear();
-	}
-	nucleis_voxels.clear();
+	nuclei_voxels.clear();
+
 	delete []vessel_taken;
 }
 

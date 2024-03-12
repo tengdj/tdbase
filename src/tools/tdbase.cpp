@@ -355,15 +355,19 @@ static void sample(int argc, char **argv){
 	delete final_mesh;
 }
 
+static void compress_cgal(int argc, char **argv){
+	Polyhedron *poly = hispeed::read_polyhedron(argv[1]);
+	float ratio = atof(argv[3]);
+	size_t onv = poly->size_of_vertices();
+	hispeed::cgal_simplification(poly, ratio);
+	hispeed::write_polyhedron(poly, argv[2]);
+	log("compressed with ratio %.2f from %ld vertices to %ld vertices",onv, poly->size_of_vertices());
+	delete poly;
+}
+
 static void compress(int argc, char **argv){
 
-//	Point p1(201.502, 160.057, 245.023);
-//	Point p2(221.539, 150.502, 155.167);
-//	Point p3(206.559, 152.501, 73.854);
-//
-//	cout<<triangle_area(p1, p2, p3)<<endl;
-//
-//	return;
+	std::string str(argv[1]);
 
 	global_ctx.verbose = 2;
 	if(argc>2){
@@ -372,7 +376,8 @@ static void compress(int argc, char **argv){
 	}
 
 	if(argc>3){
-		HiMesh::calculate_method = atoi(argv[3]);
+		int cm = atoi(argv[3]);
+		HiMesh::calculate_method = (hispeed::Hausdorff_Computing_Type)cm;
 	}
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1], true);
@@ -381,32 +386,14 @@ static void compress(int argc, char **argv){
 	int lod = 100;
 
 	char path[256];
-	for(uint32_t i=0;i<=lod;i+=10){
+	std::string base_filename = str.substr(str.find_last_of("/\\") + 1, str.find_last_of('.') -str.find_last_of("/\\") - 1);
+
+	for(uint32_t i=20;i<=lod;i+=20){
 		hm->decode(i);
 		logt("decode to %d", start, i);
 		//log("%d %f", i, himesh->getHausdorfDistance());
-	    sprintf(path, "compressed_%d.mesh.off", i);
+	    sprintf(path, "%s_%d.off", base_filename.c_str(), i);
 	    hm->write_to_off(path);
-
-//	    printf("%d\t%ld\t%ld\t%ld\t%ld\n",
-//	    		i,
-//				hm->size_of_vertices(),
-//				hm->size_of_edges(),
-//				hm->size_of_facets(),
-//				hm->size_of_triangles());
-
-//		unordered_set<Point> point_set;
-//		hm->sample_points(point_set);
-//		vector<Point> points;
-//		points.assign(point_set.begin(), point_set.end());
-//	    sprintf(path, "/gisdata/compressed_%d.points.off", i);
-//		hispeed::write_points(points, path);
-//
-//		//log("global: %f", himesh->getHausdorfDistance().second);
-//		int tris = hm->size_of_triangles();
-//		for(int j=0;j<tris;j++){
-//			//log("%d\t%.2f\t%d", j, himesh->get_triangle_hausdorf(j).second, (int)(himesh->get_triangle_hausdorf(j).second*100/himesh->getHausdorfDistance().second));
-//		}
 	}
 
 	delete mesh;
@@ -556,10 +543,14 @@ static void print_tile_boxes(int argc, char **argv){
 
 static void convert(int argc, char **argv){
 	Tile *tile = new Tile(argv[1]);
-	char path[256];
-	sprintf(path, "%s.raw", argv[1]);
-	tile->convert_raw(path);
+	tile->dump_raw(argv[2]);
 	delete tile;
+}
+
+static void shrink(int argc, char **argv){
+	HiMesh *mesh = hispeed::read_mesh(false);
+	mesh->shrink(atoi(argv[1]));
+	cout<<*mesh;
 }
 
 static void join(int argc, char **argv){
@@ -580,37 +571,18 @@ static void join(int argc, char **argv){
 
 	char path1[256];
 	char path2[256];
-	if(global_ctx.use_raw){
-		sprintf(path1, "%s.raw", global_ctx.tile1_path.c_str());
-		if(!file_exist(path1) || global_ctx.reload_raw){
-			remove(path1);
-			Tile *tile = new Tile(global_ctx.tile1_path.c_str());
-			tile->convert_raw(path1);
-			delete tile;
-		}
 
-		if(global_ctx.tile2_path.size()>0){
-			sprintf(path2, "%s.raw", global_ctx.tile2_path.c_str());
-			if(!file_exist(path2) || global_ctx.reload_raw){
-				remove(path2);
-				Tile *tile = new Tile(global_ctx.tile2_path.c_str());
-				tile->convert_raw(path2);
-				delete tile;
-			}
-		}
-	}else {
-		sprintf(path1, "%s", global_ctx.tile1_path.c_str());
-		sprintf(path2, "%s", global_ctx.tile2_path.c_str());
-	}
+	sprintf(path1, "%s", global_ctx.tile1_path.c_str());
+	sprintf(path2, "%s", global_ctx.tile2_path.c_str());
 
 	vector<pair<Tile *, Tile *>> tile_pairs;
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *tile1, *tile2;
 		if(global_ctx.tile2_path.size()>0){
-			tile1 = new Tile(path1, global_ctx.max_num_objects1, global_ctx.use_raw?RAW:COMPRESSED, false);
-			tile2 = new Tile(path2, global_ctx.max_num_objects2, global_ctx.use_raw?RAW:COMPRESSED, false);
+			tile1 = new Tile(path1, global_ctx.max_num_objects1, false);
+			tile2 = new Tile(path2, global_ctx.max_num_objects2, false);
 		}else{
-			tile1 = new Tile(path1, LONG_MAX, global_ctx.use_raw?RAW:COMPRESSED, false);
+			tile1 = new Tile(path1, LONG_MAX, false);
 			tile2 = tile1;
 		}
 		assert(tile1&&tile2);
@@ -622,9 +594,9 @@ static void join(int argc, char **argv){
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *t1 = tile_pairs[i].first;
 		Tile *t2 = tile_pairs[i].second;
-		t1->init();
+		t1->load();
 		if(t2 != t1){
-			t2->init();
+			t2->load();
 		}
 	}
 	logt("init tiles", start);
@@ -759,6 +731,8 @@ int main(int argc, char **argv){
 		test(argc-1,argv+1);
 	}else if(strcmp(argv[1],"compress") == 0){
 		compress(argc-1,argv+1);
+	}else if(strcmp(argv[1],"compress_cgal") == 0){
+		compress_cgal(argc-1,argv+1);
 	}else if(strcmp(argv[1],"triangulate") == 0){
 		triangulate(argc-1,argv+1);
 	}else if(strcmp(argv[1],"distance") == 0){
@@ -775,6 +749,8 @@ int main(int argc, char **argv){
 		decode(argc-1,argv+1);
 	}else if(strcmp(argv[1],"convert") == 0){
 		convert(argc-1,argv+1);
+	}else if(strcmp(argv[1],"shrink") == 0){
+		shrink(argc-1,argv+1);
 	}else if(strcmp(argv[1],"hausdorff") == 0){
 		hausdorff(argc-1,argv+1);
 	}else{

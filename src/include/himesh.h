@@ -469,6 +469,12 @@ enum Hausdorff_Computing_Type{
 	HCT_ASSOCIATE_CYLINDER = 3
 };
 
+enum STAT_TYPE{
+	MIN = 0,
+	MAX = 1,
+	AVG = 2
+};
+
 class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 {
 	// Gate queues
@@ -531,7 +537,7 @@ public:
 	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset, true){}
 	~HiMesh();
 
-	void encode(int lod = 0);
+	void encode();
 	void decode(int lod = 100);
 
 	// Compression
@@ -599,17 +605,18 @@ public:
 
 	//tdbase
 	void computeHausdorfDistance();
-	void updateVFMap();
 	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
 	void profileProtruding();
 
-	pair<float, float> collectGlobalHausdorff();
+	pair<float, float> collectGlobalHausdorff(STAT_TYPE type = MAX);
 	void computeHausdorfDistance(HiMesh *original);
 
 	inline aab get_mbb(){
 		return mbb;
 	}
-	void compute_mbb();
+	void updateMbb();
+	void updateVFMap();
+	void updateBVH();
 
 	Polyhedron *to_polyhedron();
 	Polyhedron *to_triangulated_polyhedron();
@@ -663,6 +670,9 @@ public:
 	size_t get_data_size(){
 		return dataOffset;
 	}
+	size_t evaluate_size(){
+		return sizeof(float)*3*this->size_of_triangles();
+	}
 	const char *get_data(){
 		return p_data;
 	}
@@ -671,21 +681,21 @@ public:
 	aab shrink(float ratio);
 	HiMesh *clone_mesh();
 
+	// the triangles each point associated
 	map<Point, vector<MyTriangle *>> VFmap;
 
 	// equals the number of points sampled for each triangle
 	static uint32_t sampling_rate;
-
-	static int calculate_method;
+	inline float sampling_gap(){
+		uint32_t num_triangle = this->size_of_triangles();
+		return area()/(num_triangle*sampling_rate);
+	}
+	static Hausdorff_Computing_Type calculate_method;
 	static bool use_byte_coding;
 
 	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit);
 	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
 	void sample_points(unordered_set<Point> &points);
-	inline float get_sample_density(){
-		uint32_t num_triangle = this->size_of_triangles();
-		return area()/(num_triangle*sampling_rate);
-	}
 	float area();
 };
 
@@ -749,9 +759,9 @@ public:
 };
 
 enum Decoding_Type{
-	COMPRESSED,
-	RAW,
-	MULTIMESH
+	COMPRESSED = 0,
+	RAW = 1,
+	MULTIMESH = 2
 };
 
 /*
@@ -787,7 +797,8 @@ public:
 	int cur_lod = -1;
 
 public:
-	HiMesh_Wrapper(vector<HiMesh *> &ms, vector<Voxel *> &vxls, size_t id);
+	HiMesh_Wrapper(map<int, HiMesh *> &meshes, vector<Voxel *> &vxls);
+	HiMesh_Wrapper(HiMesh *mesh, vector<Voxel *> &vxls);
 	HiMesh_Wrapper(char *dt, size_t id, Decoding_Type t = COMPRESSED);
 	~HiMesh_Wrapper();
 
@@ -839,7 +850,7 @@ string polyhedron_to_wkt(Polyhedron *poly);
 
 // some utility functions to operate mesh polyhedrons
 extern HiMesh *read_mesh(bool complete_compress = false);
-extern HiMesh *read_mesh(char *path, bool complete_compress = false);
+extern HiMesh *read_mesh(const char *path, bool complete_compress = false);
 extern vector<HiMesh *> read_meshes(const char *path, size_t maxnum = LONG_MAX);
 
 extern HiMesh *poly_to_mesh(Polyhedron *poly);
