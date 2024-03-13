@@ -222,11 +222,6 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 
 				if(ctx.use_aabb){
 					range dist = ci.distance;
-					float hdist1 = wrapper1->getHausdorffDistance();
-					float hdist2 = wrapper2->getHausdorffDistance();
-					float phdist1 = wrapper1->getProxyHausdorffDistance();
-					float phdist2 = wrapper2->getProxyHausdorffDistance();
-
 					result_container res = ctx.results[index++];
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
@@ -234,15 +229,14 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 						dist.maxdist = res.distance;
 					}else{
 						dist.maxdist = std::min(dist.maxdist, res.distance);
-						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
+						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->getHausdorffDistance()-wrapper2->getHausdorffDistance());
 
 						dist.mindist = std::min(dist.mindist, dist.maxdist);
 						//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
 					}
 
 					if(global_ctx.verbose>=1){
-						log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-								hdist1, hdist2,
+						log("%ld\t%ld:\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
 								ci.distance.mindist, ci.distance.maxdist,
 								dist.mindist, dist.maxdist);
 					}
@@ -254,42 +248,26 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 						// update the distance
 						if(vp.v1->num_triangles>0&&vp.v2->num_triangles>0){
 							range dist = vp.dist;
-							float hdist1;
-							float hdist2;
-							float phdist1;
-							float phdist2;
-							if(global_ctx.hausdorf_level<2){
-								hdist1 = wrapper1->getHausdorffDistance();
-								hdist2 = wrapper2->getHausdorffDistance();
-								phdist1 = wrapper1->getProxyHausdorffDistance();
-								phdist2 = wrapper2->getProxyHausdorffDistance();
-							}else{
-								hdist1 = vp.v1->getHausdorffDistance(res.p1);
-								hdist2 = vp.v2->getHausdorffDistance(res.p2);
-								phdist1 = vp.v1->getProxyHausdorffDistance(res.p1);
-								phdist2 = vp.v2->getProxyHausdorffDistance(res.p2);
-							}
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
 								dist.mindist = res.distance;
 								dist.maxdist = res.distance;
-							}else{
-								dist.mindist = res.min_dist;
-//								dist.maxdist = res.max_dist;
+							}else if(global_ctx.hausdorf_level == 2){
+								dist.mindist = std::max(dist.mindist, res.min_dist);
+								dist.maxdist = std::min(dist.maxdist, res.max_dist);
+//								dist.maxdist = std::min(dist.maxdist, res.distance);
+							}else if(global_ctx.hausdorf_level == 1){
+								dist.mindist = std::max(dist.mindist, res.distance - wrapper1->getHausdorffDistance() - wrapper2->getHausdorffDistance());
+								dist.maxdist = std::min(dist.maxdist, res.distance + wrapper1->getProxyHausdorffDistance() + wrapper2->getProxyHausdorffDistance());
+//								dist.maxdist = std::min(dist.maxdist, res.distance);
+							}else if(global_ctx.hausdorf_level == 0){
 								dist.maxdist = std::min(dist.maxdist, res.distance);
-//								if(global_ctx.hausdorf_level>0){
-//									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-//								}
-								// todo: in very rare cases min > max
-								dist.mindist = std::min(dist.mindist, dist.maxdist);
 							}
 
-							if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0)
+							if(global_ctx.verbose>=1)
 							{
-								log("%ld(%d)\t%ld(%d):\t[%.2f %.2f]\t[%.2f %.2f]\t[%.2f, %.2f]->[%.2f, %.2f] [%.2f, %.2f, %.2f]",
+								log("%ld(%d)\t%ld(%d):\t[%.2f, %.2f]->[%.2f, %.2f] res: [%.2f, %.2f, %.2f]",
 										wrapper1->id,res.p1, wrapper2->id,res.p2,
-										hdist1, hdist2,
-										phdist1, phdist2,
 										vp.dist.mindist, vp.dist.maxdist,
 										dist.mindist, dist.maxdist,
 										res.min_dist, res.distance, res.max_dist);
@@ -306,10 +284,9 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 				}
 			}
 
-			if(global_ctx.verbose>=1 && global_ctx.hausdorf_level>0){
+			if(global_ctx.verbose>=1){
 				log("");
 			}
-
 		}
 		// update the list after processing each LOD
 		evaluate_candidate_lists(candidates, ctx);

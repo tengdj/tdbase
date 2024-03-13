@@ -43,10 +43,10 @@ Tile::Tile(std::vector<HiMesh_Wrapper *> &objs){
 			for(int lod=20;lod<=80;lod+=20){
 				HiMesh *low = wr->get_meshes()[lod];
 				low->computeHausdorfDistance(original);
-				pair<float, float> hf = low->collectGlobalHausdorff(AVG);
-				log("%d: %f %f", lod, hf.first, hf.second);
+				//pair<float, float> hf = low->collectGlobalHausdorff(AVG);
+				//log("%d: %f %f", lod, hf.first, hf.second);
 			}
-			log("");
+			//log("");
 		}
 	}
 }

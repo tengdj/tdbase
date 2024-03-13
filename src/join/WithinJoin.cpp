@@ -126,21 +126,18 @@ void SpatialJoin::within(query_context ctx){
 				if(ctx.use_aabb){
 					range dist = (ci_iter)->distance;
 					result_container res = ctx.results[index++];
-					float hdist1 = wrapper1->getHausdorffDistance();
-					float hdist2 = wrapper2->getHausdorffDistance();
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
 						dist.mindist = res.distance;
 						dist.maxdist = res.distance;
 					}else{
 						dist.maxdist = std::min(dist.maxdist, res.distance);
-						dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-						if(global_ctx.verbose>=1){
-							log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-									hdist1, hdist2,
-									(ci_iter)->distance.mindist, (ci_iter)->distance.maxdist,
-									dist.mindist, dist.maxdist);
-						}
+						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->getHausdorffDistance()-wrapper2->getHausdorffDistance());
+					}
+					if(global_ctx.verbose>=1){
+						log("%ld\t%ld:\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
+								(ci_iter)->distance.mindist, (ci_iter)->distance.maxdist,
+								dist.mindist, dist.maxdist);
 					}
 					(ci_iter)->distance = dist;
 					if(dist.maxdist<=ctx.within_dist){
@@ -158,38 +155,26 @@ void SpatialJoin::within(query_context ctx){
 						// update the distance
 						if(!determined && vp_iter->v1->num_triangles>0&&vp_iter->v2->num_triangles>0){
 							range dist = vp_iter->dist;
-							float hdist1;
-							float hdist2;
-							float phdist1;
-							float phdist2;
-							if(global_ctx.hausdorf_level<2){
-								hdist1 = wrapper1->getHausdorffDistance();
-								hdist2 = wrapper2->getHausdorffDistance();
-								phdist1 = wrapper1->getProxyHausdorffDistance();
-								phdist2 = wrapper2->getProxyHausdorffDistance();
-							}else{
-								hdist1 = vp_iter->v1->getHausdorffDistance(res.p1);
-								hdist2 = vp_iter->v2->getHausdorffDistance(res.p2);
-								phdist1 = vp_iter->v1->getProxyHausdorffDistance(res.p1);
-								phdist2 = vp_iter->v2->getProxyHausdorffDistance(res.p2);
-							}
-
 							if(lod==ctx.highest_lod()){
 								// now we have a precise distance
 								dist.mindist = res.distance;
 								dist.maxdist = res.distance;
-							}else{
+							}else if(global_ctx.hausdorf_level == 2){
+								dist.mindist = std::max(dist.mindist, res.min_dist);
+								dist.maxdist = std::min(dist.maxdist, res.max_dist);
+//								dist.maxdist = std::min(dist.maxdist, res.distance);
+							}else if(global_ctx.hausdorf_level == 1){
+								dist.mindist = std::max(dist.mindist, res.distance - wrapper1->getHausdorffDistance() - wrapper2->getHausdorffDistance());
+								dist.maxdist = std::min(dist.maxdist, res.distance + wrapper1->getProxyHausdorffDistance() + wrapper2->getProxyHausdorffDistance());
+//								dist.maxdist = std::min(dist.maxdist, res.distance);
+							}else if(global_ctx.hausdorf_level == 0){
 								dist.maxdist = std::min(dist.maxdist, res.distance);
-								if(global_ctx.hausdorf_level>0)
-								{
-									dist.mindist = std::max(dist.mindist, dist.maxdist-hdist1-hdist2);
-									if(global_ctx.verbose>=1){
-										log("%ld\t%ld:\t%.2f %.2f\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-												hdist1, hdist2,
-												(ci_iter)->distance.mindist, (ci_iter)->distance.maxdist,
-												dist.mindist, dist.maxdist);
-									}
-								}
+							}
+
+							if(global_ctx.verbose>=1) {
+								log("%ld\t%ld:[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
+										(ci_iter)->distance.mindist, (ci_iter)->distance.maxdist,
+										dist.mindist, dist.maxdist);
 							}
 							vp_iter->dist = dist;
 							// one voxel pair is close enough

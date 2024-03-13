@@ -20,8 +20,8 @@ void *TriDist_unit(void *params_void){
 										   param->data+param->offset_size[4*i+2]*9,
 										   param->offset_size[4*i+1],
 										   param->offset_size[4*i+3],
-										   global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i]*2):NULL,
-										   global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i+2]*2):NULL);
+										   param->hausdorff+param->offset_size[4*i]*2,
+										   param->hausdorff+param->offset_size[4*i+2]*2);
 	}
 	return NULL;
 }
@@ -92,7 +92,7 @@ void geometry_computer::get_intersect_gpu(geometry_param &cc){
 	gpu_info *gpu = request_gpu(cc.element_num*9*sizeof(float)/1024/1024, true);
 	assert(gpu);
 	log("GPU %d started to check intersect", gpu->device_id);
-	hispeed::TriInt_batch_gpu(gpu, cc.data, cc.offset_size, global_ctx.hausdorf_level==2?cc.hausdorff:NULL, cc.results, cc.pair_num, cc.element_num);
+	hispeed::TriInt_batch_gpu(gpu, cc.data, cc.offset_size, cc.hausdorff, cc.results, cc.pair_num, cc.element_num);
 	release_gpu(gpu);
 }
 
@@ -161,8 +161,8 @@ void *TriInt_unit(void *params_void){
 									    param->data+param->offset_size[4*i+2]*9,
 									    param->offset_size[4*i+1],
 									    param->offset_size[4*i+3],
-										global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i]*2):NULL,
-										global_ctx.hausdorf_level==2?(param->hausdorff+param->offset_size[4*i+2]*2):NULL);
+										param->hausdorff+param->offset_size[4*i]*2,
+										param->hausdorff+param->offset_size[4*i+2]*2);
 	}
 	return NULL;
 }
