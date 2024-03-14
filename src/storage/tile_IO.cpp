@@ -143,6 +143,21 @@ void Tile::dump_raw(const char *path){
 	log("converted to %s",path);
 }
 
+void Tile::dump_sql(const char *path, const char *table, const char *column){
+	std::filebuf fb;
+	fb.open(path, std::ios::out | std::ios::trunc);
+	if(fb.is_open()) {
+		std::ostream os(&fb);
+		for(HiMesh_Wrapper *wr:objects){
+			string wkt = wr->get_mesh()->to_wkt();
+			os << "INSERT INTO "<<table<<"("<<column<<") VALUES (ST_GeomFromEWKT('"<<wkt.c_str()<<"'));"<<endl;
+		}
+		fb.close();
+	}else{
+		std::cerr<<"cannot find path "<<path<<std::endl;
+	}
+}
+
 }
 
 

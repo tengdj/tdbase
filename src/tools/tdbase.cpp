@@ -22,7 +22,7 @@ namespace hispeed{
  * print himesh to wkt
  *
  * */
-static void himesh_to_wkt(int argc, char **argv){
+static void to_wkt(int argc, char **argv){
 
 	Tile *tile = new Tile(argv[1]);
 	const char *prefix = argv[2];
@@ -32,6 +32,22 @@ static void himesh_to_wkt(int argc, char **argv){
 		sprintf(path, "%s_%d.OFF", prefix, i);
 		tile->get_mesh(i)->write_to_off(path);
 	}
+	delete tile;
+}
+
+/*
+ * print himesh to sql
+ *
+ * */
+static void to_sql(int argc, char **argv){
+
+	Tile *tile = new Tile(argv[1]);
+	const char *table = argv[2];
+	const char *column = argv[3];
+	tile->decode_all(100);
+	char path[256];
+	sprintf(path, "%s_%s.sql",table, column);
+	tile->dump_sql(path, table, column);
 	delete tile;
 }
 
@@ -709,8 +725,10 @@ int main(int argc, char **argv){
 
 	if(strcmp(argv[1],"join") == 0){
 		join(argc-1,argv+1);
-	}else if(strcmp(argv[1],"himesh_to_wkt") == 0){
-		himesh_to_wkt(argc-1,argv+1);
+	}else if(strcmp(argv[1],"to_wkt") == 0){
+		to_wkt(argc-1,argv+1);
+	}else if(strcmp(argv[1],"to_sql") == 0){
+		to_sql(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_protruding") == 0){
 		profile_protruding(argc-1,argv+1);
 	}else if(strcmp(argv[1],"get_voxel_boxes") == 0){
