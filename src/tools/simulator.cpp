@@ -215,6 +215,7 @@ int main(int argc, char **argv){
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
+		("ppvp,p", "enable the ppvp mode, for simulator and join query")
 		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
 		("vessel,v", po::value<string>(&vessel_pt), "path to the vessel prototype file")
 		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
@@ -236,6 +237,10 @@ int main(int argc, char **argv){
 		return 0;
 	}
 	po::notify(vm);
+
+	if(vm.count("ppvp")){
+		global_ctx.ppvp = true;
+	}
 
 	struct timeval start = get_cur_time();
 

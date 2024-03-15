@@ -47,7 +47,7 @@ public:
 	int repeated_times = 1;
 	bool use_aabb = false;
 	bool use_gpu = false;
-	bool use_multimbb = false;
+	bool ppvp = false;
 	int hausdorf_level = 2; // 0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level hausdorff
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
@@ -131,35 +131,33 @@ extern query_context global_ctx;
 static query_context parse_args(int argc, char **argv){
 	query_context ctx;
 
-	int base_lod = 0;
-	int lod_gap = 50;
-	int top_lod = 100;
-
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
-		("query,q", po::value<string>(&ctx.query_type),"query type can be intersect|nn|within")
-		("knn", po::value<int>(&ctx.knn), "the K value for NN query")
+		("aabb", "calculate distance with aabb")
+		("gpu,g", "compute with GPU")
+		("ppvp,p", "enable the ppvp mode, for simulator and join query")
+		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
+		("disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones")
+
+		// for data
 		("tile1", po::value<string>(&ctx.tile1_path), "path to tile 1")
 		("tile2", po::value<string>(&ctx.tile2_path), "path to tile 2")
-		("cn", po::value<int>(&ctx.num_compute_thread), "number of threads for geometric computation for each tile")
-		("threads,n", po::value<int>(&ctx.num_thread), "number of threads for processing tiles")
 		("repeat,r", po::value<int>(&ctx.repeated_times), "repeat tiles")
 		("max_objects1", po::value<size_t>(&ctx.max_num_objects1), "max number of objects in tile 1")
 		("max_objects2", po::value<size_t>(&ctx.max_num_objects2), "max number of objects in tile 2")
-		("base_lod", po::value<int>(&base_lod), "the base lod for progressive decoding polyhedral")
-		("top_lod", po::value<int>(&top_lod), "the top lod for progressive decoding polyhedral")
-		("lod_gap", po::value<int>(&lod_gap), "the lod gap for progressive decoding polyhedral")
-		("lod", po::value<std::vector<std::string>>()->multitoken()->
-				zero_tokens()->composing(), "the lods need be processed")
-		("aabb", "calculate distance with aabb")
-		("gpu,g", "compute with GPU")
-		("verbose,v", po::value<int>(&ctx.verbose), "verbose level")
-		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
-		("multiple_mbb,m", "using shape-aware indexing with multiple MBB")
-		("disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones")
+
+		// query setup
+		("query,q", po::value<string>(&ctx.query_type),"query type can be intersect|nn|within")
+		("knn", po::value<int>(&ctx.knn), "the K value for NN query")
 		("within_dist", po::value<double>(&ctx.within_dist), "the maximum distance for within query")
+		("lod", po::value<std::vector<std::string>>()->multitoken()->zero_tokens()->composing(), "the lods need be processed")
 		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level(default)")
+
+		// execution setup
+		("cn", po::value<int>(&ctx.num_compute_thread), "number of threads for geometric computation for each tile")
+		("threads,n", po::value<int>(&ctx.num_thread), "number of threads for processing tiles")
+		("verbose,v", po::value<int>(&ctx.verbose), "verbose level")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -172,9 +170,6 @@ static query_context parse_args(int argc, char **argv){
 	if(vm.count("aabb")){
 		ctx.use_aabb = true;
 	}
-	if(vm.count("multiple_mbb")){
-		ctx.use_multimbb = true;
-	}
 	if(vm.count("gpu")){
 		ctx.use_gpu = true;
 	}
@@ -183,6 +178,9 @@ static query_context parse_args(int argc, char **argv){
 	}
 	if(vm.count("disable_byte_encoding")){
 		ctx.disable_byte_encoding = true;
+	}
+	if(vm.count("ppvp")){
+		ctx.ppvp = true;
 	}
 
 	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);
@@ -196,11 +194,8 @@ static query_context parse_args(int argc, char **argv){
 			ctx.lods.push_back(atoi(l.c_str()));
 		}
 	}else{
-		for(int l=base_lod;l<=top_lod;l+=lod_gap){
+		for(int l=20;l<=100;l+=20){
 			ctx.lods.push_back(l);
-		}
-		if(ctx.lods[ctx.lods.size()-1]<top_lod){
-			ctx.lods.push_back(top_lod);
 		}
 	}
 

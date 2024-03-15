@@ -250,7 +250,6 @@ static void aabb(int argc, char **argv){
 		num = atoi(argv[3]);
 	}
 
-	global_ctx.use_multimbb = false;
 	Tile *tile1 = new Tile(argv[1], num);
 	Tile *tile2 = new Tile(argv[2],1);
 	tile1->decode_all(100);
@@ -406,7 +405,7 @@ static void compress(int argc, char **argv){
 
 	for(uint32_t i=20;i<=lod;i+=20){
 		hm->decode(i);
-		logt("decode to %d", start, i);
+		logt("decode to %d with %d vertices", start, i, hm->size_of_vertices());
 		//log("%d %f", i, himesh->getHausdorfDistance());
 	    sprintf(path, "%s_%d.off", base_filename.c_str(), i);
 	    hm->write_to_off(path);
