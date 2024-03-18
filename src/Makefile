@@ -107,10 +107,19 @@ develop: $(MYMESH_OBJS)
 	
 h5tooff: tools/H5ToOFF.o
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -lhdf5 -o ../build/$@
-
-wrap: tools/wrap.o
+	
+wrap: simplifier/wrap.o
 	$(CXX) $^ $(CPPFLAGS) $(LIBS) -o ../build/$@
-		
+
+default_polyhedron: simplifier/default_polyhedron.o
+	$(CXX) $^ $(CPPFLAGS) $(LIBS) -o ../build/$@		
+	
+gauland_heckbert: simplifier/gauland_heckbert.o
+	$(CXX) $^ $(CPPFLAGS) $(LIBS) -o ../build/$@
+
+openmesh: simplifier/openmesh.o
+	$(CXX) $^ $(CPPFLAGS) $(LIBS) -o ../build/$@
+
 .PHONY: all clean
 
 clean:

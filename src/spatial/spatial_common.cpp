@@ -296,26 +296,6 @@ vector<Polyhedron *> read_polyhedrons(const char *path, size_t maxnum){
 	return ret;
 }
 
-void cgal_simplification(Polyhedron *poly, float ratio){
-
-	  int index = 0 ;
-	  for( Polyhedron::Halfedge_iterator eb = (*poly).halfedges_begin(), ee = (*poly).halfedges_end(); eb != ee; ++ eb){
-		 eb->id() = index++;
-	  }
-
-	  index = 0 ;
-	  for( Polyhedron::Vertex_iterator vb = (*poly).vertices_begin()
-	    , ve = (*poly).vertices_end()
-	    ; vb != ve
-	    ; ++ vb
-	    )
-	    vb->id() = index++;
-	  SMS::Count_ratio_stop_predicate<Polyhedron> stop(ratio);
-	  SMS::Edge_collapse_visitor_base<Polyhedron> vis;
-
-	  int r = SMS::edge_collapse(*poly, stop, CGAL::parameters::visitor(vis));
-}
-
 }
 
 

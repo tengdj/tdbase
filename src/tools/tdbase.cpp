@@ -370,14 +370,9 @@ static void sample(int argc, char **argv){
 	delete final_mesh;
 }
 
-static void compress_cgal(int argc, char **argv){
-	Polyhedron *poly = hispeed::read_polyhedron(argv[1]);
-	float ratio = atof(argv[3]);
-	size_t onv = poly->size_of_vertices();
-	hispeed::cgal_simplification(poly, ratio);
-	hispeed::write_polyhedron(poly, argv[2]);
-	log("compressed with ratio %.2f from %ld vertices to %ld vertices",onv, poly->size_of_vertices());
-	delete poly;
+static void simplify(int argc, char **argv){
+
+
 }
 
 static void compress(int argc, char **argv){
@@ -563,8 +558,8 @@ static void convert(int argc, char **argv){
 }
 
 static void shrink(int argc, char **argv){
-	HiMesh *mesh = hispeed::read_mesh(false);
-	mesh->shrink(atoi(argv[1]));
+	HiMesh *mesh = read_mesh(argv[1]);
+	mesh->shrink(atoi(argv[2]));
 	cout<<*mesh;
 }
 
@@ -609,7 +604,9 @@ static void join(int argc, char **argv){
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *t1 = tile_pairs[i].first;
 		Tile *t2 = tile_pairs[i].second;
+		log("loading %d", i);
 		t1->load();
+		log("loading %d", i);
 		if(t2 != t1){
 			t2->load();
 		}
@@ -680,6 +677,12 @@ static void hausdorff(int argc, char **argv){
 		HiMesh::sampling_rate = atoi(argv[3]);
 	}
 	low->computeHausdorfDistance(high);
+	auto l = low->collectGlobalHausdorff(MIN);
+	auto a = low->collectGlobalHausdorff(AVG);
+	auto h = low->collectGlobalHausdorff(MAX);
+
+	log("proxy hausdorff [min, avg, max]=[%f, %f, %f]\n",l.first,a.first,h.first);
+	log("hausdorff [min, avg, max]=[%f, %f, %f]\n",l.second,a.second,h.second);
 }
 
 }
@@ -748,8 +751,8 @@ int main(int argc, char **argv){
 		test(argc-1,argv+1);
 	}else if(strcmp(argv[1],"compress") == 0){
 		compress(argc-1,argv+1);
-	}else if(strcmp(argv[1],"compress_cgal") == 0){
-		compress_cgal(argc-1,argv+1);
+	}else if(strcmp(argv[1],"simplify") == 0){
+		simplify(argc-1,argv+1);
 	}else if(strcmp(argv[1],"triangulate") == 0){
 		triangulate(argc-1,argv+1);
 	}else if(strcmp(argv[1],"distance") == 0){

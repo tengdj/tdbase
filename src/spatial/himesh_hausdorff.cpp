@@ -390,7 +390,7 @@ void HiMesh::computeHausdorfDistance(){
 }
 
 // TODO: a critical function, need to be further optimized
-void HiMesh::computeHausdorfDistance(HiMesh *original){
+pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 
 	float dist = DBL_MAX;
 	const float area_unit = sampling_gap();
@@ -449,6 +449,8 @@ void HiMesh::computeHausdorfDistance(HiMesh *original){
 			fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(area_unit/2.0));
 		}
 	}
+
+	return collectGlobalHausdorff(AVG);
 	//logt("BVH %f", ss, sqrt(phdist));
 }
 
