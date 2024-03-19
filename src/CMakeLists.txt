@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
  
 project(OpenMesh-Example)
+
+set (CMAKE_TOOLCHAIN_FILE "C:/Users/Lenovo/Documents/GitHub/vcpkg/scripts/buildsystems/vcpkg.cmake")
  
-find_package(OpenMesh REQUIRED)
+find_package(OpenMesh)
 find_package(CGAL REQUIRED)
 find_package(GMP REQUIRED)
 find_package(Boost COMPONENTS program_options REQUIRED)
