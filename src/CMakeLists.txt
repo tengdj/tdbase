@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(OpenMesh-Example)
 
 # set (CMAKE_TOOLCHAIN_FILE "C:/Users/Lenovo/Documents/GitHub/vcpkg/scripts/buildsystems/vcpkg.cmake")
-set (CMAKE_BUILD_TYPE Debug)
+set (CMAKE_BUILD_TYPE Release)
  
 find_package(OpenMesh)
 find_package(CGAL REQUIRED)

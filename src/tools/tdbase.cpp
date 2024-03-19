@@ -606,9 +606,7 @@ static void join(int argc, char **argv){
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *t1 = tile_pairs[i].first;
 		Tile *t2 = tile_pairs[i].second;
-		log("loading %d", i);
 		t1->load();
-		log("loading %d", i);
 		if(t2 != t1){
 			t2->load();
 		}
