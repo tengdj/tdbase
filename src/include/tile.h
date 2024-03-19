@@ -56,7 +56,7 @@ public:
 	void dump_compressed(const char *path);
 	void dump_raw(const char *path);
 
-	void dump_sql(const char *path, const char *table, const char *column);
+	void dump_sql(const char *path, const char *table);
 
 	// for profiling performance
 private:

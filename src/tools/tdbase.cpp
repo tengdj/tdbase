@@ -42,12 +42,14 @@ static void to_wkt(int argc, char **argv){
 static void to_sql(int argc, char **argv){
 
 	Tile *tile = new Tile(argv[1]);
-	const char *table = argv[2];
-	const char *column = argv[3];
-	tile->decode_all(100);
-	char path[256];
-	sprintf(path, "%s_%s.sql",table, column);
-	tile->dump_sql(path, table, column);
+	char table[100];
+	for(int i=20;i<=100;i+=20){
+		tile->decode_all(i);
+		char path[256];
+		sprintf(table, "%s_%d",argv[2],i);
+		sprintf(path, "%s.sql",table);
+		tile->dump_sql(path, table);
+	}
 	delete tile;
 }
 
