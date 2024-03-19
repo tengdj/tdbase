@@ -109,8 +109,8 @@ public:
 		cout<<"other:\t"<<t*(overall_time-index_time-decode_time-packing_time-computation_time-updatelist_time)/overall_time<<endl<<endl;
 		printf("analysis\t%f\t%f\t%f\n",
 				(t*index_time/overall_time)/repeated_times,
-				(t*decode_time/overall_time)/repeated_times,
-				(t*(computation_time+packing_time+updatelist_time)/overall_time)/repeated_times);
+				(t*(decode_time+packing_time+updatelist_time)/overall_time)/repeated_times,
+				(t*computation_time/overall_time)/repeated_times);
 		cout<<"decode:\t"<<decode_time<<endl;
 		cout<<"packing:\t"<<packing_time<<endl;
 		printf("#objects:\t%ld\n results:%ld(\t%.3f)\n", obj_count, result_count, 1.0*result_count/obj_count);
