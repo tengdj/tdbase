@@ -681,8 +681,8 @@ static void hausdorff(int argc, char **argv){
 	auto a = low->collectGlobalHausdorff(AVG);
 	auto h = low->collectGlobalHausdorff(MAX);
 
-	log("proxy hausdorff [min, avg, max]=[%f, %f, %f]\n",l.first,a.first,h.first);
-	log("hausdorff [min, avg, max]=[%f, %f, %f]\n",l.second,a.second,h.second);
+	log("proxy hausdorff [min	avg	max]=[%f	%f	%f]\n",l.first,a.first,h.first);
+	log("hausdorff [min	avg	max]=[%f	%f	%f]\n",l.second,a.second,h.second);
 }
 
 }

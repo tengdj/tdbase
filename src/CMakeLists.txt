@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
  
-project(OpenMesh-Example)
+project(TDBase)
 
 # set (CMAKE_TOOLCHAIN_FILE "C:/Users/Lenovo/Documents/GitHub/vcpkg/scripts/buildsystems/vcpkg.cmake")
 set (CMAKE_BUILD_TYPE Release)

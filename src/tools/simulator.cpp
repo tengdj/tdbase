@@ -139,33 +139,45 @@ int generate_nuclei(float base[3]){
 	bool *taken = new bool[total_slots];
 	memcpy(taken, vessel_taken, total_slots*sizeof(bool));
 
-	int taken_count = 0;
+	int available_count = 0;
 	for(int i=0;i<total_slots;i++){
-		if(vessel_taken[i]){
-			taken_count++;
+		if(!vessel_taken[i]){
+			available_count++;
 		}
 	}
 	//log("%d %d %d",total_slots,num_nuclei_per_vessel,taken_count);
-	assert(total_slots>num_nuclei_per_vessel+taken_count && "should have enough slots");
-	while(generated++<num_nuclei_per_vessel){
-		int idx = get_rand_number(total_slots);
-		int oidx = idx;
-		for(;taken[idx];idx = (idx+1)%total_slots);
-		taken[idx] = true;
+	assert(available_count<num_nuclei_per_vessel && "should have enough slots");
 
-		int z = idx/(nuclei_num[0]*nuclei_num[1]);
-		int y = (idx%(nuclei_num[0]*nuclei_num[1]))/nuclei_num[0];
-		int x = (idx%(nuclei_num[0]*nuclei_num[1]))%nuclei_num[0];
 
-		shift[0] = x*nuclei_box.high[0]+base[0];
-		shift[1] = y*nuclei_box.high[1]+base[1];
-		shift[2] = z*nuclei_box.high[2]+base[2];
+	const int gap = available_count/num_nuclei_per_vessel;
 
-		HiMesh_Wrapper *wr = organize_data(nuclei, nuclei_voxels, shift);
-		pthread_mutex_lock(&mylock);
-		generated_nucleis.push_back(wr);
-		pthread_mutex_unlock(&mylock);
-		//log("%d %d %d %d",idx,oidx,polyid,polyid2);
+	int skipped = 0;
+	int idx = 0;
+
+	while(idx<total_slots){
+		if(taken[idx]){
+			idx++;
+			continue;
+		}
+		if(skipped++ == gap){
+			generated++;
+			skipped = 0;
+			taken[idx] = true;
+
+			int z = idx/(nuclei_num[0]*nuclei_num[1]);
+			int y = (idx%(nuclei_num[0]*nuclei_num[1]))/nuclei_num[0];
+			int x = (idx%(nuclei_num[0]*nuclei_num[1]))%nuclei_num[0];
+
+			shift[0] = x*nuclei_box.high[0]+base[0];
+			shift[1] = y*nuclei_box.high[1]+base[1];
+			shift[2] = z*nuclei_box.high[2]+base[2];
+
+			HiMesh_Wrapper *wr = organize_data(nuclei, nuclei_voxels, shift);
+			pthread_mutex_lock(&mylock);
+			generated_nucleis.push_back(wr);
+			pthread_mutex_unlock(&mylock);
+		}
+		idx++;
 	}
 	return generated;
 }
@@ -255,10 +267,23 @@ int main(int argc, char **argv){
 	sprintf(nuclei_output,"%s_n_%s.dt",output_path.c_str(),config);
 
 	// generate some job for worker to process
-	int x_dim = (int)pow((float)num_vessel, (float)1.0/3);
-	int y_dim = x_dim;
-	int z_dim = num_vessel/(x_dim*y_dim);
-	num_nuclei_per_vessel = (num_nuclei_per_vessel*num_vessel)/(x_dim*y_dim*z_dim);
+	int dim1 = (int)(pow((float)num_vessel, (float)1.0/3)+0.5);
+	int dim2 = dim1;
+	int dim3 = num_vessel/(dim1*dim2);
+	int x_dim,y_dim,z_dim;
+	if(vessel_box.high[0]-vessel_box.low[0] > vessel_box.high[1]-vessel_box.low[1] && vessel_box.high[0]-vessel_box.low[0] > vessel_box.high[2]-vessel_box.low[2] ){
+		x_dim = min(dim1, dim3);
+		y_dim = max(dim1, dim3);
+		z_dim = max(dim1, dim3);
+	}else if(vessel_box.high[1]-vessel_box.low[1] > vessel_box.high[0]-vessel_box.low[0] && vessel_box.high[1]-vessel_box.low[1] > vessel_box.high[2]-vessel_box.low[2] ){
+		y_dim = min(dim1, dim3);
+		x_dim = max(dim1, dim3);
+		z_dim = max(dim1, dim3);
+	}else{
+		z_dim = min(dim1, dim3);
+		x_dim = max(dim1, dim3);
+		y_dim = max(dim1, dim3);
+	}
 	load_prototype(nuclei_pt.c_str(), vessel_pt.c_str());
 	logt("load prototype files", start);
 

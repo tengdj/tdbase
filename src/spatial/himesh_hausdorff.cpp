@@ -450,7 +450,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 		}
 	}
 
-	return collectGlobalHausdorff(AVG);
+	return collectGlobalHausdorff();
 	//logt("BVH %f", ss, sqrt(phdist));
 }
 

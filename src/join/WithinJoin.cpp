@@ -170,6 +170,7 @@ void SpatialJoin::within(query_context ctx){
 							}else if(global_ctx.hausdorf_level == 0){
 								dist.maxdist = std::min(dist.maxdist, res.distance);
 							}
+							//dist.maxdist = std::min(dist.maxdist, res.distance);
 
 							if(global_ctx.verbose>=1) {
 								log("%ld\t%ld:[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
