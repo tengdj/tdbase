@@ -24,6 +24,9 @@ const int buffer_size = 50*(1<<20);
 HiMesh *vessel = NULL;
 HiMesh *nuclei = NULL;
 
+map<int, HiMesh *> vessels;
+map<int, HiMesh *> nucleis;
+
 aab nuclei_box;
 aab vessel_box;
 
@@ -42,17 +45,47 @@ vector<HiMesh_Wrapper *> generated_vessels;
 
 pthread_mutex_t mylock;
 
+bool multi_lods = false;
 
 void load_prototype(const char *nuclei_path, const char *vessel_path){
 
 	// load the vessel
-	vessel = read_mesh(vessel_path);
+	if(multi_lods){
+		char path[256];
+		for(int lod=100;lod>=20;lod-=20){
+			sprintf(path, "%s_%d.off", vessel_path, lod);
+			log("loading %s",path);
+			HiMesh *m = read_mesh(path);
+			assert(m);
+			vessels[lod] = m;
+			if(lod == 100){
+				vessel = m;
+			}
+		}
+	}else {
+		vessel = read_mesh(vessel_path);
+	}
 	assert(vessel);
 	aab mbb = vessel->get_mbb();
 	vessel_box = vessel->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
 
 	// load the nuclei
-	nuclei = read_mesh(nuclei_path);
+	if(multi_lods){
+		char path[256];
+		// load the nuclei
+		for(int lod=100;lod>=20;lod-=20){
+			sprintf(path, "%s_%d.off", nuclei_path, lod);
+			log("loading %s",path);
+			HiMesh *m = read_mesh(path);
+			assert(m);
+			nucleis[lod] = m;
+			if(lod == 100){
+				nuclei = m;
+			}
+		}
+	}else{
+		nuclei = read_mesh(nuclei_path);
+	}
 	assert(nuclei);
 	mbb = nuclei->get_mbb();
 	nuclei_box = nuclei->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
@@ -124,6 +157,35 @@ HiMesh_Wrapper *organize_data(HiMesh *mesh, vector<Voxel *> &voxels, float shift
 	return wr;
 }
 
+HiMesh_Wrapper *organize_data(map<int, HiMesh *> &meshes, vector<Voxel *> &voxels, float shift[3]){
+
+	map<int, HiMesh *> local_meshes;
+	vector<Voxel *> local_voxels;
+
+	for(auto m:meshes){
+		HiMesh *nmesh = m.second->clone_mesh();
+		nmesh->shift(shift[0], shift[1], shift[2]);
+		local_meshes[m.first] = nmesh;
+	}
+
+	for(Voxel *v:voxels){
+		Voxel *vv = new Voxel();
+		for(int i=0;i<3;i++){
+			vv->low[i] = v->low[i]+shift[i];
+		}
+		for(int i=0;i<3;i++){
+			vv->high[i] = v->high[i]+shift[i];
+		}
+		for(int i=0;i<3;i++){
+			vv->core[i] = v->core[i]+shift[i];
+		}
+		local_voxels.push_back(vv);
+	}
+
+	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_meshes, local_voxels);
+	return wr;
+}
+
 /*
  * generate the binary data of nucleis around vessel with
  * a given shift base
@@ -148,7 +210,6 @@ int generate_nuclei(float base[3]){
 	//log("%d %d %d",total_slots,num_nuclei_per_vessel,taken_count);
 	assert(available_count<num_nuclei_per_vessel && "should have enough slots");
 
-
 	const int gap = available_count/num_nuclei_per_vessel;
 
 	int skipped = 0;
@@ -172,7 +233,13 @@ int generate_nuclei(float base[3]){
 			shift[1] = y*nuclei_box.high[1]+base[1];
 			shift[2] = z*nuclei_box.high[2]+base[2];
 
-			HiMesh_Wrapper *wr = organize_data(nuclei, nuclei_voxels, shift);
+			HiMesh_Wrapper *wr;
+			if(multi_lods){
+				wr = organize_data(nucleis, nuclei_voxels, shift);
+			}else{
+				wr = organize_data(nuclei, nuclei_voxels, shift);
+			}
+
 			pthread_mutex_lock(&mylock);
 			generated_nucleis.push_back(wr);
 			pthread_mutex_unlock(&mylock);
@@ -206,7 +273,13 @@ void *generate_unit(void *arg){
 		size_t vessel_offset = 0;
 		float base[3] = {get<0>(job), get<1>(job), get<2>(job)};
 		int generated = generate_nuclei(base);
-		HiMesh_Wrapper *wr = organize_data(vessel, vessel_voxels, base);
+
+		HiMesh_Wrapper *wr;
+		if(multi_lods){
+			wr = organize_data(vessels, vessel_voxels, base);
+		}else{
+			wr = organize_data(vessel, vessel_voxels, base);
+		}
 		pthread_mutex_lock(&mylock);
 		global_generated += generated;
 		generated_vessels.push_back(wr);
@@ -228,6 +301,7 @@ int main(int argc, char **argv){
 	desc.add_options()
 		("help,h", "produce help message")
 		("ppvp,p", "enable the ppvp mode, for simulator and join query")
+		("multi_lods,m", "the input are polyhedrons in multiple files")
 		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
 		("vessel,v", po::value<string>(&vessel_pt), "path to the vessel prototype file")
 		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
@@ -237,7 +311,7 @@ int main(int argc, char **argv){
 		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
 		("sample_rate,r", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation (default 30)")
-		("calculate_method,m", po::value<int>(&cm), "hausdorff distance calculating method [0NULL|1BVH(default)|2ASSOCIATE|3ASSOCIATE_CYLINDER]")
+		("calculate_method", po::value<int>(&cm), "hausdorff distance calculating method [0NULL|1BVH(default)|2ASSOCIATE|3ASSOCIATE_CYLINDER]")
 		;
 	HiMesh::calculate_method = (Hausdorff_Computing_Type)cm;
 
@@ -252,6 +326,9 @@ int main(int argc, char **argv){
 
 	if(vm.count("ppvp")){
 		global_ctx.ppvp = true;
+	}
+	if(vm.count("multi_lods")){
+		multi_lods = true;
 	}
 
 	struct timeval start = get_cur_time();
@@ -311,8 +388,13 @@ int main(int argc, char **argv){
 	Tile *nuclei_tile = new Tile(generated_nucleis);
 	Tile *vessel_tile = new Tile(generated_vessels);
 
-	nuclei_tile->dump_compressed(nuclei_output);
-	vessel_tile->dump_compressed(vessel_output);
+	if(multi_lods){
+		nuclei_tile->dump_raw(nuclei_output);
+		vessel_tile->dump_raw(vessel_output);
+	}else{
+		nuclei_tile->dump_compressed(nuclei_output);
+		vessel_tile->dump_compressed(vessel_output);
+	}
 
 	// clear the vessel related objects
 	delete vessel;

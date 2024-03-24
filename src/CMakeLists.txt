@@ -39,9 +39,11 @@ file(GLOB MYMESH_SRCS
 )
 
 include_directories(include) 
- 
-add_executable (openmesh simplifier/openmesh.cpp)
-target_link_libraries(openmesh PRIVATE OpenMeshCore OpenMeshTools gmp)
+
+if (OpenMesh_FOUND)
+	add_executable (openmesh simplifier/openmesh.cpp)
+	target_link_libraries(openmesh PRIVATE OpenMeshCore OpenMeshTools gmp)
+endif()
 
 add_executable (gauland_heckbert simplifier/gauland_heckbert.cpp)
 target_link_libraries(gauland_heckbert PRIVATE gmp)
@@ -55,5 +57,5 @@ target_link_libraries(tdbase PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthr
 add_executable (simulator tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
 target_link_libraries(simulator PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
 
-add_executable (simulator_multi tools/simulator_multi.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
-target_link_libraries(simulator_multi PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
+add_executable (wrap simplifier/wrap.cpp)
+target_link_libraries(wrap PRIVATE gmp mpfr)

@@ -28,7 +28,7 @@ int main(int argc, char **argv)
   const std::string filename = argv[1];
   std::cout << "Reading " << filename << "..." << std::endl;
   Mesh mesh;
-  if(!PMP::IO::read_polygon_mesh(filename, mesh) || is_empty(mesh) || !is_triangle_mesh(mesh))
+  if(!PMP::IO::read_polygon_mesh(filename, mesh) || !is_triangle_mesh(mesh))
   {
     std::cerr << "Invalid input." << std::endl;
     return EXIT_FAILURE;
@@ -54,11 +54,8 @@ int main(int argc, char **argv)
   input_name = input_name.substr(input_name.find_last_of("/") + 1, input_name.length() - 1);
   input_name = input_name.substr(0, input_name.find_last_of("."));
 
-  std::string output_name = input_name
-                            + "_" + std::to_string(static_cast<int>(relative_alpha))
-                            + "_" + std::to_string(static_cast<int>(relative_offset)) + ".off";
-  std::cout << "Writing to " << output_name << std::endl;
-  CGAL::IO::write_polygon_mesh(output_name, wrap, CGAL::parameters::stream_precision(17));
+  std::cout << "Writing to " << argv[4] << std::endl;
+  CGAL::IO::write_polygon_mesh(argv[4], wrap, CGAL::parameters::stream_precision(17));
   return EXIT_SUCCESS;
 }
 

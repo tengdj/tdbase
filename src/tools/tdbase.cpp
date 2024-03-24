@@ -337,39 +337,18 @@ static void triangulate(int argc, char **argv){
 
 static void sample(int argc, char **argv){
 
-	HiMesh::sampling_rate = atoi(argv[2]);
-	int lod = 100;
-	if(argc>3){
-		lod = atoi(argv[3]);
-	}
-
-	log("sampling rate %d lod %d", HiMesh::sampling_rate, lod);
+	HiMesh::sampling_rate = atoi(argv[3]);
+	log("sampling rate %d", HiMesh::sampling_rate);
 
 	struct timeval start = get_cur_time();
-	HiMesh *final_mesh;
-	if(lod!=100){
-		HiMesh *mesh = read_mesh(argv[1], true);
-		logt("compress", start);
-		final_mesh = new HiMesh(mesh);
-		final_mesh->decode(lod);
-		logt("decompress", start);
-		delete mesh;
-	}else{
-		final_mesh = read_mesh(argv[1], false);
-	}
-
-	char path[256];
+	HiMesh *mesh = read_mesh(argv[1]);
 
 	unordered_set<Point> point_set;
-	final_mesh->sample_points(point_set);
+	mesh->sample_points(point_set);
 	vector<Point> points;
 	points.assign(point_set.begin(), point_set.end());
-    sprintf(path, "/gisdata/sample.points.off");
-	hispeed::write_points(points, path);
-    sprintf(path, "/gisdata/sample.mesh.off");
-    final_mesh->write_to_off(path);
-
-	delete final_mesh;
+	hispeed::write_points(points, argv[2]);
+	delete mesh;
 }
 
 static void simplify(int argc, char **argv){
