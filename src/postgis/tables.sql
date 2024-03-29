@@ -1,0 +1,1 @@
+create table nuclei_mbb(int id primary key, );

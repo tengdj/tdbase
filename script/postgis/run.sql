@@ -1,0 +1,1 @@
+SELECT b.id,ST_3DDistance(a.geom, b.geom) as mindis ,ST_3DMaxDistance(a.geom, b.geom) as maxdis FROM nuclei_20 a, nuclei_20 b WHERE a.id <> b.id AND a.id = '1';
