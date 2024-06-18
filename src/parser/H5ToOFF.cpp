@@ -114,7 +114,7 @@ void process_file(const char *path){
 //int main(int argc, char **argv){
 //
 //	vector<string> files;
-//	hispeed::list_files(argv[1], files);
+//	tdbase::list_files(argv[1], files);
 //	for(string s:files){
 //		process_file(s.c_str());
 //	}

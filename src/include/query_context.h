@@ -21,7 +21,7 @@ using namespace std;
 
 namespace po = boost::program_options;
 
-namespace hispeed{
+namespace tdbase{
 
 class Tile;
 class query_context{
@@ -66,7 +66,7 @@ public:
 	result_container *results = NULL;
 
 	query_context(){
-		num_thread = hispeed::get_num_threads();
+		num_thread = tdbase::get_num_threads();
 		pthread_mutex_init(&lk, NULL);
 	}
 

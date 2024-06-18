@@ -2,7 +2,7 @@
 
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 
 OctreeNode::OctreeNode(aab b, int _level, long tsize) {

@@ -15,7 +15,7 @@
 
 #include "tile.h"
 
-namespace hispeed{
+namespace tdbase{
 
 // load meta data from file and construct the hierarchy structure
 Tile::Tile(std::string path, size_t capacity, bool active_load){

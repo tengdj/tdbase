@@ -7,111 +7,60 @@
 
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 /*
  *
  * extract the skeleton of current polyhedron
  *
  * */
-Skeleton *HiMesh::extract_skeleton(){
-
-	struct timeval start = get_cur_time();
-	Skeleton *skeleton  = new Skeleton();
-	Triangle_mesh tmesh;
-	std::stringstream os;
-
-	Polyhedron *poly = this->to_polyhedron();
-	if (!CGAL::is_triangle_mesh(*poly)){
-		CGAL::Polygon_mesh_processing::triangulate_faces(*poly);
-		if(global_ctx.verbose>=1){
-			logt("convert to triangle mesh", start);
-		}
-	}
-	os << *poly;
-	delete poly;
-	if(global_ctx.verbose>=1){
-		logt("dump to stream", start);
-	}
-
-	os >> tmesh;
-	assert(CGAL::is_triangle_mesh(tmesh));
-
-	if(global_ctx.verbose>=1){
-		logt("triangulate", start);
-	}
-	CGAL::extract_mean_curvature_flow_skeleton(tmesh, *skeleton);
-
-//	try{
-//		Skeletonization mcs(tmesh);
-//		if(global_ctx.verbose){
-//			logt("initialize skeletonization", start);
-//		}
-//
-//		// 1. Contract the mesh by mean curvature flow.
-//		mcs.contract_geometry();
-//		if(global_ctx.verbose){
-//			logt("contract geometry", start);
-//		}
-//
-//		// 2. Collapse short edges and split bad triangles.
-//		mcs.collapse_edges();
-//		if(global_ctx.verbose){
-//			logt("collapse edges", start);
-//		}
-//
-//		mcs.split_faces();
-//		if(global_ctx.verbose){
-//			logt("split faces", start);
-//		}
-//
-//		// 3. Fix degenerate vertices.
-//		//mcs.detect_degeneracies();
-//
-//		// Perform the above three steps in one iteration.
-//		mcs.contract();
-//		if(global_ctx.verbose){
-//			logt("contract", start);
-//		}
-//
-//		// Iteratively apply step 1 to 3 until convergence.
-//		mcs.contract_until_convergence();
-//		if(global_ctx.verbose){
-//			logt("contract until convergence", start);
-//		}
-//
-//		// Convert the contracted mesh into a curve skeleton and
-//		// get the correspondent surface points
-//		mcs.convert_to_skeleton(*skeleton);
-//		if(global_ctx.verbose){
-//			logt("convert to skeleton", start);
-//		}
-//
-//	}catch(std::exception &exc){
-//		log(exc.what());
-//	}
-	return skeleton;
-}
-
-
 vector<Point> HiMesh::get_skeleton_points(int num_cores){
 	vector<Point> ret;
-	Skeleton *skeleton = extract_skeleton();
-	if(!skeleton){
-		return ret;
-	}
-	int num_vertices = 0;
-	BOOST_FOREACH(Skeleton_vertex v, boost::vertices(*skeleton)){
-		num_vertices++;
-	}
-	double skeleton_sample_rate = (num_cores*1.0)/num_vertices;
+	Point *vertices = NULL;
 
-	BOOST_FOREACH(Skeleton_vertex v, boost::vertices(*skeleton)){
-		if(tryluck(skeleton_sample_rate)){
-			auto p = (*skeleton)[v].point;
-			ret.push_back(Point(p.x(),p.y(),p.z()));
+	const size_t numv = fill_vertices((float *&)vertices);
+	const size_t gap = numv/num_cores + 1;
+	for(size_t n=0;n<numv;n+=gap){
+		ret.push_back(vertices[n]);
+	}
+
+	Point *tmp = new Point[ret.size()];
+	uint *ct = new uint[ret.size()];
+	Point zerop(0.0, 0.0, 0.0);
+
+	for(int i=0;i<ret.size();i++){
+		tmp[i] = zerop;
+		ct[i] = 0;
+	}
+
+	struct timeval start = get_cur_time();
+	for(int it=0;it<2;it++){
+		for(size_t n=0;n<numv;n++){
+			size_t closest = 0;
+			double cur_min = DBL_MAX;
+			for(size_t c=0;c<ret.size();c++){
+				double dist = get_distance(vertices[n], ret[c]);
+				if(dist < cur_min){
+					closest = c;
+					cur_min = dist;
+				}
+			}
+			for(int d=0;d<3;d++){
+				((float *)&tmp[closest])[d] += vertices[n][d];
+			}
+			ct[closest]++;
+		}
+
+		for(size_t c=0;c<ret.size();c++){
+			if(ct[c]>0){
+				for(int d=0;d<3;d++){
+					((float *)&ret[c])[d] = tmp[c][d]/ct[c];
+				}
+			}
 		}
 	}
+
+	delete []vertices;
 	return ret;
 }
 
@@ -123,7 +72,7 @@ vector<Point> HiMesh::get_skeleton_points(int num_cores){
 vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 
 	voxel_num = std::max(1, voxel_num);
-	timeval start = hispeed::get_cur_time();
+	timeval start = tdbase::get_cur_time();
 	vector<Voxel *> voxels;
 	aab box = get_mbb();
 	if(voxel_num<=1){

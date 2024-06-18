@@ -9,7 +9,7 @@
 #include "himesh.h"
 
 
-namespace hispeed{
+namespace tdbase{
 
 int replacing_group::counter = 0;
 int replacing_group::alive = 0;
@@ -225,7 +225,7 @@ string HiMesh::to_off(){
 
 void HiMesh::write_to_off(const char *path){
 	string ct = to_off();
-	hispeed::write_file(ct, path);
+	tdbase::write_file(ct, path);
 }
 
 string HiMesh::to_wkt(){
@@ -262,7 +262,7 @@ string HiMesh::to_wkt(){
 
 void HiMesh::write_to_wkt(const char *path){
 	string ct = to_wkt();
-	hispeed::write_file(ct, path);
+	tdbase::write_file(ct, path);
 }
 
 /*
@@ -299,7 +299,7 @@ float HiMesh::area(){
 	list<Triangle> triangles = this->get_triangles();
 	float a = 0.0;
 	for(const Triangle &t:triangles){
-		a += hispeed::triangle_area(t);
+		a += tdbase::triangle_area(t);
 	}
 	return a;
 }

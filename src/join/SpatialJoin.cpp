@@ -13,7 +13,7 @@
 
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 
 /*facilitate functions*/
@@ -132,7 +132,7 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry *> &candidates, 
 }
 
 void SpatialJoin::check_intersection(vector<candidate_entry *> &candidates, query_context &ctx){
-	struct timeval start = hispeed::get_cur_time();
+	struct timeval start = tdbase::get_cur_time();
 
 	const int pair_num = get_pair_num(candidates);
 
@@ -180,7 +180,7 @@ void SpatialJoin::check_intersection(vector<candidate_entry *> &candidates, quer
 
 //utility function to calculate the distances between voxel pairs in batch
 void SpatialJoin::calculate_distance(vector<candidate_entry *> &candidates, query_context &ctx){
-	struct timeval start = hispeed::get_cur_time();
+	struct timeval start = tdbase::get_cur_time();
 
 	const int pair_num = get_pair_num(candidates);
 	ctx.results = new result_container[pair_num];
@@ -267,7 +267,7 @@ void *join_unit(void *param){
 }
 
 void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs){
-	struct timeval start = hispeed::get_cur_time();
+	struct timeval start = tdbase::get_cur_time();
 	queue<pair<Tile *, Tile *>> *tile_queue = new queue<pair<Tile *, Tile *>>();
 	for(pair<Tile *, Tile *> &p:tile_pairs){
 		tile_queue->push(p);

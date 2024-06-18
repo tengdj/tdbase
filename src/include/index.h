@@ -26,7 +26,7 @@
 #define LeafCapacity 50
 
 using namespace std;
-namespace hispeed{
+namespace tdbase{
 
 
 /*

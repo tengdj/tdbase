@@ -12,7 +12,7 @@
 
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 /*
  * functions for the aab class

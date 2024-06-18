@@ -24,10 +24,9 @@
 #include <tuple>
 
 #include "util.h"
-#include "aab.h"
 
 using namespace std;
-using namespace hispeed;
+using namespace tdbase;
 
 namespace tmesh{
 
@@ -194,7 +193,8 @@ public:
 	int id = 0;
 	unordered_set<Vertex *> vertices;
 	unordered_set<Face *> faces;
-	aab mbb;
+	float low[3];
+	float high[3];
 
 	bool owned_data = false;
 	char *p_data = NULL;

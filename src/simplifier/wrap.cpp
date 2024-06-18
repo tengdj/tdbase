@@ -16,7 +16,7 @@
 namespace AW3 = CGAL::Alpha_wraps_3;
 namespace PMP = CGAL::Polygon_mesh_processing;
 
-using namespace hispeed;
+using namespace tdbase;
 using K = CGAL::Exact_predicates_inexact_constructions_kernel;
 
 using Point_3 = K::Point_3;

@@ -15,18 +15,17 @@ namespace tmesh{
 vector<TMesh *> TMesh::depart(){
 	vector<TMesh *> polys;
 
-	vector<bool> added;
-	for(int i=0;i<vertices.size();i++){
-		added.push_back(false);
+	for(auto a:vertices){
+		a->added = false;
 	}
 
 	vector<map<Vertex *, bool>> ccg;
 	while(true){
 		map<Vertex *,bool> cur;
 		Vertex *seed;
-		for(int i=0;i<vertices.size();i++){
-			if(!added[i]){
-				seed = vertices[i];
+		for(auto v:vertices){
+			if(!v->added){
+				seed = v;
 				break;
 			}
 		}
@@ -41,7 +40,7 @@ vector<TMesh *> TMesh::depart(){
 			seed = ss.top();
 			ss.pop();
 			cur[seed] = true;
-			added[seed->id] = true;
+			seed->added = true;
 			// connect all the vertices connect to seed but not visited
 			for(Half_Edge *h:seed->half_edges){
 				if(cur.find(h->end_vertex)==cur.end()){

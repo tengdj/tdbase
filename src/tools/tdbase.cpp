@@ -15,9 +15,9 @@
 #include "util.h"
 
 using namespace std;
-using namespace hispeed;
+using namespace tdbase;
 
-namespace hispeed{
+namespace tdbase{
 /*
  * print himesh to wkt
  *
@@ -81,7 +81,7 @@ static void profile_protruding(int argc, char **argv){
  * */
 static void get_voxel_boxes(int argc, char **argv){
 	struct timeval start = get_cur_time();
-	HiMesh *mesh = hispeed::read_mesh();
+	HiMesh *mesh = tdbase::read_mesh();
 	int voxel_num = 100;
 	if(argc>=2){
 		voxel_num = atoi(argv[1]);
@@ -95,7 +95,7 @@ static void get_voxel_boxes(int argc, char **argv){
 
 	log("%ld voxels are generated %f volumn", voxels.size(), vol);
 	write_voxels(voxels, "/gisdata/skeleton_voxels.off");
-	hispeed::write_box(mesh->get_mbb(), "/gisdata/aab.off");
+	tdbase::write_box(mesh->get_mbb(), "/gisdata/aab.off");
 	delete mesh;
 }
 
@@ -114,11 +114,8 @@ static void get_skeleton(int argc, char **argv){
 	logt("load mesh", start);
 	vector<Point> skeleton = mesh->get_skeleton_points(voxel_num);
 	logt("get skeleton", start);
-	mesh->get_aabb_tree_triangle();
-	logt("get aabb", start);
 
-
-	hispeed::write_points(skeleton, argv[2]);
+	tdbase::write_points(skeleton, argv[2]);
 
 	log("%ld points in the skeleton", skeleton.size());
 	skeleton.clear();
@@ -237,7 +234,7 @@ static void profile_decoding(int argc, char **argv){
 	}
 
 	aab box = himesh->get_mbb();
-	hispeed::write_box(box, "/gisdata/box.off");
+	tdbase::write_box(box, "/gisdata/box.off");
 
 	delete himesh;
 	delete compressed;
@@ -315,7 +312,7 @@ static void adjust_polyhedron(int argc, char **argv){
 	}
 	float sft = atof(argv[1]);
 	float shrink = atof(argv[2]);
-	HiMesh *mesh = hispeed::read_mesh();
+	HiMesh *mesh = tdbase::read_mesh();
 	char path[256];
 	sprintf(path, "%s/original.off", argv[3]);
 	mesh->write_to_off(path);
@@ -329,7 +326,7 @@ static void adjust_polyhedron(int argc, char **argv){
 static void triangulate(int argc, char **argv){
 	HiMesh *mesh = read_mesh(argv[1], false);
 	Polyhedron *poly = mesh->to_triangulated_polyhedron();
-	hispeed::write_polyhedron(poly, argv[2]);
+	tdbase::write_polyhedron(poly, argv[2]);
 
 	delete poly;
 	delete mesh;
@@ -347,7 +344,7 @@ static void sample(int argc, char **argv){
 	mesh->sample_points(point_set);
 	vector<Point> points;
 	points.assign(point_set.begin(), point_set.end());
-	hispeed::write_points(points, argv[2]);
+	tdbase::write_points(points, argv[2]);
 	delete mesh;
 }
 
@@ -368,7 +365,7 @@ static void compress(int argc, char **argv){
 
 	if(argc>3){
 		int cm = atoi(argv[3]);
-		HiMesh::calculate_method = (hispeed::Hausdorff_Computing_Type)cm;
+		HiMesh::calculate_method = (tdbase::Hausdorff_Computing_Type)cm;
 	}
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1], true);
@@ -461,7 +458,7 @@ vector<Tile *> tiles;
 pthread_mutex_t mylock;
 int next_report = 10;
 
-void *generate_unit(void *arg){
+void *decode_unit(void *arg){
 	while(true){
 		Tile *tile = NULL;
 		int job = -1;
@@ -508,7 +505,7 @@ static void decode(int argc, char **argv){
 	pthread_t threads[num_threads];
 
 	for(int i=0;i<num_threads;i++){
-		pthread_create(&threads[i], NULL, generate_unit, NULL);
+		pthread_create(&threads[i], NULL, decode_unit, NULL);
 	}
 	log("%d threads started", num_threads);
 	for(int i = 0; i < num_threads; i++ ){
@@ -529,7 +526,7 @@ static void print_tile_boxes(int argc, char **argv){
 		}
 		boxes.push_back(vx);
 	}
-	hispeed::write_voxels(boxes, argv[2]);
+	tdbase::write_voxels(boxes, argv[2]);
 }
 
 static void convert(int argc, char **argv){
@@ -594,7 +591,7 @@ static void join(int argc, char **argv){
 
 	SpatialJoin *joiner = new SpatialJoin(gc);
 	joiner->join(tile_pairs);
-	double join_time = hispeed::get_time_elapsed(start,false);
+	double join_time = tdbase::get_time_elapsed(start,false);
 	logt("join", start);
 
 #pragma omp parallel for
@@ -650,8 +647,8 @@ static void test(int argc, char **argv){
 }
 
 static void hausdorff(int argc, char **argv){
-	HiMesh *low = hispeed::read_mesh(argv[1], false);
-	HiMesh *high = hispeed::read_mesh(argv[2], false);
+	HiMesh *low = tdbase::read_mesh(argv[1], false);
+	HiMesh *high = tdbase::read_mesh(argv[2], false);
 	if(argc>3){
 		HiMesh::sampling_rate = atoi(argv[3]);
 	}
@@ -692,8 +689,8 @@ int main(int argc, char **argv){
 //							{0,0,0}};
 //	for(int i=0;i<18;i++){
 //		cout<<points[i][0]<<" "<<points[i][1]<<" "<<points[i][2]<<endl;
-//		cout<<hispeed::PointInTriangleCylinder(points[i], triangle)<<endl;
-//		//cout<<hispeed::PointTriangleDist(points[i], triangle)<<endl;
+//		cout<<tdbase::PointInTriangleCylinder(points[i], triangle)<<endl;
+//		//cout<<tdbase::PointTriangleDist(points[i], triangle)<<endl;
 //	}
 //
 //	return 0;

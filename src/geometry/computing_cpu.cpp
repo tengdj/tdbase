@@ -49,7 +49,7 @@
 #include <pthread.h>
 #include "geometry.h"
 
-namespace hispeed{
+namespace tdbase{
 
 
 /*

@@ -14,7 +14,7 @@
 #include <cuda.h>
 #include "util.h"
 
-namespace hispeed{
+namespace tdbase{
 
 #define CUDA_SAFE_CALL(call) 										  	  \
 	do {																  \

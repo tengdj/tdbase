@@ -10,7 +10,7 @@
 #include "pthread.h"
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 // useful functions
 
@@ -108,14 +108,15 @@ inline float distance(const float *p1, const float *p2){
 	return cur_dist;
 }
 
-typedef struct result_container_{
+class result_container{
+public:
 	uint32_t p1;
 	uint32_t p2;
 	bool intersected;
 	float distance; // for normal distance
 	float min_dist; // for distance range
 	float max_dist;
-} result_container;
+} ;
 
 class geometry_param{
 public:
@@ -162,7 +163,7 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_s
 class geometry_computer{
 	pthread_mutex_t gpu_lock;
 	pthread_mutex_t cpu_lock;
-	int max_thread_num = hispeed::get_num_threads();
+	int max_thread_num = tdbase::get_num_threads();
 	bool cpu_busy = false;
 	bool gpu_busy = false;
 	bool request_cpu();

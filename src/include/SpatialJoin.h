@@ -17,7 +17,7 @@
 #include "himesh.h"
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 // type of the workers, GPU or CPU
 // each worker took a batch of jobs (X*Y) from the job queue

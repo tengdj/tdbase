@@ -9,7 +9,7 @@
 #define SRC_INCLUDE_CANDIDATE_H_
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 /*
  * one target refers to a list of candidates

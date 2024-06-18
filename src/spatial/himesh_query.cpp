@@ -8,7 +8,7 @@
 #include "himesh.h"
 #include "geometry.h"
 
-namespace hispeed{
+namespace tdbase{
 
 query_context global_ctx;
 

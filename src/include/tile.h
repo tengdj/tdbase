@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 class Tile{
 	aab space;

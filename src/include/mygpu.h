@@ -11,7 +11,7 @@
 #include <vector>
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 class gpu_info{
 public:

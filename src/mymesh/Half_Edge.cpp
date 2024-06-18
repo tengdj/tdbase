@@ -11,12 +11,12 @@ Half_Edge::Half_Edge(Vertex *v1, Vertex *v2){
 	// in case this is the second half edge
 	for(Half_Edge *h:v2->half_edges){
 		if(h->end_vertex == v1){
-			if(h->opposite){
-				printf("create half edge:\n");
-				v1->print();
-				v2->print();
-				h->opposite->face->print_off();
-			}
+//			if(h->opposite){
+//				printf("create half edge:\n");
+//				v1->print();
+//				v2->print();
+//				h->opposite->face->print_off();
+//			}
 			assert(h->opposite==NULL);
 			h->opposite = this;
 			this->opposite = h;

@@ -35,7 +35,7 @@
 
 #include <CGAL/Kernel/interface_macros.h>
 #include <CGAL/Simple_cartesian.h>
-#include <CGAL/Polyhedron_3.h>
+//#include <CGAL/Polyhedron_3.h>
 #include <CGAL/circulator.h>
 #include <CGAL/bounding_box.h>
 #include <CGAL/IO/Polyhedron_iostream.h>
@@ -50,13 +50,6 @@
 #include <CGAL/Triangulation_3.h>
 #include <CGAL/convex_decomposition_3.h>
 #include <CGAL/Tetrahedron_3.h>
-
-#include <CGAL/Delaunay_triangulation_3.h>
-#include <CGAL/boost/graph/graph_traits_Polyhedron_3.h>
-#include <CGAL/boost/graph/properties_Polyhedron_3.h>
-#include <CGAL/extract_mean_curvature_flow_skeleton.h>
-#include <CGAL/boost/graph/split_graph_into_polylines.h>
-#include <boost/foreach.hpp>
 
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
@@ -80,7 +73,6 @@
 #include <CGAL/config.h>
 #include <boost/algorithm/string/replace.hpp>
 
-
 #include "aab.h"
 #include "util.h"
 #include "geometry.h"
@@ -98,6 +90,8 @@ const int DECOMPRESSION_MODE_ID = 1;
 
 #define PPMC_RANDOM_CONSTANT 0315
 
+const int NUM_FACET_PER_VOXEL = 100;
+
 using namespace std;
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
@@ -107,9 +101,6 @@ typedef CGAL::Simple_cartesian<float> MyKernel;
 
 typedef MyKernel::Point_3 Point;
 typedef MyKernel::Vector_3 Vector;
-
-typedef CGAL::Simple_cartesian<double> MyKernelDouble;
-typedef MyKernelDouble::Vector_3 VectorDouble;
 
 // templates for AABB tree
 typedef MyKernel::FT FT;
@@ -129,27 +120,15 @@ typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 typedef CGAL::Polyhedron_3<MyKernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
 
-typedef CGAL::Surface_mesh<Point>                             Triangle_mesh;
-typedef CGAL::Mean_curvature_flow_skeletonization<Triangle_mesh> Skeletonization;
-typedef Skeletonization::Skeleton                             Skeleton;
-typedef Skeleton::vertex_descriptor                           Skeleton_vertex;
-typedef Skeleton::edge_descriptor                             Skeleton_edge;
-
-typedef CGAL::Delaunay_triangulation_3<MyKernel, CGAL::Fast_location> Delaunay;
-
 typedef CGAL::Triangulation_3<MyKernel> Triangulation;
 typedef Triangulation::Tetrahedron 	Tetrahedron;
-
-//typedef CGAL::Nef_polyhedron_3<MyKernel> Nef_polyhedron;
-//typedef Nef_polyhedron::Volume_const_iterator Volume_const_iterator;
-//typedef Nef_polyhedron::Shell_entry_const_iterator Shell_entry_const_iterator;
 
 typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> Primitive;
 typedef CGAL::AABB_traits<MyKernel, Primitive> Traits;
 typedef CGAL::AABB_tree<Traits> Tree;
 typedef Tree::Point_and_primitive_id Point_and_primitive_id;
 
-namespace hispeed{
+namespace tdbase{
 
 // the builder for reading the base mesh
 template <class HDS> class MyMeshBaseBuilder : public CGAL::Modifier_base<HDS>
@@ -537,6 +516,8 @@ public:
 	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset, true){}
 	~HiMesh();
 
+	inline aab get_mbb(){ return mbb;}
+
 	void encode();
 	void decode(int lod = 100);
 
@@ -551,7 +532,6 @@ public:
 	void encodeInsertedEdges(unsigned i_operationId);
 	void encodeRemovedVertices(unsigned i_operationId);
 	void encodeHausdorff(unsigned i_operationId);
-
 
 	// Compression geometry and connectivity tests.
 	bool isRemovable(Vertex_handle v) const;
@@ -584,8 +564,6 @@ public:
 	float faceSurface(Halfedge_handle heh) const;
 	void pushHehInit();
 
-	void alphaFolding();
-
 	// IOs
 	void writeFloat(float f);
 	float readFloat();
@@ -603,6 +581,12 @@ public:
 	void writeBaseMesh();
 	void readBaseMesh();
 
+	string to_wkt();
+	string to_off();
+	void write_to_off(const char *path);
+	void write_to_wkt(const char *path);
+
+
 	//tdbase
 	void computeHausdorfDistance();
 	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
@@ -611,23 +595,18 @@ public:
 	pair<float, float> collectGlobalHausdorff(STAT_TYPE type = MAX);
 	pair<float, float> computeHausdorfDistance(HiMesh *original);
 
-	inline aab get_mbb(){
-		return mbb;
-	}
 	void updateMbb();
 	void updateVFMap();
 	void updateBVH();
 
 	Polyhedron *to_polyhedron();
 	Polyhedron *to_triangulated_polyhedron();
-	Skeleton *extract_skeleton();
 	vector<Point> get_skeleton_points(int num_skeleton_points);
-	vector<Voxel *> generate_voxels_skeleton(int voxel_size);
+
+	vector<Voxel *> generate_voxels_skeleton(int voxel_size = NUM_FACET_PER_VOXEL);
 	vector<Voxel *> voxelization(int voxel_size);
-	string to_wkt();
-	string to_off();
-	void write_to_off(const char *path);
-	void write_to_wkt(const char *path);
+
+
 
 	float get_volume();
 	size_t size_of_triangles();
@@ -797,9 +776,10 @@ public:
 	int cur_lod = -1;
 
 public:
-	HiMesh_Wrapper(map<int, HiMesh *> &meshes, vector<Voxel *> &vxls);
-	HiMesh_Wrapper(HiMesh *mesh, vector<Voxel *> &vxls);
+	HiMesh_Wrapper(map<int, HiMesh *> &meshes);
+	HiMesh_Wrapper(HiMesh *mesh);
 	HiMesh_Wrapper(char *dt, size_t id, Decoding_Type t = COMPRESSED);
+
 	~HiMesh_Wrapper();
 
 	HiMesh *get_mesh(){

@@ -49,7 +49,7 @@ void TMesh::dumpto(string fp){
 // read vertices and faces from original OFF file
 //
 void TMesh::load(string fp) {
-	string content = hispeed::read_file(fp.c_str());
+	string content = tdbase::read_file(fp.c_str());
 	parse(content.c_str(), content.size());
 }
 
@@ -386,9 +386,9 @@ void TMesh::writeBaseMesh()
 
     // Write the bounding box coordinate.
     for (unsigned i = 0; i < 3; ++i)
-        writeFloat((float)(mbb.low[i]));
+        writeFloat((float)(low[i]));
     for (unsigned i = 0; i < 3; ++i)
-        writeFloat((float)(mbb.high[i]));
+        writeFloat((float)(high[i]));
 
     // Write the number of level of decimations.
     writeInt16(i_nbDecimations);
@@ -459,9 +459,9 @@ void TMesh::readBaseMesh()
 {
     // Read the bounding box
     for (unsigned i = 0; i < 3; ++i)
-        mbb.low[i] = readFloat();
+        low[i] = readFloat();
     for (unsigned i = 0; i < 3; ++i)
-        mbb.high[i] = readFloat();
+        high[i] = readFloat();
 
     // Read the number of level of detail.
     i_nbDecimations = readInt16();

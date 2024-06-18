@@ -14,7 +14,7 @@
 #include "himesh.h"
 #include "tile.h"
 
-using namespace hispeed;
+using namespace tdbase;
 using namespace std;
 
 namespace po = boost::program_options;
@@ -29,9 +29,6 @@ map<int, HiMesh *> nucleis;
 
 aab nuclei_box;
 aab vessel_box;
-
-vector<Voxel *> vessel_voxels;
-vector<Voxel *> nuclei_voxels;
 
 bool *vessel_taken;
 int total_slots = 0;
@@ -89,7 +86,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	assert(nuclei);
 	mbb = nuclei->get_mbb();
 	nuclei_box = nuclei->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
-	nuclei_voxels = nuclei->generate_voxels_skeleton(nuclei->size_of_vertices()/voxel_size);
 
 	// how many slots in each dimension can one vessel holds
 	int nuclei_num[3];
@@ -106,7 +102,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	// just for mark the voxels that are taken
 	vector<Voxel *> vessel_voxels = vessel->generate_voxels_skeleton(1000);
 
-	//hispeed::write_voxels(vessel_voxels, "/gisdata/3dpro/generated/voxels.OFF");
+	//tdbase::write_voxels(vessel_voxels, "/gisdata/3dpro/generated/voxels.OFF");
 
 	for(Voxel *v:vessel_voxels){
 		int xstart = v->low[0]/vessel_box.high[0]*nuclei_num[0];
@@ -132,32 +128,19 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	}
 }
 
-HiMesh_Wrapper *organize_data(HiMesh *mesh, vector<Voxel *> &voxels, float shift[3]){
+HiMesh_Wrapper *organize_data(HiMesh *mesh, float shift[3]){
 
 	vector<Voxel *> local_voxels;
 
 	HiMesh *local_mesh = mesh->clone_mesh();
 	local_mesh->shift(shift[0], shift[1], shift[2]);
 	local_mesh->encode();
-	for(Voxel *v:voxels){
-		Voxel *vv = new Voxel();
-		for(int i=0;i<3;i++){
-			vv->low[i] = v->low[i]+shift[i];
-		}
-		for(int i=0;i<3;i++){
-			vv->high[i] = v->high[i]+shift[i];
-		}
-		for(int i=0;i<3;i++){
-			vv->core[i] = v->core[i]+shift[i];
-		}
-		local_voxels.push_back(vv);
-	}
 
-	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_mesh, local_voxels);
+	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_mesh);
 	return wr;
 }
 
-HiMesh_Wrapper *organize_data(map<int, HiMesh *> &meshes, vector<Voxel *> &voxels, float shift[3]){
+HiMesh_Wrapper *organize_data(map<int, HiMesh *> &meshes, float shift[3]){
 
 	map<int, HiMesh *> local_meshes;
 	vector<Voxel *> local_voxels;
@@ -168,21 +151,7 @@ HiMesh_Wrapper *organize_data(map<int, HiMesh *> &meshes, vector<Voxel *> &voxel
 		local_meshes[m.first] = nmesh;
 	}
 
-	for(Voxel *v:voxels){
-		Voxel *vv = new Voxel();
-		for(int i=0;i<3;i++){
-			vv->low[i] = v->low[i]+shift[i];
-		}
-		for(int i=0;i<3;i++){
-			vv->high[i] = v->high[i]+shift[i];
-		}
-		for(int i=0;i<3;i++){
-			vv->core[i] = v->core[i]+shift[i];
-		}
-		local_voxels.push_back(vv);
-	}
-
-	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_meshes, local_voxels);
+	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_meshes);
 	return wr;
 }
 
@@ -235,9 +204,9 @@ int generate_nuclei(float base[3]){
 
 			HiMesh_Wrapper *wr;
 			if(multi_lods){
-				wr = organize_data(nucleis, nuclei_voxels, shift);
+				wr = organize_data(nucleis, shift);
 			}else{
-				wr = organize_data(nuclei, nuclei_voxels, shift);
+				wr = organize_data(nuclei, shift);
 			}
 
 			pthread_mutex_lock(&mylock);
@@ -276,9 +245,9 @@ void *generate_unit(void *arg){
 
 		HiMesh_Wrapper *wr;
 		if(multi_lods){
-			wr = organize_data(vessels, vessel_voxels, base);
+			wr = organize_data(vessels, base);
 		}else{
-			wr = organize_data(vessel, vessel_voxels, base);
+			wr = organize_data(vessel, base);
 		}
 		pthread_mutex_lock(&mylock);
 		global_generated += generated;
@@ -292,7 +261,7 @@ int main(int argc, char **argv){
 	string nuclei_pt = "../data/nuclei.pt";
 	string vessel_pt = "../data/vessel.pt";
 	string output_path;
-	int num_threads = hispeed::get_num_threads();
+	int num_threads = tdbase::get_num_threads();
 
 	pthread_mutex_init(&mylock, NULL);
 
@@ -373,7 +342,6 @@ int main(int argc, char **argv){
 		}
 	}
 	size_t vessel_num = jobs.size();
-	vessel_voxels = vessel->generate_voxels_skeleton(voxel_size);
 
 	pthread_t threads[num_threads];
 	for(int i=0;i<num_threads;i++){
@@ -383,7 +351,7 @@ int main(int argc, char **argv){
 		void *status;
 		pthread_join(threads[i], &status);
 	}
-	logt("%ld vessels with %d voxels %ld nucleis are generated",start,vessel_num,vessel_voxels.size(),global_generated);
+	logt("%ld vessels %ld nucleis are generated",start,vessel_num,global_generated);
 
 	Tile *nuclei_tile = new Tile(generated_nucleis);
 	Tile *vessel_tile = new Tile(generated_vessels);
@@ -396,20 +364,10 @@ int main(int argc, char **argv){
 		vessel_tile->dump_compressed(vessel_output);
 	}
 
-	// clear the vessel related objects
+
+	// clear
 	delete vessel;
-	for(Voxel *v:vessel_voxels){
-		delete v;
-	}
-	vessel_voxels.clear();
-
-	// clear the nuclei related objects
 	delete nuclei;
-	for(Voxel *v:nuclei_voxels){
-		delete v;
-	}
-	nuclei_voxels.clear();
-
 	delete []vessel_taken;
 }
 

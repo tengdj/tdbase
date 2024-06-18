@@ -59,3 +59,5 @@ target_link_libraries(simulator PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB p
 
 add_executable (wrap simplifier/wrap.cpp)
 target_link_libraries(wrap PRIVATE gmp mpfr)
+
+add_executable (mymesh ${MYMESH_SRCS})

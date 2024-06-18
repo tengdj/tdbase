@@ -7,7 +7,7 @@
 
 #include "SpatialJoin.h"
 
-namespace hispeed{
+namespace tdbase{
 
 inline float get_min_max_dist(vector<voxel_pair> &voxel_pairs){
 	float minmaxdist = DBL_MAX;
@@ -298,7 +298,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 		log("");
 	}
 
-	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
+	ctx.overall_time = tdbase::get_time_elapsed(very_start, false);
 	for(int i=0;i<ctx.tile1->num_objects();i++){
 		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
 //		for(int j=0;j<ctx.tile1->get_mesh_wrapper(i)->results.size();j++){

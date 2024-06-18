@@ -7,7 +7,7 @@
 
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 void HiMesh::clear_aabb_tree(){
 	if(segment_tree){

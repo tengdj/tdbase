@@ -14,7 +14,7 @@
 #include<fstream>
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 bool SPNode::load(const char *path){
 	ifstream is(path, ios::out | ios::binary);

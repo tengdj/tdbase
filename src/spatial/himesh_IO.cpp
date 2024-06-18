@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 // Write a given number of bits in a buffer.
 void writeBits(uint32_t data, unsigned i_nbBits, char *p_dest,

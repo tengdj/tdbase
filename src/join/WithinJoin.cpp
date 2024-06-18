@@ -7,7 +7,7 @@
 
 #include "SpatialJoin.h"
 
-namespace hispeed{
+namespace tdbase{
 
 inline void print_candidate_within(candidate_entry *cand){
 	if(global_ctx.verbose>=1){
@@ -215,7 +215,7 @@ void SpatialJoin::within(query_context ctx){
 		logt("evaluating with lod %d", iter_start, lod);
 		log("");
 	}
-	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
+	ctx.overall_time = tdbase::get_time_elapsed(very_start, false);
 	for(int i=0;i<ctx.tile1->num_objects();i++){
 		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
 		for(int j=0;j<ctx.tile1->get_mesh_wrapper(i)->results.size();j++){

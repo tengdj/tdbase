@@ -8,7 +8,7 @@
 
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 bool HiMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) const
 {

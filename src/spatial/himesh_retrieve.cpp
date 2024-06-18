@@ -8,7 +8,7 @@
 #include "himesh.h"
 
 
-namespace hispeed{
+namespace tdbase{
 
 
 size_t HiMesh::fill_segments(float *&segments){

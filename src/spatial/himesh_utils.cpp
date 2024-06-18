@@ -7,7 +7,7 @@
 
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 Vector HiMesh::computeNormal(Facet_const_handle f) const
 {

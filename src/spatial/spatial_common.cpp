@@ -8,7 +8,7 @@
 #include "himesh.h"
 #include "aab.h"
 
-namespace hispeed{
+namespace tdbase{
 
 /*
  * extended from https://doc.cgal.org/latest/Polyhedron/index.html
@@ -143,16 +143,20 @@ void write_polyhedron(Polyhedron *mesh, const char *path){
 void write_box(aab box, int id, string prefix){
 	char path[256];
 	sprintf(path, "%s.%d.off", prefix.c_str(), id);
-	write_polyhedron(hispeed::make_cube(box), path);
+	write_polyhedron(tdbase::make_cube(box), path);
 }
 
 void write_box(aab box, const char *path){
-	write_polyhedron(hispeed::make_cube(box), path);
+	write_polyhedron(tdbase::make_cube(box), path);
 }
 
 void write_points(vector<Point> &skeleton, const char *path){
 	FILE * fp;
 	fp = fopen (path, "w");
+	if(fp == NULL){
+		log("cannot open %s", path);
+		exit(0);
+	}
 
 	fprintf(fp, "OFF\n");
 	fprintf(fp, "%ld 0 0\n", skeleton.size());

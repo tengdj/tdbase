@@ -8,7 +8,7 @@
 
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 /*
  * himesh wrapper functions
@@ -80,23 +80,24 @@ HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 }
 
 // manually
-HiMesh_Wrapper::HiMesh_Wrapper(map<int, HiMesh *> &ms, vector<Voxel *> &vxls){
+HiMesh_Wrapper::HiMesh_Wrapper(map<int, HiMesh *> &ms){
 	type = MULTIMESH;
 	for(auto a:ms){
 		meshes[a.first] = a.second;
 	}
-	voxels.assign(vxls.begin(), vxls.end());
+	assert(ms.find(100)!=ms.end());
 
+	voxels = ms[100]->generate_voxels_skeleton();
 	for(Voxel *v:voxels){
 		box.update(*v);
 	}
 
 }
 
-HiMesh_Wrapper::HiMesh_Wrapper(HiMesh *m, vector<Voxel *> &vxls){
+HiMesh_Wrapper::HiMesh_Wrapper(HiMesh *m){
 	type = COMPRESSED;
 	mesh = m;
-	voxels.assign(vxls.begin(), vxls.end());
+	voxels = m->generate_voxels_skeleton();
 }
 
 HiMesh_Wrapper::~HiMesh_Wrapper(){

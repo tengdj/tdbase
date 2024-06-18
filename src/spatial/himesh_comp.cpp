@@ -22,7 +22,7 @@
 #include "himesh.h"
 #include "geometry.h"
 
-namespace hispeed{
+namespace tdbase{
 
 
 void HiMesh::encode(){

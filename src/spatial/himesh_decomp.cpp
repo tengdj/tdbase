@@ -19,7 +19,7 @@
 
 #include "himesh.h"
 
-namespace hispeed{
+namespace tdbase{
 
 /**
   * Start the next decompression operation.

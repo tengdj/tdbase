@@ -22,7 +22,7 @@
 #include <cstdint>
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 typedef struct range{
 public:

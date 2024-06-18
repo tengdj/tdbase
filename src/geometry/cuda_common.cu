@@ -11,7 +11,7 @@
 using namespace std;
 
 
-namespace hispeed{
+namespace tdbase{
 
 vector<gpu_info *> get_gpus(){
 	vector<gpu_info *> gpus;

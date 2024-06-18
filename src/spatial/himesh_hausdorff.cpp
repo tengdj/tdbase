@@ -9,7 +9,7 @@
 
 using namespace std;
 
-namespace hispeed{
+namespace tdbase{
 
 float HiMesh::getHausdorffDistance(){
 	assert(i_nbDecimations>=i_curDecimationId);
@@ -245,7 +245,7 @@ void HiMesh::computeHausdorfDistance(){
 				for(auto p:points){
 					float dist = DBL_MAX;
 					for(MyTriangle *t:triangles){
-						dist = min(dist, hispeed::PointTriangleDist((const float *)&p, (const float *)&t->tri));
+						dist = min(dist, tdbase::PointTriangleDist((const float *)&p, (const float *)&t->tri));
 					}
 					curhdist = max(curhdist, dist);
 				}
@@ -258,7 +258,7 @@ void HiMesh::computeHausdorfDistance(){
 				for(vector<MyTriangle *>::iterator iter = triangles.begin();iter!=triangles.end();){
 					bool keep = false;
 					for(const Point &p:(*iter)->sampled_points){
-						if(hispeed::PointInTriangleCylinder((const float *)&p, (const float *)&cur_tri)){
+						if(tdbase::PointInTriangleCylinder((const float *)&p, (const float *)&cur_tri)){
 							keep = true;
 							break;
 						}
@@ -281,7 +281,7 @@ void HiMesh::computeHausdorfDistance(){
 				for(auto p:points){
 					float dist = DBL_MAX;
 					for(MyTriangle *t:triangles){
-						dist = min(dist, hispeed::PointTriangleDist((const float *)&p, (const float *)&t->tri));
+						dist = min(dist, tdbase::PointTriangleDist((const float *)&p, (const float *)&t->tri));
 					}
 					if(triangles.size() == 0){
 						dist = 0;
@@ -317,7 +317,7 @@ void HiMesh::computeHausdorfDistance(){
 			// and it will be proxy facet of that point
 			for(const Point &p:t->sampled_points){
 				TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
-				float dist = hispeed::distance((const float *)&p, (const float *)&ppid.first);
+				float dist = tdbase::distance((const float *)&p, (const float *)&ppid.first);
 				Triangle tri = *ppid.second;
 				float fs = encode_triangle2(tri);
 				assert(fits.find(fs)!=fits.end());
@@ -345,7 +345,7 @@ void HiMesh::computeHausdorfDistance(){
 					Face_iterator fit;
 					for(Face_iterator &ft:t->facets){
 						for(Triangle &tt:ft->triangles){
-							float d = hispeed::PointTriangleDist((const float *)&p, (const float *)&tt);
+							float d = tdbase::PointTriangleDist((const float *)&p, (const float *)&tt);
 							if(d<dist){
 								dist = d;
 								fit = ft;
@@ -442,7 +442,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 		for(const Point &p:t->sampled_points){
 
 			TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
-			float dist = hispeed::distance((const float *)&p, (const float *)&ppid.first);
+			float dist = tdbase::distance((const float *)&p, (const float *)&ppid.first);
 			Triangle tri = *ppid.second;
 			float fs = encode_triangle2(tri);
 			assert(fits.find(fs)!=fits.end());

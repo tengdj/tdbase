@@ -7,7 +7,7 @@
 
 #include "SpatialJoin.h"
 
-namespace hispeed{
+namespace tdbase{
 
 vector<candidate_entry *> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 	vector<candidate_entry *> candidates;
@@ -72,7 +72,7 @@ void SpatialJoin::intersect(query_context ctx){
 
 	// filtering with MBBs to get the candidate list
 	vector<candidate_entry *> candidates = mbb_intersect(ctx.tile1, ctx.tile2);
-	ctx.index_time += hispeed::get_time_elapsed(start,false);
+	ctx.index_time += tdbase::get_time_elapsed(start,false);
 	logt("index retrieving", start);
 
 	for(uint32_t lod:ctx.lods){
@@ -142,7 +142,7 @@ void SpatialJoin::intersect(query_context ctx){
 		logt("evaluating with lod %d", iter_start, lod);
 		log("");
 	}
-	ctx.overall_time = hispeed::get_time_elapsed(very_start, false);
+	ctx.overall_time = tdbase::get_time_elapsed(very_start, false);
 //	for(auto ce_iter=candidates.begin();ce_iter!=candidates.end();ce_iter++){
 //		HiMesh_Wrapper *wrapper1 = ce_iter->mesh_wrapper;
 //		//print_candidate_within(*ce_iter);

@@ -7,7 +7,7 @@
 
 #include "tile.h"
 
-namespace hispeed{
+namespace tdbase{
 
 // do the initialization job
 void Tile::load(){
@@ -54,7 +54,7 @@ void Tile::dump_compressed(const char *path){
 	for(HiMesh_Wrapper *wr:objects){
 		assert(wr->type == COMPRESSED);
 		HiMesh *nmesh = wr->get_mesh();
-		//hispeed::write_polyhedron(&shifted, ids++);
+		//tdbase::write_polyhedron(&shifted, ids++);
 		size_t size = nmesh->get_data_size();
 		os->write((char *)&size, sizeof(size_t));
 		os->write(nmesh->get_data(), nmesh->get_data_size());

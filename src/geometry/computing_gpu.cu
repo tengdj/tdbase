@@ -7,7 +7,7 @@
 
 #include "geometry.h"
 #include "cuda_util.cuh"
-namespace hispeed{
+namespace tdbase{
 
 
 /*
