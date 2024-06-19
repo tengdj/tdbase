@@ -56,10 +56,12 @@ add_executable (lindstrom_turk simplifier/lindstrom_turk.cpp)
 target_link_libraries(lindstrom_turk PRIVATE gmp)
 
 
-if(DEFINED USE_GPU)
+if(DEFINED ENV{USE_GPU})
+	message (STATUS "cuda")
     enable_language("CUDA")
     add_executable (tdbase tools/tdbase.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
 else()
+	message (STATUS "non-cuda")
     add_executable (tdbase tools/tdbase.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
 endif()
     
