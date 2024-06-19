@@ -10,7 +10,6 @@
 
 using namespace std;
 
-
 namespace tdbase{
 
 vector<gpu_info *> get_gpus(){

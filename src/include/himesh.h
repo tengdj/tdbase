@@ -35,7 +35,7 @@
 
 #include <CGAL/Kernel/interface_macros.h>
 #include <CGAL/Simple_cartesian.h>
-//#include <CGAL/Polyhedron_3.h>
+#include <CGAL/Polyhedron_3.h>
 #include <CGAL/circulator.h>
 #include <CGAL/bounding_box.h>
 #include <CGAL/IO/Polyhedron_iostream.h>
@@ -53,7 +53,6 @@
 
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
-#include <CGAL/AABB_segment_primitive.h>
 #include <CGAL/AABB_triangle_primitive.h>
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 
@@ -68,7 +67,6 @@
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
-
 
 #include <CGAL/config.h>
 #include <boost/algorithm/string/replace.hpp>
@@ -109,10 +107,6 @@ typedef MyKernel::Vector_3 Vector;
 typedef MyKernel::FT FT;
 typedef MyKernel::Segment_3 Segment;
 typedef MyKernel::Triangle_3 Triangle;
-typedef std::list<Segment>::iterator SegIterator;
-typedef CGAL::AABB_segment_primitive<MyKernel, SegIterator> SegPrimitive;
-typedef CGAL::AABB_traits<MyKernel, SegPrimitive> SegTraits;
-typedef CGAL::AABB_tree<SegTraits> SegTree;
 
 typedef std::list<Triangle>::iterator Iterator;
 typedef CGAL::AABB_triangle_primitive<MyKernel, Iterator> TrianglePrimitive;
@@ -487,7 +481,6 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	std::deque<std::deque<unsigned> > connectFaceSym;
 	std::deque<std::deque<unsigned> > connectEdgeSym;
 
-
 	// The compressed data;
 	char *p_data;
 	size_t dataOffset = 0; // the offset to read and write.
@@ -506,15 +499,25 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	unordered_set<replacing_group *> map_group;
 
 	bool own_data = true;
+
+	// the triangles each point associated
+	map<Point, vector<MyTriangle *>> VFmap;
+
+public:
+	// Hausdorff calculation and storage related
+	static uint32_t sampling_rate; // equals the number of points sampled for each triangle
+	static Hausdorff_Computing_Type calculate_method;
+	static bool use_byte_coding;
+
 public:
 
-	int id = 0;
 	// constructor for encoding
 	HiMesh(string &str, bool completeop = false);
 
 	// constructors for decoding
 	HiMesh(char *data, size_t dsize, bool own_data = true);
 	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset, true){}
+
 	~HiMesh();
 
 	// some set/get functions
@@ -574,8 +577,8 @@ public:
 	void writePoint(Point &p);
 	Point readPoint();
 
-	void writeBaseMesh();
-	void readBaseMesh();
+	void encodeBaseMesh();
+	void decodeBaseMesh();
 
 	string to_wkt();
 	string to_off();
@@ -648,14 +651,6 @@ public:
 	float getProxyHausdorffDistance();
 	float getHausdorffDistance();
 
-	// the triangles each point associated
-	map<Point, vector<MyTriangle *>> VFmap;
-
-	// Hausdorff calculation and storage related
-	static uint32_t sampling_rate; // equals the number of points sampled for each triangle
-	static Hausdorff_Computing_Type calculate_method;
-	static bool use_byte_coding;
-
 	float sampling_gap(){
 		uint32_t num_triangle = size_of_triangles();
 		return area()/(num_triangle*sampling_rate);
@@ -663,8 +658,6 @@ public:
 	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit);
 	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
 	void sample_points(unordered_set<Point> &points);
-
-
 
 	// static utility functions
 	static Vector computeNormal(Halfedge_const_handle heh_gate);

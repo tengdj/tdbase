@@ -174,8 +174,8 @@ int generate_nuclei(float base[3]){
 			available_count++;
 		}
 	}
-	//log("%d %d %d",total_slots,num_nuclei_per_vessel,taken_count);
-	assert(available_count<num_nuclei_per_vessel && "should have enough slots");
+	//log("%d %d %d",total_slots,num_nuclei_per_vessel,available_count);
+	assert(available_count>num_nuclei_per_vessel && "should have enough slots");
 
 	const int gap = available_count/num_nuclei_per_vessel;
 

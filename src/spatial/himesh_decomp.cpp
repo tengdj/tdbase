@@ -78,8 +78,7 @@ void HiMesh::decode(int lod){
 }
 
 // Read the base mesh.
-void HiMesh::readBaseMesh()
-{
+void HiMesh::decodeBaseMesh() {
     // Read the bounding box
     for (unsigned i = 0; i < 3; ++i)
         mbb.low[i] = readFloat();
@@ -97,15 +96,13 @@ void HiMesh::readBaseMesh()
     std::deque<uint32_t *> *p_faceDeque = new std::deque<uint32_t *>();
 
     // Read the vertex positions.
-    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i)
-    {
+    for (unsigned i = 0; i < i_nbVerticesBaseMesh; ++i) {
         Point pos = readPoint();
         p_pointDeque->push_back(pos);
     }
 
     // Read the face vertex indices.
-    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i)
-    {
+    for (unsigned i = 0; i < i_nbFacesBaseMesh; ++i) {
     	int nv = readInt();
         uint32_t *f = new uint32_t[nv + 1];
         // Write in the first cell of the array the face degree.
@@ -142,8 +139,7 @@ void HiMesh::readBaseMesh()
 void HiMesh::RemovedVerticesDecodingStep(){
     // Add the first halfedge to the queue.
 	pushHehInit();
-	while (!gateQueue.empty())
-	{
+	while (!gateQueue.empty()) {
 		Halfedge_handle h = gateQueue.front();
 		gateQueue.pop();
 

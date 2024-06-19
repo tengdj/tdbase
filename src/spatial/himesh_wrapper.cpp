@@ -28,7 +28,6 @@ HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 	if(type == COMPRESSED){
 		// the mesh reuses the memory space stored in the Tile class
 		mesh = new HiMesh(data_buffer, data_size, false);
-		mesh->id = id;
 
 		for(int i=0;i<vnum;i++){
 			Voxel *v = new Voxel();

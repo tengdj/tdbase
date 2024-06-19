@@ -17,11 +17,12 @@ void *MeshDist_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
 	for(int i=0;i<param->pair_num;i++){
 		param->results[i] = MeshDist(param->data+param->offset_size[4*i]*9,
-										   param->data+param->offset_size[4*i+2]*9,
-										   param->offset_size[4*i+1],
-										   param->offset_size[4*i+3],
-										   param->hausdorff+param->offset_size[4*i]*2,
-										   param->hausdorff+param->offset_size[4*i+2]*2);
+									   param->data+param->offset_size[4*i+2]*9,
+									   param->offset_size[4*i+1],
+									   param->offset_size[4*i+3],
+									   param->hausdorff+param->offset_size[4*i]*2,
+									   param->hausdorff+param->offset_size[4*i+2]*2);
+
 	}
 	return NULL;
 }
@@ -43,8 +44,6 @@ void geometry_computer::release_cpu(){
 	cpu_busy = false;
 	pthread_mutex_unlock(&cpu_lock);
 }
-
-
 
 #ifdef USE_GPU
 
@@ -83,7 +82,7 @@ void geometry_computer::get_distance_gpu(geometry_param &cc){
 	gpu_info *gpu = request_gpu(cc.element_num*11*sizeof(float)/1024/1024, true);
 	assert(gpu);
 	log("GPU %d started to get distance", gpu->device_id);
-	tdbase::MeshDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.results, cc.pair_num, cc.element_num);
+	tdbase::MeshDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.hausdorff, cc.results, cc.pair_num, cc.element_num);
 	release_gpu(gpu);
 }
 
@@ -152,6 +151,9 @@ void geometry_computer::get_distance(geometry_param &cc){
 	}else{
 		get_distance_cpu(cc);
 	}
+//	for(int i=0;i<cc.pair_num;i++){
+//		cc.results[i].print();
+//	}
 }
 
 void *TriInt_unit(void *params_void){

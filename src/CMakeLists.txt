@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.25)
 project(TDBase)
 
 # set (CMAKE_TOOLCHAIN_FILE "C:/Users/Lenovo/Documents/GitHub/vcpkg/scripts/buildsystems/vcpkg.cmake")
-set (CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_BUILD_TYPE Debug)
  
 find_package(OpenMesh)
 find_package(CGAL REQUIRED)
@@ -55,21 +56,23 @@ target_link_libraries(gauland_heckbert PRIVATE gmp)
 add_executable (lindstrom_turk simplifier/lindstrom_turk.cpp)
 target_link_libraries(lindstrom_turk PRIVATE gmp)
 
-
 if(DEFINED ENV{USE_GPU})
-	message (STATUS "cuda")
+    message (STATUS "cuda")
     enable_language("CUDA")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_GPU")
     add_executable (tdbase tools/tdbase.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
+    target_link_libraries(tdbase PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX cuda)
+    
+    add_executable (simulator tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
+	target_link_libraries(simulator PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX cuda)
 else()
-	message (STATUS "non-cuda")
+    message (STATUS "non-cuda")
     add_executable (tdbase tools/tdbase.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
+    target_link_libraries(tdbase PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
+    add_executable (simulator tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
+	target_link_libraries(simulator PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
 endif()
     
-target_link_libraries(tdbase PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
-
-add_executable (simulator tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
-target_link_libraries(simulator PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
-
 add_executable (wrap simplifier/wrap.cpp)
 target_link_libraries(wrap PRIVATE gmp mpfr)
 

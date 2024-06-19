@@ -40,8 +40,7 @@ void HiMesh::pushHehInit() {
     // Find the first halfedge.
     Halfedge_handle hehBegin;
     Halfedge_around_vertex_circulator hit(vh_departureConquest[0]->vertex_begin());
-    while (1)
-    {
+    while (true) {
         hehBegin = hit->opposite();
         if (hehBegin->vertex() == vh_departureConquest[1])
             break;
@@ -103,11 +102,9 @@ void HiMesh::startNextCompresssionOp() {
 
 	i_nbRemovedVertices = 0; // Reset the number of removed vertices.
 
-
 	// 2. do one round of decimation
 	//choose a halfedge that can be processed:
-	if(i_curDecimationId<10)
-	{
+	if(i_curDecimationId<10) {
 		// teng: we always start from the middle, DO NOT use the rand function
 		// size_t i_heInitId = (float)rand() / RAND_MAX * size_of_halfedges();
 		size_t i_heInitId = size_of_halfedges()/2;
@@ -177,18 +174,17 @@ void HiMesh::startNextCompresssionOp() {
 		i_nbDecimations = i_curDecimationId--;
 
 		// Write the compressed data to the buffer.
-	    writeBaseMesh();
+		encodeBaseMesh();
 	    int i_deci = i_curDecimationId;
 	    assert(i_deci>0);
-	    while (i_deci>=0)
-	    {
+	    while (i_deci>=0) {
 			encodeHausdorff(i_deci);
 			encodeRemovedVertices(i_deci);
 			encodeInsertedEdges(i_deci);
 			i_deci--;
 	    }
 	} else {
-		// 3dpro: compute and encode the Hausdorff distance for all the facets in this LOD
+		// tdbase: compute and encode the Hausdorff distance for all the facets in this LOD
 		computeHausdorfDistance();
 		HausdorffCodingStep();
 		RemovedVertexCodingStep();
@@ -455,7 +451,7 @@ void HiMesh::HausdorffCodingStep(){
 }
 
 // Write the base mesh.
-void HiMesh::writeBaseMesh() {
+void HiMesh::encodeBaseMesh() {
     // Write the bounding box min coordinate.
     for (unsigned i = 0; i < 3; ++i)
         writeFloat((float)(mbb.low[i]));

@@ -116,6 +116,14 @@ public:
 	float distance; // for normal distance
 	float min_dist; // for distance range
 	float max_dist;
+	void print(){
+		cout<<"p1:\t"<<p1<<endl;
+		cout<<"p2:\t"<<p2<<endl;
+		cout<<"intersected:\t"<<intersected<<endl;
+		cout<<"distance:\t"<<distance<<endl;
+		cout<<"min_dist:\t"<<min_dist<<endl;
+		cout<<"max_dist:\t"<<max_dist<<endl;
+	}
 } ;
 
 class geometry_param{
@@ -154,8 +162,7 @@ void project_points_to_triangle_plane(const float *point, const float *triangle,
 float PointTriangleDist(const float *point, const float *triangle);
 float TriDist(const float *S, const float *T);
 result_container MeshDist(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
-void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size,
-		               result_container *result, const uint32_t pair_num, const uint32_t element_num);
+void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float * hausdorff, result_container *result, const uint32_t pair_num, const uint32_t element_num);
 
 result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float *hausdorff, result_container *result, const uint32_t batch_num, const uint32_t triangle_num);

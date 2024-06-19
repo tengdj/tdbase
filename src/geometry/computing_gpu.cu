@@ -401,32 +401,6 @@ TriDist_kernel(const float *S, const float *T)
 	}
 }
 
-__global__
-void TriDist_cuda(const float *data, const uint32_t *offset_size, result_container *dist, uint32_t cur_offset_1, uint32_t cur_offset_2_start){
-	// which batch
-	int batch_id = blockIdx.x;
-	int cur_offset_2 = threadIdx.x+cur_offset_2_start;
-
-	if(cur_offset_1>=offset_size[batch_id*4+1]){
-		return;
-	}
-	if(cur_offset_2>=offset_size[batch_id*4+3]){
-		return;
-	}
-	uint32_t offset1 = offset_size[batch_id*4];
-	uint32_t offset2 = offset_size[batch_id*4+2];
-
-	const float *cur_S = data+9*(offset1+cur_offset_1);
-	const float *cur_T = data+9*(offset2+cur_offset_2);
-	float dd = TriDist_kernel(cur_S, cur_T);
-
-	if((cur_offset_1==0&&cur_offset_2==0)||dist[batch_id].distance>dd){
-		dist[batch_id].distance = dd;
-		dist[batch_id].p1 = cur_offset_1;
-		dist[batch_id].p2 = cur_offset_2;
-	}
-}
-
 __device__ static float atomicMin(float* address, float val) {
     int* address_as_i = (int*) address;
     int old = *address_as_i, assumed;
@@ -436,6 +410,56 @@ __device__ static float atomicMin(float* address, float val) {
             __float_as_int(::fminf(val, __int_as_float(assumed))));
     } while (assumed != old);
     return __int_as_float(old);
+}
+
+__global__
+void TriDist_cuda(const float *data, const uint32_t *offset_size, const float *hausdorff, result_container *dist, uint32_t tri_offset_1, uint32_t tri_offset_2_start){
+	// which batch
+	int pair_id = blockIdx.x;
+	int tri_offset_2 = threadIdx.x+tri_offset_2_start;
+
+	if(tri_offset_1>=offset_size[pair_id*4+1]){
+		return;
+	}
+	if(tri_offset_2>=offset_size[pair_id*4+3]){
+		return;
+	}
+	uint32_t obj_offset1 = offset_size[pair_id*4];
+	uint32_t obj_offset2 = offset_size[pair_id*4+2];
+
+	const float *cur_S = data+9*(obj_offset1+tri_offset_1);
+	const float *cur_T = data+9*(obj_offset2+tri_offset_2);
+	float dd = TriDist_kernel(cur_S, cur_T);
+	
+	float phdist1 = *(hausdorff+2*(obj_offset1+tri_offset_1));
+	float phdist2 = *(hausdorff+2*(obj_offset2+tri_offset_2));
+	float hdist1 = *(hausdorff+2*(obj_offset1+tri_offset_1)+1);
+	float hdist2 = *(hausdorff+2*(obj_offset2+tri_offset_2)+1);
+	
+		
+	float low_dist = max(dd-phdist1-phdist2, (float)0.0);
+	float high_dist = dd+hdist1+hdist2;
+	
+	if(tri_offset_1==0&&tri_offset_2==0){
+		dist[pair_id].distance = dd;
+		dist[pair_id].p1 = tri_offset_1;
+		dist[pair_id].p2 = tri_offset_2;
+		dist[pair_id].min_dist = low_dist;
+		dist[pair_id].max_dist = high_dist;
+		return;
+	}
+
+	atomicMin(&(dist[pair_id].distance), dd);
+
+	if(dist[pair_id].distance == dd){
+		dist[pair_id].p1 = tri_offset_1;
+		dist[pair_id].p2 = tri_offset_2;
+	}
+	
+	atomicMin(&(dist[pair_id].min_dist), low_dist);
+	atomicMin(&(dist[pair_id].max_dist), high_dist);
+	
+//	printf("%d %d:\t%f %f | %d %d:\t%f %f | %f %f %f | %f %f\n", obj_offset1, tri_offset_1, phdist1, hdist1, obj_offset2, tri_offset_2, phdist2, hdist2, low_dist, high_dist, dd, dist[pair_id].min_dist, dist[pair_id].max_dist);
 }
 
 __global__
@@ -486,9 +510,10 @@ void TriInt_cuda(const float *data, const float *hausdorff, const uint32_t *offs
  * pair_num: number of computed batches
  *
  * */
-void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size,
+void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float *hausdorff,
 		               result_container *result, const uint32_t pair_num, const uint32_t element_num){
 
+	struct timeval start = get_cur_time();
 	assert(gpu);
 	cudaSetDevice(gpu->device_id);
 	// profile the input data
@@ -513,16 +538,21 @@ void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_
 	cur_d_cuda += sizeof(result_container)*pair_num;
 	// space for the offset and size information in GPU
 	uint32_t *d_os = (uint32_t *)(cur_d_cuda);
-
+	cur_d_cuda += 4*sizeof(uint32_t)*pair_num;
+	// space for the hausdorff distances in GPU
+	float *d_hausdorff = (float *)cur_d_cuda;
+	
 	CUDA_SAFE_CALL(cudaMemcpy(d_data, data, element_num*9*sizeof(float), cudaMemcpyHostToDevice));
 	CUDA_SAFE_CALL(cudaMemcpy(d_os, offset_size, pair_num*4*sizeof(uint32_t), cudaMemcpyHostToDevice));
+	CUDA_SAFE_CALL(cudaMemcpy(d_hausdorff, hausdorff, element_num*2*sizeof(float), cudaMemcpyHostToDevice));
+	
 	//logt("copying data to GPU", start);
 
 	// compute the distance in parallel
-	for(uint32_t cur_offset_2=0;cur_offset_2<max_size_2;cur_offset_2+=512){
-		uint32_t dim2 = min(max_size_2-cur_offset_2, (uint32_t)512);
-		for(uint32_t cur_offset_1=0;cur_offset_1<max_size_1;cur_offset_1++){
-			TriDist_cuda<<<pair_num, dim2>>>(d_data, d_os, d_dist, cur_offset_1, cur_offset_2);
+	for(uint32_t tri_offset_2=0;tri_offset_2<max_size_2;tri_offset_2+=512){
+		uint32_t dim2 = min(max_size_2-tri_offset_2, (uint32_t)512);
+		for(uint32_t tri_offset_1=0;tri_offset_1<max_size_1;tri_offset_1++){
+			TriDist_cuda<<<pair_num, dim2>>>(d_data, d_os, d_hausdorff, d_dist, tri_offset_1, tri_offset_2);
 			check_execution();
 		}
 		//cout<<pair_num<<" "<<cur_offset_2<<" "<<dim2<<endl;

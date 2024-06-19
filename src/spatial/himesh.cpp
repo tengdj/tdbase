@@ -14,9 +14,9 @@ namespace tdbase{
 int replacing_group::counter = 0;
 int replacing_group::alive = 0;
 
+// compression mode
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
-
 
 	boost::replace_all(str, "|", "\n");
 	assert(str.size()!=0 && "input string should not be empty!");
@@ -84,9 +84,59 @@ HiMesh::HiMesh(string &str, bool completeop):
 	}
 }
 
+// in decompression mode
+HiMesh::HiMesh(char *data, size_t dsize, bool owndata):
+		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
+	assert(dsize>0);
+	srand(PPMC_RANDOM_CONSTANT);
+
+	own_data = owndata;
+	i_mode = DECOMPRESSION_MODE_ID;
+	if(owndata){
+		p_data = new char[dsize];
+		memcpy(p_data, data, dsize);
+	}else{
+		p_data = data;
+	}
+	decodeBaseMesh();
+	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
+	vh_departureConquest[0] = vertices_begin();
+	vh_departureConquest[1] = ++vertices_begin();
+}
+
+HiMesh::~HiMesh(){
+	if(own_data && p_data!=NULL){
+	   delete[] p_data;
+	}
+	clear_aabb_tree();
+	for(replacing_group *rg:map_group){
+		delete rg;
+	}
+	map_group.clear();
+}
+
+void HiMesh::updateMBB(){
+	mbb.reset();
+	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+		Point p = vit->point();
+		mbb.update(p.x(), p.y(), p.z());
+	}
+}
+
+void HiMesh::updateAABB(){
+	if(triangle_tree){
+		aabb_triangles.clear();
+		delete triangle_tree;
+		triangle_tree = NULL;
+	}
+	aabb_triangles = get_triangles();
+	triangle_tree = new TriangleTree(aabb_triangles.begin(), aabb_triangles.end());
+	triangle_tree->build();
+	triangle_tree->accelerate_distance_queries();
+}
+
 void HiMesh::updateVFMap(){
 
-	//cout<<VFmap.size()<<endl;
 	for(auto &vf:VFmap){
 		vf.second.clear();
 	}
@@ -121,59 +171,6 @@ void HiMesh::updateVFMap(){
 			VFmap[p] = triangles;
 		}
 	}
-}
-
-// in decompression mode
-HiMesh::HiMesh(char *data, size_t dsize, bool owndata):
-		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
-	assert(dsize>0);
-	srand(PPMC_RANDOM_CONSTANT);
-
-	own_data = owndata;
-	i_mode = DECOMPRESSION_MODE_ID;
-	if(owndata){
-		p_data = new char[dsize];
-		memcpy(p_data, data, dsize);
-	}else{
-		p_data = data;
-	}
-    readBaseMesh();
-	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
-	vh_departureConquest[0] = vertices_begin();
-	vh_departureConquest[1] = ++vertices_begin();
-}
-
-HiMesh::~HiMesh(){
-	if(own_data && p_data!=NULL){
-	   delete[] p_data;
-	}
-	clear_aabb_tree();
-	for(replacing_group *rg:map_group){
-		delete rg;
-	}
-	map_group.clear();
-}
-
-void HiMesh::updateMBB(){
-	mbb.reset();
-	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
-		Point p = vit->point();
-		mbb.update(p.x(), p.y(), p.z());
-	}
-}
-
-void HiMesh::updateAABB(){
-	if(triangle_tree){
-		aabb_triangles.clear();
-		delete triangle_tree;
-		triangle_tree = NULL;
-	}
-	//struct timeval start = get_cur_time();
-	aabb_triangles = get_triangles();
-	triangle_tree = new TriangleTree(aabb_triangles.begin(), aabb_triangles.end());
-	triangle_tree->build();
-	triangle_tree->accelerate_distance_queries();
-	//logt("building triangle tree", start);
 }
 
 size_t HiMesh::size_of_edges(){

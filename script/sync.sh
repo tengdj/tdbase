@@ -1,0 +1,1 @@
+rsync -a --exclude 'build' /home/teng/git/tdbase/ teng@tdbase:~/git/tdbase

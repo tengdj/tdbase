@@ -315,7 +315,7 @@ void HiMesh::computeHausdorfDistance(){
 			// and it will be proxy facet of that point
 			for(const Point &p:t->sampled_points){
 				TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
-				float dist = tdbase::distance((const float *)&p, (const float *)&ppid.first);
+				float dist = distance(p, ppid.first);
 				Triangle tri = *ppid.second;
 				float fs = encode_triangle(tri);
 				assert(fits.find(fs)!=fits.end());
@@ -440,7 +440,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 		for(const Point &p:t->sampled_points){
 
 			TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
-			float dist = tdbase::distance((const float *)&p, (const float *)&ppid.first);
+			float dist = distance(p, ppid.first);
 			Triangle tri = *ppid.second;
 			float fs = encode_triangle(tri);
 			assert(fits.find(fs)!=fits.end());
