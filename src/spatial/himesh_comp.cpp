@@ -34,10 +34,63 @@ void HiMesh::encode(){
 }
 
 /**
+  * Push the first halfedge for the coding and decoding conquest in the gate queue.
+  */
+void HiMesh::pushHehInit() {
+    // Find the first halfedge.
+    Halfedge_handle hehBegin;
+    Halfedge_around_vertex_circulator hit(vh_departureConquest[0]->vertex_begin());
+    while (1)
+    {
+        hehBegin = hit->opposite();
+        if (hehBegin->vertex() == vh_departureConquest[1])
+            break;
+        ++hit;
+    }
+    // Push it to the queue.
+    gateQueue.push(hehBegin);
+}
+
+
+/**
+  * Test if a vertex is removable.
+  */
+bool HiMesh::isRemovable(Vertex_handle v) const {
+//	if(size_of_vertices()<10){
+//		return false;
+//	}
+	if (v != vh_departureConquest[0] && v != vh_departureConquest[1] &&
+		!v->isConquered() && v->vertex_degree() > 2 && v->vertex_degree() <= 8)
+	{
+	  //test convexity
+	  std::vector<Vertex_const_handle> vh_oneRing;
+	  std::vector<Halfedge_const_handle> heh_oneRing;
+
+	  vh_oneRing.reserve(v->vertex_degree());
+	  heh_oneRing.reserve(v->vertex_degree());
+	  //vh_oneRing.push_back(v);
+	  Halfedge_around_vertex_const_circulator hit(v->vertex_begin()), end(hit);
+	  do
+	  {
+			vh_oneRing.push_back(hit->opposite()->vertex());
+			heh_oneRing.push_back(hit->opposite());
+	  }
+	  while(++hit != end);
+	  //
+	  bool removable = !willViolateManifold(heh_oneRing);
+	  if(global_ctx.ppvp){
+		  removable &= isProtruding(heh_oneRing);
+	  }
+	  //removable &= isConvex(vh_oneRing);
+	  return removable;
+	}
+	return false;
+}
+
+/**
   * Start the next compression operation.
   */
-void HiMesh::startNextCompresssionOp()
-{
+void HiMesh::startNextCompresssionOp() {
 	// 1. reset the stats
 	for(HiMesh::Vertex_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit)
 		vit->resetState();
@@ -171,8 +224,7 @@ void HiMesh::merge(unordered_set<replacing_group *> &reps, replacing_group *ret)
   * Store the position of the removed vertex.
   * TODO: critical
   */
-HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
-{
+HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 	Vertex_handle v = startH->vertex();
 
 	//make sure that the center vertex can be removed
@@ -274,8 +326,7 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH)
 /**
   * One step of the removed vertex coding conquest.
   */
-void HiMesh::RemovedVertexCodingStep()
-{
+void HiMesh::RemovedVertexCodingStep() {
     // Resize the vectors to add the current conquest symbols.
     geometrySym.push_back(std::deque<Point>());
     connectFaceSym.push_back(std::deque<unsigned>());
@@ -328,8 +379,7 @@ void HiMesh::RemovedVertexCodingStep()
 /**
   * One step of the inserted edge coding conquest.
   */
-void HiMesh::InsertedEdgeCodingStep()
-{
+void HiMesh::InsertedEdgeCodingStep() {
 	// Resize the vector to add the current conquest symbols.
 	connectEdgeSym.push_back(std::deque<unsigned>());
 	// Add the first halfedge to the queue.
@@ -405,8 +455,7 @@ void HiMesh::HausdorffCodingStep(){
 }
 
 // Write the base mesh.
-void HiMesh::writeBaseMesh()
-{
+void HiMesh::writeBaseMesh() {
     // Write the bounding box min coordinate.
     for (unsigned i = 0; i < 3; ++i)
         writeFloat((float)(mbb.low[i]));
@@ -469,8 +518,7 @@ void HiMesh::writeBaseMesh()
 /**
   * Encode an inserted edge list.
   */
-void HiMesh::encodeInsertedEdges(unsigned i_operationId)
-{
+void HiMesh::encodeInsertedEdges(unsigned i_operationId) {
 
     std::deque<unsigned> &symbols = connectEdgeSym[i_operationId];
     assert(symbols.size() > 0);
@@ -486,8 +534,7 @@ void HiMesh::encodeInsertedEdges(unsigned i_operationId)
 /**
   * Encode the geometry and the connectivity of a removed vertex list.
   */
-void HiMesh::encodeRemovedVertices(unsigned i_operationId)
-{
+void HiMesh::encodeRemovedVertices(unsigned i_operationId) {
     std::deque<unsigned> &connSym = connectFaceSym[i_operationId];
     std::deque<Point> &geomSym = geometrySym[i_operationId];
 

@@ -52,26 +52,6 @@ pair<float, float> HiMesh::collectGlobalHausdorff(STAT_TYPE type){
 	return current_hausdorf;
 }
 
-
-static float point_to_face_distance(const Point &p, const HiMesh::Face_iterator &fit){
-	const float point[3] = {p.x(), p.y(), p.z()};
-	HiMesh::Halfedge_const_handle hd = fit->halfedge();
-	HiMesh::Halfedge_const_handle h = hd->next();
-	float mindist = DBL_MAX;
-	while(h->next()!=hd){
-		Point p1 = hd->vertex()->point();
-		Point p2 = h->vertex()->point();
-		Point p3 = h->next()->vertex()->point();
-		h = h->next();
-		const float triangle[9] = {p1.x(), p1.y(), p1.z(),
-								   p2.x(), p2.y(), p2.z(),
-								   p3.x(), p3.y(), p3.z()};
-		float dist = PointTriangleDist(point, triangle);
-		mindist = min(mindist, dist);
-	}
-	return mindist;
-}
-
 uint32_t HiMesh::sampling_rate = 30;
 Hausdorff_Computing_Type HiMesh::calculate_method = HCT_BVHTREE;
 bool HiMesh::use_byte_coding = true;
@@ -143,7 +123,7 @@ Triangle expand(Triangle &tri){
 					Point(2*p3.x()-p1.x()/2-p2.x()/2, 2*p3.y()-p1.y()/2-p2.y()/2, 2*p3.z()-p1.z()/2-p2.z()/2));
 }
 
-vector<Triangle> triangulate(HiMesh::Face_iterator fit){
+vector<Triangle> triangulate(HiMesh::Face_iterator &fit){
 	vector<Triangle> ret;
 	const auto hd = fit->halfedge();
 	auto h = hd->next();
@@ -157,13 +137,31 @@ vector<Triangle> triangulate(HiMesh::Face_iterator fit){
 	return ret;
 }
 
-float encode_triangle2(Triangle &tri){
+inline float encode_triangle(Triangle &tri){
 	const float *t = (const float *)&tri;
 	float ret = 0.0;
 	for(int i=0;i<9;i++){
 		ret += i*(*(t+i));
 	}
 	return ret;
+}
+
+map<float, HiMesh::Face_iterator> HiMesh::encode_facets(){
+	map<float, HiMesh::Face_iterator> fits;
+	for ( Facet_iterator f = facets_begin(); f != facets_end(); ++f){
+		Halfedge_const_handle e1 = f->halfedge();
+		Halfedge_const_handle e2 = e1->next();
+		do{
+			Triangle t(e1->vertex()->point(),
+						 e2->vertex()->point(),
+						 e2->next()->vertex()->point());
+
+			float fs = encode_triangle(t);
+			fits[fs] = f;
+			e2 = e2->next();
+		}while(e1!=e2->next());
+	}
+	return fits;
 }
 
 // TODO: a critical function, need to be further optimized
@@ -307,7 +305,7 @@ void HiMesh::computeHausdorfDistance(){
 	 * */
 	if(HiMesh::calculate_method == HCT_BVHTREE){
 		list<Triangle> triangles = get_triangles();
-		map<float, HiMesh::Face_iterator> fits = get_fits();
+		map<float, HiMesh::Face_iterator> fits = encode_facets();
 		TriangleTree *tree = new TriangleTree(triangles.begin(), triangles.end());
 		tree->build();
 		tree->accelerate_distance_queries();
@@ -319,7 +317,7 @@ void HiMesh::computeHausdorfDistance(){
 				TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
 				float dist = tdbase::distance((const float *)&p, (const float *)&ppid.first);
 				Triangle tri = *ppid.second;
-				float fs = encode_triangle2(tri);
+				float fs = encode_triangle(tri);
 				assert(fits.find(fs)!=fits.end());
 				fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(area_unit/2.0));
 
@@ -430,7 +428,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 	 *
 	 * */
 	list<Triangle> triangles = get_triangles();
-	map<float, HiMesh::Face_iterator> fits = get_fits();
+	map<float, HiMesh::Face_iterator> fits = encode_facets();
 	TriangleTree *tree = new TriangleTree(triangles.begin(), triangles.end());
 	tree->build();
 	tree->accelerate_distance_queries();
@@ -444,7 +442,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 			TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
 			float dist = tdbase::distance((const float *)&p, (const float *)&ppid.first);
 			Triangle tri = *ppid.second;
-			float fs = encode_triangle2(tri);
+			float fs = encode_triangle(tri);
 			assert(fits.find(fs)!=fits.end());
 			fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(area_unit/2.0));
 		}

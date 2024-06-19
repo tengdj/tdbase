@@ -13,10 +13,10 @@
 namespace tdbase{
 
 
-void *TriDist_unit(void *params_void){
+void *MeshDist_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
 	for(int i=0;i<param->pair_num;i++){
-		param->results[i] = TriDist_single(param->data+param->offset_size[4*i]*9,
+		param->results[i] = MeshDist(param->data+param->offset_size[4*i]*9,
 										   param->data+param->offset_size[4*i+2]*9,
 										   param->offset_size[4*i+1],
 										   param->offset_size[4*i+3],
@@ -83,7 +83,7 @@ void geometry_computer::get_distance_gpu(geometry_param &cc){
 	gpu_info *gpu = request_gpu(cc.element_num*11*sizeof(float)/1024/1024, true);
 	assert(gpu);
 	log("GPU %d started to get distance", gpu->device_id);
-	tdbase::TriDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.results, cc.pair_num, cc.element_num);
+	tdbase::MeshDist_batch_gpu(gpu, cc.data, cc.offset_size, cc.results, cc.pair_num, cc.element_num);
 	release_gpu(gpu);
 }
 
@@ -131,7 +131,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].hausdorff = cc.hausdorff;
 		params[i].id = i+1;
 		params[i].results = cc.results+start;
-		pthread_create(&threads[i], NULL, TriDist_unit, (void *)&params[i]);
+		pthread_create(&threads[i], NULL, MeshDist_unit, (void *)&params[i]);
 	}
 	if(max_thread_num>1){
 		log("%d threads started to get distance", thread_num);

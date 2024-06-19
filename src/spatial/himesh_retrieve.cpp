@@ -1,5 +1,5 @@
 /*
- * himesh_retrieve_elements.cpp
+ * himesh_retrieve.cpp
  *
  *  Created on: Jun 24, 2022
  *      Author: teng
@@ -10,6 +10,29 @@
 
 namespace tdbase{
 
+/*
+ * retrieve the surface elements
+ *
+ * */
+size_t HiMesh::fill_vertices(float *&vertices){
+	size_t size = this->size_of_vertices();
+	if(!vertices){
+		vertices = new float[size*3];
+	}
+
+	float *cur = vertices;
+
+	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
+		Point p = vit->point();
+		*cur = p.x();
+		cur++;
+		*cur = p.y();
+		cur++;
+		*cur = p.z();
+		cur++;
+	}
+	return size;
+}
 
 size_t HiMesh::fill_segments(float *&segments){
 	size_t size = size_of_edges();
@@ -36,7 +59,6 @@ size_t HiMesh::fill_segments(float *&segments){
 	assert(inserted==size);
 	return size;
 }
-
 
 size_t HiMesh::fill_triangles(float *&triangles){
 	size_t size = size_of_triangles();
@@ -71,6 +93,41 @@ size_t HiMesh::fill_triangles(float *&triangles){
 	return size;
 }
 
+list<Point> HiMesh::get_vertices(){
+	list<Point> vertices;
+	for(HiMesh::Vertex_iterator v = vertices_begin(); v != vertices_end(); ++v){
+		vertices.push_back(v->point());
+	}
+	return vertices;
+}
+
+list<Segment> HiMesh::get_segments(){
+	list<Segment> segments;
+	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
+		Point p1 = eit->vertex()->point();
+		Point p2 = eit->opposite()->vertex()->point();
+		if(p1!=p2){
+			segments.push_back(Segment(p1, p2));
+		}
+	}
+	return segments;
+}
+
+list<Triangle> HiMesh::get_triangles(){
+	list<Triangle> triangles;
+	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		Halfedge_const_handle e1 = f->halfedge();
+		Halfedge_const_handle e2 = e1->next();
+		do{
+			triangles.push_back(Triangle(e1->vertex()->point(),
+										 e2->vertex()->point(),
+										 e2->next()->vertex()->point()));
+			e2 = e2->next();
+		}while(e1!=e2->next());
+	}
+	return triangles;
+}
+
 size_t HiMesh::fill_hausdorf_distances(float *&hausdorf){
 	size_t size = size_of_triangles();
 	hausdorf = new float[2*size];
@@ -93,53 +150,9 @@ size_t HiMesh::fill_hausdorf_distances(float *&hausdorf){
 	return size;
 }
 
-std::pair<float, float> HiMesh::get_triangle_hausdorf(int tri_id){
-	assert(tri_id>=0);
-	size_t index = 0;
-	for ( Facet_iterator f = facets_begin(); f != facets_end(); ++f){
-		if(index+f->facet_degree()-2<tri_id){
-			index += (f->facet_degree()-2);
-			continue;
-		}
-		//log("%f", f->getHausdorfDistance().second);
-		Halfedge_const_handle e1 = f->halfedge();
-		Halfedge_const_handle e2 = e1->next();
-		do{
-			if(index == tri_id){
-				assert(f->getHausdorff() <= getHausdorffDistance() && f->getProxyHausdorff() <= getProxyHausdorffDistance());
-				//log("%f %f",f->getHausdorfDistance().second, this->getHausdorfDistance().second);
-				return f->getHausdorfDistance();
-			}
-			index++;
-			e2 = e2->next();
-		}while(e1!=e2->next());
-	}
-	assert(false && "invalid facet ID");
-	return {getHausdorffDistance(), getProxyHausdorffDistance()};
-}
-
-size_t HiMesh::fill_vertices(float *&vertices){
-	size_t size = this->size_of_vertices();
-	if(!vertices){
-		vertices = new float[size*3];
-	}
-
-	float *cur = vertices;
-
-	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
-		Point p = vit->point();
-		*cur = p.x();
-		cur++;
-		*cur = p.y();
-		cur++;
-		*cur = p.z();
-		cur++;
-	}
-	return size;
-}
-
 /*
- * fill the triangles into proper voxels
+ *
+ * fill the triangles and their associated Hausdorff distances into proper voxels
  *
  * */
 size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
@@ -202,69 +215,6 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 	delete []triangle_buffer;
 	delete []hausdorf_buffer;
 	return num_of_element;
-}
-
-list<Segment> HiMesh::get_segments(){
-	segments.clear();
-	for(Edge_const_iterator eit = edges_begin(); eit!=edges_end(); ++eit){
-		Point p1 = eit->vertex()->point();
-		Point p2 = eit->opposite()->vertex()->point();
-		if(p1!=p2){
-			segments.push_back(Segment(p1, p2));
-		}
-	}
-	return segments;
-}
-
-list<Triangle> HiMesh::get_triangles(){
-	list<Triangle> triangles;
-	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
-		Halfedge_const_handle e1 = f->halfedge();
-		Halfedge_const_handle e2 = e1->next();
-		do{
-			triangles.push_back(Triangle(e1->vertex()->point(),
-										 e2->vertex()->point(),
-										 e2->next()->vertex()->point()));
-			e2 = e2->next();
-		}while(e1!=e2->next());
-	}
-	return triangles;
-}
-
-float encode_triangle(Triangle &tri){
-	const float *t = (const float *)&tri;
-	float ret = 0.0;
-	for(int i=0;i<9;i++){
-		ret += i*(*(t+i));
-	}
-	return ret;
-}
-
-map<float, HiMesh::Face_iterator> HiMesh::get_fits(){
-	map<float, HiMesh::Face_iterator> fits;
-	for ( Facet_iterator f = facets_begin(); f != facets_end(); ++f){
-		Halfedge_const_handle e1 = f->halfedge();
-		Halfedge_const_handle e2 = e1->next();
-		do{
-			Triangle t(e1->vertex()->point(),
-						 e2->vertex()->point(),
-						 e2->next()->vertex()->point());
-
-			float fs = encode_triangle(t);
-			fits[fs] = f;
-			e2 = e2->next();
-		}while(e1!=e2->next());
-	}
-	return fits;
-}
-
-
-list<Point> HiMesh::get_vertices(){
-	list<Point> vertices;
-	for(HiMesh::Vertex_iterator v = vertices_begin(); v != vertices_end(); ++v){
-		vertices.push_back(v->point());
-	}
-	return vertices;
 }
 
 }

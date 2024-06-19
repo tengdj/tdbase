@@ -174,7 +174,7 @@ void write_triangles(vector<Triangle> &triangles, const char *path){
 	fprintf(fp, "%ld %ld 0\n", triangles.size()*3, triangles.size());
 	for(Triangle &t:triangles){
 		for(int i=0;i<3;i++){
-			fprintf(fp, "%f %f %f\n",t[i].x(),t[i].y(),t[i].z());
+			fprintf(fp, "%f %f %f\n",t[i][0],t[i][1],t[i][2]);
 		}
 	}
 	for(int i=0;i<triangles.size();i++){
@@ -191,7 +191,7 @@ void write_triangles(vector<Triangle *> &triangles, const char *path){
 	fprintf(fp, "%ld %ld 0\n", triangles.size()*3, triangles.size());
 	for(Triangle *t:triangles){
 		for(int i=0;i<3;i++){
-			fprintf(fp, "%f %f %f\n",(*t)[i].x(),(*t)[i].y(),(*t)[i].z());
+			fprintf(fp, "%f %f %f\n",(*t)[i][0],(*t)[i][1],(*t)[i][2]);
 		}
 	}
 	for(int i=0;i<triangles.size();i++){

@@ -100,9 +100,7 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 	}
 
 	// just for mark the voxels that are taken
-	vector<Voxel *> vessel_voxels = vessel->generate_voxels_skeleton(1000);
-
-	//tdbase::write_voxels(vessel_voxels, "/gisdata/3dpro/generated/voxels.OFF");
+	vector<Voxel *> vessel_voxels = vessel->generate_voxels_skeleton(50);
 
 	for(Voxel *v:vessel_voxels){
 		int xstart = v->low[0]/vessel_box.high[0]*nuclei_num[0];

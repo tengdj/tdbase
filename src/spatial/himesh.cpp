@@ -57,10 +57,10 @@ HiMesh::HiMesh(string &str, bool completeop):
 	}
 
 	// update the temporary data structures
-	updateMbb();
+	updateMBB();
 
 	if(HiMesh::calculate_method == HCT_BVHTREE){
-		updateBVH();
+		updateAABB();
 		if(global_ctx.verbose >= 2){
 			logt("building aabb tree", start);
 		}
@@ -154,7 +154,7 @@ HiMesh::~HiMesh(){
 	map_group.clear();
 }
 
-void HiMesh::updateMbb(){
+void HiMesh::updateMBB(){
 	mbb.reset();
 	for(Vertex_const_iterator vit = vertices_begin(); vit!=vertices_end(); ++vit){
 		Point p = vit->point();
@@ -162,7 +162,7 @@ void HiMesh::updateMbb(){
 	}
 }
 
-void HiMesh::updateBVH(){
+void HiMesh::updateAABB(){
 	if(triangle_tree){
 		aabb_triangles.clear();
 		delete triangle_tree;
@@ -180,12 +180,6 @@ size_t HiMesh::size_of_edges(){
 	return size_of_halfedges()/2;
 }
 
-float HiMesh::get_volume() {
-	Polyhedron *poly = this->to_triangulated_polyhedron();
-	float volume = CGAL::Polygon_mesh_processing::volume(*poly);
-	delete poly;
-	return volume;
-}
 
 size_t HiMesh::size_of_triangles(){
 	size_t tri_num = 0;
@@ -273,9 +267,9 @@ aab HiMesh::shift(float x, float y, float z){
 		Point p = vi->point();
 		vi->point() = Point(p[0]+x, p[1]+y, p[2]+z);
 	}
-	updateMbb();
+	updateMBB();
 	updateVFMap();
-	updateBVH();
+	updateAABB();
 	return mbb;
 }
 
@@ -288,20 +282,11 @@ aab HiMesh::shrink(float shrink){
 							(p[2]-mean_loc[2])/shrink+mean_loc[2]);
 
 	}
-	updateMbb();
+	updateMBB();
 	updateVFMap();
-	updateBVH();
+	updateAABB();
 
 	return mbb;
-}
-
-float HiMesh::area(){
-	list<Triangle> triangles = this->get_triangles();
-	float a = 0.0;
-	for(const Triangle &t:triangles){
-		a += tdbase::triangle_area(t);
-	}
-	return a;
 }
 
 }

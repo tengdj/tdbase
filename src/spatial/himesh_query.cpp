@@ -42,7 +42,7 @@ float HiMesh::distance(HiMesh *target){
 	float *tri1, *tri2;
 	size_t s1 = fill_triangles(tri1);
 	size_t s2 = target->fill_triangles(tri2);
-	res = TriDist_single(tri1, tri2, s1, s2);
+	res = MeshDist(tri1, tri2, s1, s2);
 	if(global_ctx.verbose>=1){
 		print_triangles(tri1+res.p1*9, 1);
 		print_triangles(tri2+res.p2*9, 1);
@@ -54,6 +54,7 @@ float HiMesh::distance(HiMesh *target){
 }
 
 bool HiMesh::intersect_tree(HiMesh *target){
+	list<Segment> segments = get_segments();
 	assert(segments.size()>0);
     for(Segment &s:segments){
     	if(target->get_aabb_tree_triangle()->do_intersect(s)){
@@ -83,6 +84,56 @@ float HiMesh::distance_tree(HiMesh *target){
 		}
 	}
 	return sqrt(min_dist);
+}
+
+float HiMesh::area(){
+	list<Triangle> triangles = get_triangles();
+	float a = 0.0;
+	for(const Triangle &t:triangles){
+		a += tdbase::triangle_area(t);
+	}
+	return a;
+}
+
+float HiMesh::get_volume() {
+	Polyhedron *poly = to_triangulated_polyhedron();
+	float volume = CGAL::Polygon_mesh_processing::volume(*poly);
+	delete poly;
+	return volume;
+}
+
+/*
+ *
+ * some utility functions for geometric computations
+ *
+ * */
+
+float HiMesh::distance(const tdbase::Point &p, const HiMesh::Face_iterator &fit){
+	const float point[3] = {p.x(), p.y(), p.z()};
+	HiMesh::Halfedge_const_handle hd = fit->halfedge();
+	HiMesh::Halfedge_const_handle h = hd->next();
+	float mindist = DBL_MAX;
+	while(h->next()!=hd){
+		Point p1 = hd->vertex()->point();
+		Point p2 = h->vertex()->point();
+		Point p3 = h->next()->vertex()->point();
+		h = h->next();
+		const float triangle[9] = {p1.x(), p1.y(), p1.z(),
+								   p2.x(), p2.y(), p2.z(),
+								   p3.x(), p3.y(), p3.z()};
+		float dist = PointTriangleDist(point, triangle);
+		mindist = min(mindist, dist);
+	}
+	return mindist;
+}
+
+// get the Euclid distance of two points
+float HiMesh::distance(const Point &p1, const Point &p2){
+	float dist = 0;
+	for(int i=0;i<3;i++){
+		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
+	}
+	return sqrt(dist);
 }
 
 }

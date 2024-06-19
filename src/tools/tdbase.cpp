@@ -81,21 +81,22 @@ static void profile_protruding(int argc, char **argv){
  * */
 static void get_voxel_boxes(int argc, char **argv){
 	struct timeval start = get_cur_time();
-	HiMesh *mesh = tdbase::read_mesh();
-	int voxel_num = 100;
-	if(argc>=2){
-		voxel_num = atoi(argv[1]);
+	HiMesh *mesh = read_mesh(argv[1], false);
+	int voxel_size = 100;
+	if(argc>=3){
+		voxel_size = atoi(argv[2]);
 	}
-	vector<Voxel *> voxels = mesh->generate_voxels_skeleton(voxel_num);
+	vector<Voxel *> voxels = mesh->generate_voxels_skeleton(voxel_size);
 
 	float vol = 0.0;
 	for(Voxel *v:voxels){
 		vol += v->volume();
 	}
 
-	log("%ld voxels are generated %f volumn", voxels.size(), vol);
-	write_voxels(voxels, "/gisdata/skeleton_voxels.off");
-	tdbase::write_box(mesh->get_mbb(), "/gisdata/aab.off");
+	logt("%ld voxels are generated %f volumn", start, voxels.size(), vol);
+
+	write_voxels(voxels, "/share/skeleton_voxels.off");
+	tdbase::write_box(mesh->get_mbb(), "/share/aab.off");
 	delete mesh;
 }
 
@@ -610,39 +611,9 @@ static void join(int argc, char **argv){
 }
 
 static void test(int argc, char **argv){
-//
-//	Point p1(1,2,3);
-//	Point p2(2,3,4);
-//	Point p3(3,4,5);
-//	Point p4(4,5,6);
-//
-//	replacing_group *r1 = new replacing_group();
-//	r1->removed_vertices.emplace(p1);
-//	r1->removed_vertices.emplace(p2);
-//
-//	replacing_group *r2 = new replacing_group();
-//	r2->removed_vertices.emplace(p3);
-//	r2->removed_vertices.emplace(p4);
-//
-//	unordered_set<replacing_group *> reps;
-//	reps.emplace(r1);
-//	reps.emplace(r2);
-//	auto r3 = merge1(reps);
-//	for(auto a:r3->removed_vertices){
-//		cout<<a<<endl;
-//	}
 
-//	Tile *tile = new Tile(argv[1],1);
-//	HiMesh *mesh = tile->get_mesh(0);
-//
-//	cout<<sizeof(Polyhedron)<<endl;
-//
-//	if(argc>2){
-//		int lod = atoi(argv[2]);
-//		assert(lod>=0 && lod<=100);
-//		mesh->decode(lod);
-//	}
-//	cout<<*mesh<<endl;
+	tdbase::Point p(0, 1, 2);
+
 
 }
 

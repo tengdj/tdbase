@@ -438,7 +438,7 @@ float TriDist(const float *S, const float *T)
 	}
 }
 
-result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1, const float *hausdorff2){
+result_container MeshDist(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1, const float *hausdorff2){
 	result_container ret;
 	ret.distance = DBL_MAX;
 	ret.min_dist = DBL_MAX;

@@ -165,42 +165,6 @@ bool HiMesh::isProtruding(const std::vector<Halfedge_const_handle> &polygon) con
 	return !is_recessing;
 }
 
-/**
-  * Test if a vertex is removable.
-  */
-bool HiMesh::isRemovable(Vertex_handle v) const
-{
-//	if(size_of_vertices()<10){
-//		return false;
-//	}
-	if (v != vh_departureConquest[0] && v != vh_departureConquest[1] &&
-		!v->isConquered() && v->vertex_degree() > 2 && v->vertex_degree() <= 8)
-	{
-	  //test convexity
-	  std::vector<Vertex_const_handle> vh_oneRing;
-	  std::vector<Halfedge_const_handle> heh_oneRing;
-
-	  vh_oneRing.reserve(v->vertex_degree());
-	  heh_oneRing.reserve(v->vertex_degree());
-	  //vh_oneRing.push_back(v);
-	  Halfedge_around_vertex_const_circulator hit(v->vertex_begin()), end(hit);
-	  do
-	  {
-			vh_oneRing.push_back(hit->opposite()->vertex());
-			heh_oneRing.push_back(hit->opposite());
-	  }
-	  while(++hit != end);
-	  //
-	  bool removable = !willViolateManifold(heh_oneRing);
-	  if(global_ctx.ppvp){
-		  removable &= isProtruding(heh_oneRing);
-	  }
-	  //removable &= isConvex(vh_oneRing);
-	  return removable;
-	}
-	return false;
-}
-
 /*
  *
  * Test whether a vertex is protruding
@@ -220,6 +184,7 @@ void HiMesh::profileProtruding(){
 		{
 		  heh_oneRing.push_back(hit->opposite());
 		}while(++hit != end);
+
 		if(isProtruding(heh_oneRing)){
 			protruding++;
 		}else{

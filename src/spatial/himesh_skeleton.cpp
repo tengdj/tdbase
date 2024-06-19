@@ -39,7 +39,7 @@ vector<Point> HiMesh::get_skeleton_points(int num_cores){
 			size_t closest = 0;
 			double cur_min = DBL_MAX;
 			for(size_t c=0;c<ret.size();c++){
-				double dist = get_distance(vertices[n], ret[c]);
+				double dist = distance(vertices[n], ret[c]);
 				if(dist < cur_min){
 					closest = c;
 					cur_min = dist;
@@ -66,25 +66,23 @@ vector<Point> HiMesh::get_skeleton_points(int num_cores){
 
 /*
  * get the skeleton of the polyhedron, and then group the triangles
- * or edges around the points of the skeleton, and generate a list
+ * around the points of the skeleton, and generate a list
  * of axis aligned boxes for those sets
  * */
-vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
-
-	voxel_num = std::max(1, voxel_num);
+vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_size){
 	timeval start = tdbase::get_cur_time();
+
+	int voxel_num = size_of_facets()/voxel_size+1;
 	vector<Voxel *> voxels;
 	aab box = get_mbb();
-	if(voxel_num<=1){
+	// avoid using too few voxels
+	if(voxel_num<=3){
 		Voxel *v = new Voxel();
 		v->set_box(box);
 		voxels.push_back(v);
 		return voxels;
 	}
 
-	//log("%d %d ",size_of_vertices(), voxel_num);
-	//assert(num_cores>3);
-	// this step takes 99 percent of the computation load
 	vector<Point> skeleton_points = get_skeleton_points(voxel_num);
 	for(int i=0;i<skeleton_points.size();i++){
 		Voxel *v = new Voxel();
@@ -94,39 +92,20 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		voxels.push_back(v);
 	}
 
-	// return one single box if less than 2 points are sampled
-	if(voxels.size()==0){
-		Voxel *v = new Voxel();
-		v->set_box(box);
-		voxels.push_back(v);
-		return voxels;
-	}else if(voxels.size()==1){
-		voxels[0]->set_box(box);
-		return voxels;
-	}
-
-	for ( Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
-		Point p1 = f->halfedge()->vertex()->point();
-		Point p2 = f->halfedge()->next()->vertex()->point();
-		Point p3 = f->halfedge()->next()->next()->vertex()->point();
-		Point p((p1[0]+p2[0]+p3[0])/3, (p1[1]+p2[1]+p3[1])/3,(p1[2]+p2[2]+p3[2])/3);
+	// assigning each facet to proper voxel
+	for (Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+		Point p = HiMesh::barycenter(f);
+		aab box = HiMesh::bounding_box(f);
 		float min_dist = DBL_MAX;
 		int gid = -1;
 		for(int j=0;j<skeleton_points.size();j++){
-			float cur_dist = 0;
-			for(int i=0;i<3;i++){
-				cur_dist += (skeleton_points[j][i]-p[i])*(skeleton_points[j][i]-p[i]);
-			}
+			float cur_dist = distance(p, skeleton_points[j]);
 			if(cur_dist<min_dist){
 				gid = j;
 				min_dist = cur_dist;
 			}
 		}
-		voxels[gid]->update(p1.x(),p1.y(),p1.z());
-		voxels[gid]->update(p2.x(),p2.y(),p2.z());
-		voxels[gid]->update(p3.x(),p3.y(),p3.z());
-
-		// we do not need the facets in each voxel, such that we do not need to insert one facet
+		voxels[gid]->update(box);
 		voxels[gid]->num_triangles++;
 	}
 
@@ -143,7 +122,75 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_num){
 		}
 	}
 	skeleton_points.clear();
+	return voxels;
+}
 
+/*
+ *
+ * conduct voxelization
+ *
+ * */
+vector<Voxel *> HiMesh::voxelization(int voxel_size){
+	vector<Voxel *> voxels;
+	if(voxel_size<=1){
+		Voxel *vox = new Voxel();
+		vox->set_box(get_mbb());
+		voxels.push_back(vox);
+	}
+
+	aab box = get_mbb();
+	float min_dim = std::min(box.high[2]-box.low[2], std::min(box.high[1]-box.low[1], box.high[0]-box.low[0]));
+	float div = (box.high[2]-box.low[2])*(box.high[1]-box.low[1])*(box.high[0]-box.low[0])/(min_dim*min_dim*min_dim);
+	float multi = std::pow(1.0*voxel_size/div, 1.0/3);
+
+	int dim[3];
+	for(int i=0;i<3;i++){
+		dim[i] = ((box.high[i]-box.low[i])*multi/min_dim+0.5);
+		assert(dim[i]>0);
+	}
+
+	log("%d %d %d",dim[0],dim[1],dim[2]);
+
+	bool *taken = new bool[dim[0]*dim[1]*dim[2]];
+	for(int i=0;i<dim[0]*dim[1]*dim[2];i++){
+		taken[i] = false;
+	}
+
+	unordered_set<Point> points;
+	int old_sampled_rate = sampling_rate;
+	sampling_rate = 40;
+	sample_points(points);
+	sampling_rate = old_sampled_rate;
+
+	for(Point p:points){
+		int x = (p.x()-box.low[0])*dim[0]/(box.high[0]-box.low[0]);
+		int y = (p.y()-box.low[1])*dim[1]/(box.high[1]-box.low[1]);
+		int z = (p.z()-box.low[2])*dim[2]/(box.high[2]-box.low[2]);
+
+		if(x==dim[0]){
+			x = dim[0]-1;
+		}
+		if(y==dim[1]){
+			y = dim[1]-1;
+		}
+		if(z==dim[2]){
+			z = dim[2]-1;
+		}
+		assert(x<dim[0] && y<dim[1] && z<dim[2]);
+
+		int idx = z*dim[1]*dim[0]+y*dim[0]+x;
+		if(!taken[idx]){
+			Voxel *vox = new Voxel();
+			vox->low[0] = x*(box.high[0]-box.low[0])/dim[0];
+			vox->low[1] = y*(box.high[1]-box.low[1])/dim[1];
+			vox->low[2] = z*(box.high[2]-box.low[2])/dim[2];
+			vox->high[0] = (x+1)*(box.high[0]-box.low[0])/dim[0];
+			vox->high[1] = (y+1)*(box.high[1]-box.low[1])/dim[1];
+			vox->high[2] = (z+1)*(box.high[2]-box.low[2])/dim[2];
+			voxels.push_back(vox);
+		}
+		taken[idx] = true;
+	}
 	return voxels;
 }
 

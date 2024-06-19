@@ -31,7 +31,7 @@ Tile::Tile(std::vector<HiMesh_Wrapper *> &objs){
 	for(HiMesh_Wrapper *wr:objs){
 		if(wr->type == MULTIMESH){
 			for(auto mesh:wr->get_meshes()){
-				data_size += mesh.second->evaluate_size();
+				data_size += sizeof(float)*3*mesh.second->size_of_triangles();
 			}
 		}
 	}

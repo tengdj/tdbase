@@ -153,8 +153,8 @@ bool PointInTriangleCylinder(const float *point, const float *triangle);
 void project_points_to_triangle_plane(const float *point, const float *triangle, float projected_point[3]);
 float PointTriangleDist(const float *point, const float *triangle);
 float TriDist(const float *S, const float *T);
-result_container TriDist_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
-void TriDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size,
+result_container MeshDist(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
+void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size,
 		               result_container *result, const uint32_t pair_num, const uint32_t element_num);
 
 result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);

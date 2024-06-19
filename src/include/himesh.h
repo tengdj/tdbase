@@ -78,6 +78,9 @@
 #include "geometry.h"
 #include "query_context.h"
 
+
+namespace tdbase{
+
 // Size of the compressed data buffer.
 // for configuration
 #define BUFFER_SIZE 10 * 1024 * 1024
@@ -128,7 +131,7 @@ typedef CGAL::AABB_traits<MyKernel, Primitive> Traits;
 typedef CGAL::AABB_tree<Traits> Tree;
 typedef Tree::Point_and_primitive_id Point_and_primitive_id;
 
-namespace tdbase{
+
 
 // the builder for reading the base mesh
 template <class HDS> class MyMeshBaseBuilder : public CGAL::Modifier_base<HDS>
@@ -490,9 +493,7 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	size_t dataOffset = 0; // the offset to read and write.
 
 	aab mbb; // the bounding box
-	SegTree *segment_tree = NULL;
 	TriangleTree *triangle_tree = NULL;
-	list<Segment> segments;
 	list<Triangle> aabb_triangles;
 
 	vector<MyTriangle *> original_facets;
@@ -516,7 +517,18 @@ public:
 	HiMesh(HiMesh *mesh): HiMesh(mesh->p_data, mesh->dataOffset, true){}
 	~HiMesh();
 
+	// some set/get functions
 	inline aab get_mbb(){ return mbb;}
+	inline bool is_compression_mode(){	return i_mode == COMPRESSION_MODE_ID;}
+	inline size_t get_data_size(){	return dataOffset;}
+	inline const char *get_data(){	return p_data;}
+	size_t size_of_triangles();
+	size_t size_of_edges();
+
+	/*
+	 * compress and decompress related functions
+	 * */
+	void pushHehInit();
 
 	void encode();
 	void decode(int lod = 100);
@@ -535,10 +547,10 @@ public:
 
 	// Compression geometry and connectivity tests.
 	bool isRemovable(Vertex_handle v) const;
-	bool isConvex(const std::vector<Vertex_const_handle> & polygon) const;
-	bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon) const;
-	bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon) const;
-	float removalError(Vertex_const_handle v, const std::vector<Vertex_const_handle> &polygon) const;
+	static bool isConvex(const std::vector<Vertex_const_handle> & polygon);
+	static bool isPlanar(const std::vector<Vertex_const_handle> &polygon, float epsilon);
+	static bool willViolateManifold(const std::vector<Halfedge_const_handle> &polygon);
+	static float removalError(Vertex_const_handle v, const std::vector<Vertex_const_handle> &polygon);
 
 	// Decompression
 	void startNextDecompresssionOp();
@@ -547,22 +559,6 @@ public:
 	void HausdorffDecodingStep();
 	void insertRemovedVertices();
 	void removeInsertedEdges();
-
-	// Utils
-	Vector computeNormal(Halfedge_const_handle heh_gate) const;
-	Vector computeNormal(const std::vector<Vertex_const_handle> & polygon) const;
-	Vector computeNormal(Point p[3]) const;
-	Vector computeNormal(Facet_const_handle f) const;
-	Vector computeVertexNormal(Halfedge_const_handle heh) const;
-	Point barycenter(Facet_const_handle f) const;
-	Point barycenter(Halfedge_handle heh_gate) const;
-	Point barycenter(const std::vector<Vertex_const_handle> &polygon) const;
-	unsigned vertexDegreeNotNew(Vertex_const_handle vh) const;
-	float triangleSurface(const Point p[]) const;
-	float edgeLen(Halfedge_const_handle heh) const;
-	float facePerimeter(const Face_handle fh) const;
-	float faceSurface(Halfedge_handle heh) const;
-	void pushHehInit();
 
 	// IOs
 	void writeFloat(float f);
@@ -586,96 +582,104 @@ public:
 	void write_to_off(const char *path);
 	void write_to_wkt(const char *path);
 
-
-	//tdbase
-	void computeHausdorfDistance();
-	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
-	void profileProtruding();
-
-	pair<float, float> collectGlobalHausdorff(STAT_TYPE type = MAX);
-	pair<float, float> computeHausdorfDistance(HiMesh *original);
-
-	void updateMbb();
-	void updateVFMap();
-	void updateBVH();
-
+	/*
+	 *
+	 * adjust or convert the mesh
+	 *
+	 * */
+	aab shift(float x_sft, float y_sft, float z_sft);
+	aab shrink(float ratio);
+	HiMesh *clone_mesh();
 	Polyhedron *to_polyhedron();
 	Polyhedron *to_triangulated_polyhedron();
-	vector<Point> get_skeleton_points(int num_skeleton_points);
 
-	vector<Voxel *> generate_voxels_skeleton(int voxel_size = NUM_FACET_PER_VOXEL);
-	vector<Voxel *> voxelization(int voxel_size);
-
-
-
-	float get_volume();
-	size_t size_of_triangles();
-
-	// get the elements
+	// retrieve the elements
+	size_t fill_vertices(float *&vertices);
 	size_t fill_segments(float *&segments);
 	size_t fill_triangles(float *&triangles);
 	size_t fill_hausdorf_distances(float *&hausdorf);
-	pair<float, float> get_triangle_hausdorf(int tri_id);
 	size_t fill_voxels(vector<Voxel *> &voxels);
-	size_t fill_vertices(float *&vertices);
+
+	list<Point> get_vertices();
 	list<Segment> get_segments();
 	list<Triangle> get_triangles();
-	map<float, Face_iterator> get_fits();
-	list<Point> get_vertices();
+	map<float, Face_iterator> encode_facets();
 
-	// query
-	SegTree *get_aabb_tree_segment();
+	/*
+	 * query-related functions
+	 *
+	 * */
 	TriangleTree *get_aabb_tree_triangle();
-	Tree *get_aabb_tree();
+	void clear_aabb_tree();
+
 	float distance(HiMesh *target);
 	float distance_tree(HiMesh *target);
 	float distance_tree(const Point &p);
 	bool intersect(HiMesh *target);
 	bool intersect_tree(HiMesh *target);
+	float area();
+	float get_volume();
 
-	void clear_aabb_tree();
+	// indexes
+	vector<Point> get_skeleton_points(int num_skeleton_points);
+	vector<Voxel *> generate_voxels_skeleton(int voxel_size = NUM_FACET_PER_VOXEL);
+	vector<Voxel *> voxelization(int voxel_size);
 
-	size_t size_of_edges();
+	// meta information of the mesh
+	void updateMBB();
+	void updateVFMap();
+	void updateAABB();
 
+	/*
+	 *
+	 * TDBase and 3DPro related functions
+	 *
+	 * */
+
+	// 3dpro
+	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
+	void profileProtruding();
+
+	//tdbase
+	pair<float, float> computeHausdorfDistance(HiMesh *original);
+	void computeHausdorfDistance();
+
+	pair<float, float> collectGlobalHausdorff(STAT_TYPE type = MAX);
 	float getProxyHausdorffDistance();
 	float getHausdorffDistance();
-
-//	pair<float, float> getHausdorfDistance();
-//	pair<float, float> getNextHausdorfDistance();
-
-	bool is_compression_mode(){
-		return i_mode == COMPRESSION_MODE_ID;
-	}
-	size_t get_data_size(){
-		return dataOffset;
-	}
-	size_t evaluate_size(){
-		return sizeof(float)*3*this->size_of_triangles();
-	}
-	const char *get_data(){
-		return p_data;
-	}
-
-	aab shift(float x_sft, float y_sft, float z_sft);
-	aab shrink(float ratio);
-	HiMesh *clone_mesh();
 
 	// the triangles each point associated
 	map<Point, vector<MyTriangle *>> VFmap;
 
-	// equals the number of points sampled for each triangle
-	static uint32_t sampling_rate;
-	inline float sampling_gap(){
-		uint32_t num_triangle = this->size_of_triangles();
-		return area()/(num_triangle*sampling_rate);
-	}
+	// Hausdorff calculation and storage related
+	static uint32_t sampling_rate; // equals the number of points sampled for each triangle
 	static Hausdorff_Computing_Type calculate_method;
 	static bool use_byte_coding;
 
+	float sampling_gap(){
+		uint32_t num_triangle = size_of_triangles();
+		return area()/(num_triangle*sampling_rate);
+	}
 	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit);
 	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
 	void sample_points(unordered_set<Point> &points);
-	float area();
+
+
+
+	// static utility functions
+	static Vector computeNormal(Halfedge_const_handle heh_gate);
+	static Vector computeNormal(const std::vector<Vertex_const_handle> & polygon);
+	static Vector computeNormal(Point p[3]);
+	static Vector computeNormal(Facet_const_handle f);
+	static Vector computeVertexNormal(Halfedge_const_handle heh);
+	static Point barycenter(Facet_const_handle f);
+	static Point barycenter(Halfedge_handle heh_gate);
+	static Point barycenter(const std::vector<Vertex_const_handle> &polygon);
+	static aab bounding_box(Facet_const_handle f);
+	static float triangleSurface(const Point p[]);
+
+	static float distance(const Point &p, const Face_iterator &fit);
+	static float distance(const Point &p1, const Point &p2);
 };
 
 class MyTriangle{
@@ -839,15 +843,6 @@ Polyhedron *parse_polyhedron(string &str);
 Polyhedron *read_polyhedron();
 extern Polyhedron *read_polyhedron(const char *path);
 vector<Polyhedron *> read_polyhedrons(const char *path, size_t load_num = LONG_MAX);
-
-// get the Euclid distance of two points
-inline float get_distance(const Point &p1, const Point &p2){
-	float dist = 0;
-	for(int i=0;i<3;i++){
-		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
-	}
-	return dist;
-}
 
 }
 

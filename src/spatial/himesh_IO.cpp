@@ -93,7 +93,7 @@ float HiMesh::readFloat()
 void HiMesh::writePoint(Point &p)
 {
 	for (unsigned i = 0; i < 3; ++i){
-		writeFloat(p[i]);
+		writeFloat((float)p[i]);
 	}
 }
 
