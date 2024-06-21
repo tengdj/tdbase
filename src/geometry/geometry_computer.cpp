@@ -159,7 +159,7 @@ void geometry_computer::get_distance(geometry_param &cc){
 void *TriInt_unit(void *params_void){
 	geometry_param *param = (geometry_param *)params_void;
 	for(int i=0;i<param->pair_num;i++){
-		param->results[i] = TriInt_single(param->data+param->offset_size[4*i]*9,
+		param->results[i] = MeshInt(param->data+param->offset_size[4*i]*9,
 									    param->data+param->offset_size[4*i+2]*9,
 									    param->offset_size[4*i+1],
 									    param->offset_size[4*i+3],

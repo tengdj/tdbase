@@ -12,7 +12,7 @@ namespace tdbase{
 
 query_context global_ctx;
 
-void print_triangles(float *triangle, size_t size){
+void HiMesh::print_triangles(float *triangle, size_t size){
 	printf("OFF\n%ld %ld 0\n\n",size*3,size);
 	for(size_t i=0;i<size*3;i++){
 		printf("%f %f %f\n", *(triangle+3*i), *(triangle+3*i+1), *(triangle+3*i+2));
@@ -27,7 +27,7 @@ bool HiMesh::intersect(HiMesh *target){
 	float *tri1, *tri2;
 	size_t s1 = fill_triangles(tri1);
 	size_t s2 = target->fill_triangles(tri2);
-	result_container res = TriInt_single(tri1, tri2, s1, s2);
+	result_container res = MeshInt(tri1, tri2, s1, s2);
 	if(res.intersected && global_ctx.verbose>=1){
 		print_triangles(tri1+res.p1*9, 1);
 		print_triangles(tri2+res.p2*9, 1);
@@ -108,6 +108,18 @@ float HiMesh::get_volume() {
  *
  * */
 
+float HiMesh::distance(const Point &p1, const Point &p2){
+	float dist = 0;
+	for(int i=0;i<3;i++){
+		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
+	}
+	return sqrt(dist);
+}
+
+float HiMesh::distance(const Point &p, const Triangle &t){
+	return PointTriangleDist((const float *)&p, (const float *)&t);
+}
+
 float HiMesh::distance(const tdbase::Point &p, const HiMesh::Face_iterator &fit){
 	const float point[3] = {p.x(), p.y(), p.z()};
 	HiMesh::Halfedge_const_handle hd = fit->halfedge();
@@ -127,14 +139,16 @@ float HiMesh::distance(const tdbase::Point &p, const HiMesh::Face_iterator &fit)
 	return mindist;
 }
 
-// get the Euclid distance of two points
-float HiMesh::distance(const Point &p1, const Point &p2){
-	float dist = 0;
-	for(int i=0;i<3;i++){
-		dist += (p2[i]-p1[i])*(p2[i]-p1[i]);
-	}
-	return sqrt(dist);
+float HiMesh::distance(const Triangle &t1, const Triangle &t2){
+	return TriDist((const float *)&t1, (const float *)&t2);
 }
+
+bool HiMesh::intersect(const Triangle &t1, const Triangle &t2){
+	return TriInt((const float *)&t1, (const float *)&t2);
+}
+
+
+
 
 }
 

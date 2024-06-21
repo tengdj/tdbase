@@ -100,14 +100,6 @@ VdS(float Vr[3], const float V[3], float s)
   Vr[2] = V[2] / s;
 }
 
-inline float distance(const float *p1, const float *p2){
-	float cur_dist = 0;
-	for(int t=0;t<3;t++){
-		cur_dist += (p1[t]-p2[t])*(p1[t]-p2[t]);
-	}
-	return cur_dist;
-}
-
 class result_container{
 public:
 	uint32_t p1;
@@ -155,6 +147,13 @@ public:
 	}
 };
 
+inline float distance(const float *p1, const float *p2){
+	float cur_dist = 0;
+	for(int t=0;t<3;t++){
+		cur_dist += (p1[t]-p2[t])*(p1[t]-p2[t]);
+	}
+	return cur_dist;
+}
 
 void compute_normal(float *Norm, const float *triangle);
 bool PointInTriangleCylinder(const float *point, const float *triangle);
@@ -164,7 +163,8 @@ float TriDist(const float *S, const float *T);
 result_container MeshDist(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
 void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float * hausdorff, result_container *result, const uint32_t pair_num, const uint32_t element_num);
 
-result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
+bool TriInt(const float *S, const float *T);
+result_container MeshInt(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1 = NULL, const float *hausdorff2 = NULL);
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float *hausdorff, result_container *result, const uint32_t batch_num, const uint32_t triangle_num);
 
 class geometry_computer{

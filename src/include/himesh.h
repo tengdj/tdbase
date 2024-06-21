@@ -671,8 +671,13 @@ public:
 	static aab bounding_box(Facet_const_handle f);
 	static float triangleSurface(const Point p[]);
 
+	static float distance(const Point &p, const Triangle &t);
 	static float distance(const Point &p, const Face_iterator &fit);
 	static float distance(const Point &p1, const Point &p2);
+	static float distance(const Triangle &t1, const Triangle &t2);
+	static bool intersect(const Triangle &t1, const Triangle &t2);
+
+	static void print_triangles(float *triangle, size_t size);
 };
 
 class MyTriangle{

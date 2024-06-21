@@ -480,16 +480,28 @@ result_container MeshDist(const float *data1, const float *data2, size_t size1, 
 	return ret;
 }
 
-result_container TriInt_single(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1, const float *hausdorff2){
+result_container MeshInt(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1, const float *hausdorff2){
 	result_container res;
 	res.intersected = false;
 
 	res.distance = DBL_MAX;
 
+	if(!hausdorff1 || !hausdorff2){
+		for(size_t i=0;i<size1;i++){
+			for(size_t j=0;j<size2;j++){
+				if(TriInt(data1+9*i, data2+9*j)){
+					res.intersected = true;
+					res.p1 = i;
+					res.p2 = j;
+					return res;
+				}
+			}
+		}
+		return res;
+	}
+
 	for(size_t i=0;i<size1;i++){
 		for(size_t j=0;j<size2;j++){
-			//todo: the TriInt function does not work correctly
-			//if(TriInt(data1+9*i, data2+9*j))
 			float dist = TriDist(data1+9*i, data2+9*j);
 			float phdist1 = 0;
 			float phdist2 = 0;
@@ -503,9 +515,6 @@ result_container TriInt_single(const float *data1, const float *data2, size_t si
 				res.intersected = true;
 				res.p1 = i;
 				res.p2 = j;
-				//log("computed %d",counter);
-//				print_triangle(data1+9*i);
-//				print_triangle(data2+9*i);
 				return res;
 			}
 		}

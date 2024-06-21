@@ -542,6 +542,12 @@ static void shrink(int argc, char **argv){
 	cout<<*mesh;
 }
 
+static void shift(int argc, char **argv){
+	HiMesh *mesh = read_mesh(argv[1]);
+	mesh->shift(mesh->get_mbb().length()/4, mesh->get_mbb().width()/4, mesh->get_mbb().height()/4);
+	cout<<*mesh;
+}
+
 static void join(int argc, char **argv){
 	struct timeval start = get_cur_time();
 
@@ -718,6 +724,8 @@ int main(int argc, char **argv){
 		convert(argc-1,argv+1);
 	}else if(strcmp(argv[1],"shrink") == 0){
 		shrink(argc-1,argv+1);
+	}else if(strcmp(argv[1],"shift") == 0){
+		shift(argc-1,argv+1);
 	}else if(strcmp(argv[1],"hausdorff") == 0){
 		hausdorff(argc-1,argv+1);
 	}else{

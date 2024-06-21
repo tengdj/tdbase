@@ -243,7 +243,7 @@ void HiMesh::computeHausdorfDistance(){
 				for(auto p:points){
 					float dist = DBL_MAX;
 					for(MyTriangle *t:triangles){
-						dist = min(dist, tdbase::PointTriangleDist((const float *)&p, (const float *)&t->tri));
+						dist = min(dist, distance(p, t->tri));
 					}
 					curhdist = max(curhdist, dist);
 				}
@@ -279,7 +279,7 @@ void HiMesh::computeHausdorfDistance(){
 				for(auto p:points){
 					float dist = DBL_MAX;
 					for(MyTriangle *t:triangles){
-						dist = min(dist, tdbase::PointTriangleDist((const float *)&p, (const float *)&t->tri));
+						dist = min(dist, distance(p, t->tri));
 					}
 					if(triangles.size() == 0){
 						dist = 0;
@@ -343,7 +343,7 @@ void HiMesh::computeHausdorfDistance(){
 					Face_iterator fit;
 					for(Face_iterator &ft:t->facets){
 						for(Triangle &tt:ft->triangles){
-							float d = tdbase::PointTriangleDist((const float *)&p, (const float *)&tt);
+							float d = distance(p, tt);
 							if(d<dist){
 								dist = d;
 								fit = ft;
@@ -393,8 +393,9 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 	float dist = DBL_MAX;
 	const float area_unit = sampling_gap();
 
-	// associate each compressed facet with a list of original triangles, vice versa
-	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
+	/*
+	 * computing the hausdorff distance
+	 * */	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 
 		struct timeval start = get_cur_time();
 
@@ -423,9 +424,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 	}
 
 	/*
-	 *
-	 * for computing the proxy hausdorf distance
-	 *
+	 * computing the proxy hausdorf distance
 	 * */
 	list<Triangle> triangles = get_triangles();
 	map<float, HiMesh::Face_iterator> fits = encode_facets();
@@ -438,7 +437,6 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original){
 		// for each sampled point, find the closest facet to it
 		// and it will be proxy facet of that point
 		for(const Point &p:t->sampled_points){
-
 			TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
 			float dist = distance(p, ppid.first);
 			Triangle tri = *ppid.second;

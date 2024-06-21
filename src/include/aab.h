@@ -90,6 +90,11 @@ public:
 	float diagonal_length();
 	float volume();
 	range distance(const aab &b);
+
+	inline float length(){return high[0] - low[0];};
+	inline float width(){return high[1] - low[1];};
+	inline float height(){return high[2] - low[2];};
+
 };
 
 
