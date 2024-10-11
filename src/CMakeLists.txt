@@ -58,6 +58,8 @@ target_link_libraries(lindstrom_turk PRIVATE gmp)
 
 if(DEFINED ENV{USE_GPU})
     message (STATUS "cuda")
+    set(CMAKE_CUDA_ARCHITECTURES 86)
+    set(CMAKE_CUDA_COMPILER /usr/bin/nvcc)
     enable_language("CUDA")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_GPU")
     add_executable (tdbase tools/tdbase.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
@@ -65,15 +67,23 @@ if(DEFINED ENV{USE_GPU})
     
     add_executable (simulator tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
 	target_link_libraries(simulator PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX cuda)
+
+    add_executable (simulator_int tools/simulator_int.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
+	target_link_libraries(simulator_int PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX cuda)
 else()
     message (STATUS "non-cuda")
     add_executable (tdbase tools/tdbase.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
     target_link_libraries(tdbase PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
     add_executable (simulator tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
 	target_link_libraries(simulator PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
+
+    add_executable (simulator_int tools/simulator_int.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
+	target_link_libraries(simulator_int PRIVATE gmp mpfr ${Boost_LIBRARIES} ZLIB::ZLIB pthread OpenMP::OpenMP_CXX)
 endif()
     
 add_executable (wrap simplifier/wrap.cpp)
 target_link_libraries(wrap PRIVATE gmp mpfr)
 
 add_executable (mymesh ${MYMESH_SRCS})
+
+add_executable (evaluate tools/evaluate.cpp)

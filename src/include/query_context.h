@@ -48,6 +48,7 @@ public:
 	bool use_aabb = false;
 	bool use_gpu = false;
 	bool ppvp = false;
+	bool print_result = false;
 	int hausdorf_level = 2; // 0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level hausdorff
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
@@ -100,22 +101,22 @@ public:
 
 	void report(double t){
 
-		cout<<"total:\t"<<t<<endl;
-		cout<<"index:\t"<<t*index_time/overall_time<<endl;
-		cout<<"decode:\t"<<t*decode_time/overall_time<<endl;
-		cout<<"packing:\t"<<t*packing_time/overall_time<<endl;
-		cout<<"computation:\t"<<t*computation_time/overall_time<<endl;
-		cout<<"updatelist:\t"<<t*updatelist_time/overall_time<<endl;
-		cout<<"other:\t"<<t*(overall_time-index_time-decode_time-packing_time-computation_time-updatelist_time)/overall_time<<endl<<endl;
-		printf("analysis\t%f\t%f\t%f\n",
+		cerr<<"total:\t"<<t<<endl;
+		cerr<<"index:\t"<<t*index_time/overall_time<<endl;
+		cerr<<"decode:\t"<<t*decode_time/overall_time<<endl;
+		cerr<<"packing:\t"<<t*packing_time/overall_time<<endl;
+		cerr<<"computation:\t"<<t*computation_time/overall_time<<endl;
+		cerr<<"updatelist:\t"<<t*updatelist_time/overall_time<<endl;
+		cerr<<"other:\t"<<t*(overall_time-index_time-decode_time-packing_time-computation_time-updatelist_time)/overall_time<<endl<<endl;
+		fprintf(stderr, "analysis\t%f\t%f\t%f\n",
 				(t*index_time/overall_time)/repeated_times,
 				(t*(decode_time+packing_time+updatelist_time)/overall_time)/repeated_times,
 				(t*computation_time/overall_time)/repeated_times);
-		cout<<"decode:\t"<<decode_time<<endl;
-		cout<<"packing:\t"<<packing_time<<endl;
-		printf("#objects:\t%ld\n results:%ld(\t%.3f)\n", obj_count, result_count, 1.0*result_count/obj_count);
+		cerr<<"decode:\t"<<decode_time<<endl;
+		cerr<<"packing:\t"<<packing_time<<endl;
+		fprintf(stderr, "#objects:\t%ld\n results:%ld(\t%.3f)\n", obj_count, result_count, 1.0*result_count/obj_count);
 
-		printf("%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
+		fprintf(stderr, "%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
 				t*index_time/overall_time,
 				t*decode_time/overall_time,
 				t*packing_time/overall_time,
@@ -157,7 +158,8 @@ static query_context parse_args(int argc, char **argv){
 		// execution setup
 		("cn", po::value<int>(&ctx.num_compute_thread), "number of threads for geometric computation for each tile")
 		("threads,n", po::value<int>(&ctx.num_thread), "number of threads for processing tiles")
-		("verbose,v", po::value<int>(&ctx.verbose), "verbose level")
+		("verbose,v", po::value<int>(&ctx.verbose), "verbose level")		
+		("print_result", "print result to standard out")
 		;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);

@@ -128,8 +128,6 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 
 HiMesh_Wrapper *organize_data(HiMesh *mesh, float shift[3]){
 
-	vector<Voxel *> local_voxels;
-
 	HiMesh *local_mesh = mesh->clone_mesh();
 	local_mesh->shift(shift[0], shift[1], shift[2]);
 	local_mesh->encode();
@@ -141,7 +139,6 @@ HiMesh_Wrapper *organize_data(HiMesh *mesh, float shift[3]){
 HiMesh_Wrapper *organize_data(map<int, HiMesh *> &meshes, float shift[3]){
 
 	map<int, HiMesh *> local_meshes;
-	vector<Voxel *> local_voxels;
 
 	for(auto m:meshes){
 		HiMesh *nmesh = m.second->clone_mesh();

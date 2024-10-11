@@ -174,8 +174,10 @@ size_t HiMesh_Wrapper::get_voxel_size(int id, int lod){
 void HiMesh_Wrapper::report_result(HiMesh_Wrapper *result){
 	pthread_mutex_lock(&lock);
 	results.push_back(result);
+	if (global_ctx.print_result) {
+		printf("%ld %ld\n", id, result->id);
+	}
 	pthread_mutex_unlock(&lock);
-	//log("%d find %d", id, result->id);
 }
 
 }
