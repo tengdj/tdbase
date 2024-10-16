@@ -43,6 +43,7 @@ vector<HiMesh_Wrapper *> generated_vessels;
 pthread_mutex_t mylock;
 
 bool multi_lods = false;
+bool allow_intersection = true;
 
 void load_prototype(const char *nuclei_path, const char *vessel_path){
 
@@ -84,6 +85,9 @@ void load_prototype(const char *nuclei_path, const char *vessel_path){
 		nuclei = read_mesh(nuclei_path);
 	}
 	assert(nuclei);
+	if (allow_intersection) {
+		nuclei->expand(3);
+	}
 	mbb = nuclei->get_mbb();
 	nuclei_box = nuclei->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
 
@@ -174,42 +178,63 @@ int generate_nuclei(float base[3]){
 	//log("%d %d %d",total_slots,num_nuclei_per_vessel,available_count);
 	assert(available_count>num_nuclei_per_vessel && "should have enough slots");
 
-	const int gap = available_count/num_nuclei_per_vessel;
+	if (!allow_intersection) {
+		const int gap = available_count / num_nuclei_per_vessel;
 
-	int skipped = 0;
-	int idx = 0;
+		int skipped = 0;
+		int idx = 0;
 
-	while(idx<total_slots){
-		if(taken[idx]){
+		while (idx < total_slots) {
+			if (taken[idx]) {
+				idx++;
+				continue;
+			}
+			if (skipped++ == gap) {
+				generated++;
+				skipped = 0;
+				taken[idx] = true;
+
+				int z = idx / (nuclei_num[0] * nuclei_num[1]);
+				int y = (idx % (nuclei_num[0] * nuclei_num[1])) / nuclei_num[0];
+				int x = (idx % (nuclei_num[0] * nuclei_num[1])) % nuclei_num[0];
+
+				shift[0] = x * nuclei_box.high[0] + base[0];
+				shift[1] = y * nuclei_box.high[1] + base[1];
+				shift[2] = z * nuclei_box.high[2] + base[2];
+
+				HiMesh_Wrapper* wr;
+				if (multi_lods) {
+					wr = organize_data(nucleis, shift);
+				}
+				else {
+					wr = organize_data(nuclei, shift);
+				}
+
+				pthread_mutex_lock(&mylock);
+				generated_nucleis.push_back(wr);
+				pthread_mutex_unlock(&mylock);
+			}
 			idx++;
-			continue;
 		}
-		if(skipped++ == gap){
-			generated++;
-			skipped = 0;
-			taken[idx] = true;
-
-			int z = idx/(nuclei_num[0]*nuclei_num[1]);
-			int y = (idx%(nuclei_num[0]*nuclei_num[1]))/nuclei_num[0];
-			int x = (idx%(nuclei_num[0]*nuclei_num[1]))%nuclei_num[0];
-
-			shift[0] = x*nuclei_box.high[0]+base[0];
-			shift[1] = y*nuclei_box.high[1]+base[1];
-			shift[2] = z*nuclei_box.high[2]+base[2];
-
-			HiMesh_Wrapper *wr;
-			if(multi_lods){
+	}
+	else {
+		while (generated++<num_nuclei_per_vessel) {
+			shift[0] = tdbase::get_rand_double() * vessel_box.high[0] + base[0];
+			shift[1] = tdbase::get_rand_double() * vessel_box.high[1] + base[1];
+			shift[2] = tdbase::get_rand_double() * vessel_box.high[2] + base[2];
+			HiMesh_Wrapper* wr;
+			if (multi_lods) {
 				wr = organize_data(nucleis, shift);
-			}else{
+			}
+			else {
 				wr = organize_data(nuclei, shift);
 			}
-
 			pthread_mutex_lock(&mylock);
 			generated_nucleis.push_back(wr);
 			pthread_mutex_unlock(&mylock);
 		}
-		idx++;
 	}
+	
 	return generated;
 }
 
@@ -266,6 +291,7 @@ int main(int argc, char **argv){
 		("help,h", "produce help message")
 		("ppvp,p", "enable the ppvp mode, for simulator and join query")
 		("multi_lods,m", "the input are polyhedrons in multiple files")
+		("allow_intersection,i", "allow the nuclei can intersect with other nuclei or vessel")
 		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
 		("vessel,v", po::value<string>(&vessel_pt), "path to the vessel prototype file")
 		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
@@ -293,6 +319,9 @@ int main(int argc, char **argv){
 	}
 	if(vm.count("multi_lods")){
 		multi_lods = true;
+	}
+	if (vm.count("allow_intersection")) {
+		allow_intersection = true;
 	}
 
 	struct timeval start = get_cur_time();

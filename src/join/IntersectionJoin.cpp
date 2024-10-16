@@ -110,7 +110,7 @@ void SpatialJoin::intersect(query_context ctx){
 						cand_count += (ctx.results[index].distance>0);
 					}else if(global_ctx.hausdorf_level==2){
 						// the minimum possible distance already been computed
-						cand_count += (ctx.results[index].distance>0);
+						cand_count += (ctx.results[index].min_dist>0);
 					}
 					index++;
 				}

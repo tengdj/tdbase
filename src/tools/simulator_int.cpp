@@ -26,7 +26,7 @@ map<int, HiMesh *> nucleis;
 
 aab nuclei_box;
 int num_nuclei = 10000;
-float amplify_ratio = 10.0;
+int amplify_ratio = 10;
 
 vector<HiMesh_Wrapper *> generated_nucleis;
 
@@ -135,7 +135,7 @@ int main(int argc, char **argv){
 		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
 		("threads,n", po::value<int>(&num_threads), "number of threads")
 		("nu", po::value<int>(&num_nuclei), "number of nuclei")
-		("amplify_ratio", po::value<float>(&amplify_ratio), "how big, in terms of nuclei size, in each dimension")
+		("amplify_ratio", po::value<int>(&amplify_ratio), "how big, in terms of nuclei size, in each dimension")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
 		("sample_rate,r", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation (default 30)")
 		("calculate_method", po::value<int>(&cm), "hausdorff distance calculating method [0NULL|1BVH(default)|2ASSOCIATE|3ASSOCIATE_CYLINDER]")
@@ -162,7 +162,7 @@ int main(int argc, char **argv){
 
 	char nuclei_output[256];
 	char config[100];
-	sprintf(config,"nu%d_%.1f_r%d_cm%d",
+	sprintf(config,"nu%d_%d_r%d_cm%d",
 			num_nuclei,amplify_ratio, HiMesh::sampling_rate, HiMesh::calculate_method);
 
 	sprintf(nuclei_output,"%s_n_%s.dt",output_path.c_str(),config);

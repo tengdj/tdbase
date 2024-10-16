@@ -592,6 +592,10 @@ public:
 	 * */
 	aab shift(float x_sft, float y_sft, float z_sft);
 	aab shrink(float ratio);
+	aab expand(float ratio) {
+		assert(ratio>0);
+		return shrink(1/ratio);
+	}
 	HiMesh *clone_mesh();
 	Polyhedron *to_polyhedron();
 	Polyhedron *to_triangulated_polyhedron();

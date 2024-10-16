@@ -184,7 +184,9 @@ static query_context parse_args(int argc, char **argv){
 	if(vm.count("ppvp")){
 		ctx.ppvp = true;
 	}
-
+	if (vm.count("print_result")) {
+		ctx.print_result = true;
+	}
 	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);
 
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
