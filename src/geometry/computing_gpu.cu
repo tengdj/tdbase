@@ -621,7 +621,7 @@ void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset
 			TriDist_cuda<<<pair_num, dim2>>>(d_data, d_os, d_hausdorff, d_dist, tri_offset_1, tri_offset_2);
 			check_execution();
 		}
-		cout<<pair_num<<" "<< tri_offset_2 <<" "<<dim2<<" "<< max_size_1 <<" "<< max_size_2 << endl;
+		//cout<<pair_num<<" "<< tri_offset_2 <<" "<<dim2<<" "<< max_size_1 <<" "<< max_size_2 << endl;
 	}
 	cudaDeviceSynchronize();
 	//logt("distances computations", start);

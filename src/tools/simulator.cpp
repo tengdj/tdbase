@@ -266,7 +266,6 @@ void *generate_unit(void *arg){
 		if(multi_lods){
 			wr = organize_data(vessels, base);
 		}else{
-			cout << vessel->size_of_facets() << endl;
 			wr = organize_data(vessel, base);
 		}
 		pthread_mutex_lock(&mylock);
