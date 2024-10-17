@@ -35,5 +35,5 @@ int main(int argc, char **argv) {
     }
     file2.close();
 
-    printf("%d %d %d\n", total1, total2, matched);
+    printf("%d,%d,%d\n", total1, total2, matched);
 }

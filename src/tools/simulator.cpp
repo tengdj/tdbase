@@ -43,7 +43,7 @@ vector<HiMesh_Wrapper *> generated_vessels;
 pthread_mutex_t mylock;
 
 bool multi_lods = false;
-bool allow_intersection = true;
+bool allow_intersection = false;
 
 void load_prototype(const char *nuclei_path, const char *vessel_path){
 
