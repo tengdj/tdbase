@@ -73,6 +73,8 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_size){
 	timeval start = tdbase::get_cur_time();
 
 	int voxel_num = size_of_facets()/voxel_size+1;
+	//cout << voxel_num <<" "<< size_of_facets() << " " << voxel_size << endl;
+	
 	vector<Voxel *> voxels;
 	aab box = get_mbb();
 	// avoid using too few voxels

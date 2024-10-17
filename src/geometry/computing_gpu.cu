@@ -578,7 +578,6 @@ void TriInt_cuda(const float* data, const uint32_t* offset_size,
  * */
 void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float *hausdorff,
 		               result_container *result, const uint32_t pair_num, const uint32_t element_num){
-
 	struct timeval start = get_cur_time();
 	assert(gpu);
 	cudaSetDevice(gpu->device_id);
@@ -614,14 +613,15 @@ void MeshDist_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset
 	
 	//logt("copying data to GPU", start);
 
+#define MAX_DIM 1024
 	// compute the distance in parallel
-	for(uint32_t tri_offset_2=0;tri_offset_2<max_size_2;tri_offset_2+=512){
-		uint32_t dim2 = min(max_size_2-tri_offset_2, (uint32_t)512);
+	for(uint32_t tri_offset_2=0;tri_offset_2<max_size_2;tri_offset_2+= MAX_DIM){
+		uint32_t dim2 = min(max_size_2-tri_offset_2, (uint32_t)MAX_DIM);
 		for(uint32_t tri_offset_1=0;tri_offset_1<max_size_1;tri_offset_1++){
 			TriDist_cuda<<<pair_num, dim2>>>(d_data, d_os, d_hausdorff, d_dist, tri_offset_1, tri_offset_2);
 			check_execution();
 		}
-		//cout<<pair_num<<" "<<cur_offset_2<<" "<<dim2<<endl;
+		cout<<pair_num<<" "<< tri_offset_2 <<" "<<dim2<<" "<< max_size_1 <<" "<< max_size_2 << endl;
 	}
 	cudaDeviceSynchronize();
 	//logt("distances computations", start);

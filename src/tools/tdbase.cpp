@@ -439,12 +439,13 @@ static void intersect(int argc, char **argv){
 }
 
 static void print(int argc, char **argv){
-	assert(argc>2);
-	Tile *tile = new Tile(argv[1],atoi(argv[2])+1);
-	assert(tile->num_objects()>atoi(argv[2]));
+	assert(argc>1);
+	int num = argc > 2 ? atoi(argv[2]) : 0;
+	Tile *tile = new Tile(argv[1],num+1);
+	assert(tile->num_objects()>num);
 	int lod = argc>3?atoi(argv[3]):100;
-	tile->get_mesh(atoi(argv[2]))->decode(lod);
-	cout<<*tile->get_mesh(atoi(argv[2]));
+	tile->get_mesh(num)->decode(lod);
+	cout<<*tile->get_mesh(num);
 	delete tile;
 }
 

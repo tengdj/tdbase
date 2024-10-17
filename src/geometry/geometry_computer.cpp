@@ -55,6 +55,7 @@ gpu_info *geometry_computer::request_gpu(int min_size, bool force){
 				pthread_mutex_lock(&info->lock);
 				if(!info->busy){
 					info->busy = true;
+					// will be released in release_gpu() function
 					return info;
 				}
 				pthread_mutex_unlock(&info->lock);

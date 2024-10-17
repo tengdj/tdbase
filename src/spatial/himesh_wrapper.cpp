@@ -74,7 +74,6 @@ HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 			box.update(*v);
 		}
 	}
-
 	pthread_mutex_init(&lock, NULL);
 }
 
@@ -97,6 +96,7 @@ HiMesh_Wrapper::HiMesh_Wrapper(HiMesh *m){
 	type = COMPRESSED;
 	mesh = m;
 	voxels = m->generate_voxels_skeleton();
+	m->encode();
 }
 
 HiMesh_Wrapper::~HiMesh_Wrapper(){

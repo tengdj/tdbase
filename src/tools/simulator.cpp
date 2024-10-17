@@ -134,7 +134,6 @@ HiMesh_Wrapper *organize_data(HiMesh *mesh, float shift[3]){
 
 	HiMesh *local_mesh = mesh->clone_mesh();
 	local_mesh->shift(shift[0], shift[1], shift[2]);
-	local_mesh->encode();
 
 	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_mesh);
 	return wr;
@@ -267,6 +266,7 @@ void *generate_unit(void *arg){
 		if(multi_lods){
 			wr = organize_data(vessels, base);
 		}else{
+			cout << vessel->size_of_facets() << endl;
 			wr = organize_data(vessel, base);
 		}
 		pthread_mutex_lock(&mylock);
