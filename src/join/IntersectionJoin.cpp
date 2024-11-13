@@ -12,8 +12,9 @@ namespace tdbase{
 vector<candidate_entry *> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 	vector<candidate_entry *> candidates;
 	OctreeNode *tree = tile2->get_octree();
-	vector<int> candidate_ids;
+#pragma omp parallel for
 	for(int i=0;i<tile1->num_objects();i++){
+		vector<int> candidate_ids;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
 
 		tree->query_intersect(&(wrapper1->box), candidate_ids);
@@ -51,12 +52,13 @@ vector<candidate_entry *> SpatialJoin::mbb_intersect(Tile *tile1, Tile *tile2){
 		candidate_ids.clear();
 		// save the candidate list if needed
 		if(ce->candidates.size()>0){
+#pragma omp critical
 			candidates.push_back(ce);
 		}else{
 			delete ce;
 		}
+		candidate_ids.clear();
 	}
-	candidate_ids.clear();
 
 	return candidates;
 }

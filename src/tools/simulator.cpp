@@ -387,7 +387,6 @@ int main(int argc, char **argv){
 		vessel_tile->dump_compressed(vessel_output);
 	}
 
-
 	// clear
 	delete vessel;
 	delete nuclei;

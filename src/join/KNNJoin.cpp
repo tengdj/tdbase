@@ -109,8 +109,13 @@ bool result_sort(pair<int, int> a, pair<int, int> b){
 }
 
 void evaluate_candidate_lists(vector<candidate_entry *> &candidates, query_context &ctx){
+
+#pragma omp parallel for
+	for (int i = 0; i < candidates.size();i++) {
+		update_candidate_list_knn(candidates[i], ctx);
+	}
+
 	for(vector<candidate_entry *>::iterator it=candidates.begin();it!=candidates.end();){
-		update_candidate_list_knn(*it, ctx);
 		if((*it)->candidate_confirmed==ctx.knn){
 			delete *it;
 			it = candidates.erase(it);
@@ -122,10 +127,12 @@ void evaluate_candidate_lists(vector<candidate_entry *> &candidates, query_conte
 
 vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx){
 	vector<candidate_entry *> candidates;
-	vector<pair<int, range>> candidate_ids;
 	OctreeNode *tree = tile2->get_octree();
 	size_t tile1_size = min(tile1->num_objects(), ctx.max_num_objects1);
+
+#pragma omp parallel for
 	for(int i=0;i<tile1_size;i++){
+		vector<pair<int, range>> candidate_ids;
 		// for each object
 		//1. use the distance between the mbbs of objects as a
 		//	 filter to retrieve candidate objects
@@ -171,6 +178,7 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 		//log("%ld %ld", candidate_ids.size(),candidate_list.size());
 		// save the candidate list
 		if(ce->candidates.size()>0){
+#pragma omp critical
 			candidates.push_back(ce);
 		}else{
 			delete ce;

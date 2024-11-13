@@ -23,10 +23,11 @@ inline void print_candidate_within(candidate_entry *cand){
 
 vector<candidate_entry *> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, query_context &ctx){
 	vector<candidate_entry *> candidates;
-	vector<pair<int, range>> candidate_ids;
 	OctreeNode *tree = tile2->get_octree();
 	size_t tile1_size = min(tile1->num_objects(), ctx.max_num_objects1);
+#pragma omp parallel for
 	for(int i=0;i<tile1_size;i++){
+		vector<pair<int, range>> candidate_ids;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
 		tree->query_within(&(wrapper1->box), candidate_ids, ctx.within_dist);
 		if(candidate_ids.empty()){
@@ -78,6 +79,7 @@ vector<candidate_entry *> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, quer
 		}
 		// save the candidate list
 		if(ce->candidates.size()>0){
+#pragma omp critical
 			candidates.push_back(ce);
 		}else{
 			delete ce;
