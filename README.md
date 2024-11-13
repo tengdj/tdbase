@@ -4,49 +4,49 @@ we propose a novel multi-level progressive 3D compression method, which is desig
 install the prerequisite libraries: cmake CGAL GMP Boost(program_options) ZLIB OpenMP
 
 ```console
-foo@bar: cd src/
-foo@bar: mkdir build
-foo@bar: cd build/
-foo@bar: cmake ../
-foo@bar: make simulator
-foo@bar: make tdbase
+cd src/
+mkdir build
+cd build/
+cmake ../
+make simulator
+make tdbase
 
 ```
 
 ## generate synthetic dataset
 generate two .dt files, one for nuclei (foo_n_nv1000_nu200_vs100_r30_cm1.dt) and one for vessel (foo_v_nv1000_nu200_vs100_r30_cm1.dt). --nv specifies the number of vessels in the dataset while --nu specifies the number of nuclei around each vessel. Thus the generated dataset contains 1000 vessels and 200,000 nuclei
 ```console
-foo@bar: ./simulator -u ../../data/nuclei.pt -v ../../data/vessel.pt -o foo --nv 1000 --nu 200
+./simulator -u ../../data/nuclei.pt -v ../../data/vessel.pt -o foo --nv 1000 --nu 200
 
 ```
 
 ## run test
 conduct a 3NN join. -g specifies that the geometry computation are conducted with GPU. 
 ```console
-foo@bar: ./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 -g --lod 20 40 60 80 100
+./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 -g --lod 20 40 60 80 100
 
 ```
 
 
 conduct a 3NN join with the progressive refinement disabled by checking only the highest LOD polyhedrons.
 ```console
-foo@bar: ./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 -g --lod 100
+./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 -g --lod 100
 
 ```
 
 conduct a 3NN join with the geometric computation conducted using 24 threads (--cn 24)
 ```console
-foo@bar: ./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 --cn 24 --lod 20 40 60 80 100
+./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 --cn 24 --lod 20 40 60 80 100
 
 ```
 conduct a within distance join which conducts a within 50 distance join.
 ```console
-foo@bar:./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q within --within_dist 50 -g --lod 20 40 60 80 100 
+./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt --tile2 foo_v_nv1000_nu200_vs100_r30_cm1.dt -q within --within_dist 50 -g --lod 20 40 60 80 100 
 
 ```
 conduct a 3NN self join.
 ```console
-foo@bar: ./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 -g --lod 20 40 60 80 100
+./tdbase join --tile1 foo_n_nv1000_nu200_vs100_r30_cm1.dt -q nn --knn 3 -g --lod 20 40 60 80 100
 
 ```
 
