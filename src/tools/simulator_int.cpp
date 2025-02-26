@@ -125,11 +125,10 @@ int main(int argc, char **argv){
 
 	pthread_mutex_init(&mylock, NULL);
 
-	int cm = HiMesh::calculate_method;
 	po::options_description desc("joiner usage");
 	desc.add_options()
 		("help,h", "produce help message")
-		("ppvp,p", "enable the ppvp mode, for simulator and join query")
+		("hausdorff", "enable Hausdorff distance calculation")
 		("multi_lods,m", "the input are polyhedrons in multiple files")
 		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
 		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
@@ -138,9 +137,8 @@ int main(int argc, char **argv){
 		("amplify_ratio", po::value<int>(&amplify_ratio), "how big, in terms of nuclei size, in each dimension")
 		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
 		("sample_rate,r", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation (default 30)")
-		("calculate_method", po::value<int>(&cm), "hausdorff distance calculating method [0NULL|1BVH(default)|2ASSOCIATE|3ASSOCIATE_CYLINDER]")
 		;
-	HiMesh::calculate_method = (Hausdorff_Computing_Type)cm;
+	HiMesh::use_hausdorff = vm.count("hausdorff");
 
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -151,9 +149,6 @@ int main(int argc, char **argv){
 	}
 	po::notify(vm);
 
-	if(vm.count("ppvp")){
-		global_ctx.ppvp = true;
-	}
 	if(vm.count("multi_lods")){
 		multi_lods = true;
 	}
@@ -162,8 +157,8 @@ int main(int argc, char **argv){
 
 	char nuclei_output[256];
 	char config[100];
-	sprintf(config,"nu%d_%d_r%d_cm%d",
-			num_nuclei,amplify_ratio, HiMesh::sampling_rate, HiMesh::calculate_method);
+	sprintf(config,"nu%d_%d_r%d",
+			num_nuclei,amplify_ratio, HiMesh::sampling_rate);
 
 	sprintf(nuclei_output,"%s_n_%s.dt",output_path.c_str(),config);
 

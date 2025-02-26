@@ -6,7 +6,6 @@
  */
 
 #include <algorithm>
-#include <zlib.h>
 #include <thread>
 
 #include "SpatialJoin.h"
@@ -51,29 +50,6 @@ static void to_sql(int argc, char **argv){
 		tile->dump_sql(path, table);
 	}
 	delete tile;
-}
-
-
-/*
- * profiling the distribution of protruding vertices
- *
- * */
-static void profile_protruding(int argc, char **argv){
-
-	int start_lod = 0;
-	int end_lod = 10;
-	if(argc>1){
-		start_lod = atoi(argv[1]);
-		end_lod = start_lod;
-	}
-	assert(start_lod>=0&&start_lod<=10);
-	// Init the random number generator.
-	log("start compressing");
-	struct timeval starttime = get_cur_time();
-	HiMesh *compressed = read_mesh();
-	assert(compressed->size_of_border_edges()&&"must be manifold");
-	log("%d vertices %d edges %d faces",compressed->size_of_vertices(), compressed->size_of_halfedges()/2, compressed);
-	compressed->profileProtruding();
 }
 
 /*
@@ -227,13 +203,7 @@ static void profile_decoding(int argc, char **argv){
 	float *vertices = NULL;
 	size_t size = himesh->fill_vertices(vertices);
 	logt("fill vertices %d with %d bytes (%ld bytes)", starttime, size, size*3*sizeof(float),himesh->get_data_size());
-	char *zcomp = new char[size*3*sizeof(float)];
-	unsigned long compressedsize;
-	for(int i=1;i<10;i++){
-		int nResult = compress2((unsigned char *)zcomp, &compressedsize, (unsigned char *)vertices, size*3*sizeof(float),i);
-		logt("compress %d level %ld bytes",starttime,i,compressedsize);
-	}
-
+	
 	aab box = himesh->get_mbb();
 	tdbase::write_box(box, "/gisdata/box.off");
 
@@ -364,10 +334,6 @@ static void compress(int argc, char **argv){
 		log("%d",HiMesh::sampling_rate);
 	}
 
-	if(argc>3){
-		int cm = atoi(argv[3]);
-		HiMesh::calculate_method = (tdbase::Hausdorff_Computing_Type)cm;
-	}
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1], true);
 	logt("compress", start);
@@ -685,8 +651,6 @@ int main(int argc, char **argv){
 		to_wkt(argc-1,argv+1);
 	}else if(strcmp(argv[1],"to_sql") == 0){
 		to_sql(argc-1,argv+1);
-	}else if(strcmp(argv[1],"profile_protruding") == 0){
-		profile_protruding(argc-1,argv+1);
 	}else if(strcmp(argv[1],"get_voxel_boxes") == 0){
 		get_voxel_boxes(argc-1,argv+1);
 	}else if(strcmp(argv[1],"profile_distance") == 0){

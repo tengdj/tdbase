@@ -11,8 +11,6 @@
 
 namespace tdbase{
 
-int replacing_group::counter = 0;
-int replacing_group::alive = 0;
 
 // compression mode
 HiMesh::HiMesh(string &str, bool completeop):
@@ -59,16 +57,13 @@ HiMesh::HiMesh(string &str, bool completeop):
 	// update the temporary data structures
 	updateMBB();
 
-	if(HiMesh::calculate_method == HCT_BVHTREE){
+	if(HiMesh::use_hausdorff){
 		updateAABB();
 		if(global_ctx.verbose >= 2){
 			logt("building aabb tree", start);
 		}
-	}
-
-	if(HiMesh::calculate_method != HCT_NULL){
-		updateVFMap();
-		if(global_ctx.verbose >= 2){
+		updateOrigin_Facets();
+		if (global_ctx.verbose >= 2) {
 			logt("init triangles", start);
 		}
 	}
@@ -109,10 +104,6 @@ HiMesh::~HiMesh(){
 	   delete[] p_data;
 	}
 	clear_aabb_tree();
-	for(replacing_group *rg:map_group){
-		delete rg;
-	}
-	map_group.clear();
 }
 
 void HiMesh::updateMBB(){
@@ -135,12 +126,8 @@ void HiMesh::updateAABB(){
 	triangle_tree->accelerate_distance_queries();
 }
 
-void HiMesh::updateVFMap(){
+void HiMesh::updateOrigin_Facets(){
 
-	for(auto &vf:VFmap){
-		vf.second.clear();
-	}
-	VFmap.clear();
 	for(MyTriangle *tri:original_facets){
 		delete tri;
 	}
@@ -156,7 +143,6 @@ void HiMesh::updateVFMap(){
 		Halfedge_handle startH = vit->halfedge();
 		Halfedge_handle h = startH->opposite(), end(h);
 
-		vector<MyTriangle *> triangles;
 		do {
 			Face_handle f = h->face();
 			if(f->tri == NULL){
@@ -165,11 +151,7 @@ void HiMesh::updateVFMap(){
 				original_facets.push_back(f->tri);
 				sample_points(t, f->tri->sampled_points, area_unit);
 			}
-			triangles.push_back(f->tri);
 		} while((h=h->opposite()->next()) != end);
-		if(triangles.size()>0){
-			VFmap[p] = triangles;
-		}
 	}
 }
 
@@ -265,7 +247,7 @@ aab HiMesh::shift(float x, float y, float z){
 		vi->point() = Point(p[0]+x, p[1]+y, p[2]+z);
 	}
 	updateMBB();
-	updateVFMap();
+	updateOrigin_Facets();
 	updateAABB();
 	return mbb;
 }
@@ -280,7 +262,7 @@ aab HiMesh::shrink(float shrink){
 
 	}
 	updateMBB();
-	updateVFMap();
+	updateOrigin_Facets();
 	updateAABB();
 
 	return mbb;

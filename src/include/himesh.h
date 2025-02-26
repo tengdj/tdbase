@@ -301,8 +301,6 @@ inline float triangle_area(const Triangle &tri){
 	return triangle_area(tri[0], tri[1], tri[2]);
 }
 
-class replacing_group;
-
 class MyTriangle;
 
 // My face type has a vertex flag
@@ -413,7 +411,6 @@ public:
 	inline float getHausdorff(){
 		return hausdorff_distance;
 	}
-	replacing_group *rg = NULL;
 	vector<Triangle> triangles;
 	MyTriangle *tri = NULL;
 };
@@ -435,14 +432,6 @@ struct MyItems : public CGAL::Polyhedron_items_3
     struct Halfedge_wrapper {
         typedef MyHalfedge<Refs> Halfedge;
     };
-};
-
-// four types of hausdorff computing methods
-enum Hausdorff_Computing_Type{
-	HCT_NULL = 0,
-	HCT_BVHTREE = 1,
-	HCT_ASSOCIATE = 2,
-	HCT_ASSOCIATE_CYLINDER = 3
 };
 
 enum STAT_TYPE{
@@ -495,22 +484,14 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	vector<pair<float, float>> globalHausdorfDistance;
 	vector<Point> removedPoints;
 
-	//
-	unordered_set<replacing_group *> map_group;
-
 	bool own_data = true;
-
-	// the triangles each point associated
-	map<Point, vector<MyTriangle *>> VFmap;
 
 public:
 	// Hausdorff calculation and storage related
 	static uint32_t sampling_rate; // equals the number of points sampled for each triangle
-	static Hausdorff_Computing_Type calculate_method;
+	static bool use_hausdorff;
 	static bool use_byte_coding;
-
 public:
-
 	// constructor for encoding
 	HiMesh(string &str, bool completeop = false);
 
@@ -542,7 +523,6 @@ public:
 	void InsertedEdgeCodingStep();
 	void HausdorffCodingStep();
 
-	void merge(unordered_set<replacing_group *> &reps, replacing_group *);
 	Halfedge_handle vertexCut(Halfedge_handle startH);
 	void encodeInsertedEdges(unsigned i_operationId);
 	void encodeRemovedVertices(unsigned i_operationId);
@@ -633,19 +613,15 @@ public:
 	vector<Voxel *> voxelization(int voxel_size);
 
 	// meta information of the mesh
-	void updateMBB();
-	void updateVFMap();
-	void updateAABB();
+	void updateMBB(); // bounding box
+	void updateOrigin_Facets(); // the facets for the original mesh before simplified
+	void updateAABB(); // update the AABB tree for current mesh
 
 	/*
 	 *
-	 * TDBase and 3DPro related functions
+	 * TDBase-related functions
 	 *
 	 * */
-
-	// 3dpro
-	bool isProtruding(const std::vector<Halfedge_const_handle> &polygon) const;
-	void profileProtruding();
 
 	//tdbase
 	pair<float, float> computeHausdorfDistance(HiMesh *original);
@@ -716,31 +692,6 @@ public:
 		processed = false;
 		facets.clear();
 	}
-};
-
-class replacing_group{
-public:
-	replacing_group(){
-		//cout<<this<<" is constructed"<<endl;
-		id = counter++;
-		alive++;
-	}
-	~replacing_group(){
-		removed_vertices.clear();
-		alive--;
-	}
-
-	void print(){
-		log("%5d (%2d refs %4d alive) - removed_vertices: %ld", id, ref, alive, removed_vertices.size());
-	}
-
-	unordered_set<Point> removed_vertices;
-	//unordered_set<Triangle> removed_triangles;
-	int id;
-	int ref = 0;
-
-	static int counter;
-	static int alive;
 };
 
 enum Decoding_Type{

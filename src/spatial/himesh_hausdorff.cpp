@@ -53,7 +53,7 @@ pair<float, float> HiMesh::collectGlobalHausdorff(STAT_TYPE type){
 }
 
 uint32_t HiMesh::sampling_rate = 30;
-Hausdorff_Computing_Type HiMesh::calculate_method = HCT_BVHTREE;
+bool HiMesh::use_hausdorff = true;
 bool HiMesh::use_byte_coding = true;
 
 void sample_points_triangle(const Triangle &tri, unordered_set<Point> &points, int num_points){
@@ -111,7 +111,7 @@ void HiMesh::sample_points(unordered_set<Point> &points){
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 		sample_points(fit, points, area_unit);
 	}
-	log("%.5f %.10f (%d*%d)=%d %d", area(), area_unit, size_of_triangles(), sampling_rate, size_of_triangles()*sampling_rate, points.size());
+	//log("%.5f %.10f (%d*%d)=%d %d", area(), area_unit, size_of_triangles(), sampling_rate, size_of_triangles()*sampling_rate, points.size());
 }
 
 Triangle expand(Triangle &tri){
@@ -167,18 +167,14 @@ map<float, HiMesh::Face_iterator> HiMesh::encode_facets(){
 // TODO: a critical function, need to be further optimized
 void HiMesh::computeHausdorfDistance(){
 	// do not compute
-	if(calculate_method == HCT_NULL ){
+	if(!use_hausdorff){
 		globalHausdorfDistance.push_back({0, 0});
 		return;
 	}
 
-	float dist = DBL_MAX;
-
 	struct timeval start = get_cur_time();
 
 	double smp_tm = 0;
-	double usetree_tm = 0;
-	double collect_triangle_tm = 0;
 	double caldist_tm = 0;
 	double ph_caldist_tm = 0.0;
 
@@ -188,7 +184,7 @@ void HiMesh::computeHausdorfDistance(){
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 
 		struct timeval start = get_cur_time();
-		if(fit->rg==NULL || !fit->isSplittable()){
+		if(!fit->isSplittable()){
 			continue;
 		}
 		fit->resetHausdorff();
@@ -197,102 +193,18 @@ void HiMesh::computeHausdorfDistance(){
 
 		for(Triangle &cur_tri:fit->triangles) {
 			float curhdist = 0.0;
-
 			/* sampling the current triangle */
 			unordered_set<Point> points;
 			sample_points(cur_tri, points, area_unit);
 			smp_tm += get_time_elapsed(start, true);
 
 			// simply calculate against the BVH-tree built on the original mesh
-			if(HiMesh::calculate_method == HCT_BVHTREE)
-			{
-				for(auto p:points){
-					float dist = distance_tree(p);
-					curhdist = max(curhdist, dist);
-				}
-				caldist_tm += get_time_elapsed(start, true);
+			for(auto p:points){
+				float dist = distance_tree(p);
+				curhdist = max(curhdist, dist);
 			}
-
-			// to collect the triangles associated
-			// todo: this part of the latency is involved by an earlier
-			// version of the implementation, will be removed in a future release
-			// which will record all the removed facets instead of vertices
-			vector<MyTriangle *> triangles;
-			if(HiMesh::calculate_method != HCT_BVHTREE){
-				for(const Point &p:fit->rg->removed_vertices){
-					for(MyTriangle *t:VFmap[p]){
-						if(!t->processed){
-							t->processed = true;
-							triangles.push_back(t);
-						}
-					}
-				}
-				for(const Point &p:fit->rg->removed_vertices){
-					for(MyTriangle *t:VFmap[p]){
-						t->processed = false;
-					}
-				}
-				assert(triangles.size()>0);
-				collect_triangle_tm += get_time_elapsed(start, true);
-			}
-
-			// use the triangles associated for calculating the Hasudorff distance
-			if(HiMesh::calculate_method == HCT_ASSOCIATE)
-			{
-				// brute-forcely calculate
-				for(auto p:points){
-					float dist = DBL_MAX;
-					for(MyTriangle *t:triangles){
-						dist = min(dist, distance(p, t->tri));
-					}
-					curhdist = max(curhdist, dist);
-				}
-				caldist_tm += get_time_elapsed(start, true);
-			}
-
-			uint32_t original_num = triangles.size();
-			// further filter with the Triangle Cylinder
-			if(HiMesh::calculate_method == HCT_ASSOCIATE_CYLINDER){
-				for(vector<MyTriangle *>::iterator iter = triangles.begin();iter!=triangles.end();){
-					bool keep = false;
-					for(const Point &p:(*iter)->sampled_points){
-						if(tdbase::PointInTriangleCylinder((const float *)&p, (const float *)&cur_tri)){
-							keep = true;
-							break;
-						}
-					}
-					if(!keep){
-						triangles.erase(iter);
-					}else{
-						iter++;
-					}
-				}
-				collect_triangle_tm += get_time_elapsed(start, true);
-			}
-
-			for(MyTriangle *t:triangles){
-				t->add_facet(fit);
-			}
-
-			if(HiMesh::calculate_method == HCT_ASSOCIATE_CYLINDER) {
-				// brute-forcely calculate
-				for(auto p:points){
-					float dist = DBL_MAX;
-					for(MyTriangle *t:triangles){
-						dist = min(dist, distance(p, t->tri));
-					}
-					if(triangles.size() == 0){
-						dist = 0;
-					}
-					curhdist = max(curhdist, dist);
-				}
-				caldist_tm += get_time_elapsed(start, true);
-			}
-
-			//log("#triangles: %ld-%d hdist: %.3f-%.3f-%.3f", original_num, triangles.size(), curhdist[0], curhdist[1], curhdist[2]);
-			// collect results
+			caldist_tm += get_time_elapsed(start, true);
 			fit_hdist = max(fit_hdist, curhdist);
-			triangles.clear();
 		}
 		// update the hausdorff distance
 		fit->setHausdorff(fit_hdist + sqrt(area_unit/2.0));
@@ -303,65 +215,28 @@ void HiMesh::computeHausdorfDistance(){
 	 * for computing the proxy hausdorf distance
 	 *
 	 * */
-	if(HiMesh::calculate_method == HCT_BVHTREE){
-		list<Triangle> triangles = get_triangles();
-		map<float, HiMesh::Face_iterator> fits = encode_facets();
-		TriangleTree *tree = new TriangleTree(triangles.begin(), triangles.end());
-		tree->build();
-		tree->accelerate_distance_queries();
-		struct timeval ss = get_cur_time();
-		for(MyTriangle *t:original_facets){
-			// for each sampled point, find the closest facet to it
-			// and it will be proxy facet of that point
-			for(const Point &p:t->sampled_points){
-				TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
-				float dist = distance(p, ppid.first);
-				Triangle tri = *ppid.second;
-				float fs = encode_triangle(tri);
-				assert(fits.find(fs)!=fits.end());
-				fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(area_unit/2.0));
+	list<Triangle> triangles = get_triangles();
+	map<float, HiMesh::Face_iterator> fits = encode_facets();
+	TriangleTree *tree = new TriangleTree(triangles.begin(), triangles.end());
+	tree->build();
+	tree->accelerate_distance_queries();
+	struct timeval ss = get_cur_time();
+	for(MyTriangle *t:original_facets){
+		// for each sampled point, find the closest facet to it
+		// and it will be proxy facet of that point
+		for(const Point &p:t->sampled_points){
+			TriangleTree::Point_and_primitive_id ppid = tree->closest_point_and_primitive(p);
+			float dist = distance(p, ppid.first);
+			Triangle tri = *ppid.second;
+			float fs = encode_triangle(tri);
+			assert(fits.find(fs)!=fits.end());
+			fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(area_unit/2.0));
 
 //				assert(fits.find(*ppid.second) != fits.end());
 //				fits[*ppid.second]->updateProxyHausdorff(sqrt(dist));
-			}
 		}
-		//logt("BVH %f", ss, sqrt(phdist));
 	}
 
-	if(HiMesh::calculate_method == HCT_ASSOCIATE || HiMesh::calculate_method == HCT_ASSOCIATE_CYLINDER){
-		for(MyTriangle *t:original_facets){
-			//log("%d", t->facets.size());
-			if(t->facets.size()>0){
-				Face_iterator cur_fit;
-				Point cur_p;
-				// calculate the Hausdorf distance
-				float hdist = 0.0;
-				// for each sampled point, find the closest facet to it
-				// and it will be proxy facet of that point
-				for(const Point &p:t->sampled_points){
-					float dist = DBL_MAX;
-					Face_iterator fit;
-					for(Face_iterator &ft:t->facets){
-						for(Triangle &tt:ft->triangles){
-							float d = distance(p, tt);
-							if(d<dist){
-								dist = d;
-								fit = ft;
-							}
-						}
-					}
-					fit->updateProxyHausdorff(dist+sqrt(area_unit/2.0));
-					// get the maximum
-					if(hdist < dist){
-						hdist = dist;
-						cur_p = p;
-						cur_fit = fit;
-					}
-				}
-			}
-			t->reset();
-		}
-	}
 	ph_caldist_tm += get_time_elapsed(start, true);
 
 	pair<float, float> current_hausdorf = collectGlobalHausdorff();
@@ -371,9 +246,9 @@ void HiMesh::computeHausdorfDistance(){
 	if(global_ctx.verbose>=3)
 	{
 		if(i_curDecimationId%2!=0){
-			log("step: %2d smp: %.3f tri: %.3f h_cal: %.3f ph_cal:%.3f avg_hdist#vertices: %ld #facets: %ld",
+			log("step: %2d smp: %.3f h_cal: %.3f ph_cal:%.3f avg_hdist#vertices: %ld #facets: %ld",
 					i_curDecimationId,
-					smp_tm, collect_triangle_tm, caldist_tm,ph_caldist_tm,
+					smp_tm, caldist_tm,ph_caldist_tm,
 					size_of_vertices(), size_of_triangles());
 			log("encode %d:\t[%.2f %.2f]\t%ld", i_curDecimationId, current_hausdorf.first, current_hausdorf.second, size_of_vertices());
 

@@ -47,7 +47,6 @@ public:
 	int repeated_times = 1;
 	bool use_aabb = false;
 	bool use_gpu = false;
-	bool ppvp = false;
 	bool print_result = false;
 	int hausdorf_level = 2; // 0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level hausdorff
 	size_t max_num_objects1 = LONG_MAX;
@@ -137,7 +136,6 @@ static query_context parse_args(int argc, char **argv){
 		("help,h", "produce help message")
 		("aabb", "calculate distance with aabb")
 		("gpu,g", "compute with GPU")
-		("ppvp,p", "enable the ppvp mode, for simulator and join query")
 		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
 		("disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones")
 
@@ -169,24 +167,12 @@ static query_context parse_args(int argc, char **argv){
 	}
 	po::notify(vm);
 
-	if(vm.count("aabb")){
-		ctx.use_aabb = true;
-	}
-	if(vm.count("gpu")){
-		ctx.use_gpu = true;
-	}
-	if(vm.count("counter_clock")){
-		ctx.counter_clock = true;
-	}
-	if(vm.count("disable_byte_encoding")){
-		ctx.disable_byte_encoding = true;
-	}
-	if(vm.count("ppvp")){
-		ctx.ppvp = true;
-	}
-	if (vm.count("print_result")) {
-		ctx.print_result = true;
-	}
+	ctx.use_aabb = vm.count("aabb");
+	ctx.use_gpu = vm.count("gpu");
+	ctx.counter_clock = vm.count("counter_clock");
+	ctx.disable_byte_encoding = vm.count("disable_byte_encoding");
+	ctx.print_result = vm.count("print_result");
+
 	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);
 
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){

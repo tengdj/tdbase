@@ -73,13 +73,9 @@ bool HiMesh::isRemovable(Vertex_handle v) const {
 	  {
 			vh_oneRing.push_back(hit->opposite()->vertex());
 			heh_oneRing.push_back(hit->opposite());
-	  }
-	  while(++hit != end);
+	  } while(++hit != end);
 	  //
 	  bool removable = !willViolateManifold(heh_oneRing);
-	  if(global_ctx.ppvp){
-		  removable &= isProtruding(heh_oneRing);
-	  }
 	  //removable &= isConvex(vh_oneRing);
 	  return removable;
 	}
@@ -187,32 +183,11 @@ void HiMesh::startNextCompresssionOp() {
 		// tdbase: compute and encode the Hausdorff distance for all the facets in this LOD
 		computeHausdorfDistance();
 		HausdorffCodingStep();
+		// finish this round of decimation and start the next
 		RemovedVertexCodingStep();
 		InsertedEdgeCodingStep();
-		// finish this round of decimation and start the next
 	    i_curDecimationId++; // Increment the current decimation operation id.
 	}
-}
-
-void HiMesh::merge(unordered_set<replacing_group *> &reps, replacing_group *ret){
-	assert(ret);
-	for(replacing_group *r:reps){
-		ret->removed_vertices.insert(r->removed_vertices.begin(), r->removed_vertices.end());
-		//ret->removed_triangles.insert(r->removed_triangles.begin(), r->removed_triangles.end());
-		//ret->removed_facets.insert(r->removed_facets.begin(), r->removed_facets.end());
-		if(map_group.find(r)==map_group.end()){
-			log("%d is not found", r->id);
-		}
-		assert(map_group.find(r)!=map_group.end());
-		if(r->ref == 0){
-			map_group.erase(r);
-			delete r;
-			r = NULL;
-		}
-	}
-	//log("merged %ld reps with %ld removed vertices", reps.size(), ret->removed_vertices.size());
-	reps.clear();
-	map_group.emplace(ret);
 }
 
 /**
@@ -227,9 +202,6 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 	assert(!v->isConquered());
 	assert(v->vertex_degree()>2);
 
-	unordered_set<replacing_group *> rep_groups;
-	replacing_group *new_rg = new replacing_group();
-
 	Halfedge_handle h = startH->opposite(), end(h);
 	int removed = 0;
 	do
@@ -237,17 +209,6 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 		assert(!h->is_border());
 		Face_handle f = h->facet();
 		assert(!f->isConquered()); //we cannot cut again an already cut face, or a NULL patch
-
-		/*
-		 * the old facets around the vertex will be removed in the vertex cut operation
-		 * and being replaced with a merged one. but the replacing group information
-		 * will be inherited by the new facet.
-		 *
-		 */
-		if(f->rg != NULL){
-			rep_groups.emplace(f->rg);
-			assert(f->rg->ref-->0);
-		}
 
 		//if the face is not a triangle, cut the corner to make it a triangle
 		if(f->facet_degree()>3)	{
@@ -263,16 +224,8 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 			// while the fRest is a newly generated facet
 			Face_handle fCorner = hCorner->face();
 			Face_handle fRest = hCorner->opposite()->face();
-			assert(fCorner->rg == f->rg);
-			if(f->rg){
-				fRest->rg = f->rg;
-				//assert(fCorner->rg != NULL && fRest->rg == NULL);
-				fRest->rg->ref++;
-			}
 			//log("split %ld + %ld %ld", fCorner->facet_degree(), fRest->facet_degree(), f->facet_degree());
 		}
-		f->rg = NULL;
-
 		//mark the vertex as conquered
 		h->vertex()->setConquered();
 		removed++;
@@ -280,18 +233,13 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 
 	//copy the position of the center vertex:
 	Point vPos = startH->vertex()->point();
-	new_rg->removed_vertices.emplace(vPos);
 
 	int bf = size_of_facets();
 	//remove the center vertex
 	Halfedge_handle hNewFace = erase_center_vertex(startH);
 	Face_handle added_face = hNewFace->facet();
-	assert(added_face->rg == NULL);
-	added_face->rg = new_rg;
-	new_rg->ref++;
 
 	//log("test: %d = %d - %ld merged %ld replacing groups", removed, bf, size_of_facets(), rep_groups.size());
-	merge(rep_groups, new_rg);
 
 	//now mark the new face as having a removed vertex
 	added_face->setSplittable();
