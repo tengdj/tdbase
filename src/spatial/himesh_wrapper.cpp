@@ -118,10 +118,10 @@ void HiMesh_Wrapper::decode_to(int lod){
 	if(lod <= cur_lod){
 		return;
 	}
+	cur_lod = lod;
 	for(Voxel *v:voxels){
 		v->clear();
 	}
-	cur_lod = lod;
 
 	if(type == MULTIMESH){
 		assert(meshes.find(cur_lod)!=meshes.end());

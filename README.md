@@ -2,7 +2,12 @@
 we propose a novel multi-level progressive 3D compression method, which is designed to satisfy two progressive query conditions, thus supports returning correct results even with compressed data whenever possible. Based on this, we further propose novel progressive refinement which starts from lightweight low-resolution representation for possible early return of results and progresses to higher resolution representation, which can be largely avoided. A system TDBase is implemented with progressive refinement to support highly efficient and accurate spatial queries for complex three-dimensional objects.
 ## install and setup
 install the prerequisite libraries: cmake CGAL GMP Boost(program_options) ZLIB OpenMP
+if the machine equiped with NVIDIA GPU, setup the environment to let the compiler know
+```console
+export USE_GPU=TRUE_
 
+```
+then compile the code
 ```console
 cd src/
 mkdir build
@@ -14,9 +19,15 @@ make tdbase
 ```
 
 ## generate synthetic dataset
-generate two .dt files, one for nuclei (foo_n_nv1000_nu200_vs100_r30_cm1.dt) and one for vessel (foo_v_nv1000_nu200_vs100_r30_cm1.dt). --nv specifies the number of vessels in the dataset while --nu specifies the number of nuclei around each vessel. Thus the generated dataset contains 1000 vessels and 200,000 nuclei
+generate two .dt files, one for nuclei (bar_n_nv1000_nu200_vs100_r30_cm1.dt) and one for vessel (bar_v_nv1000_nu200_vs100_r30_cm1.dt). --nv specifies the number of vessels in the dataset while --nu specifies the number of nuclei around each vessel. Thus the generated dataset contains 1000 vessels and 200,000 nuclei
 ```console
-./simulator -u ../../data/nuclei.pt -v ../../data/vessel.pt -o foo --nv 1000 --nu 200
+./simulator -u ../../data/nuclei.pt -v ../../data/vessel.pt -o bar --nv 1000 --nu 200
+
+```
+convert .dt files into decoded format for better performance but with higher storage cost. We are working on improving the decoding efficiency with partial decoding and GPU accelerating.
+```console
+./tdbase convert bar_n_nv1000_nu200_vs100_r30_cm1.dt foo_n_nv1000_nu200_vs100_r30_cm1.dt
+./tdbase convert bar_v_nv1000_nu200_vs100_r30_cm1.dt foo_v_nv1000_nu200_vs100_r30_cm1.dt
 
 ```
 

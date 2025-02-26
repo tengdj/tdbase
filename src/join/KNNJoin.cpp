@@ -223,6 +223,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 		// now update the distance range with the new distances
 		int index = 0;
 		start = get_cur_time();
+#pragma omp parallel for
 		for(candidate_entry *c:candidates){
 			HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
 			for(candidate_info &ci:c->candidates){
@@ -292,7 +293,6 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 					assert(ci.distance.mindist<=ci.distance.maxdist);
 				}
 			}
-
 			if(global_ctx.verbose>=1){
 				log("");
 			}
