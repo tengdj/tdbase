@@ -8,16 +8,15 @@
  *
  */
 
-#include <boost/program_options.hpp>
 #include <fstream>
 #include <tuple>
 #include "himesh.h"
 #include "tile.h"
+#include "popl.h"
 
 using namespace tdbase;
 using namespace std;
-
-namespace po = boost::program_options;
+using namespace popl;
 
 // 50M for each vessel and the nucleis around it
 const int buffer_size = 50*(1<<20);
@@ -277,40 +276,29 @@ void *generate_unit(void *arg){
 }
 
 int main(int argc, char **argv){
-	string nuclei_pt = "../data/nuclei.pt";
-	string vessel_pt = "../data/vessel.pt";
+	string nuclei_pt;
+	string vessel_pt;
 	string output_path;
-	int num_threads = tdbase::get_num_threads();
+	int num_threads;
 
 	pthread_mutex_init(&mylock, NULL);
 
-	po::options_description desc("joiner usage");
-	desc.add_options()
-		("help,h", "produce help message")
-		("hausdorff", "enable Hausdorff distance calculation")
-		("multi_lods,m", "the input are polyhedrons in multiple files")
-		("allow_intersection,i", "allow the nuclei can intersect with other nuclei or vessel")
-		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
-		("vessel,v", po::value<string>(&vessel_pt), "path to the vessel prototype file")
-		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
-		("threads,n", po::value<int>(&num_threads), "number of threads")
-		("nv", po::value<int>(&num_vessel), "number of vessels")
-		("nu", po::value<int>(&num_nuclei_per_vessel), "number of nucleis per vessel")
-		("vs", po::value<int>(&voxel_size), "number of vertices in each voxel")
-		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
-		;
+	OptionParser op("Simulator");
+	auto help_option = op.add<Switch>("h", "help", "produce help message");
+	auto hausdorff_option = op.add<Switch>("", "hausdorff", "enable Hausdorff distance calculation", &HiMesh::use_hausdorff);
+	auto multi_lods_option = op.add<Switch>("m", "multi_lods", "the input are polyhedrons in multiple files", &multi_lods);
+	auto allow_intersection_option = op.add<Switch>("i", "allow_intersection", "allow the nuclei to intersect with other nuclei or vessel",&allow_intersection);
+	op.add<Value<string>>("n", "nuclei", "path to the nuclei prototype file", "nuclei.pt", &nuclei_pt);
+	op.add<Value<string>>("v", "vessel", "path to the vessel prototype file", "vessel.pt", &vessel_pt);
+	op.add<Value<string>>("o", "output", "prefix of the output files", "default", &output_path);
+	op.add<Value<int>>("t", "threads", "number of threads", tdbase::get_num_threads(), &num_threads);
+	op.add<Value<int>>("", "nv", "number of vessels", 50, &num_vessel);
+	op.add<Value<int>>("", "nu", "number of nucleis per vessel", 100, &num_nuclei_per_vessel);
+	op.add<Value<int>>("", "vs", "number of vertices in each voxel",100, &voxel_size);
+	op.add<Value<int>>("", "verbose", "verbose level",0, &global_ctx.verbose);
+	op.add<Value<uint32_t>>("r", "sample_rate", "sampling rate for Hausdorff distance calculation", 30, &HiMesh::sampling_rate);
 
-	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-
-	if(vm.count("help")){
-		cout<<desc<<endl;
-		return 0;
-	}
-	po::notify(vm);
-	HiMesh::use_hausdorff = vm.count("hausdorff"); 
-	multi_lods = vm.count("multi_lods");
-	allow_intersection = vm.count("allow_intersection");
+	op.parse(argc, argv);
 
 	struct timeval start = get_cur_time();
 

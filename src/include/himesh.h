@@ -52,8 +52,8 @@
 #include <CGAL/Tetrahedron_3.h>
 
 #include <CGAL/AABB_tree.h>
-#include <CGAL/AABB_traits.h>
-#include <CGAL/AABB_triangle_primitive.h>
+#include <CGAL/AABB_traits_3.h>
+#include <CGAL/AABB_triangle_primitive_3.h>
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 
 #include <CGAL/Surface_mesh.h>
@@ -99,6 +99,7 @@ namespace SMS = CGAL::Surface_mesh_simplification ;
 // definition for the CGAL library
 //typedef CGAL::Exact_predicates_exact_constructions_kernel MyKernel;
 typedef CGAL::Simple_cartesian<float> MyKernel;
+//typedef CGAL::Simple_cartesian<CGAL::Gmpq> MyKernel;
 
 typedef MyKernel::Point_3 Point;
 typedef MyKernel::Vector_3 Vector;
@@ -109,8 +110,8 @@ typedef MyKernel::Segment_3 Segment;
 typedef MyKernel::Triangle_3 Triangle;
 
 typedef std::list<Triangle>::iterator Iterator;
-typedef CGAL::AABB_triangle_primitive<MyKernel, Iterator> TrianglePrimitive;
-typedef CGAL::AABB_traits<MyKernel, TrianglePrimitive> TriangleTraits;
+typedef CGAL::AABB_triangle_primitive_3<MyKernel, Iterator> TrianglePrimitive;
+typedef CGAL::AABB_traits_3<MyKernel, TrianglePrimitive> TriangleTraits;
 typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 
 //
@@ -121,7 +122,7 @@ typedef CGAL::Triangulation_3<MyKernel> Triangulation;
 typedef Triangulation::Tetrahedron 	Tetrahedron;
 
 typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> Primitive;
-typedef CGAL::AABB_traits<MyKernel, Primitive> Traits;
+typedef CGAL::AABB_traits_3<MyKernel, Primitive> Traits;
 typedef CGAL::AABB_tree<Traits> Tree;
 typedef Tree::Point_and_primitive_id Point_and_primitive_id;
 
@@ -669,7 +670,6 @@ public:
 	}
 	~MyTriangle(){
 		sampled_points.clear();
-		facets.clear();
 	}
 	// owned
 	int id;
@@ -677,21 +677,6 @@ public:
 	unordered_set<Point> sampled_points;
 
 	bool processed = false;
-	// associated
-	vector<HiMesh::Face_iterator> facets;
-	void add_facet(HiMesh::Face_iterator fit){
-		bool contained = false;
-		for(HiMesh::Face_iterator f:facets){
-			if(f==fit){
-				return;
-			}
-		}
-		facets.push_back(fit);
-	}
-	void reset(){
-		processed = false;
-		facets.clear();
-	}
 };
 
 enum Decoding_Type{

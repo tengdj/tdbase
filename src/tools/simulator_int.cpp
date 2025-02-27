@@ -8,16 +8,15 @@
  *
  */
 
-#include <boost/program_options.hpp>
 #include <fstream>
 #include <tuple>
 #include "himesh.h"
 #include "tile.h"
+#include "popl.h"
 
 using namespace tdbase;
 using namespace std;
-
-namespace po = boost::program_options;
+using namespace popl;
 
 // 50M for each vessel and the nucleis around it
 const int buffer_size = 50*(1<<20);
@@ -119,42 +118,31 @@ void* generate_unit(void* arg) {
 }
 
 int main(int argc, char **argv){
-	string nuclei_pt = "../data/nuclei.pt";
+
+// argument parsing
+	string nuclei_pt;
 	string output_path;
-	int num_threads = tdbase::get_num_threads();
+	int num_threads;
 
-	pthread_mutex_init(&mylock, NULL);
 
-	po::options_description desc("joiner usage");
-	desc.add_options()
-		("help,h", "produce help message")
-		("hausdorff", "enable Hausdorff distance calculation")
-		("multi_lods,m", "the input are polyhedrons in multiple files")
-		("nuclei,u", po::value<string>(&nuclei_pt), "path to the nuclei prototype file")
-		("output,o", po::value<string>(&output_path)->required(), "prefix of the output files")
-		("threads,n", po::value<int>(&num_threads), "number of threads")
-		("nu", po::value<int>(&num_nuclei), "number of nuclei")
-		("amplify_ratio", po::value<int>(&amplify_ratio), "how big, in terms of nuclei size, in each dimension")
-		("verbose", po::value<int>(&global_ctx.verbose), "verbose level")
-		("sample_rate,r", po::value<uint32_t>(&HiMesh::sampling_rate), "sampling rate for Hausdorff distance calculation (default 30)")
-		;
-	HiMesh::use_hausdorff = vm.count("hausdorff");
+	OptionParser op("Simulator");
+	auto help_option = op.add<Switch>("h", "help", "produce help message");
+	auto hausdorff_option = op.add<Switch>("", "hausdorff", "enable Hausdorff distance calculation", &HiMesh::use_hausdorff);
+	auto multi_lods_option = op.add<Switch>("m", "multi_lods", "the input are polyhedrons in multiple files", &multi_lods);
+	op.add<Value<string>>("n", "nuclei", "path to the nuclei prototype file", "nuclei.pt", &nuclei_pt);
+	op.add<Value<string>>("o", "output", "prefix of the output files", "default", &output_path);
+	op.add<Value<int>>("t", "threads", "number of threads", tdbase::get_num_threads(), &num_threads);
+	op.add<Value<int>>("", "amplify_ratio", "how big, in terms of nuclei size, in each dimension", 10, &amplify_ratio);
+	op.add<Value<int>>("", "n", "number of nuclei", 10000, &num_nuclei);
+	op.add<Value<int>>("", "verbose", "verbose level", 0, &global_ctx.verbose);
+	op.add<Value<uint32_t>>("r", "sample_rate", "sampling rate for Hausdorff distance calculation", 30, &HiMesh::sampling_rate);
+	op.parse(argc, argv);
 
-	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-
-	if(vm.count("help")){
-		cout<<desc<<endl;
-		return 0;
-	}
-	po::notify(vm);
-
-	if(vm.count("multi_lods")){
-		multi_lods = true;
-	}
+// processing section
 
 	struct timeval start = get_cur_time();
 
+	pthread_mutex_init(&mylock, NULL);
 	char nuclei_output[256];
 	char config[100];
 	sprintf(config,"nu%d_%d_r%d",

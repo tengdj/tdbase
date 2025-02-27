@@ -12,14 +12,13 @@
 #include <string.h>
 #include <limits.h>
 #include <iostream>
-#include <boost/program_options.hpp>
 
 #include "util.h"
 #include "geometry.h"
+#include "popl.h"
 
 using namespace std;
-
-namespace po = boost::program_options;
+using namespace popl;
 
 namespace tdbase{
 
@@ -41,7 +40,7 @@ public:
 	std::string tile1_path;
 	std::string tile2_path;
 	int knn = 1;
-	double within_dist = 1000;
+	float within_dist = 1000.0;
 	int num_thread = 0;
 	int num_compute_thread = 1;
 	int repeated_times = 1;
@@ -131,66 +130,53 @@ extern query_context global_ctx;
 static query_context parse_args(int argc, char **argv){
 	query_context ctx;
 
-	po::options_description desc("joiner usage");
-	desc.add_options()
-		("help,h", "produce help message")
-		("aabb", "calculate distance with aabb")
-		("gpu,g", "compute with GPU")
-		("counter_clock,c", "is the faces recorded clock-wise or counterclock-wise")
-		("disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones")
+	OptionParser op("TDBase");
+	op.add<Switch>("h", "help", "produce help message");
+	// for execution environment
+	op.add<Value<int>>("t", "threads", "number of threads", tdbase::get_num_threads(), &ctx.num_thread);
+	op.add<Value<int>>("", "cn", "number of threads for geometric computation for each tile", 1, &ctx.num_compute_thread);
+	op.add<Switch>("g", "gpu", "compute with GPU", &ctx.use_gpu);
+	op.add<Value<int>>("v", "verbose", "verbose level", 0, &ctx.verbose);
+	op.add<Switch>("", "print_result", "print result to standard out", &ctx.print_result);
+	// for system configuration
+	op.add<Switch>("", "aabb", "calculate distance with aabb", &ctx.use_aabb);
+	op.add<Switch>("c", "counter_clock", "is the faces recorded clock-wise or counterclock-wise", &ctx.counter_clock);
+	op.add<Switch>("", "disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones", &ctx.disable_byte_encoding);
+	op.add<Value<int>>("", "hausdorf_level", "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level", 2, &ctx.hausdorf_level);
+	auto lod_options = op.add<Value<int>>("l", "lods", "the lods that needs be processed");
 
-		// for data
-		("tile1", po::value<string>(&ctx.tile1_path), "path to tile 1")
-		("tile2", po::value<string>(&ctx.tile2_path), "path to tile 2")
-		("repeat,r", po::value<int>(&ctx.repeated_times), "repeat tiles")
-		("max_objects1", po::value<size_t>(&ctx.max_num_objects1), "max number of objects in tile 1")
-		("max_objects2", po::value<size_t>(&ctx.max_num_objects2), "max number of objects in tile 2")
+	// for input data
+	op.add<Value<string>, Attribute::required>("", "tile1", "path to tile 1", "",  & ctx.tile1_path);
+	op.add<Value<string>, Attribute::required>("", "tile2", "path to tile 2", "",  & ctx.tile2_path);
+	op.add<Value<size_t>>("", "max_objects1", "max number of objects in tile 1", LONG_MAX, &ctx.max_num_objects1);
+	op.add<Value<size_t>>("", "max_objects2", "max number of objects in tile 2", LONG_MAX, &ctx.max_num_objects2);
+	// for query 
+	op.add<Value<string>, Attribute::required>("q", "query", "query types: intersect|nn|within", "", & ctx.query_type);
+	op.add<Value<int>>("k", "knn", "the K value for NN query", 1, &ctx.knn);
+	op.add<Value<float>>("w", "within_dist", "the maximum distance for within query", 1000.0, &ctx.within_dist);
 
-		// query setup
-		("query,q", po::value<string>(&ctx.query_type),"query type can be intersect|nn|within")
-		("knn", po::value<int>(&ctx.knn), "the K value for NN query")
-		("within_dist", po::value<double>(&ctx.within_dist), "the maximum distance for within query")
-		("lod", po::value<std::vector<std::string>>()->multitoken()->zero_tokens()->composing(), "the lods need be processed")
-		("hausdorf_level", po::value<int>(&ctx.hausdorf_level), "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level(default)")
+	op.parse(argc, argv);
 
-		// execution setup
-		("cn", po::value<int>(&ctx.num_compute_thread), "number of threads for geometric computation for each tile")
-		("threads,n", po::value<int>(&ctx.num_thread), "number of threads for processing tiles")
-		("verbose,v", po::value<int>(&ctx.verbose), "verbose level")		
-		("print_result", "print result to standard out")
-		;
-	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-	if (vm.count("help")) {
-		cout << desc << "\n";
-		exit(0);
-	}
-	po::notify(vm);
-
-	ctx.use_aabb = vm.count("aabb");
-	ctx.use_gpu = vm.count("gpu");
-	ctx.counter_clock = vm.count("counter_clock");
-	ctx.disable_byte_encoding = vm.count("disable_byte_encoding");
-	ctx.print_result = vm.count("print_result");
-
+// post process
 	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);
 
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
 		cout <<"error query type: "<< ctx.query_type <<endl;
 		exit(0);
 	}
-	if(vm.count("lod")){
-		for(string l:vm["lod"].as<std::vector<std::string>>()){
-			ctx.lods.push_back(atoi(l.c_str()));
+	if(lod_options->count()>0){
+		for (int i = 0; i < lod_options->count(); i++) {
+			ctx.lods.push_back(lod_options->value(i));
 		}
 	}else{
 		for(int l=20;l<=100;l+=20){
 			ctx.lods.push_back(l);
 		}
 	}
+	sort(ctx.lods.begin(), ctx.lods.end());
+	unique(ctx.lods.begin(), ctx.lods.end());
 
 	global_ctx.num_thread = min(global_ctx.num_thread, global_ctx.repeated_times);
-
 	return ctx;
 }
 

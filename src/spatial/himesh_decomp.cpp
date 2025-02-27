@@ -292,17 +292,7 @@ void HiMesh::insertRemovedVertices() {
   * Remove all the marked edges.
   */
 void HiMesh::removeInsertedEdges() {
-//	bool anyadded = false;
-//	do{
-//		anyadded = false;
-//		for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); hit++) {
-//			if(hit->isAdded()){
-//				join_facet(hit);
-//				anyadded = true;
-//				break;
-//			}
-//		}
-//	}while(anyadded);
+
 	for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); hit++) {
 		if(hit->isAdded()){
 			join_facet(hit);

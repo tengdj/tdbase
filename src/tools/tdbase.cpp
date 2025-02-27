@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <thread>
+#include <map>
 
 #include "SpatialJoin.h"
 #include "himesh.h"
@@ -17,12 +18,14 @@ using namespace std;
 using namespace tdbase;
 
 namespace tdbase{
+
+	map<string, void (*)(int, char **)> functions;
+
 /*
  * print himesh to wkt
  *
  * */
 static void to_wkt(int argc, char **argv){
-
 	Tile *tile = new Tile(argv[1]);
 	const char *prefix = argv[2];
 	tile->decode_all(100);
@@ -75,7 +78,6 @@ static void get_voxel_boxes(int argc, char **argv){
 	tdbase::write_box(mesh->get_mbb(), "/share/aab.off");
 	delete mesh;
 }
-
 
 /*
  * get the skeleton points
@@ -415,71 +417,20 @@ static void print(int argc, char **argv){
 	delete tile;
 }
 
-
-char *data;
-size_t data_size;
-int jobs;
-int num_jobs;
-
-vector<Tile *> tiles;
-
-pthread_mutex_t mylock;
-int next_report = 10;
-
-void *decode_unit(void *arg){
-	while(true){
-		Tile *tile = NULL;
-		int job = -1;
-		pthread_mutex_lock(&mylock);
-		if(jobs < num_jobs){
-			job = jobs++;
-			if(jobs*100/num_jobs>=next_report){
-				log("%d%%", jobs*100/num_jobs);
-				next_report += 10;
-			}
-		}
-		pthread_mutex_unlock(&mylock);
-		if(job < 0){
-			break;
-		}
-		tile = tiles[job];
-
-		timeval cur = get_cur_time();
-		for(int i=0;i<tile->num_objects();i++){
-			HiMesh *mesh = tile->get_mesh(i);
-			mesh->decode(100);
-		}
-		delete tile;
-		logt("decode %d", cur, job);
-	}
-	return NULL;
-}
-
+/*for evaluating the decoding efficiency*/
 static void decode(int argc, char **argv){
-
-	jobs = 0;
-	num_jobs = atoi(argv[2]);
-
-	for(int i=0;i<num_jobs;i++){
-		tiles.push_back(new Tile(argv[1]));
+	vector<Tile*> tiles;
+	struct timeval start = get_cur_time();
+	Tile* tile = new Tile(argv[1]);
+	logt("loading",start);
+	int num_thread = argc > 2? atoi(argv[2]):tdbase::get_num_threads();
+#pragma omp parallel for num_threads(num_thread)
+	for (int i = 0; i < tile->num_objects(); i++) {
+		HiMesh* mesh = tile->get_mesh(i);
+		mesh->decode(100);
 	}
-
-	unsigned int num_threads = std::thread::hardware_concurrency();
-
-	if(argc>3){
-		num_threads = atoi(argv[3]);
-	}
-
-	pthread_t threads[num_threads];
-
-	for(int i=0;i<num_threads;i++){
-		pthread_create(&threads[i], NULL, decode_unit, NULL);
-	}
-	log("%d threads started", num_threads);
-	for(int i = 0; i < num_threads; i++ ){
-		void *status;
-		pthread_join(threads[i], &status);
-	}
+	delete tile;
+	logt("decoding", start);
 }
 
 static void print_tile_boxes(int argc, char **argv){
@@ -515,9 +466,25 @@ static void shift(int argc, char **argv){
 	cout<<*mesh;
 }
 
-static void join(int argc, char **argv){
-	struct timeval start = get_cur_time();
+static void hausdorff(int argc, char** argv) {
+	HiMesh* low = tdbase::read_mesh(argv[1], false);
+	HiMesh* high = tdbase::read_mesh(argv[2], false);
+	if (argc > 3) {
+		HiMesh::sampling_rate = atoi(argv[3]);
+	}
+	low->computeHausdorfDistance(high);
+	auto l = low->collectGlobalHausdorff(MIN);
+	auto a = low->collectGlobalHausdorff(AVG);
+	auto h = low->collectGlobalHausdorff(MAX);
 
+	log("proxy hausdorff [min	avg	max]=[%f	%f	%f]\n", l.first, a.first, h.first);
+	log("hausdorff [min	avg	max]=[%f	%f	%f]\n", l.second, a.second, h.second);
+}
+
+static void join(int argc, char **argv){
+	global_ctx = parse_args(argc, argv);
+
+	struct timeval start = get_cur_time();
 	geometry_computer *gc = new geometry_computer();
 	if(global_ctx.use_gpu){
 #ifdef USE_GPU
@@ -544,7 +511,7 @@ static void join(int argc, char **argv){
 			tile1 = new Tile(path1, global_ctx.max_num_objects1, false);
 			tile2 = new Tile(path2, global_ctx.max_num_objects2, false);
 		}else{
-			tile1 = new Tile(path1, LONG_MAX, false);
+			tile1 = new Tile(path1, global_ctx.max_num_objects1, false);
 			tile2 = tile1;
 		}
 		assert(tile1&&tile2);
@@ -583,122 +550,43 @@ static void join(int argc, char **argv){
 	delete gc;
 }
 
-static void test(int argc, char **argv){
-
-	tdbase::Point p(0, 1, 2);
-
-
-}
-
-static void hausdorff(int argc, char **argv){
-	HiMesh *low = tdbase::read_mesh(argv[1], false);
-	HiMesh *high = tdbase::read_mesh(argv[2], false);
-	if(argc>3){
-		HiMesh::sampling_rate = atoi(argv[3]);
-	}
-	low->computeHausdorfDistance(high);
-	auto l = low->collectGlobalHausdorff(MIN);
-	auto a = low->collectGlobalHausdorff(AVG);
-	auto h = low->collectGlobalHausdorff(MAX);
-
-	log("proxy hausdorff [min	avg	max]=[%f	%f	%f]\n",l.first,a.first,h.first);
-	log("hausdorff [min	avg	max]=[%f	%f	%f]\n",l.second,a.second,h.second);
-}
-
 }
 
 int main(int argc, char **argv){
-
-//	float triangle[] = {248.444000,137.498001,454.556000,
-//						252.365005, 133.500000, 456.398987,
-//						252.598007, 130.871994, 487.509003};
-//
-//	float points[][3] = {{248.940002,137.160995,472.493988},
-//							{250.354996,136.102005,467.498993},
-//							{250.501999,136.369995,477.430511},
-//							{251.289001,134.500000,471.625000},
-//							{248.432007,132.783005,482.509491},
-//							{250.054993,131.158997,487.490997},
-//							{250.639008,134.501999,461.420013},
-//							{248.501007,138.686005,464.294495},
-//							{252.498993,131.270004,456.523010},
-//							{252.501007,132.968994,467.226990},
-//							{254.479996,125.822998,457.493011},
-//							{252.552002,132.505005,480.407990},
-//							{254.503006,130.113007,484.035492},
-//							{253.501999,129.115997,460.041992},
-//							{255.498993,129.488007,473.717499},
-//							{253.501007,130.554001,470.134491},
-//							{250.089005,134.501999,480.497986},
-//							{0,0,0}};
-//	for(int i=0;i<18;i++){
-//		cout<<points[i][0]<<" "<<points[i][1]<<" "<<points[i][2]<<endl;
-//		cout<<tdbase::PointInTriangleCylinder(points[i], triangle)<<endl;
-//		//cout<<tdbase::PointTriangleDist(points[i], triangle)<<endl;
-//	}
-//
-//	return 0;
-
-	global_ctx = parse_args(argc, argv);
-	if(argc==1){
-		cout<<"usage: 3dpro function [args]"<<endl;
+	// register the functions
+	functions["to_sql"] = to_sql;
+	functions["get_voxel_boxes"] = get_voxel_boxes;
+	functions["get_skeleton"] = get_skeleton;
+	functions["voxelize"] = voxelize;
+	functions["profile_decoding"] = profile_decoding;
+	functions["aabb"] = aabb;
+	functions["adjust_polyhedron"] = adjust_polyhedron;
+	functions["triangulate"] = triangulate;
+	functions["sample"] = sample;
+	functions["simplify"] = simplify;
+	functions["compress"] = compress;
+	functions["distance"] = distance;
+	functions["intersect"] = intersect;
+	functions["print"] = print;
+	functions["decode"] = decode;
+	functions["print_tile_boxes"] = print_tile_boxes;
+	functions["convert"] = convert;
+	functions["shrink"] = shrink;
+	functions["shift"] = shift;
+	functions["hausdorff"] = hausdorff;
+	functions["join"] = join;
+   
+	if (argc < 2 || functions.find(argv[1])==functions.end()) {
+		cout<<"usage: tdbase function [args]"<<endl;
+		cout << "function could be:"<<endl;
+		for (auto e:functions) {
+			cout << e.first << " ";
+		}
+		cout << endl;
 		exit(0);
 	}
+	functions[argv[1]](argc-1, argv+1);
 
-	if(strcmp(argv[1],"join") == 0){
-		join(argc-1,argv+1);
-	}else if(strcmp(argv[1],"to_wkt") == 0){
-		to_wkt(argc-1,argv+1);
-	}else if(strcmp(argv[1],"to_sql") == 0){
-		to_sql(argc-1,argv+1);
-	}else if(strcmp(argv[1],"get_voxel_boxes") == 0){
-		get_voxel_boxes(argc-1,argv+1);
-	}else if(strcmp(argv[1],"profile_distance") == 0){
-		profile_distance(argc-1,argv+1);
-	}else if(strcmp(argv[1],"profile_decoding") == 0){
-		profile_decoding(argc-1,argv+1);
-	}else if(strcmp(argv[1],"aabb") == 0){
-		aabb(argc-1,argv+1);
-	}else if(strcmp(argv[1],"adjust_polyhedron") == 0){
-		adjust_polyhedron(argc-1,argv+1);
-	}else if(strcmp(argv[1],"skeleton") == 0){
-		get_skeleton(argc-1,argv+1);
-	}else if(strcmp(argv[1],"voxelize") == 0){
-		voxelize(argc-1,argv+1);
-	}else if(strcmp(argv[1],"test") == 0){
-		test(argc-1,argv+1);
-	}else if(strcmp(argv[1],"compress") == 0){
-		compress(argc-1,argv+1);
-	}else if(strcmp(argv[1],"simplify") == 0){
-		simplify(argc-1,argv+1);
-	}else if(strcmp(argv[1],"triangulate") == 0){
-		triangulate(argc-1,argv+1);
-	}else if(strcmp(argv[1],"distance") == 0){
-		distance(argc-1,argv+1);
-	}else if(strcmp(argv[1],"print") == 0){
-		print(argc-1,argv+1);
-	}else if(strcmp(argv[1],"intersect") == 0){
-		intersect(argc-1,argv+1);
-	}else if(strcmp(argv[1],"print_tile_boxes") == 0){
-		print_tile_boxes(argc-1,argv+1);
-	}else if(strcmp(argv[1],"sample") == 0){
-		sample(argc-1,argv+1);
-	}else if(strcmp(argv[1],"decode") == 0){
-		decode(argc-1,argv+1);
-	}else if(strcmp(argv[1],"convert") == 0){
-		convert(argc-1,argv+1);
-	}else if(strcmp(argv[1],"shrink") == 0){
-		shrink(argc-1,argv+1);
-	}else if(strcmp(argv[1],"shift") == 0){
-		shift(argc-1,argv+1);
-	}else if(strcmp(argv[1],"hausdorff") == 0){
-		hausdorff(argc-1,argv+1);
-	}else{
-		cout<<"usage: 3dpro himesh_to_wkt|profile_protruding|get_voxel_boxes|profile_distance|profile_decoding|adjust_polyhedron|skeleton|voxelize [args]"<<endl;
-		exit(0);
-	}
-
-	int *abc = new int[1000];
 	return 0;
 }
 

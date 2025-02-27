@@ -14,7 +14,7 @@ namespace tdbase{
 
 // compression mode
 HiMesh::HiMesh(string &str, bool completeop):
-		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
+		CGAL::Polyhedron_3<MyKernel, MyItems >(){
 
 	boost::replace_all(str, "|", "\n");
 	assert(str.size()!=0 && "input string should not be empty!");
@@ -81,7 +81,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 
 // in decompression mode
 HiMesh::HiMesh(char *data, size_t dsize, bool owndata):
-		CGAL::Polyhedron_3< CGAL::Simple_cartesian<float>, MyItems >(){
+		CGAL::Polyhedron_3<MyKernel, MyItems >(){
 	assert(dsize>0);
 	srand(PPMC_RANDOM_CONSTANT);
 
