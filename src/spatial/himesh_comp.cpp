@@ -263,7 +263,7 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 
 	// Increment the number of removed vertices.
 	i_nbRemovedVertices++;
-    removedPoints.push_back(vPos);
+
 	return hNewFace;
 }
 

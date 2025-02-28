@@ -24,6 +24,7 @@ namespace tdbase{
 /**
   * Start the next decompression operation.
   */
+
 void HiMesh::startNextDecompresssionOp() {
     if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
     	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorffDistance(), getProxyHausdorffDistance());
@@ -50,20 +51,50 @@ void HiMesh::startNextDecompresssionOp() {
         fit->resetState();
 
 	i_curDecimationId++; // increment the current decimation operation id.
-
     // 2. decoding the removed vertices and add to target facets
-    RemovedVerticesDecodingStep();
+    decodeRemovedVertices();
     // 3. decoding the inserted edge and marking the ones added
-	InsertedEdgeDecodingStep();
+    decodeInsertedEdges();
 	// 4. truly insert the removed vertices
 	insertRemovedVertices();
 	// 5. truly remove the added edges
 	removeInsertedEdges();
 	// 6. decode the Hausdorff distances for all the facets in this LOD
 	HausdorffDecodingStep();
+
+}
+
+void HiMesh::testIteration() {
+    struct timeval start = get_cur_time();
+    int num = 0;
+    // Add the first halfedge to the queue.
+    pushHehInit();
+    while (!gateQueue.empty()) {
+        Halfedge_handle h = gateQueue.front();
+        gateQueue.pop();
+
+        Face_handle f = h->facet();
+        num++;
+        // If the face is already processed, pick the next halfedge:
+        if (f->isConquered())
+            continue;
+
+        // Add the other halfedges to the queue
+        Halfedge_handle hIt = h;
+        do {
+            Halfedge_handle hOpp = hIt->opposite();
+            assert(!hOpp->is_border());
+            if (!hOpp->facet()->isConquered())
+                gateQueue.push(hOpp);
+            hIt = hIt->next();
+        } while (hIt != h);
+    }
+
+    logt("%d", start, num);
 }
 
 void HiMesh::decode(int lod){
+    
 	assert(lod>=0 && lod<=100);
 	assert(!this->is_compression_mode());
 	if(lod<i_decompPercentage){
@@ -114,8 +145,11 @@ void HiMesh::decodeBaseMesh() {
     }
 
     // Let the builder do its job.
+    //global_ctx.lock();
     MyMeshBaseBuilder<HalfedgeDS> builder(p_pointDeque, p_faceDeque);
     delegate(builder);
+    //global_ctx.unlock();
+
 
     // Free the memory.
     for (unsigned i = 0; i < p_faceDeque->size(); ++i){
@@ -136,7 +170,8 @@ void HiMesh::decodeBaseMesh() {
 	HausdorffDecodingStep();
 }
 
-void HiMesh::RemovedVerticesDecodingStep(){
+void HiMesh::decodeRemovedVertices(){
+
     // Add the first halfedge to the queue.
 	pushHehInit();
 	while (!gateQueue.empty()) {
@@ -148,7 +183,6 @@ void HiMesh::RemovedVerticesDecodingStep(){
 		// If the face is already processed, pick the next halfedge:
 		if (f->isConquered())
 			continue;
-
 		// Add the other halfedges to the queue
 		Halfedge_handle hIt = h;
 		do {
@@ -174,7 +208,7 @@ void HiMesh::RemovedVerticesDecodingStep(){
 /**
   * One step of the inserted edge coding conquest.
   */
-void HiMesh::InsertedEdgeDecodingStep() {
+void HiMesh::decodeInsertedEdges() {
     pushHehInit();
     while (!gateQueue.empty()) {
         Halfedge_handle h = gateQueue.front();
@@ -244,6 +278,8 @@ void HiMesh::HausdorffDecodingStep(){
 /**
   * Insert center vertices.
   */
+pthread_mutex_t mtx;
+
 void HiMesh::insertRemovedVertices() {
 
     // Add the first halfedge to the queue.
@@ -253,11 +289,9 @@ void HiMesh::insertRemovedVertices() {
         gateQueue.pop();
 
         Face_handle f = h->facet();
-
         // If the face is already processed, pick the next halfedge:
         if (f->isProcessed())
             continue;
-
         // Mark the face as processed.
         f->setProcessedFlag();
 
@@ -270,13 +304,15 @@ void HiMesh::insertRemovedVertices() {
                 gateQueue.push(hOpp);
             hIt = hIt->next();
         } while (hIt != h);
-        assert(!h->isNew());
-
+        assert(!h->isNew());  
+        
         if (f->isSplittable()) {
+            pthread_mutex_lock(&mtx);
             // Insert the vertex.
             Halfedge_handle hehNewVertex = create_center_vertex(h);
-            hehNewVertex->vertex()->point() = f->getRemovedVertexPos();
+            pthread_mutex_unlock(&mtx);
 
+            hehNewVertex->vertex()->point() = f->getRemovedVertexPos();
             // Mark all the created edges as new.
             Halfedge_around_vertex_circulator Hvc = hehNewVertex->vertex_begin();
             Halfedge_around_vertex_circulator Hvc_end = Hvc;
@@ -292,12 +328,14 @@ void HiMesh::insertRemovedVertices() {
   * Remove all the marked edges.
   */
 void HiMesh::removeInsertedEdges() {
-
+    pthread_mutex_lock(&mtx);
+    // todo: use locking for avoid competetion in CGAL
 	for (HiMesh::Halfedge_iterator hit = halfedges_begin(); hit!=halfedges_end(); hit++) {
-		if(hit->isAdded()){
-			join_facet(hit);
+        if(hit->isAdded()){
+            join_facet(hit);
 		}
 	}
+    pthread_mutex_unlock(&mtx);
 }
 
 }

@@ -142,12 +142,12 @@ static query_context parse_args(int argc, char **argv){
 	op.add<Switch>("", "aabb", "calculate distance with aabb", &ctx.use_aabb);
 	op.add<Switch>("c", "counter_clock", "is the faces recorded clock-wise or counterclock-wise", &ctx.counter_clock);
 	op.add<Switch>("", "disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones", &ctx.disable_byte_encoding);
-	op.add<Value<int>>("", "hausdorf_level", "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level", 2, &ctx.hausdorf_level);
+	op.add<Value<int>>("", "hausdorff_level", "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level", 2, &ctx.hausdorf_level);
 	auto lod_options = op.add<Value<int>>("l", "lods", "the lods that needs be processed");
 
 	// for input data
 	op.add<Value<string>, Attribute::required>("", "tile1", "path to tile 1", "",  & ctx.tile1_path);
-	op.add<Value<string>, Attribute::required>("", "tile2", "path to tile 2", "",  & ctx.tile2_path);
+	op.add<Value<string>>("", "tile2", "path to tile 2", "",  & ctx.tile2_path);
 	op.add<Value<size_t>>("", "max_objects1", "max number of objects in tile 1", LONG_MAX, &ctx.max_num_objects1);
 	op.add<Value<size_t>>("", "max_objects2", "max number of objects in tile 2", LONG_MAX, &ctx.max_num_objects2);
 	// for query 

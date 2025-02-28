@@ -483,8 +483,6 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 
 	// Store the maximum Hausdorf Distance
 	vector<pair<float, float>> globalHausdorfDistance;
-	vector<Point> removedPoints;
-
 	bool own_data = true;
 
 public:
@@ -538,11 +536,13 @@ public:
 
 	// Decompression
 	void startNextDecompresssionOp();
-	void RemovedVerticesDecodingStep();
-	void InsertedEdgeDecodingStep();
+	void decodeRemovedVertices();
+	void decodeInsertedEdges();
 	void HausdorffDecodingStep();
 	void insertRemovedVertices();
 	void removeInsertedEdges();
+
+	void testIteration();
 
 	// IOs
 	void writeFloat(float f);

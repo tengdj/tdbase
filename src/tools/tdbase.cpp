@@ -511,7 +511,7 @@ static void join(int argc, char **argv){
 			tile1 = new Tile(path1, global_ctx.max_num_objects1, false);
 			tile2 = new Tile(path2, global_ctx.max_num_objects2, false);
 		}else{
-			tile1 = new Tile(path1, global_ctx.max_num_objects1, false);
+			tile1 = new Tile(path1, LONG_MAX, false);
 			tile2 = tile1;
 		}
 		assert(tile1&&tile2);
