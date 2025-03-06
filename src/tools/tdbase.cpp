@@ -313,10 +313,8 @@ static void sample(int argc, char **argv){
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1]);
 
-	unordered_set<Point> point_set;
-	mesh->sample_points(point_set);
 	vector<Point> points;
-	points.assign(point_set.begin(), point_set.end());
+	points.assign(mesh->sampled_points.begin(), mesh->sampled_points.end());
 	tdbase::write_points(points, argv[2]);
 	delete mesh;
 }

@@ -104,16 +104,6 @@ typedef CGAL::Simple_cartesian<float> MyKernel;
 typedef MyKernel::Point_3 Point;
 typedef MyKernel::Vector_3 Vector;
 
-// templates for AABB tree
-typedef MyKernel::FT FT;
-typedef MyKernel::Segment_3 Segment;
-typedef MyKernel::Triangle_3 Triangle;
-
-typedef std::list<Triangle>::iterator Iterator;
-typedef CGAL::AABB_triangle_primitive_3<MyKernel, Iterator> TrianglePrimitive;
-typedef CGAL::AABB_traits_3<MyKernel, TrianglePrimitive> TriangleTraits;
-typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
-
 //
 typedef CGAL::Polyhedron_3<MyKernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
@@ -126,6 +116,15 @@ typedef CGAL::AABB_traits_3<MyKernel, Primitive> Traits;
 typedef CGAL::AABB_tree<Traits> Tree;
 typedef Tree::Point_and_primitive_id Point_and_primitive_id;
 
+// templates for AABB tree
+typedef MyKernel::FT FT;
+typedef MyKernel::Segment_3 Segment;
+typedef MyKernel::Triangle_3 Triangle;
+
+typedef std::list<Triangle>::iterator Iterator;
+typedef CGAL::AABB_triangle_primitive_3<MyKernel, Iterator> TrianglePrimitive;
+typedef CGAL::AABB_traits_3<MyKernel, TrianglePrimitive> TriangleTraits;
+typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 
 
 // the builder for reading the base mesh
@@ -412,8 +411,6 @@ public:
 	inline float getHausdorff(){
 		return hausdorff_distance;
 	}
-	vector<Triangle> triangles;
-	MyTriangle *tri = NULL;
 };
 
 
@@ -479,13 +476,14 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 	TriangleTree *triangle_tree = NULL;
 	list<Triangle> aabb_triangles;
 
-	vector<MyTriangle *> original_facets;
-
 	// Store the maximum Hausdorf Distance
 	vector<pair<float, float>> globalHausdorfDistance;
 	bool own_data = true;
 
 public:
+	HiMesh *original_mesh = NULL;
+	unordered_set<Point> sampled_points;
+
 	// Hausdorff calculation and storage related
 	static uint32_t sampling_rate; // equals the number of points sampled for each triangle
 	static bool use_hausdorff;
@@ -615,7 +613,6 @@ public:
 
 	// meta information of the mesh
 	void updateMBB(); // bounding box
-	void updateOrigin_Facets(); // the facets for the original mesh before simplified
 	void updateAABB(); // update the AABB tree for current mesh
 
 	/*
@@ -636,9 +633,8 @@ public:
 		uint32_t num_triangle = size_of_triangles();
 		return area()/(num_triangle*sampling_rate);
 	}
-	void sample_points(const HiMesh::Face_iterator &fit, unordered_set<Point> &points, float area_unit);
-	void sample_points(const Triangle &tri, unordered_set<Point> &points, float area_unit);
-	void sample_points(unordered_set<Point> &points);
+
+	void sample_points();
 
 	// static utility functions
 	static Vector computeNormal(Halfedge_const_handle heh_gate);

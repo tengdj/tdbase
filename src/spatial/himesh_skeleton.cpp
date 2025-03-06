@@ -158,13 +158,12 @@ vector<Voxel *> HiMesh::voxelization(int voxel_size){
 		taken[i] = false;
 	}
 
-	unordered_set<Point> points;
 	int old_sampled_rate = sampling_rate;
 	sampling_rate = 40;
-	sample_points(points);
+	sample_points();
 	sampling_rate = old_sampled_rate;
 
-	for(Point p:points){
+	for(Point p:sampled_points){
 		int x = (p.x()-box.low[0])*dim[0]/(box.high[0]-box.low[0]);
 		int y = (p.y()-box.low[1])*dim[1]/(box.high[1]-box.low[1]);
 		int z = (p.z()-box.low[2])*dim[2]/(box.high[2]-box.low[2]);

@@ -16,6 +16,8 @@ namespace tdbase{
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3<MyKernel, MyItems >(){
 
+
+
 	boost::replace_all(str, "|", "\n");
 	assert(str.size()!=0 && "input string should not be empty!");
 
@@ -56,17 +58,6 @@ HiMesh::HiMesh(string &str, bool completeop):
 
 	// update the temporary data structures
 	updateMBB();
-
-	if(HiMesh::use_hausdorff){
-		updateAABB();
-		if(global_ctx.verbose >= 2){
-			logt("building aabb tree", start);
-		}
-		updateOrigin_Facets();
-		if (global_ctx.verbose >= 2) {
-			logt("init triangles", start);
-		}
-	}
 
 	if(completeop){
 		encode();
@@ -124,35 +115,6 @@ void HiMesh::updateAABB(){
 	triangle_tree = new TriangleTree(aabb_triangles.begin(), aabb_triangles.end());
 	triangle_tree->build();
 	triangle_tree->accelerate_distance_queries();
-}
-
-void HiMesh::updateOrigin_Facets(){
-
-	for(MyTriangle *tri:original_facets){
-		delete tri;
-	}
-	original_facets.clear();
-
-	for(Facet_iterator fit=facets_begin();fit!=facets_end();fit++){
-		fit->tri = NULL;
-	}
-
-	const float area_unit = sampling_gap();
-	for(Vertex_iterator vit=vertices_begin();vit!=vertices_end();vit++){
-		Point p = vit->point();
-		Halfedge_handle startH = vit->halfedge();
-		Halfedge_handle h = startH->opposite(), end(h);
-
-		do {
-			Face_handle f = h->face();
-			if(f->tri == NULL){
-				Triangle t(h->vertex()->point(), h->next()->vertex()->point(), h->next()->next()->vertex()->point());
-				f->tri = new MyTriangle(t, original_facets.size());
-				original_facets.push_back(f->tri);
-				sample_points(t, f->tri->sampled_points, area_unit);
-			}
-		} while((h=h->opposite()->next()) != end);
-	}
 }
 
 size_t HiMesh::size_of_edges(){
@@ -247,7 +209,6 @@ aab HiMesh::shift(float x, float y, float z){
 		vi->point() = Point(p[0]+x, p[1]+y, p[2]+z);
 	}
 	updateMBB();
-	updateOrigin_Facets();
 	updateAABB();
 	return mbb;
 }
@@ -262,9 +223,7 @@ aab HiMesh::shrink(float shrink){
 
 	}
 	updateMBB();
-	updateOrigin_Facets();
 	updateAABB();
-
 	return mbb;
 }
 
