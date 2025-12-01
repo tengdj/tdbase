@@ -8,29 +8,25 @@
 #ifndef HISPEED_CACHE_H_
 #define HISPEED_CACHE_H_
 
+#include "../include/util.h"
 #include <pthread.h>
 #include <vector>
-#include "../include/util.h"
 
 using namespace std;
 
-namespace tdbase{
+namespace tdbase {
 
+class mesh_cache {
+    const size_t capacity;
+    pthread_mutex_t lock;
 
-class mesh_cache{
-	const size_t capacity;
-	pthread_mutex_t lock;
-public:
-	mesh_cache(size_t c){
-		capacity = c;
-		pthread_mutex_init(&lock, NULL);
-	}
-
-
+  public:
+    mesh_cache(size_t c) {
+        capacity = c;
+        pthread_mutex_init(&lock, NULL);
+    }
 };
 
-}
-
-
+}  // namespace tdbase
 
 #endif /* HISPEED_CACHE_H_ */

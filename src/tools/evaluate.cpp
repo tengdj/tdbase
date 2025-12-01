@@ -4,7 +4,7 @@
 
 using namespace std;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     std::fstream file1(argv[1], std::ios_base::in);
     int total1 = 0;
     int matched = 0;
@@ -12,15 +12,15 @@ int main(int argc, char **argv) {
 
     int source;
     int target;
-    map<int, map<int,int>> results;
-    while (file1 >> source){
+    map<int, map<int, int>> results;
+    while (file1 >> source) {
         file1 >> target;
-        if (results.find(source)==results.end()) {
+        if (results.find(source) == results.end()) {
             map<int, int> lst;
             results[source] = lst;
         }
         results[source][target] = 1;
-        total1++; 
+        total1++;
     }
     file1.close();
 
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     while (file2 >> source) {
         file2 >> target;
         assert(results.find(source) != results.end());
-        if (results[source].find(target)!= results[source].end()) {
+        if (results[source].find(target) != results[source].end()) {
             matched++;
         }
         total2++;

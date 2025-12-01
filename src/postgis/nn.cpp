@@ -93,8 +93,7 @@ std::string buildQueryHausdorffSql(int lod, int id) {
 void parseDistanceResult(pqxx::result& rows, std::map<int, Range>& candidates) {
     for (int i = 0; i < rows.size(); i++) {
         for (int j = 0; j < rows[i].size(); j++) {
-            candidates[rows[i]["id"].as<int>()] =
-                Range(rows[i]["id"].as<int>(), rows[i]["mindis"].as<float>(), rows[i]["maxdis"].as<float>());
+            candidates[rows[i]["id"].as<int>()] = Range(rows[i]["id"].as<int>(), rows[i]["mindis"].as<float>(), rows[i]["maxdis"].as<float>());
         }
     }
 }
@@ -103,10 +102,8 @@ void parseDistanceResult(pqxx::result& rows, std::map<int, Range>& candidates) {
 void parseLodDistanceResult(pqxx::result& rows, std::map<int, Range>& candidates, std::pair<float, float> item) {
     for (int i = 0; i < rows.size(); i++) {
         for (int j = 0; j < rows[i].size(); j++) {
-            candidates[rows[i]["id"].as<int>()].mindis =
-                rows[i]["dis"].as<float>() - rows[i]["phausdorff"].as<float>() - item.second;
-            candidates[rows[i]["id"].as<int>()].maxdis =
-                rows[i]["dis"].as<float>() + rows[i]["hausdorff"].as<float>() + item.first;
+            candidates[rows[i]["id"].as<int>()].mindis = rows[i]["dis"].as<float>() - rows[i]["phausdorff"].as<float>() - item.second;
+            candidates[rows[i]["id"].as<int>()].maxdis = rows[i]["dis"].as<float>() + rows[i]["hausdorff"].as<float>() + item.first;
         }
     }
 }
@@ -215,8 +212,7 @@ int main(int argc, char** argv) {
             candidateNumber.push_back(candidates.size());
             auto iterSt = std::chrono::steady_clock::now();
             rows = w.exec(buildQueryHausdorffSql(lod, target));
-            std::pair<float, float> targetHausdorff =
-                std::make_pair(rows[0]["hausdorff"].as<float>(), rows[0]["phausdorff"].as<float>());
+            std::pair<float, float> targetHausdorff = std::make_pair(rows[0]["hausdorff"].as<float>(), rows[0]["phausdorff"].as<float>());
             rows = w.exec(buildQueryLodSql(lod, target, mapKeysToVector(candidates)));
             parseLodDistanceResult(rows, candidates, targetHausdorff);
             filterByDistance(candidates);

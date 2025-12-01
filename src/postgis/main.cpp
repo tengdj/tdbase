@@ -137,10 +137,8 @@ void parseOriginResult(pqxx::result& rows, std::map<int, Range>& candidates) {
 void parseLodDistanceResult(pqxx::result& rows, std::map<int, Range>& candidates, std::pair<float, float> item) {
     for (int i = 0; i < rows.size(); i++) {
         for (int j = 0; j < rows[i].size(); j++) {
-            candidates[rows[i]["id"].as<int>()].mindis =
-                rows[i]["dis"].as<float>() - rows[i]["phausdorff"].as<float>() - item.second;
-            candidates[rows[i]["id"].as<int>()].maxdis =
-                rows[i]["dis"].as<float>() + rows[i]["hausdorff"].as<float>() + item.first;
+            candidates[rows[i]["id"].as<int>()].mindis = rows[i]["dis"].as<float>() - rows[i]["phausdorff"].as<float>() - item.second;
+            candidates[rows[i]["id"].as<int>()].maxdis = rows[i]["dis"].as<float>() + rows[i]["hausdorff"].as<float>() + item.first;
         }
     }
 }
@@ -242,8 +240,7 @@ void withinProgressive(int target) {
         candidateNumber.push_back(candidates.size());
         auto iterSt = std::chrono::steady_clock::now();
         rows = w.exec(buildQueryHausdorffSql(lod, target));
-        std::pair<float, float> targetHausdorff =
-            std::make_pair(rows[0]["hausdorff"].as<float>(), rows[0]["phausdorff"].as<float>());
+        std::pair<float, float> targetHausdorff = std::make_pair(rows[0]["hausdorff"].as<float>(), rows[0]["phausdorff"].as<float>());
         rows = w.exec(buildQueryLodSql(lod, target, mapKeysToVector(candidates)));
         parseLodDistanceResult(rows, candidates, targetHausdorff);
         filterWithinByDistance(candidates, result, distance);
@@ -314,8 +311,7 @@ void nnProgressive(int target) {
         candidateNumber.push_back(candidates.size());
         auto iterSt = std::chrono::steady_clock::now();
         rows = w.exec(buildQueryHausdorffSql(lod, target));
-        std::pair<float, float> targetHausdorff =
-            std::make_pair(rows[0]["hausdorff"].as<float>(), rows[0]["phausdorff"].as<float>());
+        std::pair<float, float> targetHausdorff = std::make_pair(rows[0]["hausdorff"].as<float>(), rows[0]["phausdorff"].as<float>());
         rows = w.exec(buildQueryLodSql(lod, target, mapKeysToVector(candidates)));
         parseLodDistanceResult(rows, candidates, targetHausdorff);
         filterNNByDistance(candidates, result);
@@ -374,10 +370,9 @@ void nnOrigin(int target) {
 int main(int argc, char** argv) {
     po::options_description desc("exp setting");
     desc.add_options()("help,h", "produce help message")("num", po::value<int>(&N), "query number")(
-        "samplerate", po::value<int>(&sampleRate),
-        "used for nv origin")("table2", po::value<std::string>(&table2),
-                              "the second table")("queryType", po::value<std::string>(&queryType), "within or nn")(
-        "queryMethod", po::value<std::string>(&queryMethod), "progressive or origin");
+        "samplerate", po::value<int>(&sampleRate), "used for nv origin")("table2", po::value<std::string>(&table2), "the second table")(
+        "queryType", po::value<std::string>(&queryType), "within or nn")("queryMethod", po::value<std::string>(&queryMethod),
+                                                                         "progressive or origin");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
