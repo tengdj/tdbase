@@ -1,0 +1,50 @@
+{
+	// 使用 IntelliSense 了解相关属性。
+	// 悬停以查看现有属性的描述。
+	// 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "simulator",
+			"type": "cppdbg",
+			// "type": "cuda-gdb",
+			"request": "launch",
+			"program": "${workspaceFolder}/src/build/simulator",
+			"args": [
+				"-n",
+				"../../data/nuclei.pt",
+				"-v",
+				"../../data/vessel.pt",
+				"-o",
+				"bar",
+				"--nv",
+				"1000",
+				"--nu",
+				"200"
+			],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/src/build",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "gdb",
+			// "preLaunchTask": "CMake Build",
+			"setupCommands": [
+				{
+					"description": "Test",
+					"text": "python import sys;sys.path.insert(0, '/usr/share/gcc/python');from libstdcxx.v6.printers import register_libstdcxx_printers;register_libstdcxx_printers(None)",
+					"ignoreFailures": false
+				},
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				},
+				{
+					"description": "Set Disassembly Flavor to Intel",
+					"text": "-gdb-set disassembly-flavor intel",
+					"ignoreFailures": true
+				}
+			]
+		},
+	]
+}

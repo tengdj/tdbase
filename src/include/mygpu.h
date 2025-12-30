@@ -9,6 +9,7 @@
 #define MYGPU_H_
 
 #include <vector>
+#include <pthread.h>
 using namespace std;
 
 namespace tdbase {
@@ -19,7 +20,7 @@ class gpu_info {
     size_t mem_size;
     bool busy;
     pthread_mutex_t lock;
-    char* d_data = NULL;
+    char* d_data = nullptr;
 };
 void initialize();
 void init_gpu(gpu_info* gpu);

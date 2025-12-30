@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/src",
+                "/usr/local/gcc-12/lib/gcc/x86_64-pc-linux-gnu/12.2.0/../../../../include/c++/12.2.0",
+                "/usr/local/gcc-12/lib/gcc/x86_64-pc-linux-gnu/12.2.0/../../../../include/c++/12.2.0/x86_64-pc-linux-gnu",
+                "/usr/local/gcc-12/lib/gcc/x86_64-pc-linux-gnu/12.2.0/../../../../include/c++/12.2.0/backward",
+                "/usr/local/gcc-12/lib/gcc/x86_64-pc-linux-gnu/12.2.0/include",
+                "/usr/local/include",
+                "/usr/local/gcc-12/include",
+                "/usr/local/gcc-12/lib/gcc/x86_64-pc-linux-gnu/12.2.0/include-fixed",
+                "/usr/include/x86_64-linux-gnu"
+            ],
+            "defines": [],
+            "compilerPath": "/home/koi/install/gcc-12/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++20"
+        }
+    ],
+    "version": 4
+}
