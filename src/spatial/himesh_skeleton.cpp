@@ -160,7 +160,8 @@ vector<Voxel *> HiMesh::voxelization(int voxel_size){
 
 	int old_sampled_rate = sampling_rate;
 	sampling_rate = 40;
-	sample_points();
+	area_unit = sampling_gap();
+	sample_points(area_unit);
 	sampling_rate = old_sampled_rate;
 
 	for(Point p:sampled_points){

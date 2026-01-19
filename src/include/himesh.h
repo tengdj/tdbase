@@ -483,9 +483,10 @@ class HiMesh: public CGAL::Polyhedron_3< MyKernel, MyItems >
 public:
 	HiMesh *original_mesh = NULL;
 	unordered_set<Point> sampled_points;
+	float area_unit; // the sampling gap referencing the original mesh. The meshes in all LODs share the same value.
 
 	// Hausdorff calculation and storage related
-	static uint32_t sampling_rate; // equals the number of points sampled for each triangle
+	static uint32_t sampling_rate; // equals the number of points sampled for each triangle on the original mesh
 	static bool use_hausdorff;
 	static bool use_byte_coding;
 public:
@@ -634,7 +635,7 @@ public:
 		return area()/(num_triangle*sampling_rate);
 	}
 
-	void sample_points();
+	void sample_points(float sampling_gap);
 
 	// static utility functions
 	static Vector computeNormal(Halfedge_const_handle heh_gate);

@@ -96,12 +96,12 @@ static void sample_points_face(const HiMesh::Face_iterator &fit, unordered_set<P
 	}
 }
 
-void HiMesh::sample_points(){
+void HiMesh::sample_points(float sampling_gap){
 	sampled_points.clear();
-	const float area_unit = sampling_gap();
+	assert(sampling_gap > 0);
 
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
-		sample_points_face(fit, sampled_points, area_unit);
+		sample_points_face(fit, sampled_points, sampling_gap);
 	}
 	//log("%.5f %.10f (%d*%d)=%d %d", area(), area_unit, size_of_triangles(), sampling_rate, size_of_triangles()*sampling_rate, points.size());
 }
@@ -175,25 +175,29 @@ void HiMesh::computeHausdorfDistance(){
 		if(global_ctx.verbose >= 2){
 			logt("building aabb tree", start);
 		}
-		original_mesh->sample_points();
+		original_mesh->area_unit = original_mesh->sampling_gap();
+		original_mesh->sample_points(original_mesh->area_unit);
 		if (global_ctx.verbose >= 2) {
 			logt("init triangles", start);
 		}
-		cout<<original_mesh<<endl;
-		if(original_mesh != NULL){
-			cout<<"terry is good"<<endl;
-			vector<Point> ps;
-			ps.assign(original_mesh->sampled_points.begin(), original_mesh->sampled_points.end());
-			tdbase::write_points(ps, "points.off");
-			delete original_mesh;
-		}
+//		if(original_mesh != NULL){
+//			vector<Point> ps;
+//			ps.assign(original_mesh->sampled_points.begin(), original_mesh->sampled_points.end());
+//			tdbase::write_points(ps, "points.off");
+//			delete original_mesh;
+//		}
 	}
 	// calculate the hausdorff and proxy hausdorff distance referencing the original uncompressed mesh
 	globalHausdorfDistance.push_back(computeHausdorfDistance(original_mesh));
 
 }
 
-// TODO: a critical function, need to be further optimized
+/*
+ *
+ * to compute the facet-level and polyhedron-level hausdorff and proxy-hausdorfff distances
+ * referencing the original_mesh, which represent the polyhedron before simplification
+ *
+ * */
 pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 
 	if(original_mesh == NULL){
@@ -201,8 +205,6 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 	}
 
 	float dist = DBL_MAX;
-	const float area_unit = sampling_gap();
-
 	struct timeval start = get_cur_time();
 
 	double smp_tm = 0;
@@ -217,6 +219,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 	log("start calculating");
 
 	// associate each compressed facet with a list of original triangles, vice versa
+	int num_points = 0;
 	for(HiMesh::Face_iterator fit = facets_begin(); fit!=facets_end(); ++fit){
 
 		struct timeval start = get_cur_time();
@@ -226,7 +229,8 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 		fit->resetHausdorff();
 		float fit_hdist = 0.0;
 		unordered_set<Point> points;
-		sample_points_face(fit, points, area_unit);
+		sample_points_face(fit, points, original_mesh->area_unit);
+		num_points += points.size();
 
 		/* sampling the current triangle */
 		smp_tm += get_time_elapsed(start, true);
@@ -239,15 +243,15 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 		caldist_tm += get_time_elapsed(start, true);
 
 		// update the hausdorff distance
-		fit->setHausdorff(fit_hdist + sqrt(area_unit/2.0));
+		fit->setHausdorff(fit_hdist + sqrt(original_mesh->area_unit/2.0));
 //		log("%d",points.size());
 		points.clear();
 	}
-	logt("calculate hausdorff ", start);
+	logt("calculate hausdorff %d ", start, num_points);
 	start = get_cur_time();
 
 	/*
-	 * 2. computing the proxy hausdorf distance
+	 * 2. computing the proxy hausdorff distance
 	 * */
 
 	map<float, HiMesh::Face_iterator> fits = encode_facets();
@@ -261,7 +265,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 		Triangle tri = *ppid.second;
 		float fs = encode_triangle(tri);
 		assert(fits.find(fs)!=fits.end());
-		fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(area_unit/2.0));
+		fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(original_mesh->area_unit/2.0));
 	}
 	logt("calculate proxy hausdorff %d", start, original_mesh->sampled_points.size());
 
@@ -286,6 +290,8 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 					caldist_tm,ph_caldist_tm);
 		}
 	}
+
+	//cout<<current_hausdorf.first<<" "<<current_hausdorf.second<<" "<<sqrt(original_mesh->area_unit/2.0)<<" "<<sqrt(sampling_gap()/2.0)<<endl;
 
 	return current_hausdorf;
 }

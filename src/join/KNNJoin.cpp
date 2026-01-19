@@ -110,7 +110,7 @@ bool result_sort(pair<int, int> a, pair<int, int> b){
 
 void evaluate_candidate_lists(vector<candidate_entry *> &candidates, query_context &ctx){
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for (int i = 0; i < candidates.size();i++) {
 		update_candidate_list_knn(candidates[i], ctx);
 	}
@@ -130,7 +130,7 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 	OctreeNode *tree = tile2->get_octree();
 	size_t tile1_size = min(tile1->num_objects(), ctx.max_num_objects1);
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for(int i=0;i<tile1_size;i++){
 		vector<pair<int, range>> candidate_ids;
 		// for each object
@@ -178,7 +178,7 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 		//log("%ld %ld", candidate_ids.size(),candidate_list.size());
 		// save the candidate list
 		if(ce->candidates.size()>0){
-#pragma omp critical
+//#pragma omp critical
 			candidates.push_back(ce);
 		}else{
 			delete ce;
@@ -223,7 +223,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 		// now update the distance range with the new distances
 		int index = 0;
 		start = get_cur_time();
-#pragma omp parallel for
+//#pragma omp parallel for
 		for(candidate_entry *c:candidates){
 			HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
 			for(candidate_info &ci:c->candidates){
@@ -274,10 +274,18 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							}
 							//dist.maxdist = std::min(dist.maxdist, res.distance);
 
-							if(global_ctx.verbose>=1)
+							if(global_ctx.verbose>=1||!dist.valid())
 							{
-								log("%ld(%d)\t%ld(%d):\t[%.2f, %.2f]->[%.2f, %.2f] res: [%.2f, %.2f, %.2f]",
-										wrapper1->id,res.p1, wrapper2->id,res.p2,
+								pid_t tid = gettid();
+								log("%ld\t"
+										"%ld(%d)\t"
+										"%ld(%d):\t"
+										"[%.2f, %.2f]->"
+										"[%.2f, %.2f] "
+										"res: [%.2f, %.2f, %.2f]",
+										tid,
+										wrapper1->id,res.p1,
+										wrapper2->id,res.p2,
 										vp.dist.mindist, vp.dist.maxdist,
 										dist.mindist, dist.maxdist,
 										res.min_dist, res.distance, res.max_dist);
