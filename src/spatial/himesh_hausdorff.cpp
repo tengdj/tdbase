@@ -216,7 +216,7 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 	 * 1. computing the Hausdorff distances
 	 *
 	 * */
-	log("start calculating");
+	//log("start calculating");
 
 	// associate each compressed facet with a list of original triangles, vice versa
 	int num_points = 0;
@@ -247,7 +247,8 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 //		log("%d",points.size());
 		points.clear();
 	}
-	logt("calculate hausdorff %d ", start, num_points);
+	//if(global_ctx.verbose>=2)
+	//logt("calculate hausdorff %d ", start, num_points);
 	start = get_cur_time();
 
 	/*
@@ -257,17 +258,18 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 	map<float, HiMesh::Face_iterator> fits = encode_facets();
 	updateAABB();
 
-	// for each sampled point, find the closest facet to it
-	// and it will be proxy facet of that point
+	// for each sampled point from the original_mesh, find the closest facet to it
+	// which will serve as its proxy facet
 	for(const Point &p:original_mesh->sampled_points){
-		TriangleTree::Point_and_primitive_id ppid = this->get_aabb_tree_triangle()->closest_point_and_primitive(p);
+		TriangleTree::Point_and_primitive_id ppid = get_aabb_tree_triangle()->closest_point_and_primitive(p);
 		float dist = distance(p, ppid.first);
 		Triangle tri = *ppid.second;
 		float fs = encode_triangle(tri);
 		assert(fits.find(fs)!=fits.end());
-		fits[fs]->updateProxyHausdorff(sqrt(dist)+sqrt(original_mesh->area_unit/2.0));
+		fits[fs]->updateProxyHausdorff(dist+sqrt(original_mesh->area_unit/2.0));
 	}
-	logt("calculate proxy hausdorff %d", start, original_mesh->sampled_points.size());
+	//if(global_ctx.verbose>=2)
+	//logt("calculate proxy hausdorff %d", start, original_mesh->sampled_points.size());
 
 	ph_caldist_tm += get_time_elapsed(start, true);
 

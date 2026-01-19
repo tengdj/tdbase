@@ -24,4 +24,17 @@ TriangleTree *HiMesh::get_aabb_tree_triangle(){
 	return triangle_tree;
 }
 
+
+void HiMesh::updateAABB(){
+	if(triangle_tree){
+		aabb_triangles.clear();
+		delete triangle_tree;
+		triangle_tree = NULL;
+	}
+	aabb_triangles = get_triangles();
+	triangle_tree = new TriangleTree(aabb_triangles.begin(), aabb_triangles.end());
+	triangle_tree->build();
+	triangle_tree->accelerate_distance_queries();
+}
+
 }
