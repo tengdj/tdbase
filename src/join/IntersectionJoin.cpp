@@ -105,26 +105,21 @@ void SpatialJoin::intersect(query_context ctx){
 				HiMesh_Wrapper *wrapper2 = (ci_iter)->mesh_wrapper;
 				int cand_count = 0;
 				for(voxel_pair &vp:(ci_iter)->voxel_pairs){
-					determined |= ctx.results[index].intersected;
-					if(global_ctx.hausdorf_level==1){
-						ctx.results[index].distance -= wrapper1->getProxyHausdorffDistance();
-						ctx.results[index].distance -= wrapper2->getProxyHausdorffDistance();
-						cand_count += (ctx.results[index].distance>0);
-					}else if(global_ctx.hausdorf_level==2){
-						// the minimum possible distance already been computed
-						cand_count += (ctx.results[index].min_dist>0);
-					}
+					determined |= ctx.tmp_results[index].intersected;
+					// the minimum possible distance already been computed
+					cand_count += (ctx.tmp_results[index].min_dist>0);
 					index++;
 				}
 
 				//log("%d %d %d",wrapper1->id, wrapper2->id,determined);
 				if(determined){
 					// must intersect
-					wrapper1->report_result(wrapper2);
+					ctx.report_result(wrapper1->id, wrapper2->id);
+
 					//delete *ci_iter;
 					(*ce_iter)->candidates.erase(ci_iter);
 					// all voxel pairs must not intersect
-				}else if(global_ctx.hausdorf_level>=1 && cand_count == (ci_iter)->voxel_pairs.size()){
+				}else if(cand_count == (ci_iter)->voxel_pairs.size()){
 					// must not intersect
 					(*ce_iter)->candidates.erase(ci_iter);
 				}else{
@@ -138,7 +133,7 @@ void SpatialJoin::intersect(query_context ctx){
 				ce_iter++;
 			}
 		}
-		delete []ctx.results;
+		delete []ctx.tmp_results;
 		ctx.updatelist_time += logt("update the candidate list", start);
 
 		logt("evaluating with lod %d", iter_start, lod);
@@ -153,10 +148,6 @@ void SpatialJoin::intersect(query_context ctx){
 //			log("%d not intersect %d", wrapper1->id, wrapper2->id);
 //		}
 //	}
-
-	for(int i=0;i<ctx.tile1->num_objects();i++){
-		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
-	}
 	ctx.obj_count += min(ctx.tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
 }

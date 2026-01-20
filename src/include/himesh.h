@@ -745,8 +745,6 @@ public:
 
 	float getHausdorffDistance();
 	float getProxyHausdorffDistance();
-
-	void report_result(HiMesh_Wrapper *result);
 };
 
 // some general utility functions

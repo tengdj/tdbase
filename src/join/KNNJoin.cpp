@@ -49,9 +49,11 @@ void print_candidate(candidate_entry *cand){
 inline void update_candidate_list_knn(candidate_entry *cand, query_context &ctx){
 	HiMesh_Wrapper *target = cand->mesh_wrapper;
 	int list_size = cand->candidates.size();
+
 	for(int i=0;i<list_size && ctx.knn>cand->candidate_confirmed;){
 		int sure_closer = 0;
 		int maybe_closer = 0;
+
 		for(int j=0;j<cand->candidates.size();j++){
 			if(i==j){
 				continue;
@@ -77,7 +79,7 @@ inline void update_candidate_list_knn(candidate_entry *cand, query_context &ctx)
 		}
 		// the rank makes sure this one is confirmed
 		if(maybe_closer < cand_left){
-			target->report_result(cand->candidates[i].mesh_wrapper);
+			ctx.report_result(target->id, cand->candidates[i].mesh_wrapper->id);
 			cand->candidate_confirmed++;
 			//delete cand->candidates[i];
 			cand->candidates.erase(cand->candidates.begin()+i);
@@ -115,7 +117,9 @@ void evaluate_candidate_lists(vector<candidate_entry *> &candidates, query_conte
 		update_candidate_list_knn(candidates[i], ctx);
 	}
 
+	// query result confirmed.
 	for(vector<candidate_entry *>::iterator it=candidates.begin();it!=candidates.end();){
+		//cout<<(*it)->mesh_wrapper->id<<" "<<(*it)->candidate_confirmed<<" "<<ctx.knn<<endl;
 		if((*it)->candidate_confirmed==ctx.knn){
 			delete *it;
 			it = candidates.erase(it);
@@ -141,10 +145,11 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 		tree->query_knn(&(wrapper1->box), candidate_ids, min_maxdistance, ctx.knn);
 		assert(candidate_ids.size()>=ctx.knn);
 
+		// result determined with only evaluating the MBBs
 		if(candidate_ids.size() == ctx.knn){
-//			for(pair<int, range> &p:candidate_ids){
-//				wrapper1->report_result(tile2->get_mesh_wrapper(p.first));
-//			}
+			for(pair<int, range> &p:candidate_ids){
+				ctx.report_result(wrapper1->id, tile2->get_mesh_wrapper(p.first)->id);
+			}
 			candidate_ids.clear();
 			continue;
 		}
@@ -152,11 +157,13 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 		candidate_entry *ce = new candidate_entry(wrapper1);
 
 		//2. we further go through the voxels in two objects to shrink
-		// 	 the candidate list in a finer grain
+		// 	 the candidate list in a finer granularity
 		for(pair<int, range> &p:candidate_ids){
 			HiMesh_Wrapper *wrapper2 = tile2->get_mesh_wrapper(p.first);
+
 			candidate_info ci(wrapper2);
 			float min_maxdist = DBL_MAX;
+
 			for(Voxel *v1:wrapper1->voxels){
 				for(Voxel *v2:wrapper2->voxels){
 					range dist_vox = v1->distance(*v2);
@@ -168,14 +175,14 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 					min_maxdist = min(min_maxdist, dist_vox.maxdist);
 				}
 			}
+
 			// form the distance range of objects with the evaluations of voxel pairs
 			ci.distance = update_voxel_pair_list(ci.voxel_pairs, min_maxdist);
 			assert(ci.voxel_pairs.size()>0);
-			assert(ci.distance.mindist<=ci.distance.maxdist);
+			assert(ci.distance.valid());
 			ce->add_candidate(ci);
 		}
 
-		//log("%ld %ld", candidate_ids.size(),candidate_list.size());
 		// save the candidate list
 		if(ce->candidates.size()>0){
 //#pragma omp critical
@@ -185,9 +192,11 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
 		}
 		candidate_ids.clear();
 	}
+
 	// the candidates list need be evaluated after checking with the mbb
 	// some queries might be answered with only querying the index
 	evaluate_candidate_lists(candidates, ctx);
+
 	return candidates;
 }
 
@@ -195,6 +204,7 @@ vector<candidate_entry *> SpatialJoin::mbb_knn(Tile *tile1, Tile *tile2, query_c
  * the main function for getting the nearest neighbor
  *
  * */
+
 void SpatialJoin::nearest_neighbor(query_context ctx){
 	struct timeval start = get_cur_time();
 	struct timeval very_start = get_cur_time();
@@ -205,6 +215,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 
 	// now we start to get the distances with progressive level of details
 	for(uint32_t lod:ctx.lods){
+
 		ctx.cur_lod = lod;
 		struct timeval iter_start = get_cur_time();
 		start = get_cur_time();
@@ -231,7 +242,7 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 
 				if(ctx.use_aabb){
 					range dist = ci.distance;
-					result_container res = ctx.results[index++];
+					result_container res = ctx.tmp_results[index++];
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
 						dist.mindist = res.distance;
@@ -253,28 +264,25 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 				}else{
 					double vox_minmaxdist = DBL_MAX;
 					for(voxel_pair &vp:ci.voxel_pairs){
-						result_container res = ctx.results[index++];
+						result_container res = ctx.tmp_results[index++];
 						// update the distance
 						if(vp.v1->num_triangles>0&&vp.v2->num_triangles>0){
 							range dist = vp.dist;
 							if(lod==ctx.highest_lod()){
+//								if(!dist.valid()){
+//									printf("%f\t%f\t%f\n",dist.mindist,dist.maxdist,res.distance);
+//								}
 								// now we have a precise distance
 								dist.mindist = res.distance;
 								dist.maxdist = res.distance;
-							}else if(global_ctx.hausdorf_level == 2){
+							} else {
 								dist.mindist = std::max(dist.mindist, res.min_dist);
 								dist.maxdist = std::min(dist.maxdist, res.max_dist);
 //								dist.maxdist = std::min(dist.maxdist, res.distance);
-							}else if(global_ctx.hausdorf_level == 1){
-								dist.mindist = std::max(dist.mindist, res.distance - wrapper1->getHausdorffDistance() - wrapper2->getHausdorffDistance());
-								dist.maxdist = std::min(dist.maxdist, res.distance + wrapper1->getProxyHausdorffDistance() + wrapper2->getProxyHausdorffDistance());
-//								dist.maxdist = std::min(dist.maxdist, res.distance);
-							}else if(global_ctx.hausdorf_level == 0){
-								dist.maxdist = std::min(dist.maxdist, res.distance);
 							}
-							//dist.maxdist = std::min(dist.maxdist, res.distance);
+							//dist.maxdist = std::max(dist.maxdist, dist.mindist);
 
-							if(global_ctx.verbose>=1||!dist.valid())
+							if(global_ctx.verbose>=1&&!dist.valid())
 							{
 								pid_t tid = gettid();
 								log("%ld\t"
@@ -292,11 +300,13 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							}
 							vp.dist = dist;
 							vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
-							assert(dist.valid());
+							//assert(dist.valid());
 						}
 					}
-					// after each round, some voxels need to be evicted
-					ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist);
+					// after each round, some voxels need to be evicted,
+					// remove the invalid pair at the highest LOD (have an empty voxel)
+					// (happens when low LOD serve as the highest LOD, some voxel will be empty)
+					ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist,lod!=ctx.highest_lod());
 					assert(ci.voxel_pairs.size()>0);
 					assert(ci.distance.mindist<=ci.distance.maxdist);
 				}
@@ -307,20 +317,17 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 		}
 		// update the list after processing each LOD
 		evaluate_candidate_lists(candidates, ctx);
-		delete []ctx.results;
+		delete []ctx.tmp_results;
 		ctx.updatelist_time += logt("updating the candidate lists",start);
 
-		logt("evaluating with lod %d", iter_start, lod);
+		logt("evaluating with lod %d. %ld candidates left", iter_start, lod,candidates.size());
 		log("");
+		if(lod==ctx.highest_lod()){
+			assert(candidates.size()==0);
+		}
 	}
 
 	ctx.overall_time = tdbase::get_time_elapsed(very_start, false);
-	for(int i=0;i<ctx.tile1->num_objects();i++){
-		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
-//		for(int j=0;j<ctx.tile1->get_mesh_wrapper(i)->results.size();j++){
-//			cout<<ctx.tile1->get_mesh_wrapper(i)->id<<"\t"<<ctx.tile1->get_mesh_wrapper(i)->results[j]->id<<endl;
-//		}
-	}
 	ctx.obj_count += min(ctx.tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
 }

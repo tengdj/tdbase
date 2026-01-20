@@ -63,7 +63,7 @@ vector<candidate_entry *> SpatialJoin::mbb_within(Tile *tile1, Tile *tile2, quer
 
 			// determined with the voxel evaluation
 			if(determined){
-				wrapper1->report_result(wrapper2);
+				ctx.report_result(wrapper1->id, wrapper2->id);
 				//delete ci;
 				continue;
 			}
@@ -127,7 +127,7 @@ void SpatialJoin::within(query_context ctx){
 				HiMesh_Wrapper *wrapper2 = (ci_iter)->mesh_wrapper;
 				if(ctx.use_aabb){
 					range dist = (ci_iter)->distance;
-					result_container res = ctx.results[index++];
+					result_container res = ctx.tmp_results[index++];
 					if(lod==ctx.highest_lod()){
 						// now we have a precise distance
 						dist.mindist = res.distance;
@@ -144,7 +144,7 @@ void SpatialJoin::within(query_context ctx){
 					(ci_iter)->distance = dist;
 					if(dist.maxdist<=ctx.within_dist){
 						// the distance is close enough
-						wrapper1->report_result(wrapper2);
+						ctx.report_result(wrapper1->id, wrapper2->id);
 						determined = true;
 					}else if(dist.mindist > ctx.within_dist){
 						// not possible
@@ -152,7 +152,7 @@ void SpatialJoin::within(query_context ctx){
 					}
 				}else{ // end aabb
 					for(auto vp_iter = (ci_iter)->voxel_pairs.begin();vp_iter!=(ci_iter)->voxel_pairs.end();){
-						result_container res = ctx.results[index++];
+						result_container res = ctx.tmp_results[index++];
 						//cout<<vp_iter->v1->num_triangles<<"  "<<res.p1<<" "<<vp_iter->v2->num_triangles<<" "<<res.p2<<" "<<res.distance<<endl;
 						// update the distance
 						if(!determined && vp_iter->v1->num_triangles>0&&vp_iter->v2->num_triangles>0){
@@ -161,16 +161,10 @@ void SpatialJoin::within(query_context ctx){
 								// now we have a precise distance
 								dist.mindist = res.distance;
 								dist.maxdist = res.distance;
-							}else if(global_ctx.hausdorf_level == 2){
+							} else {
 								dist.mindist = std::max(dist.mindist, res.min_dist);
 								dist.maxdist = std::min(dist.maxdist, res.max_dist);
 //								dist.maxdist = std::min(dist.maxdist, res.distance);
-							}else if(global_ctx.hausdorf_level == 1){
-								dist.mindist = std::max(dist.mindist, res.distance - wrapper1->getHausdorffDistance() - wrapper2->getHausdorffDistance());
-								dist.maxdist = std::min(dist.maxdist, res.distance + wrapper1->getProxyHausdorffDistance() + wrapper2->getProxyHausdorffDistance());
-//								dist.maxdist = std::min(dist.maxdist, res.distance);
-							}else if(global_ctx.hausdorf_level == 0){
-								dist.maxdist = std::min(dist.maxdist, res.distance);
 							}
 							//dist.maxdist = std::min(dist.maxdist, res.distance);
 
@@ -183,7 +177,7 @@ void SpatialJoin::within(query_context ctx){
 							// one voxel pair is close enough
 							if(dist.maxdist<=ctx.within_dist){
 								determined = true;
-								wrapper1->report_result(wrapper2);
+								ctx.report_result(wrapper1->id, wrapper2->id);
 							}
 						}
 						// too far, should be removed from the voxel pair list
@@ -211,19 +205,13 @@ void SpatialJoin::within(query_context ctx){
 				ce_iter++;
 			}
 		}
-		delete []ctx.results;
+		delete []ctx.tmp_results;
 		ctx.updatelist_time += logt("updating the candidate lists",start);
 
 		logt("evaluating with lod %d", iter_start, lod);
 		log("");
 	}
 	ctx.overall_time = tdbase::get_time_elapsed(very_start, false);
-	for(int i=0;i<ctx.tile1->num_objects();i++){
-		ctx.result_count += ctx.tile1->get_mesh_wrapper(i)->results.size();
-		for(int j=0;j<ctx.tile1->get_mesh_wrapper(i)->results.size();j++){
-			//cout<<ctx.tile1->get_mesh_wrapper(i)->id<<"\t"<<ctx.tile1->get_mesh_wrapper(i)->results[j]->id<<endl;
-		}
-	}
 	ctx.obj_count += min(ctx.tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
 }

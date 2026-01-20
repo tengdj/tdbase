@@ -47,7 +47,7 @@ public:
 	bool use_aabb = false;
 	bool use_gpu = false;
 	bool print_result = false;
-	int hausdorf_level = 2; // 0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level hausdorff
+
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
 	vector<int> lods;
@@ -61,8 +61,8 @@ public:
 
 	// result
 	size_t obj_count = 0;
-	size_t result_count = 0;
-	result_container *results = NULL;
+	result_container *tmp_results = NULL; // for temporary use
+	vector<pair<int, int>> results; // contain the ID of the validate pairs
 
 	query_context(){
 		num_thread = tdbase::get_num_threads();
@@ -84,6 +84,10 @@ public:
 		}
 	}
 
+	void report_result(int id1, int id2){
+		results.push_back(pair<int, int>(id1,id2));
+	}
+
 	void merge(query_context &ctx){
 		lock();
 		index_time += ctx.index_time;
@@ -93,12 +97,18 @@ public:
 		updatelist_time += ctx.updatelist_time;
 		overall_time += ctx.overall_time;
 		obj_count += ctx.obj_count;
-		result_count += ctx.result_count;
+		results.insert(results.end(), ctx.results.begin(), ctx.results.end());
 		unlock();
 	}
 
 	void report(double t){
 
+		if(print_result){
+			sort(results.begin(),results.end());
+			for(auto p:results){
+				cout<<p.first<<"\t"<<p.second<<endl;
+			}
+		}
 		cerr<<"total:\t"<<t<<endl;
 		cerr<<"index:\t"<<t*index_time/overall_time<<endl;
 		cerr<<"decode:\t"<<t*decode_time/overall_time<<endl;
@@ -112,7 +122,7 @@ public:
 				(t*computation_time/overall_time)/repeated_times);
 		cerr<<"decode:\t"<<decode_time<<endl;
 		cerr<<"packing:\t"<<packing_time<<endl;
-		fprintf(stderr, "#objects:\t%ld\n results:%ld(\t%.3f)\n", obj_count, result_count, 1.0*result_count/obj_count);
+		fprintf(stderr, "#objects:\t%ld\n results:%ld(\t%.3f)\n", obj_count, results.size(), 1.0*results.size()/obj_count);
 
 		fprintf(stderr, "%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
 				t*index_time/overall_time,
@@ -137,12 +147,11 @@ static query_context parse_args(int argc, char **argv){
 	op.add<Value<int>>("", "cn", "number of threads for geometric computation for each tile", 1, &ctx.num_compute_thread);
 	op.add<Switch>("g", "gpu", "compute with GPU", &ctx.use_gpu);
 	op.add<Value<int>>("v", "verbose", "verbose level", 0, &ctx.verbose);
-	op.add<Switch>("", "print_result", "print result to standard out", &ctx.print_result);
+	op.add<Switch>("p", "print_result", "print result to standard out", &ctx.print_result);
 	// for system configuration
 	op.add<Switch>("", "aabb", "calculate distance with aabb", &ctx.use_aabb);
 	op.add<Switch>("c", "counter_clock", "is the faces recorded clock-wise or counterclock-wise", &ctx.counter_clock);
 	op.add<Switch>("", "disable_byte_encoding", "using the raw hausdorff instead of the byte encoded ones", &ctx.disable_byte_encoding);
-	op.add<Value<int>>("", "hausdorff_level", "0 for no hausdorff, 1 for hausdorff at the mesh level, 2 for triangle level", 2, &ctx.hausdorf_level);
 	auto lod_options = op.add<Value<int>>("l", "lods", "the lods that needs be processed");
 
 	// for input data
@@ -158,12 +167,12 @@ static query_context parse_args(int argc, char **argv){
 	op.parse(argc, argv);
 
 // post process
-	assert(ctx.hausdorf_level>=0 && ctx.hausdorf_level<=2);
 
 	if(ctx.query_type!="intersect"&&ctx.query_type!="nn"&&ctx.query_type!="within"){
 		cout <<"error query type: "<< ctx.query_type <<endl;
 		exit(0);
 	}
+
 	if(lod_options->count()>0){
 		for (int i = 0; i < lod_options->count(); i++) {
 			ctx.lods.push_back(lod_options->value(i));

@@ -72,7 +72,7 @@ public:
 	vector<candidate_entry *> mbb_within(Tile *tile1, Tile *tile2, query_context &ctx);
 	vector<candidate_entry *> mbb_intersect(Tile *tile1, Tile *tile2);
 
-	range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist);
+	range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist, bool keep_empty=true);
 
 	void decode_data(vector<candidate_entry *> &candidates, query_context &ctx);
 

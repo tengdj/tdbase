@@ -32,6 +32,9 @@ public:
 		this->v2 = v2;
 		this->dist = v1->distance(*v2);
 	}
+	bool has_empty_voxel(){
+		return v1==NULL||v2==NULL||v1->num_triangles==0||v2->num_triangles==0;
+	}
 };
 
 class candidate_info{

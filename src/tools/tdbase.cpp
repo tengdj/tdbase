@@ -548,6 +548,57 @@ static void join(int argc, char **argv){
 	delete gc;
 }
 
+// 自定义 pair<int,int> 的 hash
+struct PairHash {
+    size_t operator()(const pair<int, int>& p) const {
+        return hash<long long>()(
+            (static_cast<long long>(p.first) << 32) | (unsigned int)p.second
+        );
+    }
+};
+
+unordered_set<pair<int, int>, PairHash>
+load_pairs(const string& filename) {
+    unordered_set<pair<int, int>, PairHash> s;
+    ifstream fin(filename);
+    if (!fin) {
+        cerr << "Failed to open file: " << filename << endl;
+        exit(1);
+    }
+
+    int a, b;
+    while (fin >> a >> b) {
+        s.emplace(a, b);
+    }
+    return s;
+}
+
+static void evaluate(int argc, char* argv[]) {
+    if (argc != 3) {
+        cerr << "Usage: " << argv[0] << " ground_truth.txt prediction.txt\n";
+        return;
+    }
+
+    auto gt   = load_pairs(argv[1]);
+    auto pred = load_pairs(argv[2]);
+
+    size_t true_positive = 0;
+    for (const auto& p : pred) {
+        if (gt.count(p)) {
+            true_positive++;
+        }
+    }
+
+    double precision = pred.empty() ? 0.0 :
+        static_cast<double>(true_positive) / pred.size();
+    double recall = gt.empty() ? 0.0 :
+        static_cast<double>(true_positive) / gt.size();
+
+    cout << "True Positive: " << true_positive << endl;
+    cout << "Precision: " << precision << endl;
+    cout << "Recall: " << recall << endl;
+}
+
 }
 
 int main(int argc, char **argv){
@@ -573,7 +624,8 @@ int main(int argc, char **argv){
 	functions["shift"] = shift;
 	functions["hausdorff"] = hausdorff;
 	functions["join"] = join;
-   
+	functions["evaluate"] = evaluate;
+
 	if (argc < 2 || functions.find(argv[1])==functions.end()) {
 		cout<<"usage: tdbase function [args]"<<endl;
 		cout << "function could be:"<<endl;

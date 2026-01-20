@@ -45,21 +45,44 @@ SpatialJoin::~SpatialJoin(){
 
 }
 
-range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist){
-	range ret;
-	ret.mindist = DBL_MAX;
-	ret.maxdist = minmaxdist;
-	// some voxel pair is farther than this one
+
+
+range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist, bool keep_empty){
+
+	if(global_ctx.verbose>=2){
+		int valid_voxel = 0;
+		int invalid_voxel = 0;
+		for(auto &vp:voxel_pairs){
+			if(vp.dist.valid()){
+				valid_voxel++;
+			}else{
+				invalid_voxel++;
+			}
+		}
+		log("invalid_voxles/total = %.2f\% (%d/%d)\t",invalid_voxel*1.0/(invalid_voxel+valid_voxel),invalid_voxel, (invalid_voxel+valid_voxel));
+	}
+
 	for(auto vp_iter = voxel_pairs.begin();vp_iter!=voxel_pairs.end();){
-		// a closer voxel pair already exist
-		if(vp_iter->dist.mindist > minmaxdist){
+
+		if(vp_iter->dist.mindist > minmaxdist // a closer voxel pair already exist
+				||(!keep_empty&&vp_iter->has_empty_voxel())){ //remove the pairs which has an empty voxel
 			// evict this unqualified voxel pairs
 			voxel_pairs.erase(vp_iter);
 		}else{
-			ret.mindist = min(ret.mindist, vp_iter->dist.mindist);
 			vp_iter++;
 		}
 	}
+
+	assert(voxel_pairs.size()>0);
+	// now update the newest object-level distance from the voxel level distance
+	range ret;
+	ret.mindist = DBL_MAX;
+	ret.maxdist = DBL_MAX;
+	for(auto &vp:voxel_pairs){
+		ret.mindist = min(ret.mindist, vp.dist.mindist);
+		ret.maxdist = min(ret.maxdist, vp.dist.maxdist);
+	}
+
 	return ret;
 }
 
@@ -79,7 +102,7 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry *> &candidates, 
 	gp.pair_num = get_pair_num(candidates);
 	gp.element_num = 0;
 	gp.element_pair_num = 0;
-	gp.results = ctx.results;
+	gp.results = ctx.tmp_results;
 	map<Voxel *, uint32_t> voxel_offset_map;
 
 	for(candidate_entry *c:candidates){
@@ -136,9 +159,9 @@ void SpatialJoin::check_intersection(vector<candidate_entry *> &candidates, quer
 
 	const int pair_num = get_pair_num(candidates);
 
-	ctx.results = new result_container[pair_num];
+	ctx.tmp_results = new result_container[pair_num];
 	for(int i=0;i<pair_num;i++){
-		ctx.results[i].intersected = false;
+		ctx.tmp_results[i].intersected = false;
 	}
 
 	decode_data(candidates, ctx);
@@ -158,7 +181,7 @@ void SpatialJoin::check_intersection(vector<candidate_entry *> &candidates, quer
 			c->mesh_wrapper->get_mesh()->get_segments();
 			for(candidate_info &info:c->candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.results[index++].intersected = c->mesh_wrapper->get_mesh()->intersect_tree(info.mesh_wrapper->get_mesh());
+				ctx.tmp_results[index++].intersected = c->mesh_wrapper->get_mesh()->intersect_tree(info.mesh_wrapper->get_mesh());
 			}// end for candidate list
 		}// end for candidates
 		// clear the trees for current LOD
@@ -183,9 +206,9 @@ void SpatialJoin::calculate_distance(vector<candidate_entry *> &candidates, quer
 	struct timeval start = tdbase::get_cur_time();
 
 	const int pair_num = get_pair_num(candidates);
-	ctx.results = new result_container[pair_num];
+	ctx.tmp_results = new result_container[pair_num];
 	for(int i=0;i<pair_num;i++){
-		ctx.results[i].distance = 0;
+		ctx.tmp_results[i].distance = 0;
 	}
 
 	decode_data(candidates, ctx);
@@ -205,7 +228,7 @@ void SpatialJoin::calculate_distance(vector<candidate_entry *> &candidates, quer
 		for(candidate_entry *c:candidates){
 			for(candidate_info &info:c->candidates){
 				assert(info.voxel_pairs.size()==1);
-				ctx.results[index++].distance = c->mesh_wrapper->get_mesh()->distance_tree(info.mesh_wrapper->get_mesh());
+				ctx.tmp_results[index++].distance = c->mesh_wrapper->get_mesh()->distance_tree(info.mesh_wrapper->get_mesh());
 			}// end for distance_candiate list
 		}// end for candidates
 		// clear the trees for current LOD
