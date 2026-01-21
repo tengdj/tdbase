@@ -140,14 +140,6 @@ void SpatialJoin::intersect(query_context ctx){
 		log("");
 	}
 	ctx.overall_time = tdbase::get_time_elapsed(very_start, false);
-//	for(auto ce_iter=candidates.begin();ce_iter!=candidates.end();ce_iter++){
-//		HiMesh_Wrapper *wrapper1 = ce_iter->mesh_wrapper;
-//		//print_candidate_within(*ce_iter);
-//		for(auto ci_iter=ce_iter->candidates.begin();ci_iter!=ce_iter->candidates.end();ci_iter++){
-//			HiMesh_Wrapper *wrapper2 = ci_iter->mesh_wrapper;
-//			log("%d not intersect %d", wrapper1->id, wrapper2->id);
-//		}
-//	}
 	ctx.obj_count += min(ctx.tile1->num_objects(),global_ctx.max_num_objects1);
 	global_ctx.merge(ctx);
 }

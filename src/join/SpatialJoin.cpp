@@ -49,6 +49,8 @@ SpatialJoin::~SpatialJoin(){
 
 range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist, bool keep_empty){
 
+	assert(voxel_pairs.size()>0);
+
 	if(global_ctx.verbose>=2){
 		int valid_voxel = 0;
 		int invalid_voxel = 0;
@@ -63,8 +65,7 @@ range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, doubl
 	}
 
 	for(auto vp_iter = voxel_pairs.begin();vp_iter!=voxel_pairs.end();){
-
-		if(vp_iter->dist.mindist > minmaxdist // a closer voxel pair already exist
+		if((vp_iter->dist.valid()&&vp_iter->dist.mindist > minmaxdist) // a closer voxel pair already exist
 				||(!keep_empty&&vp_iter->has_empty_voxel())){ //remove the pairs which has an empty voxel
 			// evict this unqualified voxel pairs
 			voxel_pairs.erase(vp_iter);
@@ -74,6 +75,7 @@ range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, doubl
 	}
 
 	assert(voxel_pairs.size()>0);
+
 	// now update the newest object-level distance from the voxel level distance
 	range ret;
 	ret.mindist = DBL_MAX;
@@ -109,7 +111,6 @@ geometry_param SpatialJoin::packing_data(vector<candidate_entry *> &candidates, 
 		HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
 		for(candidate_info &info:c->candidates){
 			for(voxel_pair &vp:info.voxel_pairs){
-				//log("%d %d",vp.v1->data->size, vp.v2->data->size);
 				gp.element_pair_num += vp.v1->num_triangles*vp.v2->num_triangles;
 				// update the voxel offset map
 				for(int i=0;i<2;i++){
@@ -280,7 +281,7 @@ void *join_unit(void *param){
 		}else if(nnparam->ctx.query_type=="nn"){
 			nnparam->joiner->nearest_neighbor(nnparam->ctx);
 		}else if(nnparam->ctx.query_type=="within"){
-			nnparam->joiner->within(nnparam->ctx);
+			nnparam->joiner->within_distance(nnparam->ctx);
 		}else{
 			log("wrong query type: %s", nnparam->ctx.query_type.c_str());
 		}

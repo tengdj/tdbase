@@ -124,6 +124,7 @@ public:
 	map<int, size_t> volume_lod;
 
 	bool owned = false;
+	int id = 0;
 public:
 	~Voxel();
 	void clear();

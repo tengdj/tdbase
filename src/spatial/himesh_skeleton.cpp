@@ -81,6 +81,7 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_size){
 	if(voxel_num<=3){
 		Voxel *v = new Voxel();
 		v->set_box(box);
+		v->id = 0;
 		voxels.push_back(v);
 		return voxels;
 	}
@@ -91,6 +92,7 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_size){
 		v->core[0] = skeleton_points[i][0];
 		v->core[1] = skeleton_points[i][1];
 		v->core[2] = skeleton_points[i][2];
+		v->id = i;
 		voxels.push_back(v);
 	}
 

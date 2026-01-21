@@ -39,6 +39,7 @@ HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 			meta_size += 3*sizeof(float);
 			voxels.push_back(v);
 			box.update(*v);
+			v->id = i;
 		}
 	}else{
 		for(int lod=20;lod<=100;lod+=20){
@@ -58,6 +59,7 @@ HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 			meta_size += 3*sizeof(float);
 			memcpy(v->core, meta_buffer+meta_size, 3*sizeof(float));
 			meta_size += 3*sizeof(float);
+			v->id = i;
 
 			// load the offset and volume information for varying LODs
 			for(int lod=20;lod<=100;lod+=20){

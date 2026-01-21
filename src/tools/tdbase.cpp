@@ -517,7 +517,7 @@ static void join(int argc, char **argv){
 	}
 	logt("create tiles", start);
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *t1 = tile_pairs[i].first;
 		Tile *t2 = tile_pairs[i].second;
@@ -533,7 +533,7 @@ static void join(int argc, char **argv){
 	double join_time = tdbase::get_time_elapsed(start,false);
 	logt("join", start);
 
-#pragma omp parallel for
+//#pragma omp parallel for
 	for(int i=0;i<global_ctx.repeated_times;i++){
 		Tile *t1 = tile_pairs[i].first;
 		Tile *t2 = tile_pairs[i].second;
@@ -582,11 +582,37 @@ static void evaluate(int argc, char* argv[]) {
     auto gt   = load_pairs(argv[1]);
     auto pred = load_pairs(argv[2]);
 
+    vector<pair<int, int>> fp;
+    vector<pair<int, int>> fn;
+
     size_t true_positive = 0;
     for (const auto& p : pred) {
         if (gt.count(p)) {
             true_positive++;
+        }else{
+        	fp.push_back(pair<int,int>(p.first,p.second));
         }
+    }
+
+    for (const auto& p : gt) {
+        if (!pred.count(p)) {
+        	fn.push_back(pair<int,int>(p.first,p.second));
+        }
+    }
+
+    sort(fp.begin(),fp.end());
+    sort(fn.begin(),fn.end());
+    if(fp.size()>0){
+    	cout<<"false positives:"<<endl;
+    	for(auto p:fp){
+        	cout<<p.first<<"\t"<<p.second<<endl;
+    	}
+    }
+    if(fn.size()>0){
+    	cout<<"false negative:"<<endl;
+    	for(auto p:fn){
+        	cout<<p.first<<"\t"<<p.second<<endl;
+    	}
     }
 
     double precision = pred.empty() ? 0.0 :
@@ -604,10 +630,12 @@ static void evaluate(int argc, char* argv[]) {
 int main(int argc, char **argv){
 	// register the functions
 	functions["to_sql"] = to_sql;
+	functions["to_wkt"] = to_wkt;
 	functions["get_voxel_boxes"] = get_voxel_boxes;
 	functions["get_skeleton"] = get_skeleton;
 	functions["voxelize"] = voxelize;
 	functions["profile_decoding"] = profile_decoding;
+	functions["profile_distance"] = profile_distance;
 	functions["aabb"] = aabb;
 	functions["adjust_polyhedron"] = adjust_polyhedron;
 	functions["triangulate"] = triangulate;

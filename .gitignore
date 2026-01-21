@@ -2,7 +2,6 @@
 .cproject
 .settings/
 .vs/
-*.dt
 *.mt
 *.wkt
 *.o

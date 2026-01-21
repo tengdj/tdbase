@@ -285,18 +285,21 @@ int main(int argc, char **argv){
 
 	OptionParser op("Simulator");
 	auto help_option = op.add<Switch>("h", "help", "produce help message");
-	auto hausdorff_option = op.add<Switch>("", "hausdorff", "enable Hausdorff distance calculation", &HiMesh::use_hausdorff);
-	auto multi_lods_option = op.add<Switch>("m", "multi_lods", "the input are polyhedrons in multiple files", &multi_lods);
+	op.add<Value<int>>("t", "threads", "number of threads", tdbase::get_num_threads(), &num_threads);
+	op.add<Value<int>>("", "verbose", "verbose level",0, &global_ctx.verbose);
+
 	auto allow_intersection_option = op.add<Switch>("i", "allow_intersection", "allow the nuclei to intersect with other nuclei or vessel",&allow_intersection);
 	op.add<Value<string>>("n", "nuclei", "path to the nuclei prototype file", "nuclei.pt", &nuclei_pt);
 	op.add<Value<string>>("v", "vessel", "path to the vessel prototype file", "vessel.pt", &vessel_pt);
+	auto multi_lods_option = op.add<Switch>("m", "multi_lods", "the input are polyhedrons in multiple files", &multi_lods);
+
 	op.add<Value<string>>("o", "output", "prefix of the output files", "default", &output_path);
-	op.add<Value<int>>("t", "threads", "number of threads", tdbase::get_num_threads(), &num_threads);
 	op.add<Value<int>>("", "nv", "number of vessels", 50, &num_vessel);
-	op.add<Value<int>>("", "nu", "number of nucleis per vessel", 100, &num_nuclei_per_vessel);
-	op.add<Value<int>>("", "vs", "number of vertices in each voxel",100, &voxel_size);
-	op.add<Value<int>>("", "verbose", "verbose level",0, &global_ctx.verbose);
+	op.add<Value<int>>("", "nu", "number of nucleis per vessel", 200, &num_nuclei_per_vessel);
+
+	auto hausdorff_option = op.add<Switch>("", "hausdorff", "enable Hausdorff distance calculation", &HiMesh::use_hausdorff);
 	op.add<Value<uint32_t>>("r", "sample_rate", "sampling rate for Hausdorff distance calculation", 30, &HiMesh::sampling_rate);
+	op.add<Value<int>>("", "vs", "number of vertices in each voxel",100, &voxel_size);
 
 	op.parse(argc, argv);
 

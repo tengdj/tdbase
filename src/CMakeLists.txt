@@ -76,4 +76,3 @@ target_link_libraries(wrap PRIVATE gmp mpfr)
 
 add_executable (mymesh ${MYMESH_SRCS})
 
-add_executable (evaluate tools/evaluate.cpp)

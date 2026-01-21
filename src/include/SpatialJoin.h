@@ -81,7 +81,7 @@ public:
 	void check_intersection(vector<candidate_entry *> &candidates, query_context &ctx);
 
 	void nearest_neighbor(query_context ctx);
-	void within(query_context ctx);
+	void within_distance(query_context ctx);
 	void intersect(query_context ctx);
 
 	void join(vector<pair<Tile *, Tile *>> &tile_pairs);

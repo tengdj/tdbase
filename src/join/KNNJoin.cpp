@@ -241,32 +241,17 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 				HiMesh_Wrapper *wrapper2 = ci.mesh_wrapper;
 
 				if(ctx.use_aabb){
-					range dist = ci.distance;
+					// progressive query is invalid when AABB acceleration is enabled
+					assert(lod==ctx.highest_lod());
 					result_container res = ctx.tmp_results[index++];
-					if(lod==ctx.highest_lod()){
-						// now we have a precise distance
-						dist.mindist = res.distance;
-						dist.maxdist = res.distance;
-					}else{
-						dist.maxdist = std::min(dist.maxdist, res.distance);
-						dist.mindist = std::max(dist.mindist, dist.maxdist-wrapper1->getHausdorffDistance()-wrapper2->getHausdorffDistance());
-
-						dist.mindist = std::min(dist.mindist, dist.maxdist);
-						//dist.mindist = dist.maxdist-wrapper1->mesh->curMaximumCut-wrapper2->mesh->curMaximumCut;
-					}
-
-					if(global_ctx.verbose>=1){
-						log("%ld\t%ld:\t[%.2f, %.2f]->[%.2f, %.2f]",wrapper1->id, wrapper2->id,
-								ci.distance.mindist, ci.distance.maxdist,
-								dist.mindist, dist.maxdist);
-					}
-					ci.distance = dist;
+					ci.distance.mindist = res.distance;
+					ci.distance.maxdist = res.distance;
 				}else{
 					double vox_minmaxdist = DBL_MAX;
 					for(voxel_pair &vp:ci.voxel_pairs){
 						result_container res = ctx.tmp_results[index++];
 						// update the distance
-						if(vp.v1->num_triangles>0&&vp.v2->num_triangles>0){
+						if(!vp.has_empty_voxel()){
 							range dist = vp.dist;
 							if(lod==ctx.highest_lod()){
 //								if(!dist.valid()){
@@ -278,7 +263,6 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							} else {
 								dist.mindist = std::max(dist.mindist, res.min_dist);
 								dist.maxdist = std::min(dist.maxdist, res.max_dist);
-//								dist.maxdist = std::min(dist.maxdist, res.distance);
 							}
 							//dist.maxdist = std::max(dist.maxdist, dist.mindist);
 
@@ -302,19 +286,17 @@ void SpatialJoin::nearest_neighbor(query_context ctx){
 							vox_minmaxdist = min(vox_minmaxdist, (double)dist.maxdist);
 							//assert(dist.valid());
 						}
-					}
+					}// end of voxel pair iteration
 					// after each round, some voxels need to be evicted,
 					// remove the invalid pair at the highest LOD (have an empty voxel)
 					// (happens when low LOD serve as the highest LOD, some voxel will be empty)
 					ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist,lod!=ctx.highest_lod());
 					assert(ci.voxel_pairs.size()>0);
 					assert(ci.distance.mindist<=ci.distance.maxdist);
-				}
-			}
-			if(global_ctx.verbose>=1){
-				log("");
-			}
-		}
+				}// end the if for AABB or progressive querying
+			}// end evaluate the candidates for each object
+		}// end evaluate all the objects' candidates
+
 		// update the list after processing each LOD
 		evaluate_candidate_lists(candidates, ctx);
 		delete []ctx.tmp_results;
