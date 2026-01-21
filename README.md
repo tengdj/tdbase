@@ -1,11 +1,11 @@
 # TDBase
-we propose a novel multi-level progressive 3D compression method, which is designed to satisfy two progressive query conditions, thus supports returning correct results even with compressed data whenever possible. Based on this, we further propose novel progressive refinement which starts from lightweight low-resolution representation for possible early return of results and progresses to higher resolution representation, which can be largely avoided. A system TDBase is implemented with progressive refinement to support highly efficient and accurate spatial queries for complex three-dimensional objects.
+We propose a novel multi-level progressive 3D compression method, designed to satisfy two progressive query conditions, thereby supporting the return of correct results even with compressed data whenever possible. Based on this, we further propose a novel progressive refinement that starts from a lightweight, low-resolution representation for the possible early return of results and progresses to a higher-resolution representation, which can be largely avoided. A system TDBase is implemented with progressive refinement to support highly efficient and accurate spatial queries for complex three-dimensional objects.
 
 ## install and setup
-install the prerequisite libraries: cmake CGAL GMP Boost(program_options) ZLIB OpenMP
-if the machine equiped with NVIDIA GPU, setup the environment before compiling
+Install the prerequisite libraries: cmake, CGAL, GMP, Boost(program_options), ZLIB, and OpenMP.
+If the machine is equipped with an NVIDIA GPU, set up the environment before compiling with command:
 ```console
-export USE_GPU=TRUE_
+export USE_GPU=TRUE
 
 ```
 then compile the code
@@ -20,7 +20,7 @@ make tdbase
 ```
 
 ## generate synthetic dataset
-We developped a tool to generate synthetic datasets 
+We developed a tool to generate synthetic datasets 
 ```console
 Simulator:
   -h, --help                     produce help message
@@ -38,13 +38,11 @@ Simulator:
   -r, --sample_rate arg (=30)    sampling rate for Hausdorff distance calculation
 
 ```
-You can generate datasets with varying sizes and configurations. The below command generated two .dt files which contain 50 complex vessels and about 10000 (50*200) nuclei. queries can be conducted over those two dt files foo_n_nv50_nu200_vs100_r30.dt and foo_v_nv50_nu200_vs100_r30.dt. 
+You can generate datasets with varying sizes and configurations. The command below generated two .dt files, which contain 50 complex vessels and about 10000 (50*200) nuclei. Queries can be conducted over the generated files foo_n_nv50_nu200_vs100_r30.dt and foo_v_nv50_nu200_vs100_r30.dt. 
 ```console
 ./simulator -n ../../data/nuclei.pt -v ../../data/vessel.pt -o foo --hausdorff --nv 50 --nu 200
 ```
-Note that for now we disabled the facet-association-based optimization for hausdorff distance calculation but depend solely on AABB-tree, thus it takes a while to complete the generation with hausdorff distances calculated. In addition, you can use the pre-generated synthetic dt files in the data folder. 
-
-The generated files are in compressed format which need to be decoded during querying. Converting .dt files into decoded format can achieve better query performance but with significant higher storage cost. We are working on improving the decoding efficiency with partial decoding and GPU acceleration.
+Note that we disabled the facet-association-based optimization for Hausdorff distance calculation, but depend solely on AABB-tree, thus it takes a little longer to complete the data generation with Hausdorff distances calculated. In addition, you can use the pre-generated synthetic data files in the data folder. The generated files are in compressed format, which needs to be decoded during querying. Converting .dt files into decoded format can achieve better query performance, but with significantly higher storage cost. We are working on improving the decoding efficiency with partial decoding and GPU acceleration.
 
 ```console
 ./tdbase convert foo_n_nv50_nu200_vs100_r30.dt decoded_n_nv50_nu200_vs100_r30.dt
@@ -53,7 +51,7 @@ The generated files are in compressed format which need to be decoded during que
 ```
 
 ## run test
-Three queries are implemented: KNN, within-distance, and intersection. For now, the intersection query is still buggy and we are working on it, currently it can be tested using the within-distance query by setting the distance threshold to 0. 
+Three queries are implemented: KNN, within-distance, and intersection. For now, the intersection query is still buggy. Instead, you can still test the intersection join using the within-distance query by setting the distance threshold to 0. 
 ```console
 -h, --help                          produce help message
   -t, --threads arg (=8)              number of threads
@@ -76,19 +74,19 @@ Three queries are implemented: KNN, within-distance, and intersection. For now, 
   -w, --within_dist arg (=1000)       the maximum distance for within query
 ```
 
-The below command conduct a 3NN join. Specifying "-g" option makes the geometry computation conducted with GPU. In cases GPU is not supported, you can specify how many threads can be used for geometric computations with option "--cn 10" (using 10 threads), the default value is 1. 
+The command below conducts a 3NN join. Specifying the "-g" option makes the geometry computation conducted with a GPU. In cases GPU is not supported, you can specify how many threads can be used for geometric computations with the option "--cn 10" (using 10 threads, the default value is 1). 
 ```console
 ./tdbase join --tile1 decoded_n_nv50_nu200_vs100_r30.dt --tile2 decoded_v_nv50_nu200_vs100_r30.dt -q nn --knn 3 -l 20 -l 40 -l 60 -l 80 -l 100 --cn 10 -p > result.txt
 
 ```
 
-The "-p" option enabling the printing of the final results to the standard out, and stored in result.txt. You can also run test without progressive querying by querying directly on the highest LOD with the following command. 
+The "-p" option enables the printing of the final results to the standard out and stored in result.txt. You can also run a test without progressive querying by querying directly on the highest LOD with the following command. 
 ```console
 ./tdbase join --tile1 decoded_n_nv50_nu200_vs100_r30.dt --tile2 decoded_v_nv50_nu200_vs100_r30.dt -q nn --knn 3 -l 100 --cn 10 -p > result100.txt
 
 ```
 
-Changing "-l 100" to other LODs like "-l 20" can query specific LOD and obtain approximate result. We developped a tool to compare the result with the ground truth (the result while querying LOD 100). 
+Changing "-l 100" to other LODs like "-l 20" can query a specific LOD and obtain an approximate result. We developed a tool to compare the result with the ground truth (the result while querying LOD 100). 
 
 ```console
 ./tdbase evaluate result100.txt result.txt
@@ -101,13 +99,13 @@ The following command conducts a 3NN query on a single dataset as a self-join.
 
 ```
 
-The following command conducts a within distance query, and the distance threshold is set to 100. 
+The following command conducts a within-distance query, and the distance threshold is set to 100. 
 ```console
 ./tdbase join --tile1 foo_n_nv50_nu200_vs100_r30.dt --tile2 foo_v_nv50_nu200_vs100_r30.dt -q within -w 100 -l 20 -l 40 -l 60 -l 80 -l 100 -p >result.txt
 
 ```
 
-You can also conduct a within-distance query without progressive query on the highest LOD, and evaluate the accuracy as discussed above. 
+You can also conduct a within-distance query without a progressive query on the highest LOD, and evaluate the accuracy as discussed above. 
 
 
 
