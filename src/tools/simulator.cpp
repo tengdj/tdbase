@@ -295,7 +295,7 @@ int main(int argc, char **argv){
 
 	op.add<Value<string>>("o", "output", "prefix of the output files", "default", &output_path);
 	op.add<Value<int>>("", "nv", "number of vessels", 50, &num_vessel);
-	op.add<Value<int>>("", "nu", "number of nucleis per vessel", 200, &num_nuclei_per_vessel);
+	op.add<Value<int>>("", "nu", "number of nucleis per vessel", 100, &num_nuclei_per_vessel);
 
 	auto hausdorff_option = op.add<Switch>("", "hausdorff", "enable Hausdorff distance calculation", &HiMesh::use_hausdorff);
 	op.add<Value<uint32_t>>("r", "sample_rate", "sampling rate for Hausdorff distance calculation", 30, &HiMesh::sampling_rate);
