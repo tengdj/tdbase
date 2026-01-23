@@ -371,7 +371,7 @@ void HiMesh::InsertedEdgeCodingStep() {
 
 void HiMesh::HausdorffCodingStep(){
 
-	// we store two times for experimental evaluation
+	// we store with/without byte encoding for experimental evaluation
 	hausdorfSym.push_back(std::deque<unsigned char>());
 	proxyhausdorfSym.push_back(std::deque<unsigned char>());
 	hausdorfSym_float.push_back(std::deque<float>());

@@ -156,6 +156,7 @@ void SpatialJoin::join(Tile *tile1, Tile *tile2){
 
 	// filtering with MBBs to get the candidate list
 	index_retrieval(tile1, tile2, ctx);
+	log("");
 
 	// now we start to conduct query with progressive level of details
 	for(uint32_t lod:config.lods){

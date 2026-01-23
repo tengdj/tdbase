@@ -53,6 +53,11 @@ public:
 
 class candidate_entry{
 public:
+	HiMesh_Wrapper *mesh_wrapper = NULL;
+	//vector<candidate_info *> candidates;
+	vector<candidate_info> candidates;
+	int candidate_confirmed = 0;
+public:
 	candidate_entry(){}
 	candidate_entry(HiMesh_Wrapper *m){
 		mesh_wrapper = m;
@@ -75,11 +80,6 @@ public:
 			}
 		}
 	}
-
-	HiMesh_Wrapper *mesh_wrapper = NULL;
-	//vector<candidate_info *> candidates;
-	vector<candidate_info> candidates;
-	int candidate_confirmed = 0;
 };
 
 size_t get_pair_num(vector<candidate_entry *> &candidates);

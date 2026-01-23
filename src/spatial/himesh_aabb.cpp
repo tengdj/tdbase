@@ -24,7 +24,6 @@ TriangleTree *HiMesh::get_aabb_tree_triangle(){
 	return triangle_tree;
 }
 
-
 void HiMesh::updateAABB(){
 	if(triangle_tree){
 		aabb_triangles.clear();

@@ -17,21 +17,26 @@ range DistanceJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, doub
 
 	assert(voxel_pairs.size()>0);
 
-	if(config.verbose>=2){
-		int valid_voxel = 0;
-		int invalid_voxel = 0;
-		for(auto &vp:voxel_pairs){
-			if(vp.dist.valid()){
-				valid_voxel++;
-			}else{
-				invalid_voxel++;
-			}
-		}
-		log("invalid_voxles/total = %.2f\% (%d/%d)\t",invalid_voxel*1.0/(invalid_voxel+valid_voxel),invalid_voxel, (invalid_voxel+valid_voxel));
-	}
+//	if(config.verbose>=2){
+//		int valid_voxel = 0;
+//		int invalid_voxel = 0;
+//		for(auto &vp:voxel_pairs){
+//			if(vp.dist.valid()){
+//				valid_voxel++;
+//			}else{
+//				invalid_voxel++;
+//			}
+//		}
+//		log("invalid_voxles/total = %.2f\% (%d/%d)\t",invalid_voxel*1.0/(invalid_voxel+valid_voxel),invalid_voxel, (invalid_voxel+valid_voxel));
+//	}
 
 	for(auto vp_iter = voxel_pairs.begin();vp_iter!=voxel_pairs.end();){
-		if((vp_iter->dist.valid()&&vp_iter->dist.mindist > minmaxdist) // a closer voxel pair already exist
+		assert(vp_iter->dist.valid());
+		if(vp_iter->v2->id==131){
+			vp_iter++;
+			continue;
+		}
+		if(vp_iter->dist.mindist > minmaxdist // a closer voxel pair already exist
 				||(!keep_empty&&vp_iter->has_empty_voxel())){ //remove the pairs which has an empty voxel
 			// evict this unqualified voxel pairs
 			voxel_pairs.erase(vp_iter);
@@ -103,8 +108,6 @@ void DistanceJoin::update_distance_ranges(query_context &ctx){
 					} else {
 						dist.mindist = res.min_dist;
 						dist.maxdist = res.max_dist;
-//						dist.mindist = std::max(dist.mindist, res.min_dist);
-//						dist.maxdist = std::min(dist.maxdist, res.max_dist);
 					}
 
 					if(config.verbose>=1)
