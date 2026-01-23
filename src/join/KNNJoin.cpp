@@ -21,6 +21,11 @@ void KNNJoin::index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx){
 		//1. use the distance between the mbbs of objects as a
 		//	 filter to retrieve candidate objects
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
+
+		if(config.specify_object!=-1&&config.specify_object!=wrapper1->id){// for single query
+			continue;
+		}
+
 		float min_maxdistance = DBL_MAX;
 		tree->query_knn(&(wrapper1->box), candidate_ids, min_maxdistance, config.knn);
 		assert(candidate_ids.size()>=config.knn);

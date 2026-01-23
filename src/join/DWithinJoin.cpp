@@ -18,7 +18,8 @@ void DWithinJoin::index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx){
 	for(int i=0;i<tile1->num_objects();i++){
 		vector<pair<int, range>> candidate_ids;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
-		if(wrapper1->id!=9058){
+
+		if(config.specify_object!=-1&&config.specify_object!=wrapper1->id){//for single query
 			continue;
 		}
 

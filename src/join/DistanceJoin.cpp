@@ -142,7 +142,6 @@ void DistanceJoin::geometric_computation(query_context &ctx){
 		int index = 0;
 		for(candidate_entry *c:ctx.candidates){
 			for(candidate_info &info:c->candidates){
-				assert(info.voxel_pairs.size()==1);
 				ctx.gp.results[index++].distance = c->mesh_wrapper->get_mesh()->distance_tree(info.mesh_wrapper->get_mesh());
 			}// end for distance_candiate list
 		}// end for candidates
@@ -156,6 +155,6 @@ void DistanceJoin::geometric_computation(query_context &ctx){
 	}else{
 		computer->get_distance(ctx.gp);
 	}
-	ctx.computation_time += logt("computation for distance computation", start);
+	ctx.computation_time += logt("distance computation", start);
 }
 }

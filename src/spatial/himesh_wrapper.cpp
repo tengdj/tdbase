@@ -124,16 +124,16 @@ void HiMesh_Wrapper::decode_to(int lod){
 		v->clear();
 	}
 
-	if(type == MULTIMESH){
+	if(type == COMPRESSED){
+			assert(mesh);
+			mesh->decode(lod);
+			mesh->fill_voxels(voxels);
+	}else if(type == MULTIMESH){
 		assert(meshes.find(cur_lod)!=meshes.end());
 		get_mesh()->fill_voxels(voxels);
-	}else if(type == COMPRESSED){
-		assert(mesh);
-		mesh->decode(lod);
-		mesh->fill_voxels(voxels);
 	}else{
 		// for RAW data mode, simply link pointers instead of do the decoding job
-		// as data already been stored a
+		// as data already been stored separately for each voxel
 		for(int i=0;i<voxels.size();i++){
 			size_t offset = get_voxel_offset(i, lod);
 			size_t size = get_voxel_size(i, lod);

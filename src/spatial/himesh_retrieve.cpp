@@ -172,16 +172,16 @@ size_t HiMesh::fill_voxels(vector<Voxel *> &voxels){
 		return num_of_element;
 	}
 
-	// now reorganize the data with the voxel information given
-	// assign each triangle to a proper group
+	// now reorganize the data with the voxel information, assign each triangle to a proper group
+	// todo: this part should be optimized, but as for now, it is not the bottleneck
 	// we tried voronoi graph, but it's even slower than the brute force method
 	int *groups = new int[num_of_element];
 	int *group_count = new int[voxels.size()];
 	for(int i=0;i<voxels.size();i++){
 		group_count[i] = 0;
 	}
+
 	for(int i=0;i<num_of_element;i++){
-		// for both segment and triangle, we assign it with only the first point
 		float *p1 = triangle_buffer+i*9;
 		float min_dist = DBL_MAX;
 		int gid = -1;

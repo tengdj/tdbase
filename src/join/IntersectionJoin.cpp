@@ -18,6 +18,10 @@ void IntersectJoin::index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx
 		vector<int> candidate_ids;
 		HiMesh_Wrapper *wrapper1 = tile1->get_mesh_wrapper(i);
 
+		if(config.specify_object!=-1&&config.specify_object!=wrapper1->id){//for single query
+			continue;
+		}
+
 		tree->query_intersect(&(wrapper1->box), candidate_ids);
 		// no candidates
 		if(candidate_ids.empty()){

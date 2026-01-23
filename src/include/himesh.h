@@ -728,6 +728,7 @@ public:
 			assert(meshes.find(cur_lod)!=meshes.end());
 			return meshes[cur_lod];
 		}
+		cout<<type<<endl;
 		assert(false);
 		return NULL;
 	}

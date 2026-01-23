@@ -63,7 +63,7 @@ void SpatialJoin::decode_data(query_context &ctx){
 			info.mesh_wrapper->decode_to(ctx.cur_lod);
 		}// end for distance_candiate list
 	}// end for candidates
-	ctx.decode_time += logt("decode data", start);
+	ctx.decode_time += logt("decode data to %d", start, ctx.cur_lod);
 }
 
 void SpatialJoin::packing_data(query_context &ctx){
@@ -83,10 +83,10 @@ void SpatialJoin::packing_data(query_context &ctx){
 	if(config.use_aabb){
 		// build the AABB tree
 		for(candidate_entry *c:ctx.candidates){
+			c->mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 			for(candidate_info &info:c->candidates){
 				info.mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 			}
-			c->mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 		}
 		ctx.packing_time += logt("building aabb tree", start);
 	}else{
@@ -168,8 +168,8 @@ void SpatialJoin::join(Tile *tile1, Tile *tile2){
 		if(pair_num==0){
 			break;
 		}
-		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per candidate",
-				ctx.candidates.size(), candidate_num, pair_num, (1.0*pair_num)/ctx.candidates.size());
+		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per object pair",
+				ctx.candidates.size(), candidate_num, pair_num, (1.0*pair_num)/candidate_num);
 
 		// decode the corresponding polyhedrons into current LOD
 		decode_data(ctx);

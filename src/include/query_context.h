@@ -38,6 +38,7 @@ public:
 
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
+	int specify_object = -1;
 	vector<int> lods;
 	int verbose = 0;
 	bool counter_clock = false;
@@ -161,6 +162,7 @@ static Configuration parse_args(int argc, char **argv){
 	op.add<Value<string>>("", "tile2", "path to tile 2", "",  & config.tile2_path);
 	op.add<Value<size_t>>("", "max_objects1", "max number of objects in tile 1", LONG_MAX, &config.max_num_objects1);
 	op.add<Value<size_t>>("", "max_objects2", "max number of objects in tile 2", LONG_MAX, &config.max_num_objects2);
+	op.add<Value<int>>("", "specify_object", "specify a single object in tile 1 for processing", -1, &config.specify_object);
 	// for query 
 	op.add<Value<string>, Attribute::required>("q", "query", "query types: intersect|nn|within", "", & config.query_type);
 	op.add<Value<int>>("k", "knn", "the K value for NN query", 1, &config.knn);
