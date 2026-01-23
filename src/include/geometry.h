@@ -126,10 +126,10 @@ public:
 	size_t element_pair_num = 0;
 	float *data = NULL;
 	float *hausdorff = NULL;
-	// the offset and size of the computing pairs
-	uint32_t *offset_size = NULL;
+	uint32_t *offset_size = NULL;// the offset and size of the computing pairs
 	result_container *results = NULL;
 	void allocate_buffer(){
+		clear_buffer();
 		data = new float[9*element_num];
 		hausdorff = new float[2*element_num];
 		offset_size = new uint32_t[4*pair_num];
@@ -137,12 +137,21 @@ public:
 	void clear_buffer(){
 		if(data){
 			delete []data;
+			data = NULL;
 		}
 		if(hausdorff){
 			delete []hausdorff;
+			hausdorff = NULL;
 		}
 		if(offset_size){
 			delete []offset_size;
+			offset_size = NULL;
+		}
+	}
+	void clear_result(){
+		if(results){
+			delete []results;
+			results = NULL;
 		}
 	}
 };

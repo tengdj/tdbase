@@ -52,7 +52,7 @@ HiMesh::HiMesh(string &str, bool completeop):
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 	vh_departureConquest[1] = halfedges_begin()->vertex();
-	if(global_ctx.verbose >= 2){
+	if(config.verbose >= 2){
 		logt("load mesh", start);
 	}
 
@@ -61,11 +61,11 @@ HiMesh::HiMesh(string &str, bool completeop):
 
 	if(completeop){
 		encode();
-		if(global_ctx.verbose >= 2){
+		if(config.verbose >= 2){
 			logt("encode", start);
 		}
 	}
-	if(global_ctx.verbose >= 2){
+	if(config.verbose >= 2){
 		logt("loading one mesh", very_start);
 	}
 }

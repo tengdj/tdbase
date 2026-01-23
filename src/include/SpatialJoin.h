@@ -53,65 +53,52 @@ const static long VOXEL_BUFFER_SIZE = 1<<30;
 */
 
 class SpatialJoin{
+protected:
 	geometry_computer *computer = NULL;
+	// five steps of query
+	virtual void index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx) = 0;
+	void decode_data(query_context &ctx);
+	void packing_data(query_context &ctx);
+	virtual void geometric_computation(query_context &ctx)=0;
+	virtual void evaluate_candidate_lists(query_context &ctx)=0;
 public:
+	SpatialJoin();
+	virtual ~SpatialJoin();
+	void join(Tile *, Tile *);
+};
 
-	SpatialJoin(geometry_computer *c);
-	~SpatialJoin();
-	/*
-	 *
-	 * the main entry function to conduct next round of computation
-	 * each object in tile1 need to compare with all objects in tile2.
-	 * to avoid unnecessary computation, we need to build index on tile2.
-	 * The unit for building the index for tile2 is the ABB for all or part
-	 * of the surface (mostly triangle) of a polyhedron.
-	 *
-	 * */
-
-	vector<candidate_entry *> mbb_knn(Tile *tile1, Tile *tile2, query_context &ctx);
-	vector<candidate_entry *> mbb_within(Tile *tile1, Tile *tile2, query_context &ctx);
-	vector<candidate_entry *> mbb_intersect(Tile *tile1, Tile *tile2);
-
+class DistanceJoin:public SpatialJoin{
+protected:
 	range update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist, bool keep_empty=true);
+	void update_distance_ranges(query_context &ctx);
+	void geometric_computation( query_context &ctx);
+public:
+	DistanceJoin():SpatialJoin(){}
+};
 
-	void decode_data(vector<candidate_entry *> &candidates, query_context &ctx);
+class KNNJoin:public DistanceJoin{
+protected:
+	void index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx);
+	void evaluate_candidate_lists(query_context &ctx);
+public:
+	KNNJoin():DistanceJoin(){}
+};
 
-	geometry_param packing_data(vector<candidate_entry *> &candidates, query_context &ctx);
-	void calculate_distance(vector<candidate_entry *> &candidates, query_context &ctx);
-	void check_intersection(vector<candidate_entry *> &candidates, query_context &ctx);
+class DWithinJoin:public DistanceJoin{
+protected:
+	void index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx);
+	void evaluate_candidate_lists(query_context &ctx);
+public:
+	DWithinJoin():DistanceJoin(){}
+};
 
-	void nearest_neighbor(query_context ctx);
-	void within_distance(query_context ctx);
-	void intersect(query_context ctx);
-
-	void join(vector<pair<Tile *, Tile *>> &tile_pairs);
-
-	/*
-	 *
-	 * go check the index
-	 *
-	 * */
-	void check_index();
-
-	// register job to gpu
-	// worker can register work to gpu
-	// if the GPU is idle and queue is not full
-	// otherwise do it locally with CPU
-	float *register_computation(char *data, int num_cu);
-
-	/*
-	 * do the geometry computation in a batch with GPU
-	 *
-	 * */
-	void compute_gpu();
-
-	/*
-	 * do the geometry computation in a batch with CPU
-	 *
-	 * */
-	void compute_cpu();
-
-
+class IntersectJoin:public SpatialJoin{
+protected:
+	void index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx);
+	void geometric_computation(query_context &ctx);
+	void evaluate_candidate_lists(query_context &ctx);
+public:
+	IntersectJoin():SpatialJoin(){}
 };
 
 }

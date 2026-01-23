@@ -28,7 +28,7 @@ bool HiMesh::intersect(HiMesh *target){
 	size_t s1 = fill_triangles(tri1);
 	size_t s2 = target->fill_triangles(tri2);
 	result_container res = MeshInt(tri1, tri2, s1, s2);
-	if(res.intersected && global_ctx.verbose>=1){
+	if(res.intersected && config.verbose>=1){
 		print_triangles(tri1+res.p1*9, 1);
 		print_triangles(tri2+res.p2*9, 1);
 	}
@@ -43,7 +43,7 @@ float HiMesh::distance(HiMesh *target){
 	size_t s1 = fill_triangles(tri1);
 	size_t s2 = target->fill_triangles(tri2);
 	res = MeshDist(tri1, tri2, s1, s2);
-	if(global_ctx.verbose>=1){
+	if(config.verbose>=1){
 		print_triangles(tri1+res.p1*9, 1);
 		print_triangles(tri2+res.p2*9, 1);
 	}

@@ -140,7 +140,7 @@ void HiMesh_Wrapper::decode_to(int lod){
 			voxels[i]->external_load((float *)(data_buffer+offset), (float *)(data_buffer+offset+9*size*sizeof(float)), size);
 		}
 	}
-	if(global_ctx.verbose>=3){
+	if(config.verbose>=3){
 		for(int i=0;i<voxels.size();i++){
 			printf("decode_to: id: %ld\t voxel_id: %d\t lod: %d\t offset: %ld\t volume: %ld\n", id, i, lod, voxels[i]->offset_lod[lod], voxels[i]->volume_lod[lod]);
 			voxels[i]->print();

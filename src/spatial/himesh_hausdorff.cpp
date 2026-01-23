@@ -172,12 +172,12 @@ void HiMesh::computeHausdorfDistance(){
 		struct timeval start = get_cur_time();
 		original_mesh = clone_mesh();
 		original_mesh->updateAABB();
-		if(global_ctx.verbose >= 2){
+		if(config.verbose >= 2){
 			logt("building aabb tree", start);
 		}
 		original_mesh->area_unit = original_mesh->sampling_gap();
 		original_mesh->sample_points(original_mesh->area_unit);
-		if (global_ctx.verbose >= 2) {
+		if (config.verbose >= 2) {
 			logt("init triangles", start);
 		}
 //		if(original_mesh != NULL){
@@ -273,9 +273,8 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 
 	ph_caldist_tm += get_time_elapsed(start, true);
 
-
 	pair<float, float> current_hausdorf = collectGlobalHausdorff();
-	if(global_ctx.verbose>=3)
+	if(config.verbose>=3)
 	{
 		if(i_curDecimationId%2!=0){
 			log("step: %2d smp: %.3f h_cal: %.3f ph_cal:%.3f avg_hdist#vertices: %ld #facets: %ld",

@@ -29,7 +29,7 @@ class Tile{
 public:
 	// for building tile instead of load from file
 	Tile(std::vector<HiMesh_Wrapper *> &objs);
-	Tile(std::string path, size_t capacity=LONG_MAX, bool active_load=true);
+	Tile(const std::string path, size_t capacity=LONG_MAX, bool active_load=true);
 	~Tile();
 	void load();
 

@@ -36,281 +36,165 @@ size_t get_candidate_num(vector<candidate_entry *> &candidates){
 	return candidate_num;
 }
 
-SpatialJoin::SpatialJoin(geometry_computer *c){
-	assert(c);
-	computer = c;
+SpatialJoin::SpatialJoin(){
+	computer = new geometry_computer();
+	if(config.use_gpu){
+#ifdef USE_GPU
+		initialize();
+		computer->init_gpus();
+#endif
+	}
+	if(config.num_compute_thread>0){
+		computer->set_thread_num(config.num_compute_thread);
+	}
 }
 
 SpatialJoin::~SpatialJoin(){
-
+	delete computer;
 }
 
-
-
-range SpatialJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, double minmaxdist, bool keep_empty){
-
-	assert(voxel_pairs.size()>0);
-
-	if(global_ctx.verbose>=2){
-		int valid_voxel = 0;
-		int invalid_voxel = 0;
-		for(auto &vp:voxel_pairs){
-			if(vp.dist.valid()){
-				valid_voxel++;
-			}else{
-				invalid_voxel++;
-			}
-		}
-		log("invalid_voxles/total = %.2f\% (%d/%d)\t",invalid_voxel*1.0/(invalid_voxel+valid_voxel),invalid_voxel, (invalid_voxel+valid_voxel));
-	}
-
-	for(auto vp_iter = voxel_pairs.begin();vp_iter!=voxel_pairs.end();){
-		if((vp_iter->dist.valid()&&vp_iter->dist.mindist > minmaxdist) // a closer voxel pair already exist
-				||(!keep_empty&&vp_iter->has_empty_voxel())){ //remove the pairs which has an empty voxel
-			// evict this unqualified voxel pairs
-			voxel_pairs.erase(vp_iter);
-		}else{
-			vp_iter++;
-		}
-	}
-
-	assert(voxel_pairs.size()>0);
-
-	// now update the newest object-level distance from the voxel level distance
-	range ret;
-	ret.mindist = DBL_MAX;
-	ret.maxdist = DBL_MAX;
-	for(auto &vp:voxel_pairs){
-		ret.mindist = min(ret.mindist, vp.dist.mindist);
-		ret.maxdist = min(ret.maxdist, vp.dist.maxdist);
-	}
-
-	return ret;
-}
-
-void SpatialJoin::decode_data(vector<candidate_entry *> &candidates, query_context &ctx){
+void SpatialJoin::decode_data(query_context &ctx){
+	struct timeval start = tdbase::get_cur_time();
 	// decode the objects to current lod
-	for(candidate_entry *c:candidates){
+	for(candidate_entry *c:ctx.candidates){
 		HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
 		wrapper1->decode_to(ctx.cur_lod);
 		for(candidate_info &info:c->candidates){
 			info.mesh_wrapper->decode_to(ctx.cur_lod);
 		}// end for distance_candiate list
 	}// end for candidates
+	ctx.decode_time += logt("decode data", start);
 }
 
-geometry_param SpatialJoin::packing_data(vector<candidate_entry *> &candidates, query_context &ctx){
-	geometry_param gp;
-	gp.pair_num = get_pair_num(candidates);
-	gp.element_num = 0;
-	gp.element_pair_num = 0;
-	gp.results = ctx.tmp_results;
-	map<Voxel *, uint32_t> voxel_offset_map;
-
-	for(candidate_entry *c:candidates){
-		HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
-		for(candidate_info &info:c->candidates){
-			for(voxel_pair &vp:info.voxel_pairs){
-				gp.element_pair_num += vp.v1->num_triangles*vp.v2->num_triangles;
-				// update the voxel offset map
-				for(int i=0;i<2;i++){
-					Voxel *tv = (i==0?vp.v1:vp.v2);
-					// first time visited this voxel
-					if(voxel_offset_map.find(tv)==voxel_offset_map.end()){
-						// the voxel is inserted into the map with an offset
-						voxel_offset_map[tv] = gp.element_num;
-						gp.element_num += tv->num_triangles;
-					}
-				}
-			}
-		}
-	}
-
-	gp.allocate_buffer();
-
-	// now we allocate the space and store the data in the buffer
-	for (map<Voxel *, uint32_t>::iterator it=voxel_offset_map.begin(); it!=voxel_offset_map.end(); ++it){
-		Voxel *v = it->first;
-		if(v->num_triangles > 0){
-			memcpy(gp.data+voxel_offset_map[v]*9, v->triangles, v->num_triangles*9*sizeof(float));
-			memcpy(gp.hausdorff+voxel_offset_map[v]*2, v->hausdorff, v->num_triangles*2*sizeof(float));
-		}
-	}
-
-	// organize the data for computing
-	int index = 0;
-	for(candidate_entry *c:candidates){
-		for(candidate_info &info:c->candidates){
-			for(voxel_pair &vp:info.voxel_pairs){
-				gp.offset_size[4*index] = voxel_offset_map[vp.v1];
-				gp.offset_size[4*index+1] = vp.v1->num_triangles;
-				gp.offset_size[4*index+2] = voxel_offset_map[vp.v2];
-				gp.offset_size[4*index+3] = vp.v2->num_triangles;
-				index++;
-			}
-		}
-	}
-	assert(index==gp.pair_num);
-	voxel_offset_map.clear();
-	return gp;
-}
-
-void SpatialJoin::check_intersection(vector<candidate_entry *> &candidates, query_context &ctx){
+void SpatialJoin::packing_data(query_context &ctx){
 	struct timeval start = tdbase::get_cur_time();
 
-	const int pair_num = get_pair_num(candidates);
-
-	ctx.tmp_results = new result_container[pair_num];
-	for(int i=0;i<pair_num;i++){
-		ctx.tmp_results[i].intersected = false;
+	// initialize the result space
+	ctx.gp.pair_num = get_pair_num(ctx.candidates);
+	if(ctx.gp.results){
+		delete []ctx.gp.results;
+	}
+	ctx.gp.results = new result_container[ctx.gp.pair_num];
+	for(int i=0;i<ctx.gp.pair_num;i++){
+		ctx.gp.results[i].distance = 0;
+		ctx.gp.results[i].intersected = false;
 	}
 
-	decode_data(candidates, ctx);
-	ctx.decode_time += logt("decode data", start);
-
-	if(ctx.use_aabb){
+	if(config.use_aabb){
 		// build the AABB tree
-		for(candidate_entry *c:candidates){
-			for(candidate_info &info:c->candidates){
-				info.mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
-			}
-		}
-		ctx.packing_time += logt("building aabb tree", start);
-
-		int index = 0;
-		for(candidate_entry *c:candidates){
-			c->mesh_wrapper->get_mesh()->get_segments();
-			for(candidate_info &info:c->candidates){
-				assert(info.voxel_pairs.size()==1);
-				ctx.tmp_results[index++].intersected = c->mesh_wrapper->get_mesh()->intersect_tree(info.mesh_wrapper->get_mesh());
-			}// end for candidate list
-		}// end for candidates
-		// clear the trees for current LOD
-		for(candidate_entry *c:candidates){
-			for(candidate_info &info:c->candidates){
-				info.mesh_wrapper->get_mesh()->clear_aabb_tree();
-			}
-		}
-		ctx.computation_time += logt("computation for distance computation", start);
-	}else{
-		geometry_param gp = packing_data(candidates, ctx);
-		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, gp.element_num, gp.element_pair_num);
-		computer->get_intersect(gp);
-		gp.clear_buffer();
-		ctx.computation_time += logt("computation for checking intersection", start);
-	}
-}
-
-
-//utility function to calculate the distances between voxel pairs in batch
-void SpatialJoin::calculate_distance(vector<candidate_entry *> &candidates, query_context &ctx){
-	struct timeval start = tdbase::get_cur_time();
-
-	const int pair_num = get_pair_num(candidates);
-	ctx.tmp_results = new result_container[pair_num];
-	for(int i=0;i<pair_num;i++){
-		ctx.tmp_results[i].distance = 0;
-	}
-
-	decode_data(candidates, ctx);
-	ctx.decode_time += logt("decode data", start);
-
-	if(ctx.use_aabb){
-		// build the AABB tree
-		for(candidate_entry *c:candidates){
+		for(candidate_entry *c:ctx.candidates){
 			for(candidate_info &info:c->candidates){
 				info.mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 			}
 			c->mesh_wrapper->get_mesh()->get_aabb_tree_triangle();
 		}
 		ctx.packing_time += logt("building aabb tree", start);
-
-		int index = 0;
-		for(candidate_entry *c:candidates){
-			for(candidate_info &info:c->candidates){
-				assert(info.voxel_pairs.size()==1);
-				ctx.tmp_results[index++].distance = c->mesh_wrapper->get_mesh()->distance_tree(info.mesh_wrapper->get_mesh());
-			}// end for distance_candiate list
-		}// end for candidates
-		// clear the trees for current LOD
-		for(candidate_entry *c:candidates){
-			for(candidate_info &info:c->candidates){
-				info.mesh_wrapper->get_mesh()->clear_aabb_tree();
-			}
-			c->mesh_wrapper->get_mesh()->clear_aabb_tree();
-		}
-		ctx.computation_time += logt("computation for distance computation", start);
-
 	}else{
-		geometry_param gp = packing_data(candidates, ctx);
-		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, gp.element_num, gp.element_pair_num);
-		computer->get_distance(gp);
-		gp.clear_buffer();
-		ctx.computation_time += logt("computation for distance computation", start);
+		// for progressive query, get the triangles
+		ctx.gp.element_num = 0;
+		ctx.gp.element_pair_num = 0;
+		map<Voxel *, uint32_t> voxel_offset_map;
+
+		for(candidate_entry *c:ctx.candidates){
+			HiMesh_Wrapper *wrapper1 = c->mesh_wrapper;
+			for(candidate_info &info:c->candidates){
+				for(voxel_pair &vp:info.voxel_pairs){
+					ctx.gp.element_pair_num += vp.v1->num_triangles*vp.v2->num_triangles;
+					// update the voxel offset map
+					for(int i=0;i<2;i++){
+						Voxel *tv = (i==0?vp.v1:vp.v2);
+						// first time visited this voxel
+						if(voxel_offset_map.find(tv)==voxel_offset_map.end()){
+							// the voxel is inserted into the map with an offset
+							voxel_offset_map[tv] = ctx.gp.element_num;
+							ctx.gp.element_num += tv->num_triangles;
+						}
+					}
+				}
+			}
+		}
+
+		ctx.gp.allocate_buffer();
+
+		// now we allocate the space and store the data in the buffer
+		for (map<Voxel *, uint32_t>::iterator it=voxel_offset_map.begin(); it!=voxel_offset_map.end(); ++it){
+			Voxel *v = it->first;
+			if(v->num_triangles > 0){
+				memcpy(ctx.gp.data+voxel_offset_map[v]*9, v->triangles, v->num_triangles*9*sizeof(float));
+				memcpy(ctx.gp.hausdorff+voxel_offset_map[v]*2, v->hausdorff, v->num_triangles*2*sizeof(float));
+			}
+		}
+
+		// organize the data for computing
+		int index = 0;
+		for(candidate_entry *c:ctx.candidates){
+			for(candidate_info &info:c->candidates){
+				for(voxel_pair &vp:info.voxel_pairs){
+					ctx.gp.offset_size[4*index] = voxel_offset_map[vp.v1];
+					ctx.gp.offset_size[4*index+1] = vp.v1->num_triangles;
+					ctx.gp.offset_size[4*index+2] = voxel_offset_map[vp.v2];
+					ctx.gp.offset_size[4*index+3] = vp.v2->num_triangles;
+					index++;
+				}
+			}
+		}
+		assert(index==ctx.gp.pair_num);
+		voxel_offset_map.clear();
+		ctx.packing_time += logt("organizing data with %ld elements and %ld element pairs", start, ctx.gp.element_num, ctx.gp.element_pair_num);
 	}
 }
 
-class nn_param{
-public:
-	pthread_mutex_t lock;
-	queue<pair<Tile *, Tile *>> *tile_queue = NULL;
-	SpatialJoin *joiner;
-	query_context ctx;
-	nn_param(){
-		pthread_mutex_init (&lock, NULL);
-		joiner = NULL;
-	}
-};
 
-void *join_unit(void *param){
-	struct nn_param *nnparam = (struct nn_param *)param;
-	while(!nnparam->tile_queue->empty()){
-		pthread_mutex_lock(&nnparam->lock);
-		if(nnparam->tile_queue->empty()){
-			pthread_mutex_unlock(&nnparam->lock);
+/*
+ * the main function for conducting the join operation
+ *
+ * */
+void SpatialJoin::join(Tile *tile1, Tile *tile2){
+	struct timeval very_start = get_cur_time();
+	query_context ctx;
+	ctx.obj_count = tile1->num_objects();
+
+	// filtering with MBBs to get the candidate list
+	index_retrieval(tile1, tile2, ctx);
+
+	// now we start to conduct query with progressive level of details
+	for(uint32_t lod:config.lods){
+		ctx.cur_lod = lod;
+		struct timeval iter_start = get_cur_time();
+
+		// print some statistics for this round of evaluations
+		size_t candidate_num = get_candidate_num(ctx.candidates);
+		const int pair_num = get_pair_num(ctx.candidates);
+		if(pair_num==0){
 			break;
 		}
-		pair<Tile *, Tile *> p = nnparam->tile_queue->front();
-		nnparam->tile_queue->pop();
-		pthread_mutex_unlock(&nnparam->lock);
-		nnparam->ctx.tile1 = p.first;
-		nnparam->ctx.tile2 = p.second;
-		// can only be in one of those three queries for now
-		if(nnparam->ctx.query_type=="intersect"){
-			nnparam->joiner->intersect(nnparam->ctx);
-		}else if(nnparam->ctx.query_type=="nn"){
-			nnparam->joiner->nearest_neighbor(nnparam->ctx);
-		}else if(nnparam->ctx.query_type=="within"){
-			nnparam->joiner->within_distance(nnparam->ctx);
-		}else{
-			log("wrong query type: %s", nnparam->ctx.query_type.c_str());
+		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per candidate",
+				ctx.candidates.size(), candidate_num, pair_num, (1.0*pair_num)/ctx.candidates.size());
+
+		// decode the corresponding polyhedrons into current LOD
+		decode_data(ctx);
+
+		// prepare data for conducting geometric computation (AABBtree building included)
+		packing_data(ctx);
+
+		// truly conduct the geometric computations
+		geometric_computation(ctx);
+
+		// now update the candidate list with the latest information calculated with this LOD
+		evaluate_candidate_lists(ctx);
+
+		logt("evaluating with lod %d", iter_start, lod);
+		log("");
+		if(lod==config.highest_lod()){
+			assert(ctx.candidates.size()==0);
 		}
-		log("%d tile pairs left for processing",nnparam->tile_queue->size());
 	}
-	return NULL;
-}
 
-void SpatialJoin::join(vector<pair<Tile *, Tile *>> &tile_pairs){
-	struct timeval start = tdbase::get_cur_time();
-	queue<pair<Tile *, Tile *>> *tile_queue = new queue<pair<Tile *, Tile *>>();
-	for(pair<Tile *, Tile *> &p:tile_pairs){
-		tile_queue->push(p);
+	ctx.overall_time = get_time_elapsed(very_start, false);
+	if(config.print_result){
+		ctx.print_result();
 	}
-	struct nn_param param[global_ctx.num_thread];
-
-	pthread_t threads[global_ctx.num_thread];
-	for(int i=0;i<global_ctx.num_thread;i++){
-		param[i].joiner = this;
-		param[i].ctx = global_ctx;
-		param[i].tile_queue = tile_queue;
-		pthread_create(&threads[i], NULL, join_unit, (void *)&param[i]);
-	}
-	for(int i = 0; i < global_ctx.num_thread; i++){
-		void *status;
-		pthread_join(threads[i], &status);
-	}
-	global_ctx.report(get_time_elapsed(start));
-	delete tile_queue;
+	ctx.report();
 }
 
 }

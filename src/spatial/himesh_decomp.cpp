@@ -26,7 +26,7 @@ namespace tdbase{
   */
 
 void HiMesh::startNextDecompresssionOp() {
-    if(global_ctx.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
+    if(config.verbose>=2 && ((float)i_curDecimationId / i_nbDecimations * 100 < i_decompPercentage||i_curDecimationId == i_nbDecimations)){
     	log("decode %d:\t%.2f\%\t[%.2f, %.2f]", i_curDecimationId, (float)i_curDecimationId / i_nbDecimations * 100, getHausdorffDistance(), getProxyHausdorffDistance());
     }
 
@@ -268,7 +268,7 @@ void HiMesh::HausdorffDecodingStep(){
 
 		fit->setHausdorff(hausdorff);
 		fit->setProxyHausdorff(proxyhausdorff);
-		if(global_ctx.verbose>=3)
+		if(config.verbose>=3)
 		{
 			log("decode face %d:\t%.2f %.2f", idx++, proxyhausdorff, hausdorff);
 		}

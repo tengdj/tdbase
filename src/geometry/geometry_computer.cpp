@@ -117,13 +117,13 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 	pthread_t threads[thread_num];
 	geometry_param params[thread_num];
 
+	// assign tasks to different CPU threads
 	int i=0;
 	for(;i<thread_num;i++){
 		int start = each_thread*i;
 		if(start>=cc.pair_num){
 			break;
 		}
-
 		params[i] = cc;
 		params[i].pair_num = min(each_thread, (int)cc.pair_num-start);
 		params[i].offset_size = cc.offset_size+start*4;

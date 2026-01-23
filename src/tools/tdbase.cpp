@@ -327,8 +327,7 @@ static void simplify(int argc, char **argv){
 static void compress(int argc, char **argv){
 
 	std::string str(argv[1]);
-
-	global_ctx.verbose = 2;
+	config.verbose = 2;
 	if(argc>2){
 		HiMesh::sampling_rate = atoi(argv[2]);
 		log("%d",HiMesh::sampling_rate);
@@ -479,76 +478,51 @@ static void hausdorff(int argc, char** argv) {
 	log("hausdorff [min	avg	max]=[%f	%f	%f]\n", l.second, a.second, h.second);
 }
 
+Configuration config;
 static void join(int argc, char **argv){
-	global_ctx = parse_args(argc, argv);
+	config = parse_args(argc, argv);
 
 	struct timeval start = get_cur_time();
-	geometry_computer *gc = new geometry_computer();
-	if(global_ctx.use_gpu){
-#ifdef USE_GPU
-		initialize();
-		gc->init_gpus();
-#endif
+	HiMesh::use_byte_coding = !config.disable_byte_encoding;
+
+	Tile *tile1, *tile2;
+	if(config.tile2_path.size()>0){
+		tile1 = new Tile(config.tile1_path, config.max_num_objects1, false);
+		tile2 = new Tile(config.tile2_path, config.max_num_objects2, false);
+	}else{
+		tile1 = new Tile(config.tile1_path, config.max_num_objects1, false);
+		tile2 = tile1;
 	}
-	if(global_ctx.num_compute_thread>0){
-		gc->set_thread_num(global_ctx.num_compute_thread);
+	tile1->load();
+	if(tile2 != tile1){
+		tile2->load();
+	}
+	logt("load tiles", start);
+
+	SpatialJoin *joiner;
+	if(config.query_type=="intersect"){
+		joiner = new IntersectJoin();
+	}else if(config.query_type=="within"){
+		joiner = new DWithinJoin();
+	}else if(config.query_type=="nn"){
+		joiner = new KNNJoin();
+	}else{
+		log("error query type");
+		assert(false);
 	}
 
-	HiMesh::use_byte_coding = !global_ctx.disable_byte_encoding;
-
-	char path1[256];
-	char path2[256];
-
-	sprintf(path1, "%s", global_ctx.tile1_path.c_str());
-	sprintf(path2, "%s", global_ctx.tile2_path.c_str());
-
-	vector<pair<Tile *, Tile *>> tile_pairs;
-	for(int i=0;i<global_ctx.repeated_times;i++){
-		Tile *tile1, *tile2;
-		if(global_ctx.tile2_path.size()>0){
-			tile1 = new Tile(path1, global_ctx.max_num_objects1, false);
-			tile2 = new Tile(path2, global_ctx.max_num_objects2, false);
-		}else{
-			tile1 = new Tile(path1, LONG_MAX, false);
-			tile2 = tile1;
-		}
-		assert(tile1&&tile2);
-		tile_pairs.push_back(pair<Tile *, Tile *>(tile1, tile2));
-	}
-	logt("create tiles", start);
-
-//#pragma omp parallel for
-	for(int i=0;i<global_ctx.repeated_times;i++){
-		Tile *t1 = tile_pairs[i].first;
-		Tile *t2 = tile_pairs[i].second;
-		t1->load();
-		if(t2 != t1){
-			t2->load();
-		}
-	}
-	logt("init tiles", start);
-
-	SpatialJoin *joiner = new SpatialJoin(gc);
-	joiner->join(tile_pairs);
+	joiner->join(tile1, tile2);
 	double join_time = tdbase::get_time_elapsed(start,false);
 	logt("join", start);
 
-//#pragma omp parallel for
-	for(int i=0;i<global_ctx.repeated_times;i++){
-		Tile *t1 = tile_pairs[i].first;
-		Tile *t2 = tile_pairs[i].second;
-		if(t2 != t1){
-			delete t2;
-		}
-		delete t1;
+	if(tile2 != tile1){
+		delete tile2;
 	}
-	tile_pairs.clear();
+	delete tile1;
 	logt("clearing tiles", start);
 	delete joiner;
-	delete gc;
 }
 
-// 自定义 pair<int,int> 的 hash
 struct PairHash {
     size_t operator()(const pair<int, int>& p) const {
         return hash<long long>()(
@@ -655,7 +629,7 @@ int main(int argc, char **argv){
 	functions["evaluate"] = evaluate;
 
 	if (argc < 2 || functions.find(argv[1])==functions.end()) {
-		cout<<"usage: tdbase function [args]"<<endl;
+		cout <<"usage: tdbase function [args]"<<endl;
 		cout << "function could be:"<<endl;
 		for (auto e:functions) {
 			cout << e.first << " ";

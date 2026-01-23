@@ -18,7 +18,7 @@
 namespace tdbase{
 
 // load meta data from file and construct the hierarchy structure
-Tile::Tile(std::string path, size_t capacity, bool active_load){
+Tile::Tile(const std::string path, size_t capacity, bool active_load){
 	tile_path = path;
 	tile_capacity = capacity;
 	if(active_load){
@@ -52,6 +52,7 @@ Tile::Tile(std::vector<HiMesh_Wrapper *> &objs){
 }
 
 Tile::~Tile(){
+#pragma omp parallel for
 	for(HiMesh_Wrapper *h:objects){
 		delete h;
 	}

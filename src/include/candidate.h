@@ -66,6 +66,15 @@ public:
 	void add_candidate(candidate_info &ci){
 		candidates.push_back(ci);
 	}
+	void print(){
+		printf("%ld (%ld candidates)\n", mesh_wrapper->id, candidates.size());
+		for(int i=0;i<candidates.size();i++){
+			printf("%d:\t%ld\t%ld\n",i,candidates[i].mesh_wrapper->id,candidates[i].voxel_pairs.size());
+			for(auto &vp:candidates[i].voxel_pairs){
+				printf("\t%d-%d\t[%f,%f]\n",vp.v1->id,vp.v2->id,vp.dist.mindist,vp.dist.maxdist);
+			}
+		}
+	}
 
 	HiMesh_Wrapper *mesh_wrapper = NULL;
 	//vector<candidate_info *> candidates;

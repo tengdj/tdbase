@@ -391,7 +391,7 @@ void HiMesh::HausdorffCodingStep(){
 		proxyhausdorfSym[i_curDecimationId].push_back(proxyhausdorf);
 		hausdorfSym_float[i_curDecimationId].push_back(fit->getHausdorff());
 		proxyhausdorfSym_float[i_curDecimationId].push_back(fit->getProxyHausdorff());
-		if(global_ctx.verbose>=3)
+		if(config.verbose>=3)
 		{
 			log("encode facet: %.2f %.2f %d %d", fit->getProxyHausdorff(), fit->getHausdorff(), proxyhausdorf, hausdorf);
 		}

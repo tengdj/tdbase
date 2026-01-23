@@ -134,7 +134,7 @@ int main(int argc, char **argv){
 	op.add<Value<int>>("t", "threads", "number of threads", tdbase::get_num_threads(), &num_threads);
 	op.add<Value<int>>("", "amplify_ratio", "how big, in terms of nuclei size, in each dimension", 10, &amplify_ratio);
 	op.add<Value<int>>("", "n", "number of nuclei", 10000, &num_nuclei);
-	op.add<Value<int>>("", "verbose", "verbose level", 0, &global_ctx.verbose);
+	op.add<Value<int>>("", "verbose", "verbose level", 0, &config.verbose);
 	op.add<Value<uint32_t>>("r", "sample_rate", "sampling rate for Hausdorff distance calculation", 30, &HiMesh::sampling_rate);
 	op.parse(argc, argv);
 

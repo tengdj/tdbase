@@ -34,13 +34,15 @@ void Tile::load(){
 	Decoding_Type dtype = (Decoding_Type)data_buffer[0];
 	size_t offset = 1;// the first byte is the file type, raw or compressed
 	size_t index = 0;
-	while(offset < data_size){
+	while(offset < data_size && objects.size()<tile_capacity){
 		// create a wrapper with the meta information
 		HiMesh_Wrapper * w = new HiMesh_Wrapper(data_buffer + offset, index++, dtype);
 		offset += w->data_size + w->meta_size + sizeof(size_t);
 		objects.push_back(w);
 		space.update(w->box);
 	}
+
+	assert(objects.size()<=tile_capacity);
 
 	tree = build_octree(10);
 	logt("loaded %ld polyhedra in tile %s", start, objects.size(), tile_path.c_str());

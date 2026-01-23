@@ -286,7 +286,7 @@ int main(int argc, char **argv){
 	OptionParser op("Simulator");
 	auto help_option = op.add<Switch>("h", "help", "produce help message");
 	op.add<Value<int>>("t", "threads", "number of threads", tdbase::get_num_threads(), &num_threads);
-	op.add<Value<int>>("", "verbose", "verbose level",0, &global_ctx.verbose);
+	op.add<Value<int>>("", "verbose", "verbose level",0, &config.verbose);
 
 	auto allow_intersection_option = op.add<Switch>("i", "allow_intersection", "allow the nuclei to intersect with other nuclei or vessel",&allow_intersection);
 	op.add<Value<string>>("n", "nuclei", "path to the nuclei prototype file", "nuclei.pt", &nuclei_pt);
