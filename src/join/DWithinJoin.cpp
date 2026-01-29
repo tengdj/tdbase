@@ -61,9 +61,13 @@ void DWithinJoin::index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx){
 				ctx.report_result(wrapper1->id, wrapper2->id);
 			}else if(ci.voxel_pairs.size()>0){
 				// some voxel pairs need to be further evaluated
-				ci.distance = update_voxel_pair_list(ci.voxel_pairs, min_maxdist);
+				assert(min_maxdist>=config.within_dist);
+				// the mindist must all be smaller than config.within_dist which is smaller than maxdist
+//				int bf = ci.voxel_pairs.size();
+//				ci.distance = update_voxel_pair_list(ci.voxel_pairs, min_maxdist);
+//				assert(ci.voxel_pairs.size()==bf);
 				ce->add_candidate(ci);
-			}
+			}// other wise, the candidate is disqualified by evaluating only the boxes
 		}
 		// save the candidate list
 		if(ce->candidates.size()>0){

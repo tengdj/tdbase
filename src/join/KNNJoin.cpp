@@ -63,6 +63,7 @@ void KNNJoin::index_retrieval(Tile *tile1, Tile *tile2, query_context &ctx){
 			}
 
 			// form the distance range of objects with the evaluations of voxel pairs
+			// should be updated after evaluating the voxels, as some pair maybe disqualified
 			ci.distance = update_voxel_pair_list(ci.voxel_pairs, min_maxdist);
 			assert(ci.voxel_pairs.size()>0);
 			assert(ci.distance.valid());

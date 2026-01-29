@@ -32,10 +32,10 @@ range DistanceJoin::update_voxel_pair_list(vector<voxel_pair> &voxel_pairs, doub
 
 	for(auto vp_iter = voxel_pairs.begin();vp_iter!=voxel_pairs.end();){
 		assert(vp_iter->dist.valid());
-		if(vp_iter->v2->id==131){
-			vp_iter++;
-			continue;
-		}
+//		if(vp_iter->v2->id==131){
+//			vp_iter++;
+//			continue;
+//		}
 		if(vp_iter->dist.mindist > minmaxdist // a closer voxel pair already exist
 				||(!keep_empty&&vp_iter->has_empty_voxel())){ //remove the pairs which has an empty voxel
 			// evict this unqualified voxel pairs
@@ -128,8 +128,8 @@ void DistanceJoin::update_distance_ranges(query_context &ctx){
 					//assert(dist.valid());
 				}// end of voxel pair iteration
 				// after each round, some voxels need to be evicted,
-				// remove the invalid pair at the highest LOD (have an empty voxel)
-				// (happens when low LOD serve as the highest LOD, some voxel will be empty)
+				// remove the invalid pair (either voxel is empty) at the highest LOD
+				// (happens when low LOD serve as the highest LOD, some voxel may be empty)
 				ci.distance = update_voxel_pair_list(ci.voxel_pairs, vox_minmaxdist,!(ctx.cur_lod==config.highest_lod()));
 				assert(ci.voxel_pairs.size()>0);
 				//assert(ci.distance.valid());
