@@ -14,7 +14,6 @@ cd src/
 mkdir build
 cd build/
 cmake ../
-make simulator
 make tdbase
 
 ```
@@ -53,7 +52,8 @@ Note that we disabled the facet-association-based optimization for Hausdorff dis
 ## run test
 Three queries are implemented: KNN, within-distance, and intersection. For now, the intersection query is still buggy. Instead, you can still test the intersection join using the within-distance query by setting the distance threshold to 0. 
 ```console
--h, --help                          produce help message
+TDBase:
+  -h, --help                          produce help message
   -t, --threads arg (=8)              number of threads
   --cn arg (=1)                       number of threads for geometric computation for each tile
   -g, --gpu                           compute with GPU
