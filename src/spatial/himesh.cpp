@@ -16,8 +16,6 @@ namespace tdbase{
 HiMesh::HiMesh(string &str, bool completeop):
 		CGAL::Polyhedron_3<MyKernel, MyItems >(){
 
-
-
 	boost::replace_all(str, "|", "\n");
 	assert(str.size()!=0 && "input string should not be empty!");
 
@@ -52,12 +50,17 @@ HiMesh::HiMesh(string &str, bool completeop):
 	// Set the vertices of the edge that is the departure of the coding and decoding conquests.
 	vh_departureConquest[0] = halfedges_begin()->opposite()->vertex();
 	vh_departureConquest[1] = halfedges_begin()->vertex();
+
+	// update the temporary data structures
+	updateMBB();
+
 	if(config.verbose >= 2){
 		logt("load mesh", start);
 	}
 
-	// update the temporary data structures
-	updateMBB();
+	if(config.verbose >= 2){
+		logt("init the original mesh", start);
+	}
 
 	if(completeop){
 		encode();

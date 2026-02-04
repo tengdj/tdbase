@@ -510,16 +510,14 @@ static void join(int argc, char **argv){
 		log("error query type");
 		assert(false);
 	}
-
 	joiner->join(tile1, tile2);
-	double join_time = tdbase::get_time_elapsed(start,false);
-	logt("join", start);
+	logt("join tiles", start);
 
 	if(tile2 != tile1){
 		delete tile2;
 	}
 	delete tile1;
-	logt("clearing tiles", start);
+	logt("clear tiles", start);
 	delete joiner;
 }
 

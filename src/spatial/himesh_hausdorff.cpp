@@ -168,28 +168,9 @@ pair<float, float> HiMesh::collectGlobalHausdorff(STAT_TYPE type){
 
 // TODO: a critical function, need to be further optimized
 void HiMesh::computeHausdorfDistance(){
-	if(HiMesh::use_hausdorff && original_mesh == NULL){
-		struct timeval start = get_cur_time();
-		original_mesh = clone_mesh();
-		original_mesh->updateAABB();
-		if(config.verbose >= 2){
-			logt("building aabb tree", start);
-		}
-		original_mesh->area_unit = original_mesh->sampling_gap();
-		original_mesh->sample_points(original_mesh->area_unit);
-		if (config.verbose >= 2) {
-			logt("init triangles", start);
-		}
-//		if(original_mesh != NULL){
-//			vector<Point> ps;
-//			ps.assign(original_mesh->sampled_points.begin(), original_mesh->sampled_points.end());
-//			tdbase::write_points(ps, "points.off");
-//			delete original_mesh;
-//		}
-	}
+	assert(original_mesh);
 	// calculate the hausdorff and proxy hausdorff distance referencing the original uncompressed mesh
 	globalHausdorfDistance.push_back(computeHausdorfDistance(original_mesh));
-
 }
 
 /*
@@ -216,7 +197,17 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 	 * 1. computing the Hausdorff distances
 	 *
 	 * */
-	//log("start calculating");
+	if(config.verbose>=2)
+	log("start calculating");
+//	Polyhedron *poly = original_mesh->to_polyhedron();
+//	for(Polyhedron::Face_iterator fit = poly->faces_begin();fit!=poly->facets_end();fit++){
+//		if(!fit->is_triangle()){
+//			cout<<fit->size()<<endl;
+//		}
+//	}
+//	cout<<poly->size_of_vertices()<<" "<<poly->size_of_facets()<<endl;
+//	Tree tree(faces(*poly).first, faces(*poly).second, *poly);
+//	tree.accelerate_distance_queries();
 
 	// associate each compressed facet with a list of original triangles, vice versa
 	int num_points = 0;
@@ -239,16 +230,16 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 		for(auto p:points){
 			float dist = original_mesh->distance_tree(p);
 			fit_hdist = max(fit_hdist, dist);
+			//cout<<sqrt(tree.squared_distance(p))<<" "<<dist <<endl;
 		}
 		caldist_tm += get_time_elapsed(start, true);
 
 		// update the hausdorff distance
 		fit->setHausdorff(fit_hdist + sqrt(original_mesh->area_unit/2.0));
-//		log("%d",points.size());
 		points.clear();
 	}
-	//if(global_ctx.verbose>=2)
-	//logt("calculate hausdorff %d ", start, num_points);
+	if(config.verbose>=2)
+	logt("calculate hausdorff %d ", start, num_points);
 	start = get_cur_time();
 
 	/*
@@ -268,8 +259,8 @@ pair<float, float> HiMesh::computeHausdorfDistance(HiMesh *original_mesh){
 		assert(fits.find(fs)!=fits.end());
 		fits[fs]->updateProxyHausdorff(dist+sqrt(original_mesh->area_unit/2.0));
 	}
-	//if(global_ctx.verbose>=2)
-	//logt("calculate proxy hausdorff %d", start, original_mesh->sampled_points.size());
+	if(config.verbose>=2)
+	logt("calculate proxy hausdorff %d", start, original_mesh->sampled_points.size());
 
 	ph_caldist_tm += get_time_elapsed(start, true);
 

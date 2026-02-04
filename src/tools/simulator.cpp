@@ -275,6 +275,10 @@ void *generate_unit(void *arg){
 	return NULL;
 }
 
+namespace tdbase{
+	Configuration config;
+}
+
 int main(int argc, char **argv){
 	string nuclei_pt;
 	string vessel_pt;

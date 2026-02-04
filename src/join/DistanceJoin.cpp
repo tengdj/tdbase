@@ -90,7 +90,7 @@ void DistanceJoin::update_distance_ranges(query_context &ctx){
 								"%ld(%d):\t"
 								"[%.2f, %.2f]->"
 								"[%.2f, %.2f] "
-								"res: [%.2f, %.2f, %.2f]",
+								"res: [%.2f, %.2f, %.2f] skipped",
 								wrapper1->id,vp.v1->id,
 								wrapper2->id,vp.v2->id,
 								vp.dist.mindist, vp.dist.maxdist,

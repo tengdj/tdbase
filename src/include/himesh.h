@@ -105,7 +105,7 @@ typedef MyKernel::Point_3 Point;
 typedef MyKernel::Vector_3 Vector;
 
 //
-typedef CGAL::Polyhedron_3<MyKernel, CGAL::Polyhedron_items_with_id_3> Polyhedron;
+typedef CGAL::Polyhedron_3<MyKernel> Polyhedron;
 typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
 
 typedef CGAL::Triangulation_3<MyKernel> Triangulation;
@@ -163,13 +163,13 @@ private:
     std::deque<uint32_t *> *p_faceDeque;
 };
 
+enum ProcessedFlag {NotProcessed, Processed};
+
 // My vertex type has a isConquered flag
 template <class Refs>
 class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 {
-    enum Flag {Unconquered=0, Conquered=1};
-
-	Flag flag = Unconquered;
+	ProcessedFlag processedFlag = NotProcessed;
 	unsigned int id = 0;
   public:
     MyVertex(): CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>(){}
@@ -177,18 +177,22 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 
 	inline void resetState()
 	{
-	  flag=Unconquered;
+		processedFlag = NotProcessed;
 	}
 
-	inline bool isConquered() const
+	/* Processed flag */
+
+	inline void setProcessed()
 	{
-	  return flag==Conquered;
+		processedFlag = Processed;
 	}
 
-	inline void setConquered()
+	inline bool isProcessed() const
 	{
-	  flag=Conquered;
+		return (processedFlag == Processed);
 	}
+
+	/*	vertex ID */
 
 	inline size_t getId() const
 	{
@@ -204,34 +208,17 @@ class MyVertex : public CGAL::HalfedgeDS_vertex_base<Refs,CGAL::Tag_true, Point>
 template <class Refs>
 class MyHalfedge : public CGAL::HalfedgeDS_halfedge_base<Refs>
 {
-    enum Flag {NotYetInQueue=0, InQueue=1, NoLongerInQueue=2};
-    enum Flag2 {Original, Added, New};
-    enum ProcessedFlag {NotProcessed, Processed};
+    enum Flag {Original, Added, New};
 
-	Flag flag = NotYetInQueue;
-	Flag2 flag2 = Original;
+	Flag flag = Original;
 	ProcessedFlag processedFlag = NotProcessed;
 public:
     MyHalfedge(){}
 
 	inline void resetState()
 	{
-		flag = NotYetInQueue;
-		flag2 = Original;
+		flag = Original;
 		processedFlag = NotProcessed;
-	}
-
-        /* Flag 1 */
-
-	inline void setInQueue()
-	{
-	  flag=InQueue;
-	}
-
-	inline void removeFromQueue()
-	{
-	  assert(flag==InQueue);
-	  flag=NoLongerInQueue;
 	}
 
 	/* Processed flag */
@@ -255,60 +242,37 @@ public:
 
 	inline void setAdded()
 	{
-	  assert(flag2 == Original);
-	  flag2=Added;
+	  assert(flag == Original);
+	  flag = Added;
 	}
 
 	inline void setNew()
 	{
-		assert(flag2 == Original);
-		flag2 = New;
+		assert(flag == Original);
+		flag = New;
 	}
 
 	inline bool isAdded() const
 	{
-	  return flag2==Added;
+	  return flag==Added;
 	}
 
 	inline bool isOriginal() const
 	{
-	  return flag2==Original;
+	  return flag==Original;
 	}
 
 	inline bool isNew() const
 	{
-	  return flag2 == New;
+	  return flag == New;
 	}
 };
-
-inline float triangle_area(const Point &p1, const Point &p2, const Point &p3){
-	float x1 = p2.x()-p1.x();
-	float y1 = p2.y()-p1.y();
-	float z1 = p2.z()-p1.z();
-
-	float x2 = p3.x()-p1.x();
-	float y2 = p3.y()-p1.y();
-	float z2 = p3.z()-p1.z();
-
-	float x3 = y1*z2 - y2*z1;
-	float y3 = z1*x2 - z2*x1;
-	float z3 = x1*y2 - x2*y1;
-
-	return sqrt(x3*x3 + y3*y3 + z3*z3)/2;
-}
-
-inline float triangle_area(const Triangle &tri){
-	return triangle_area(tri[0], tri[1], tri[2]);
-}
-
-class MyTriangle;
 
 // My face type has a vertex flag
 template <class Refs>
 class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 {
     enum Flag {Unknown=0, Splittable=1, Unsplittable=2};
-    enum ProcessedFlag {NotProcessed, Processed};
 
 	Flag flag = Unknown;
 	ProcessedFlag processedFlag = NotProcessed;
@@ -728,7 +692,6 @@ public:
 			assert(meshes.find(cur_lod)!=meshes.end());
 			return meshes[cur_lod];
 		}
-		cout<<type<<endl;
 		assert(false);
 		return NULL;
 	}
@@ -778,6 +741,25 @@ Polyhedron *read_polyhedron();
 extern Polyhedron *read_polyhedron(const char *path);
 vector<Polyhedron *> read_polyhedrons(const char *path, size_t load_num = LONG_MAX);
 
+inline float triangle_area(const Point &p1, const Point &p2, const Point &p3){
+	float x1 = p2.x()-p1.x();
+	float y1 = p2.y()-p1.y();
+	float z1 = p2.z()-p1.z();
+
+	float x2 = p3.x()-p1.x();
+	float y2 = p3.y()-p1.y();
+	float z2 = p3.z()-p1.z();
+
+	float x3 = y1*z2 - y2*z1;
+	float y3 = z1*x2 - z2*x1;
+	float z3 = x1*y2 - x2*y1;
+
+	return sqrt(x3*x3 + y3*y3 + z3*z3)/2;
+}
+
+inline float triangle_area(const Triangle &tri){
+	return triangle_area(tri[0], tri[1], tri[2]);
+}
 }
 
 

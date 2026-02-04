@@ -27,6 +27,13 @@ namespace tdbase{
 
 void HiMesh::encode(){
 	assert(is_compression_mode());
+	// for calculating the hausdorff distances
+	assert(original_mesh == NULL);
+	original_mesh = clone_mesh();
+	original_mesh->updateAABB();
+	original_mesh->area_unit = original_mesh->sampling_gap();
+	original_mesh->sample_points(original_mesh->area_unit);
+
 	b_jobCompleted = false;
 	while(!b_jobCompleted) {
 		startNextCompresssionOp();
@@ -59,7 +66,7 @@ bool HiMesh::isRemovable(Vertex_handle v) const {
 //		return false;
 //	}
 	if (v != vh_departureConquest[0] && v != vh_departureConquest[1] &&
-		!v->isConquered() && v->vertex_degree() > 2 && v->vertex_degree() <= 8)
+		!v->isProcessed() && v->vertex_degree() > 2 && v->vertex_degree() <= 8)
 	{
 	  //test convexity
 	  std::vector<Vertex_const_handle> vh_oneRing;
@@ -107,7 +114,6 @@ void HiMesh::startNextCompresssionOp() {
 		Halfedge_iterator hitInit = halfedges_begin();
 		for (unsigned i = 0; i < i_heInitId; ++i)
 		  ++hitInit;
-		hitInit->setInQueue();
 		gateQueue.push((Halfedge_handle)hitInit);
 	}
 	while(!gateQueue.empty()) {
@@ -121,7 +127,6 @@ void HiMesh::startNextCompresssionOp() {
 		//if the face is already processed, pick the next halfedge:
 		if(f->isConquered())
 		{
-			h->removeFromQueue();
 			continue;
 		}
 		//the face is not processed. Count the number of non conquered vertices that can be split
@@ -146,20 +151,17 @@ void HiMesh::startNextCompresssionOp() {
 			Halfedge_handle hh = h;
 			do
 			{
-				hh->vertex()->setConquered();
+				hh->vertex()->setProcessed();
 				Halfedge_handle hOpp = hh->opposite();
 				assert(!hOpp->is_border());
 				if(!hOpp->facet()->isConquered())
 				{
 					gateQueue.push(hOpp);
-					hOpp->setInQueue();
 				}
 			}
 			while((hh = hh->next()) != h);
-			h->removeFromQueue();
 		} else {
 			//in that case, cornerCut that vertex.
-			h->removeFromQueue();
 			vertexCut(unconqueredVertexHE);
 		}
 	}
@@ -199,7 +201,7 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 	Vertex_handle v = startH->vertex();
 
 	//make sure that the center vertex can be removed
-	assert(!v->isConquered());
+	assert(!v->isProcessed());
 	assert(v->vertex_degree()>2);
 
 	Halfedge_handle h = startH->opposite(), end(h);
@@ -227,7 +229,7 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 			//log("split %ld + %ld %ld", fCorner->facet_degree(), fRest->facet_degree(), f->facet_degree());
 		}
 		//mark the vertex as conquered
-		h->vertex()->setConquered();
+		h->vertex()->setProcessed();
 		removed++;
 	} while((h=h->opposite()->next()) != end);
 
@@ -256,7 +258,6 @@ HiMesh::Halfedge_handle HiMesh::vertexCut(Halfedge_handle startH) {
 		if(!hOpp->facet()->isConquered())
 		{
 			gateQueue.push(hOpp);
-			hOpp->setInQueue();
 		}
 	}
 	while((h = h->next()) != hNewFace);
