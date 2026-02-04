@@ -40,7 +40,7 @@ Simulator:
 ```
 You can generate datasets with varying sizes and configurations. The command below generated two .dt files, which contain 50 complex vessels and about 10000 (50*200) nuclei. Queries can be conducted over the generated files foo_n_nv50_nu200_vs100_r30.dt and foo_v_nv50_nu200_vs100_r30.dt. 
 ```console
-./simulator -n ../../data/nuclei.pt -v ../../data/vessel.pt -o foo --hausdorff --nv 50 --nu 200
+./tdbase simulator -n ../../data/nuclei.pt -v ../../data/vessel.pt -o foo --hausdorff --nv 50 --nu 200 -r 30
 ```
 Note that we disabled the facet-association-based optimization for Hausdorff distance calculation, but depend solely on AABB-tree, thus it takes a little longer to complete the data generation with Hausdorff distances calculated. In addition, you can use the pre-generated synthetic data files in the data folder. The generated files are in compressed format, which needs to be decoded during querying. Converting .dt files into decoded format can achieve better query performance, but with significantly higher storage cost. We are working on improving the decoding efficiency with partial decoding and GPU acceleration.
 

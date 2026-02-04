@@ -597,6 +597,9 @@ static void evaluate(int argc, char* argv[]) {
     cout << "Recall: " << recall << endl;
 }
 
+extern void simulator(int argc, char **argv);
+extern void simulator_int(int argc, char **argv);
+
 }
 
 int main(int argc, char **argv){
@@ -625,6 +628,8 @@ int main(int argc, char **argv){
 	functions["hausdorff"] = hausdorff;
 	functions["join"] = join;
 	functions["evaluate"] = evaluate;
+	functions["simulator"] = simulator;
+	functions["simulator_int"] = simulator_int;
 
 	if (argc < 2 || functions.find(argv[1])==functions.end()) {
 		cout <<"usage: tdbase function [args]"<<endl;
