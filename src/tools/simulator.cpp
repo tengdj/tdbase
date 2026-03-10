@@ -35,7 +35,7 @@ int total_slots = 0;
 
 int num_nuclei_per_vessel = 100;
 int num_vessel = 50;
-int voxel_size = 100;
+int voxel_size = NUM_FACET_PER_VOXEL;
 
 vector<HiMesh_Wrapper *> generated_nucleis;
 vector<HiMesh_Wrapper *> generated_vessels;
@@ -135,7 +135,7 @@ HiMesh_Wrapper *organize_data(HiMesh *mesh, float shift[3]){
 	HiMesh *local_mesh = mesh->clone_mesh();
 	local_mesh->shift(shift[0], shift[1], shift[2]);
 
-	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_mesh);
+	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_mesh, voxel_size);
 	return wr;
 }
 
@@ -149,7 +149,7 @@ HiMesh_Wrapper *organize_data(map<int, HiMesh *> &meshes, float shift[3]){
 		local_meshes[m.first] = nmesh;
 	}
 
-	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_meshes);
+	HiMesh_Wrapper *wr = new HiMesh_Wrapper(local_meshes,voxel_size);
 	return wr;
 }
 
@@ -299,7 +299,7 @@ void simulator(int argc, char **argv){
 
 	auto hausdorff_option = op.add<Switch>("", "hausdorff", "enable Hausdorff distance calculation", &HiMesh::use_hausdorff);
 	op.add<Value<uint32_t>>("r", "sample_rate", "sampling rate for Hausdorff distance calculation", 30, &HiMesh::sampling_rate);
-	op.add<Value<int>>("", "vs", "number of vertices in each voxel",100, &voxel_size);
+	op.add<Value<int>>("", "vs", "number of vertices in each voxel", NUM_FACET_PER_VOXEL, &voxel_size);
 
 	op.parse(argc, argv);
 

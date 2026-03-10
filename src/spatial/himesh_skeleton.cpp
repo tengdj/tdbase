@@ -96,12 +96,13 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_size){
 		voxels.push_back(v);
 	}
 
-	// assigning each facet to proper voxel
-	for (Facet_const_iterator f = facets_begin(); f != facets_end(); ++f){
+	// assigning each facet to a proper skeleton point (closest to its barycenter)
+	// update the MBB of the voxel corresponding to the skeleton point
+	for (Facet_iterator f = facets_begin(); f != facets_end(); ++f){
 		Point p = HiMesh::barycenter(f);
 		aab box = HiMesh::bounding_box(f);
 		float min_dist = DBL_MAX;
-		int gid = -1;
+		unsigned char gid = 0;
 		for(int j=0;j<skeleton_points.size();j++){
 			float cur_dist = distance(p, skeleton_points[j]);
 			if(cur_dist<min_dist){
@@ -109,17 +110,32 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_size){
 				min_dist = cur_dist;
 			}
 		}
+		assert(gid>=0);
+		f->setVid(gid);
 		voxels[gid]->update(box);
 		voxels[gid]->num_triangles++;
 	}
 
-	// erase the one without any data in it
+	// update the VIDs of the facets when after erasing the empty ones
+	int newid = 0;
+	map<unsigned char, unsigned char> update_id;
+	for(int i=0;i<voxels.size();i++){
+		if(voxels[i]->num_triangles>0){
+			update_id[i] = newid++;
+		}
+	}
+	for (Facet_iterator f = facets_begin(); f != facets_end(); ++f){
+		f->setVid(update_id[f->getVid()]);
+	}
+
+	// erase the one without any facets in it
 	int vs=voxels.size();
 	for(int i=0;i<vs;){
 		if(voxels[i]->num_triangles==0){
 			voxels.erase(voxels.begin()+i);
 			vs--;
 		}else{
+			//cout<<i<<"\t"<<voxels[i]->num_triangles<<endl;
 			// reset to 0 as we never truly inserted any facets
 			voxels[i]->num_triangles = 0;
 			i++;
@@ -127,6 +143,26 @@ vector<Voxel *> HiMesh::generate_voxels_skeleton(int voxel_size){
 	}
 	skeleton_points.clear();
 	return voxels;
+}
+
+void HiMesh::assign_facets_to_voxels(vector<Voxel *> voxels){
+
+	assert(voxels.size()<=255);
+	for (Facet_iterator f = facets_begin(); f != facets_end(); ++f){
+		Point p = HiMesh::barycenter(f);
+		float min_dist = DBL_MAX;
+		unsigned char gid = 0;
+		for(unsigned char j=0;j<voxels.size();j++){
+			Point pc(voxels[j]->core[0],voxels[j]->core[1],voxels[j]->core[2]);
+			float cur_dist = distance(p, pc);
+			if(cur_dist<min_dist){
+				gid = j;
+				min_dist = cur_dist;
+			}
+		}
+		assert(gid>=0);
+		f->setVid(gid);
+	}
 }
 
 /*

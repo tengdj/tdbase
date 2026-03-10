@@ -80,24 +80,24 @@ HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 }
 
 // manually
-HiMesh_Wrapper::HiMesh_Wrapper(map<int, HiMesh *> &ms){
+HiMesh_Wrapper::HiMesh_Wrapper(map<int, HiMesh *> &ms, int voxel_size){
 	type = MULTIMESH;
 	for(auto a:ms){
 		meshes[a.first] = a.second;
 	}
 	assert(ms.find(100)!=ms.end());
 
-	voxels = ms[100]->generate_voxels_skeleton();
+	voxels = ms[100]->generate_voxels_skeleton(voxel_size);
 	for(Voxel *v:voxels){
 		box.update(*v);
 	}
 
 }
 
-HiMesh_Wrapper::HiMesh_Wrapper(HiMesh *m){
+HiMesh_Wrapper::HiMesh_Wrapper(HiMesh *m, int voxel_size){
 	type = COMPRESSED;
 	mesh = m;
-	voxels = m->generate_voxels_skeleton();
+	voxels = m->generate_voxels_skeleton(voxel_size);
 	m->encode();
 }
 

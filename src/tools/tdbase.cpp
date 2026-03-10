@@ -62,8 +62,8 @@ static void get_voxel_boxes(int argc, char **argv){
 	struct timeval start = get_cur_time();
 	HiMesh *mesh = read_mesh(argv[1], false);
 	int voxel_size = 100;
-	if(argc>=3){
-		voxel_size = atoi(argv[2]);
+	if(argc>=4){
+		voxel_size = atoi(argv[3]);
 	}
 	vector<Voxel *> voxels = mesh->generate_voxels_skeleton(voxel_size);
 
@@ -72,11 +72,10 @@ static void get_voxel_boxes(int argc, char **argv){
 		vol += v->volume();
 	}
 
-	logt("%ld voxels are generated %f volumn", start, voxels.size(), vol);
-
-	write_voxels(voxels, "/share/skeleton_voxels.off");
-	tdbase::write_box(mesh->get_mbb(), "/share/aab.off");
+	write_voxels(voxels, argv[2]);
 	delete mesh;
+
+	logt("%ld voxels are generated %f volume", start, voxels.size(), vol);
 }
 
 /*

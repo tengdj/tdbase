@@ -91,7 +91,7 @@ const int DECOMPRESSION_MODE_ID = 1;
 
 #define PPMC_RANDOM_CONSTANT 0315
 
-const int NUM_FACET_PER_VOXEL = 100;
+#define NUM_FACET_PER_VOXEL 100
 
 using namespace std;
 namespace SMS = CGAL::Surface_mesh_simplification ;
@@ -280,6 +280,7 @@ class MyFace : public CGAL::HalfedgeDS_face_base<Refs>
 	Point removedVertexPos;
 	float proxy_hausdorff_distance = 0.0;
 	float hausdorff_distance = 0.0;
+	unsigned char vid = 0;
 public:
     MyFace(){}
 
@@ -342,6 +343,14 @@ public:
 	}
 
 public:
+
+	inline unsigned char getVid(){
+		return vid;
+	}
+
+	inline void setVid(unsigned char id){
+		vid = id;
+	}
 
 	inline pair<float, float> getHausdorfDistance(){
 		return pair<float, float>(proxy_hausdorff_distance, hausdorff_distance);
@@ -573,7 +582,8 @@ public:
 
 	// indexes
 	vector<Point> get_skeleton_points(int num_skeleton_points);
-	vector<Voxel *> generate_voxels_skeleton(int voxel_size = NUM_FACET_PER_VOXEL);
+	vector<Voxel *> generate_voxels_skeleton(int voxel_size);
+	void assign_facets_to_voxels(vector<Voxel *>);
 	vector<Voxel *> voxelization(int voxel_size);
 
 	// meta information of the mesh
@@ -679,8 +689,8 @@ public:
 	int cur_lod = -1;
 
 public:
-	HiMesh_Wrapper(map<int, HiMesh *> &meshes);
-	HiMesh_Wrapper(HiMesh *mesh);
+	HiMesh_Wrapper(map<int, HiMesh *> &meshes, int voxel_size = NUM_FACET_PER_VOXEL);
+	HiMesh_Wrapper(HiMesh *mesh, int voxel_size = NUM_FACET_PER_VOXEL);
 	HiMesh_Wrapper(char *dt, size_t id, Decoding_Type t = COMPRESSED);
 
 	~HiMesh_Wrapper();
