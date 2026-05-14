@@ -18,12 +18,9 @@
 namespace tdbase{
 
 // load meta data from file and construct the hierarchy structure
-Tile::Tile(const std::string path, size_t capacity, bool active_load){
+Tile::Tile(const std::string path){
 	tile_path = path;
-	tile_capacity = capacity;
-	if(active_load){
-		load();
-	}
+	load();
 }
 
 Tile::Tile(std::vector<HiMesh_Wrapper *> &objs){

@@ -34,7 +34,7 @@ void Tile::load(){
 	Decoding_Type dtype = (Decoding_Type)data_buffer[0];
 	size_t offset = 1;// the first byte is the file type, raw or compressed
 	size_t index = 0;
-	while(offset < data_size && objects.size()<tile_capacity){
+	while(offset < data_size){
 		// create a wrapper with the meta information
 		HiMesh_Wrapper * w = new HiMesh_Wrapper(data_buffer + offset, index++, dtype);
 		offset += w->data_size + w->meta_size + sizeof(size_t);
@@ -42,10 +42,27 @@ void Tile::load(){
 		space.update(w->box);
 	}
 
-	assert(objects.size()<=tile_capacity);
-
-	tree = build_octree(10);
 	logt("loaded %ld polyhedra in tile %s", start, objects.size(), tile_path.c_str());
+}
+
+void Tile::keep(size_t start, size_t end){
+	if(start==0 && end >= objects.size()<end){
+		return;
+	}
+	assert(start<=end && end<objects.size());
+	int oc = objects.size();
+	std::vector<HiMesh_Wrapper *> tmp;
+	for(size_t i=0;i<objects.size();i++){
+		if(i>=start && i<=end){
+			tmp.push_back(objects[i]);
+		}else{
+			delete objects[i];
+		}
+	}
+	objects.clear();
+	objects.insert(objects.end(), tmp.begin(), tmp.end());
+	tmp.clear();
+	log("reduced from %d objects to %d objects", oc, objects.size());
 }
 
 void Tile::dump_compressed(const char *path){

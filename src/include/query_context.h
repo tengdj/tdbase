@@ -38,6 +38,7 @@ public:
 
 	size_t max_num_objects1 = LONG_MAX;
 	size_t max_num_objects2 = LONG_MAX;
+	int target_object = -1;
 	int specify_object = -1;
 	vector<int> lods;
 	int verbose = 0;
@@ -71,6 +72,10 @@ public:
 	double updatelist_time = 0;
 	double overall_time = 0;
 
+	//counter
+	uint cand_num[6];
+	uint voxel_num[6];
+
 	// process
 	uint32_t cur_lod = 0;
 	vector<candidate_entry *> candidates;
@@ -82,6 +87,10 @@ public:
 
 public:
 	query_context(){
+		for(int i=0;i<6;i++){
+			cand_num[i] = 0;
+			voxel_num[i] = 0;
+		}
 		pthread_mutex_init(&lk, NULL);
 	}
 
@@ -136,6 +145,12 @@ public:
 
 		fprintf(stderr, "#objects:\t%ld\n results:%ld(\t%.3f)\n", obj_count, results.size(), 1.0*results.size()/obj_count);
 	}
+	void print_stats(){
+		for(int i=0;i<6;i++){
+			cout<<cand_num[i]<<"\t"<<voxel_num[i]<<"\t";
+		}
+		cout<<index_time<<"\t"<<decode_time<<"\t"<<packing_time<<"\t"<<computation_time<<"\t"<<updatelist_time<<endl;
+	}
 };
 
 extern Configuration config;
@@ -162,6 +177,7 @@ static Configuration parse_args(int argc, char **argv){
 	op.add<Value<string>>("", "tile2", "path to tile 2", "",  & config.tile2_path);
 	op.add<Value<size_t>>("", "max_objects1", "max number of objects in tile 1", LONG_MAX, &config.max_num_objects1);
 	op.add<Value<size_t>>("", "max_objects2", "max number of objects in tile 2", LONG_MAX, &config.max_num_objects2);
+	op.add<Value<int>>("", "target", "the ID of the queried target object", LONG_MAX, &config.target_object);
 	op.add<Value<int>>("", "specify_object", "specify a single object in tile 1 for processing", -1, &config.specify_object);
 	// for query 
 	op.add<Value<string>, Attribute::required>("q", "query", "query types: intersect|nn|within", "", & config.query_type);
@@ -188,6 +204,8 @@ static Configuration parse_args(int argc, char **argv){
 	}
 	sort(config.lods.begin(), config.lods.end());
 	unique(config.lods.begin(), config.lods.end());
+
+	assert(config.target_object==-1||config.target_object<config.max_num_objects1);
 
 	return config;
 }

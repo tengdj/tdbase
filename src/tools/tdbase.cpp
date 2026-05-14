@@ -221,8 +221,11 @@ static void aabb(int argc, char **argv){
 		num = atoi(argv[3]);
 	}
 
-	Tile *tile1 = new Tile(argv[1], num);
-	Tile *tile2 = new Tile(argv[2],1);
+	Tile *tile1 = new Tile(argv[1]);
+	Tile *tile2 = new Tile(argv[2]);
+	tile1->keep(0, num);
+	tile2->keep(0, 0);
+
 	tile1->decode_all(100);
 	logt("load tiles", start);
 
@@ -358,8 +361,10 @@ static void distance(int argc, char **argv){
 	int n1 = atoi(argv[3]);
 	int n2 = atoi(argv[4]);
 
-	Tile *tile1 = new Tile(argv[1],n1+1);
-	Tile *tile2 = new Tile(argv[2],n2+1);
+	Tile *tile1 = new Tile(argv[1]);
+	Tile *tile2 = new Tile(argv[2]);
+	tile1->keep(0, n1);
+	tile2->keep(0, n2);
 
 	int lod = 100;
 	if(argc>5){
@@ -382,8 +387,10 @@ static void intersect(int argc, char **argv){
 	int n1 = atoi(argv[3]);
 	int n2 = atoi(argv[4]);
 
-	Tile *tile1 = new Tile(argv[1],n1+1);
-	Tile *tile2 = new Tile(argv[2],n2+1);
+	Tile *tile1 = new Tile(argv[1]);
+	Tile *tile2 = new Tile(argv[2]);
+	tile1->keep(0, n1);
+	tile2->keep(0, n2);
 
 	int lod = 100;
 	if(argc>5){
@@ -405,7 +412,8 @@ static void intersect(int argc, char **argv){
 static void print(int argc, char **argv){
 	assert(argc>1);
 	int num = argc > 2 ? atoi(argv[2]) : 0;
-	Tile *tile = new Tile(argv[1],num+1);
+	Tile *tile = new Tile(argv[1]);
+	tile->keep(0, num);
 	assert(tile->num_objects()>num);
 	int lod = argc>3?atoi(argv[3]):100;
 	tile->get_mesh(num)->decode(lod);
@@ -486,16 +494,19 @@ static void join(int argc, char **argv){
 
 	Tile *tile1, *tile2;
 	if(config.tile2_path.size()>0){
-		tile1 = new Tile(config.tile1_path, config.max_num_objects1, false);
-		tile2 = new Tile(config.tile2_path, config.max_num_objects2, false);
+		tile1 = new Tile(config.tile1_path);
+		tile1->keep(0, config.max_num_objects1-1);
+		if(config.target_object>-1){
+			tile1->keep(config.target_object, config.target_object);
+		}
+		tile2 = new Tile(config.tile2_path);
+		tile2->keep(0, config.max_num_objects2-1);
 	}else{
-		tile1 = new Tile(config.tile1_path, config.max_num_objects1, false);
+		tile1 = new Tile(config.tile1_path);
 		tile2 = tile1;
+		tile1->keep(0, config.max_num_objects1-1);
 	}
-	tile1->load();
-	if(tile2 != tile1){
-		tile2->load();
-	}
+
 	logt("load tiles", start);
 
 	SpatialJoin *joiner;

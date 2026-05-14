@@ -22,16 +22,18 @@ class Tile{
 	std::vector<HiMesh_Wrapper *> objects;
 	char *data_buffer = NULL;
 	size_t data_size = 0;
-	size_t tile_capacity = INT_MAX;
 	string tile_path;
 
 	OctreeNode *tree = NULL;
 public:
 	// for building tile instead of load from file
 	Tile(std::vector<HiMesh_Wrapper *> &objs);
-	Tile(const std::string path, size_t capacity=LONG_MAX, bool active_load=true);
+	Tile(const std::string path);
 	~Tile();
 	void load();
+
+	// keep only the objects from start to end
+	void keep(size_t start, size_t end);
 
 	inline HiMesh_Wrapper *get_mesh_wrapper(int id){
 		assert(id>=0&&id<objects.size());
@@ -49,7 +51,10 @@ public:
 	HiMesh *get_mesh(int id);
 	void decode_all(int lod = 100);
 	OctreeNode *build_octree(size_t num_tiles);
-	inline OctreeNode *get_octree(){
+	OctreeNode *get_octree(){
+		if(tree==NULL){
+			tree = build_octree(10);
+		}
 		return tree;
 	}
 

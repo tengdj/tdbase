@@ -17,6 +17,19 @@ namespace tdbase{
 
 
 /*facilitate functions*/
+size_t get_voxel_num(vector<candidate_entry *> &candidates){
+	size_t voxel_num = 0;
+	map<Voxel*, bool> tmp;
+	for(candidate_entry *p:candidates){
+		for(candidate_info &c:p->candidates){
+			for(auto &vp:c.voxel_pairs){
+				tmp[vp.v1] = true;
+				tmp[vp.v2] = true;
+			}
+		}
+	}
+	return tmp.size();
+}
 
 size_t get_pair_num(vector<candidate_entry *> &candidates){
 	size_t pair_num = 0;
@@ -171,6 +184,8 @@ void SpatialJoin::join(Tile *tile1, Tile *tile2){
 		}
 		log("%ld polyhedron has %d candidates %d voxel pairs %.2f voxel pairs per object pair",
 				ctx.candidates.size(), candidate_num, pair_num, (1.0*pair_num)/candidate_num);
+		ctx.cand_num[lod/20] = candidate_num;
+		ctx.voxel_num[lod/20] = get_voxel_num(ctx.candidates);
 
 		// decode the corresponding polyhedrons into current LOD
 		decode_data(ctx);
@@ -196,6 +211,7 @@ void SpatialJoin::join(Tile *tile1, Tile *tile2){
 		ctx.print_result();
 	}
 	ctx.report();
+	ctx.print_stats();
 }
 
 }
