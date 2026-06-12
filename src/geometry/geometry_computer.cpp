@@ -29,12 +29,12 @@ void *MeshDist_unit(void *params_void){
 
 bool geometry_computer::request_cpu(){
 	if(cpu_busy==false){
-		pthread_mutex_lock(&cpu_lock);
+		cpu_lock.lock();
 		if(cpu_busy==false){
 			cpu_busy = true;
 			return true;
 		}else{
-			pthread_mutex_unlock(&cpu_lock);
+			cpu_lock.unlock();
 		}
 	}
 	return false;
@@ -42,7 +42,7 @@ bool geometry_computer::request_cpu(){
 void geometry_computer::release_cpu(){
 	assert(cpu_busy);
 	cpu_busy = false;
-	pthread_mutex_unlock(&cpu_lock);
+	cpu_lock.unlock();
 }
 
 #ifdef USE_GPU
@@ -52,13 +52,13 @@ gpu_info *geometry_computer::request_gpu(int min_size, bool force){
 	do{
 		for(gpu_info *info:gpus){
 			if(!info->busy&&info->mem_size>min_size+1){
-				pthread_mutex_lock(&info->lock);
+				info->lock.lock();
 				if(!info->busy){
 					info->busy = true;
 					// will be released in release_gpu() function
 					return info;
 				}
-				pthread_mutex_unlock(&info->lock);
+				info->lock.unlock();
 			}
 		}
 	}while(force);
@@ -67,7 +67,7 @@ gpu_info *geometry_computer::request_gpu(int min_size, bool force){
 
 void geometry_computer::release_gpu(gpu_info *info){
 	assert(info->busy);
-	pthread_mutex_unlock(&info->lock);
+	info->lock.unlock();
 	info->busy = false;
 }
 
@@ -114,7 +114,7 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		thread_num = cc.pair_num;
 	}
 	each_thread++;
-	pthread_t threads[thread_num];
+	std::thread threads[thread_num];
 	geometry_param params[thread_num];
 
 	// assign tasks to different CPU threads
@@ -131,14 +131,13 @@ void geometry_computer::get_distance_cpu(geometry_param &cc){
 		params[i].hausdorff = cc.hausdorff;
 		params[i].id = i+1;
 		params[i].results = cc.results+start;
-		pthread_create(&threads[i], NULL, MeshDist_unit, (void *)&params[i]);
+		threads[i] = thread(MeshDist_unit, (void *)&params[i]);
 	}
 	if(max_thread_num>1){
 		log("%d threads started to get distance", thread_num);
 	}
 	for(; i > 0; i--){
-		void *status;
-		pthread_join(threads[i-1], &status);
+		threads[i-1].join();
 	}
 }
 

@@ -17,17 +17,20 @@
 #include <random>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <thread>
+#include <mutex>
+#include <cstdint>
 
 #if __linux
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <pthread.h>
 #include <dirent.h>
 #include <cstdint>
 #elif defined(_WIN32) || defined(_WIN64)
 #include <windows.h>       // Or something like it. 
 #include <filesystem>
+
 namespace fs = std::filesystem;
 
 #endif
@@ -124,10 +127,10 @@ public:
  * log functions
  * */
 
-static pthread_mutex_t print_lock;
+static std::mutex print_lock;
 inline double logt(const char *format, struct timeval &start, ...){
 
-	pthread_mutex_lock(&print_lock);
+	print_lock.lock();
 	va_list args;
 	va_start(args, start);
 	char sprint_buf[200];
@@ -150,12 +153,12 @@ inline double logt(const char *format, struct timeval &start, ...){
 	}
 	fflush(stderr);
 
-	pthread_mutex_unlock(&print_lock);
+	print_lock.unlock();
 	return mstime;
 }
 
 inline void log(const char *format, ...){
-	pthread_mutex_lock(&print_lock);
+	print_lock.lock();
 	va_list args;
 	va_start(args, format);
 	char sprint_buf[200];
@@ -169,7 +172,7 @@ inline void log(const char *format, ...){
 #endif
 	fprintf(stderr,"%s thread %ld:\t%s\n", time_string().c_str(), tid,sprint_buf);
 	fflush(stderr);
-	pthread_mutex_unlock(&print_lock);
+	print_lock.unlock();
 }
 
 
@@ -177,13 +180,14 @@ inline int get_num_threads(){
 	return std::thread::hardware_concurrency();
 }
 
-static pthread_mutex_t plock;
+static mutex plock;
 inline void process_lock(){
-	pthread_mutex_lock(&plock);
+	plock.lock();
+
 }
 
 inline void process_unlock(){
-	pthread_mutex_unlock(&plock);
+	plock.unlock();
 }
 
 /*
@@ -218,15 +222,23 @@ inline bool flip_coin(){
  * file or folder operations
  * */
 inline bool is_dir(const char* path) {
-    struct stat buf;
-    stat(path, &buf);
-    return S_ISDIR(buf.st_mode);
+#if __linux
+	struct stat buf;
+	stat(path, &buf);
+	return S_ISDIR(buf.st_mode);
+#elif defined(_WIN32) || defined(_WIN64)
+	fs::is_directory(path);
+#endif
 }
 
 inline bool is_file(const char* path) {
+#if __linux
     struct stat buf;
     stat(path, &buf);
     return S_ISREG(buf.st_mode);
+#elif defined(_WIN32) || defined(_WIN64)
+	fs::is_regular_file(path);
+#endif
 }
 
 inline void list_files(const char *path, std::vector<string> &f_list){
@@ -234,6 +246,7 @@ inline void list_files(const char *path, std::vector<string> &f_list){
 		f_list.push_back(std::string(path));
 		return;
 	}
+#if __linux
 	DIR *dir;
 	struct dirent *ent;
 	if ((dir = opendir (path)) != NULL) {
@@ -249,6 +262,13 @@ inline void list_files(const char *path, std::vector<string> &f_list){
 		}
 		closedir (dir);
 	}
+#elif defined(_WIN32) || defined(_WIN64)
+	for (const auto& entry :
+		fs::recursive_directory_iterator(path))
+	{
+		f_list.push_back(entry.path().string());
+	}
+#endif
 }
 
 

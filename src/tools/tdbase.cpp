@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <thread>
+#include <mutex>
 #include <map>
 
 #include "SpatialJoin.h"

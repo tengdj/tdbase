@@ -11,7 +11,6 @@
 
 #include "himesh.h"
 #include "index.h"
-#include <pthread.h>
 
 using namespace std;
 

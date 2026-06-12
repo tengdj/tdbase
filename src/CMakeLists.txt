@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.25)
  
 project(TDBase)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 #set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -43,7 +46,7 @@ file(GLOB MYMESH_SRCS
 	mymesh/*.cpp
 )
 
-file(GLOB TDBASE_SRCS
+file(GLOB TOOlS_SRCS
 	tools/*.cpp
 )
 
@@ -56,17 +59,18 @@ if(DEFINED ENV{USE_GPU})
     set(CMAKE_CUDA_COMPILER /usr/bin/nvcc)
     enable_language("CUDA")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_GPU")
-    add_executable (tdbase ${TDBASE_SRCS} ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
-    target_link_libraries(tdbase PRIVATE gmp mpfr pthread OpenMP::OpenMP_CXX cuda)
-    
+    add_executable (tdbase tools/tdbase.cpp tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${GEOMETRY_CUDA_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
+    target_link_libraries(tdbase PRIVATE cuda)
 else()
     message (STATUS "non-cuda")
-    add_executable (tdbase ${TDBASE_SRCS} ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
-    target_link_libraries(tdbase PRIVATE gmp mpfr pthread OpenMP::OpenMP_CXX)
+    add_executable (tdbase tools/tdbase.cpp tools/simulator.cpp ${SPATIAL_SRCS} ${GEOMETRY_SRCS} ${INDEX_SRCS} ${STORAGE_SRCS} ${JOIN_SRCS})
 endif()
-    
-add_executable (wrap simplifier/wrap.cpp)
-target_link_libraries(wrap PRIVATE gmp mpfr)
+    target_link_libraries(tdbase PRIVATE gmp mpfr CGAL::CGAL OpenMP::OpenMP_CXX)
 
-add_executable (mymesh ${MYMESH_SRCS})
+add_executable (test tools/test.cpp)
+
+#add_executable (wrap simplifier/wrap.cpp)
+#target_link_libraries(wrap PRIVATE gmp mpfr)
+
+#add_executable (mymesh ${MYMESH_SRCS})
 

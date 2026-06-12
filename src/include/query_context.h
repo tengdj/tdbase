@@ -62,8 +62,7 @@ class Tile;
 class query_context{
 public:
 
-	pthread_mutex_t lk;
-
+	mutex lk;
 	//time
 	double index_time = 0;
 	double decode_time = 0;
@@ -73,8 +72,8 @@ public:
 	double overall_time = 0;
 
 	//counter
-	uint cand_num[6];
-	uint voxel_num[6];
+	uint32_t cand_num[6];
+	uint32_t voxel_num[6];
 
 	// process
 	uint32_t cur_lod = 0;
@@ -91,7 +90,6 @@ public:
 			cand_num[i] = 0;
 			voxel_num[i] = 0;
 		}
-		pthread_mutex_init(&lk, NULL);
 	}
 
 	~query_context(){
@@ -100,10 +98,10 @@ public:
 	}
 
 	void lock(){
-		pthread_mutex_lock(&lk);
+		lk.lock();
 	}
 	void unlock(){
-		pthread_mutex_unlock(&lk);
+		lk.unlock();
 	}
 
 	void report_result(int id1, int id2){

@@ -9,6 +9,9 @@
 #define MYGPU_H_
 
 #include <vector>
+#include <mutex>
+#include <thread>
+
 using namespace std;
 
 namespace tdbase{
@@ -18,7 +21,7 @@ public:
 	int device_id;
 	size_t mem_size;
 	bool busy;
-	pthread_mutex_t lock;
+	mutex lock;
 	char *d_data = NULL;
 };
 void initialize();

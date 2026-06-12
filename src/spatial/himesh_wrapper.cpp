@@ -76,7 +76,6 @@ HiMesh_Wrapper::HiMesh_Wrapper(char *dt, size_t i, Decoding_Type t){
 			box.update(*v);
 		}
 	}
-	pthread_mutex_init(&lock, NULL);
 }
 
 // manually

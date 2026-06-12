@@ -110,7 +110,7 @@ void Tile::dump_raw(const char *path){
 		map<int, float> proxyhausdorffs;
 		for(int lod=20;lod<=100;lod+=20){
 			wr->decode_to(lod);
-				if(lod!=100){
+			if(lod!=100){
 				hausdorffs[lod] = wr->get_mesh()->collectGlobalHausdorff().second;
 				proxyhausdorffs[lod] = wr->get_mesh()->collectGlobalHausdorff().first;
 			}else{

@@ -7,7 +7,6 @@
 #include <float.h>
 #include "mygpu.h"
 #include "util.h"
-#include "pthread.h"
 using namespace std;
 
 namespace tdbase{
@@ -177,8 +176,8 @@ result_container MeshInt(const float *data1, const float *data2, size_t size1, s
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float *hausdorff, result_container *result, const uint32_t batch_num, const uint32_t triangle_num);
 
 class geometry_computer{
-	pthread_mutex_t gpu_lock;
-	pthread_mutex_t cpu_lock;
+	mutex gpu_lock;
+	mutex cpu_lock;
 	int max_thread_num = tdbase::get_num_threads();
 	bool cpu_busy = false;
 	bool gpu_busy = false;
@@ -193,8 +192,6 @@ class geometry_computer{
 public:
 	~geometry_computer();
 	geometry_computer(){
-		pthread_mutex_init(&cpu_lock, NULL);
-		pthread_mutex_init(&gpu_lock, NULL);
 	}
 
 	bool init_gpus();

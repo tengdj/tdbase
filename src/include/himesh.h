@@ -684,7 +684,7 @@ public:
 	char *meta_buffer = NULL;
 	size_t meta_size = 0;
 
-	pthread_mutex_t lock;
+	mutex lock;
 	vector<HiMesh_Wrapper *> results;
 	int cur_lod = -1;
 

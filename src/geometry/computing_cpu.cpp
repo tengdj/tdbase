@@ -46,7 +46,6 @@
 // segments and TriDist() for finding closest points on a pair of triangles
 //--------------------------------------------------------------------------
 
-#include <pthread.h>
 #include "geometry.h"
 
 namespace tdbase{
@@ -464,7 +463,7 @@ result_container MeshDist(const float *data1, const float *data2, size_t size1, 
 			float hdist1 = *(hausdorff1+2*i+1);
 			float hdist2 = *(hausdorff2+2*j+1);
 
-			float low_dist = std::max(dist-phdist1-phdist2, (float)0.0);
+			float low_dist = max(dist-phdist1-phdist2, (float)0.0);
 			float high_dist = dist+hdist1+hdist2;
 			ret.min_dist = min(ret.min_dist, low_dist);
 			ret.max_dist = min(ret.max_dist, high_dist);

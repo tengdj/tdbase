@@ -10,6 +10,9 @@
 
 #include <fstream>
 #include <tuple>
+#include <mutex>
+#include <thread>
+
 #include "himesh.h"
 #include "tile.h"
 #include "popl.h"
@@ -40,7 +43,7 @@ int voxel_size = NUM_FACET_PER_VOXEL;
 vector<HiMesh_Wrapper *> generated_nucleis;
 vector<HiMesh_Wrapper *> generated_vessels;
 
-pthread_mutex_t mylock;
+mutex mylock;
 
 bool multi_lods = false;
 bool allow_intersection = false;
@@ -209,9 +212,9 @@ int generate_nuclei(float base[3]){
 					wr = organize_data(nuclei, shift);
 				}
 
-				pthread_mutex_lock(&mylock);
+				mylock.lock();
 				generated_nucleis.push_back(wr);
-				pthread_mutex_unlock(&mylock);
+				mylock.unlock();
 			}
 			idx++;
 		}
@@ -228,9 +231,9 @@ int generate_nuclei(float base[3]){
 			else {
 				wr = organize_data(nuclei, shift);
 			}
-			pthread_mutex_lock(&mylock);
+			mylock.lock();
 			generated_nucleis.push_back(wr);
-			pthread_mutex_unlock(&mylock);
+			mylock.unlock();
 		}
 	}
 	
@@ -241,18 +244,18 @@ queue<tuple<float, float, float>> jobs;
 
 long global_generated = 0;
 
-void *generate_unit(void *arg){
+void generate_unit(){
 	bool complete = false;
 	while(true){
 		tuple<float, float, float> job;
-		pthread_mutex_lock(&mylock);
+		mylock.lock();
 		complete = jobs.empty();
 		if(!complete){
 			job = jobs.front();
 			jobs.pop();
 			log("%ld jobs left", jobs.size());
 		}
-		pthread_mutex_unlock(&mylock);
+		mylock.unlock();
 		if(complete){
 			break;
 		}
@@ -267,12 +270,11 @@ void *generate_unit(void *arg){
 		}else{
 			wr = organize_data(vessel, base);
 		}
-		pthread_mutex_lock(&mylock);
+		mylock.lock();
 		global_generated += generated;
 		generated_vessels.push_back(wr);
-		pthread_mutex_unlock(&mylock);
+		mylock.unlock();
 	}
-	return NULL;
 }
 
 void simulator(int argc, char **argv){
@@ -280,8 +282,6 @@ void simulator(int argc, char **argv){
 	string vessel_pt;
 	string output_path;
 	int num_threads;
-
-	pthread_mutex_init(&mylock, NULL);
 
 	OptionParser op("Simulator");
 	auto help_option = op.add<Switch>("h", "help", "produce help message");
@@ -346,13 +346,12 @@ void simulator(int argc, char **argv){
 	}
 	size_t vessel_num = jobs.size();
 
-	pthread_t threads[num_threads];
+	thread threads[num_threads];
 	for(int i=0;i<num_threads;i++){
-		pthread_create(&threads[i], NULL, generate_unit, NULL);
+		threads[i] = thread(generate_unit);
 	}
 	for(int i = 0; i < num_threads; i++ ){
-		void *status;
-		pthread_join(threads[i], &status);
+		threads[i].join();
 	}
 	logt("%ld vessels %ld nucleis are generated",start,vessel_num,global_generated);
 
@@ -406,7 +405,7 @@ void load_prototype(const char *nuclei_path){
 	nuclei_box = nuclei->shift(-mbb.low[0], -mbb.low[1], -mbb.low[2]);
 }
 
-void* generate_unit_int(void* arg) {
+void generate_unit_int() {
 	log("thread is started");
 
 	bool stop = false;
@@ -424,7 +423,7 @@ void* generate_unit_int(void* arg) {
 			wr = organize_data(nuclei, shift);
 		}
 
-		pthread_mutex_lock(&mylock);
+		mylock.lock();
 		if (generated_nucleis.size()<num_nuclei) {
 			generated_nucleis.push_back(wr);
 		}
@@ -432,9 +431,8 @@ void* generate_unit_int(void* arg) {
 			delete wr;
 			stop = true;
 		}
-		pthread_mutex_unlock(&mylock);
+		mylock.unlock();
 	}
-	return NULL;
 }
 
 void simulator_int(int argc, char **argv){
@@ -462,7 +460,6 @@ void simulator_int(int argc, char **argv){
 
 	struct timeval start = get_cur_time();
 
-	pthread_mutex_init(&mylock, NULL);
 	char nuclei_output[256];
 	char config[100];
 	sprintf(config,"nu%d_%d_r%d",
@@ -473,13 +470,12 @@ void simulator_int(int argc, char **argv){
 	load_prototype(nuclei_pt.c_str());
 	logt("load prototype files", start);
 
-	pthread_t threads[num_threads];
+	thread threads[num_threads];
 	for(int i=0;i<num_threads;i++){
-		pthread_create(&threads[i], NULL, generate_unit_int, NULL);
+		threads[i] = thread(generate_unit_int);
 	}
 	for(int i = 0; i < num_threads; i++ ){
-		void *status;
-		pthread_join(threads[i], &status);
+		threads[i].join();
 	}
 	logt("%ld nucleis are generated",start, generated_nucleis.size());
 
