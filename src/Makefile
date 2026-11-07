@@ -1,3 +1,4 @@
+.DEFAULT_GOAL := all
 prefix=/usr/local
 CC = gcc
 CXX = g++
@@ -5,7 +6,7 @@ NVCC = nvcc
 
 CPPFLAGS	= -std=c++17 -g -O3 -Wno-unused-result -DBOOST_ALLOW_DEPRECATED_HEADERS -DBOOST_BIND_GLOBAL_PLACEHOLDERS -DCGAL_HAS_THREADS -DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON -fopenmp -frounding-math
 NVCCFLAGS	= -std=c++17 -g -O3
-INCFLAGS	= -I./ -I./include -I/usr/include -I/usr/local/include
+INCFLAGS	= -I./ -I./include -I./farm2d/include -I/usr/include -I/usr/local/include
 LIBS		= -L/usr/lib/x86_64-linux-gnu/ -lgmp -lmpfr -lpthread -lboost_program_options -lstdc++ -lz
 
 CGALFLAGS	= -Wl,-rpath -frounding-math 
@@ -72,6 +73,14 @@ GEOMETRY_OBJS := $(patsubst %.cpp,%.o,$(GEOMETRY_SRCS))
 
 GEOMETRY_OBJS += $(OBJS_CU)
 
+# Build the integrated command and compatibility tools through CMake.
+FARM2D_BUILD_DIR ?= ../build/cmake
+FARM2D_GPU := $(if $(filter 1 ON on TRUE true YES yes,$(USE_GPU)),ON,OFF)
+FARM2D_TARGETS := farm2d farm2d_intersect_cpu farm2d_intersection_cpu farm2d_within_polygon_cpu farm2d_dump_polygons farm2d_filter_polygons
+ifeq ($(FARM2D_GPU),ON)
+FARM2D_TARGETS += farm2d_intersect_gpu farm2d_intersection_gpu farm2d_within_polygon_gpu
+endif
+
 #INDEX source and object
 INDEX_SRCS := $(wildcard index/*.cpp)
 INDEX_OBJS := $(patsubst %.cpp,%.o,$(INDEX_SRCS))
@@ -88,8 +97,19 @@ JOIN_OBJS := $(patsubst %.cpp,%.o,$(JOIN_SRCS))
 MYMESH_SRCS := $(wildcard mymesh/*.cpp)
 MYMESH_OBJS := $(patsubst %.cpp,%.o,$(MYMESH_SRCS))
 
-all:  simulator tdbase
-	
+all: tdbase farm2d
+
+.PHONY: farm2d_configure $(FARM2D_TARGETS) tdbase farm2d_cpu farm2d_gpu
+.NOTPARALLEL:
+farm2d_configure:
+	cmake -S . -B $(FARM2D_BUILD_DIR) -G Ninja -DUSE_GPU=$(FARM2D_GPU) -DCMAKE_BUILD_TYPE=Release
+
+$(FARM2D_TARGETS): farm2d_configure
+	cmake --build $(FARM2D_BUILD_DIR) --target $@ --parallel 2
+
+farm2d_cpu: farm2d_intersect_cpu farm2d_intersection_cpu farm2d_within_polygon_cpu farm2d_dump_polygons farm2d_filter_polygons
+farm2d_gpu: farm2d_intersect_gpu farm2d_intersection_gpu farm2d_within_polygon_gpu
+
 simulator: tools/simulator.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS) $(STORAGE_OBJS) 
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
 
@@ -99,8 +119,8 @@ simulator_multi: tools/simulator_multi.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETR
 nuclei_generator: tools/generate_nuclei.o $(SPATIAL_OBJS) $(INDEX_OBJS) $(GEOMETRY_OBJS)
 	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(CPPFLAGS) $(LIBS) -o ../build/$@
 
-tdbase: tools/tdbase.o $(GEOMETRY_OBJS) $(JOIN_OBJS) $(STORAGE_OBJS) $(INDEX_OBJS) $(SPATIAL_OBJS)
-	$(CXX) -DCGAL_USE_GMP -DCGAL_USE_MPFR -frounding-math $^ $(INCFLAGS) $(LIBS) $(CGALFLAGS) $(CPPFLAGS) -o ../build/$@
+tdbase: farm2d_configure
+	cmake --build $(FARM2D_BUILD_DIR) --target tdbase --parallel 2
 
 develop: $(MYMESH_OBJS)
 	$(CXX) $^ $(INCFLAGS) $(CPPFLAGS) -o ../build/$@
@@ -119,6 +139,7 @@ gauland_heckbert: simplifier/gauland_heckbert.o
 
 openmesh: simplifier/openmesh.o
 	$(CXX) $^ $(CPPFLAGS) $(LIBS) -o ../build/$@
+
 
 .PHONY: all clean
 

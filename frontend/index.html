@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TDBase · 空间查询控制台</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">T</span><div><strong>TDBase</strong><small>Spatial Query Console</small></div></div>
+      <div class="health" id="health"><span class="health-dot"></span><span>正在检查构建版本…</span></div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">UNIFIED 2D + 3D WORKBENCH</p>
+          <h1>把空间查询<br><em>变成一次可控的运行。</em></h1>
+          <p class="hero-copy">选择维度、查询引擎和精度参数，页面会调用统一的 TDBase 命令接口并返回真实运行日志。</p>
+        </div>
+        <div class="hero-orbit" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orb orb-a"></div><div class="orb orb-b"></div><span>2D / 3D</span></div>
+      </section>
+
+      <section class="workspace">
+        <form id="query-form" class="panel form-panel">
+          <div class="panel-heading"><div><p class="eyebrow">QUERY BUILDER</p><h2>配置查询</h2></div><span class="step">01</span></div>
+
+          <div class="field-group"><label>数据维度</label><div class="segmented" id="dimension-choice"><label class="seg active"><input type="radio" name="dimension" value="2d" checked>二维 FARM</label><label class="seg"><input type="radio" name="dimension" value="3d">三维 TDBase</label></div></div>
+          <div class="field-group"><label>计算后端</label><div class="segmented" id="backend-choice"><label class="seg active"><input type="radio" name="backend" value="cpu" checked>CPU</label><label class="seg gpu-option"><input type="radio" name="backend" value="gpu">GPU <span>CUDA</span></label></div></div>
+
+          <div class="grid two"><div class="field-group"><label for="query">查询类型</label><select id="query" name="query"></select></div><div class="field-group" id="distance-field"><label for="distance">距离 <span class="unit" id="distance-unit">km</span></label><input id="distance" type="number" min="0" value="10"></div></div>
+          <div class="grid two" id="k-row"><div class="field-group"><label for="k">K 值</label><input id="k" type="number" min="1" max="100000" value="3"></div><div class="field-group"><label for="lods">LOD 层级</label><input id="lods" type="text" value="20,40,60,80,100" placeholder="20,40,60,80,100"></div></div>
+
+          <div class="field-group"><label for="source">源数据路径</label><div class="path-input"><span>↳</span><input id="source" type="text" placeholder="/home/moli/tdfarm/tdbase/data/source.dt" required></div></div>
+          <div class="field-group" id="target-group"><label for="target">目标数据路径 <small>自连接时可留空</small></label><div class="path-input"><span>↳</span><input id="target" type="text" placeholder="/home/moli/tdfarm/tdbase/data/target.dt"></div></div>
+          <details class="advanced"><summary>高级参数</summary><div class="grid three"><div class="field-group"><label for="threads">线程</label><input id="threads" type="number" min="1" value="2"></div><div class="field-group" id="vpr-group"><label for="vpr">栅格粒度</label><input id="vpr" type="number" min="1" value="10"></div><div class="field-group" id="bitwidth-group"><label for="bitwidth">位宽</label><select id="bitwidth"><option>2</option><option selected>4</option><option>8</option></select></div><div class="field-group" id="compute-threads-group"><label for="compute-threads">几何线程</label><input id="compute-threads" type="number" min="1" value="2"></div><div class="field-group hidden" id="target-object-group"><label for="target-object">目标物体 ID <small>三维 TDBase：--target，按 tile1 内编号</small></label><input id="target-object" type="number" min="0" step="1" placeholder="例如 3"></div></div><div class="checks"><label><input id="hierarchy" type="checkbox" checked>层级栅格</label><label><input id="approximation" type="checkbox">近似模式</label><label><input id="print-result" type="checkbox" checked>打印结果</label></div></details>
+          <button class="run-button" type="submit"><span class="button-icon">▶</span><span id="run-label">运行二维查询</span><span class="button-arrow">↗</span></button>
+          <p class="form-note">查询在本机 WSL 进程中执行。GPU 查询需要已编译 CUDA 版本。</p>
+        </form>
+
+        <section class="panel result-panel"><div class="panel-heading"><div><p class="eyebrow">RUN OUTPUT</p><h2>运行结果</h2></div><span class="step">02</span></div><div id="empty-state" class="empty-state"><div class="empty-icon">◌</div><h3>等待一次查询</h3><p>配置左侧参数后，结果、耗时和完整命令会显示在这里。</p></div><div id="result-state" class="result-state hidden"><div class="metrics"><div><span>状态</span><strong id="result-status">—</strong></div><div><span>匹配数量</span><strong id="result-count">—</strong></div><div><span>耗时</span><strong id="result-duration">—</strong></div></div><div class="command-box"><div class="box-label">实际执行命令</div><code id="result-command"></code></div><div class="output-tabs"><button class="tab active" data-output="stdout">结果输出</button><button class="tab" data-output="stderr">运行日志</button></div><pre id="result-output"></pre></div></section>
+      </section>
+      <section class="capabilities"><div><span class="cap-icon">⌁</span><strong>二维 FARM</strong><small>Intersect · Intersection · DWithin</small></div><div><span class="cap-icon">◇</span><strong>三维 TDBase</strong><small>Intersect · DWithin · KNN</small></div><div><span class="cap-icon">⚡</span><strong>CPU / GPU</strong><small>CUDA 12.6 · sm_89</small></div></section>
+    </main>
+    <footer><span>TDBase unified query console</span><span>Local execution · v1.0</span></footer>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

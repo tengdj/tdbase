@@ -15,3 +15,6 @@ build/
 *.autotools
 *.sln
 *.vcxproj*
+
+build-farm2d/
+frontend/__pycache__/

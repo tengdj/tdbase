@@ -52,8 +52,14 @@
 #include <CGAL/Tetrahedron_3.h>
 
 #include <CGAL/AABB_tree.h>
+#include <CGAL/version.h>
+#if CGAL_VERSION_NR >= 1060000000
 #include <CGAL/AABB_traits_3.h>
 #include <CGAL/AABB_triangle_primitive_3.h>
+#else
+#include <CGAL/AABB_traits.h>
+#include <CGAL/AABB_triangle_primitive.h>
+#endif
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 
 #include <CGAL/Surface_mesh.h>
@@ -112,7 +118,11 @@ typedef CGAL::Triangulation_3<MyKernel> Triangulation;
 typedef Triangulation::Tetrahedron 	Tetrahedron;
 
 typedef CGAL::AABB_face_graph_triangle_primitive<Polyhedron> Primitive;
+#if CGAL_VERSION_NR >= 1060000000
 typedef CGAL::AABB_traits_3<MyKernel, Primitive> Traits;
+#else
+typedef CGAL::AABB_traits<MyKernel, Primitive> Traits;
+#endif
 typedef CGAL::AABB_tree<Traits> Tree;
 typedef Tree::Point_and_primitive_id Point_and_primitive_id;
 
@@ -122,8 +132,13 @@ typedef MyKernel::Segment_3 Segment;
 typedef MyKernel::Triangle_3 Triangle;
 
 typedef std::list<Triangle>::iterator Iterator;
+#if CGAL_VERSION_NR >= 1060000000
 typedef CGAL::AABB_triangle_primitive_3<MyKernel, Iterator> TrianglePrimitive;
 typedef CGAL::AABB_traits_3<MyKernel, TrianglePrimitive> TriangleTraits;
+#else
+typedef CGAL::AABB_triangle_primitive<MyKernel, Iterator> TrianglePrimitive;
+typedef CGAL::AABB_traits<MyKernel, TrianglePrimitive> TriangleTraits;
+#endif
 typedef CGAL::AABB_tree<TriangleTraits> TriangleTree;
 
 

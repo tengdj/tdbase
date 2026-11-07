@@ -10,6 +10,7 @@
 #include <mutex>
 #include <map>
 
+#include "../farm2d/api.h"
 #include "SpatialJoin.h"
 #include "himesh.h"
 #include "tile.h"
@@ -614,6 +615,33 @@ extern void simulator_int(int argc, char **argv);
 }
 
 int main(int argc, char **argv){
+    if(argc > 1 && (std::string(argv[1]) == "farm" || std::string(argv[1]) == "2d"))
+        return tdbase::farm2d::command(argc - 1, argv + 1);
+    std::vector<char *> dimension_args;
+    if(argc > 1 && std::string(argv[1]) == "join"){
+        std::string dimension;
+        dimension_args = {argv[0], argv[1]};
+        for(int i = 2; i < argc; ++i){
+            const std::string arg = argv[i];
+            if(arg == "--dim" || arg.rfind("--dim=", 0) == 0){
+                if(!dimension.empty() || (arg == "--dim" && i + 1 == argc)){
+                    std::cerr << "Specify --dim 2 or --dim 3 once\n";
+                    return 1;
+                }
+                dimension = arg == "--dim" ? argv[++i] : arg.substr(6);
+                if(dimension != "2" && dimension != "3"){
+                    std::cerr << "--dim must be 2 or 3\n";
+                    return 1;
+                }
+            }else dimension_args.push_back(argv[i]);
+        }
+        if(dimension == "2") return tdbase::farm2d::command(argc, argv);
+        if(dimension == "3"){
+            argc = static_cast<int>(dimension_args.size());
+            argv = dimension_args.data();
+        }
+    }
+
 	// register the functions
 	functions["to_sql"] = to_sql;
 	functions["to_wkt"] = to_wkt;
@@ -643,7 +671,10 @@ int main(int argc, char **argv){
 	functions["simulator_int"] = simulator_int;
 
 	if (argc < 2 || functions.find(argv[1])==functions.end()) {
-		cout <<"usage: tdbase function [args]"<<endl;
+		cout << "usage: tdbase function [args]" << endl;
+        cout << "2D: tdbase farm --help (convert, filter, intersect, intersection, within)" << endl;
+        cout << "2D join: tdbase join --dim 2 -q QUERY --tile1 FILE [--tile2 FILE] [-g] [-p]" << endl;
+        cout << "3D join: tdbase join [--dim 3] --tile1 FILE [--tile2 FILE] -q QUERY [-g] [-p]" << endl;
 		cout << "function could be:"<<endl;
 		for (auto e:functions) {
 			cout << e.first << " ";
