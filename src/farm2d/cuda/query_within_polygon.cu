@@ -918,7 +918,7 @@ void cuda_within_polygon(query_context *gctx)
         thrust::copy_if(thrust::device,
             d_indices.begin(), d_indices.end(),
             d_flags.begin(), d_starts.begin(),
-            thrust::identity<int>());
+            [] __host__ __device__ (int value){ return value != 0; });
 
         int* d_start_ptr = thrust::raw_pointer_cast(d_starts.data());
 

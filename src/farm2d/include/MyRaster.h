@@ -35,7 +35,7 @@ protected:
 	int dimx = 0;
 	int dimy = 0;
     uint status_size = 0;
-    uint8_t bitwidth = 4;
+    uint8_t bitwidth = 3;
 public:
     MyRaster() {
         pthread_mutex_init(&raster_lock, NULL);

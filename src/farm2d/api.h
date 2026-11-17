@@ -20,14 +20,15 @@ struct Options {
     bool hierarchy = false;
     bool approximation = false;
     int vertices_per_raster = 10;
-    int bitwidth = 4;
+    int bitwidth = 3;
     int distance_km = 10;
-    std::size_t batch_size = 0;
+    std::size_t batch_size = 0; // Automatic: at most 100,000 GPU candidate pairs per batch.
     float merge_threshold = 0.9f;
     float confidence = 0.9f;
     int lowest_layer = 1;
     int unroll_size = 16;
     bool collect_results = true;
+    std::int64_t target_object = -1; // Source dataset position; -1 selects all objects.
 };
 
 struct Match {
@@ -40,6 +41,12 @@ struct Result {
     std::size_t candidates = 0;
     std::size_t count = 0;
     std::vector<Match> matches;
+    // Wall time of CPU workers or completed GPU query batches, after preprocessing.
+    double compute_milliseconds = 0;
+    // Timings measured around dataset loading, candidate indexing and rasterization.
+    double load_milliseconds = 0;
+    double index_milliseconds = 0;
+    double rasterization_milliseconds = 0;
 };
 
 bool gpu_available(); // Whether this build includes FARM CUDA support.

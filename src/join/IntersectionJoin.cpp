@@ -114,11 +114,11 @@ void IntersectJoin::evaluate_candidate_lists(query_context &ctx){
 				ctx.report_result(wrapper1->id, wrapper2->id);
 
 				//delete *ci_iter;
-				(*ce_iter)->candidates.erase(ci_iter);
+				ci_iter = (*ce_iter)->candidates.erase(ci_iter);
 				// all voxel pairs must not intersect
 			}else if(cand_count == (ci_iter)->voxel_pairs.size()){
 				// must not intersect
-				(*ce_iter)->candidates.erase(ci_iter);
+				ci_iter = (*ce_iter)->candidates.erase(ci_iter);
 			}else{
 				ci_iter++;
 			}
@@ -126,7 +126,7 @@ void IntersectJoin::evaluate_candidate_lists(query_context &ctx){
 		// relationship with all candidates are determined
 		if((*ce_iter)->candidates.size()==0){
 			delete (*ce_iter);
-			ctx.candidates.erase(ce_iter);
+			ce_iter = ctx.candidates.erase(ce_iter);
 		}else{
 			ce_iter++;
 		}

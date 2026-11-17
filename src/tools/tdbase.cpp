@@ -6,6 +6,9 @@
  */
 
 #include <algorithm>
+#include <array>
+#include <set>
+#include <stdexcept>
 #include <thread>
 #include <mutex>
 #include <map>
@@ -22,6 +25,50 @@ using namespace tdbase;
 namespace tdbase{
 
 	map<string, void (*)(int, char **)> functions;
+
+// Statistics for compressed tiles. Decode one object at a time to avoid
+// retaining the complete dataset's full-resolution meshes in memory.
+static void mesh_stats(int argc, char **argv){
+    try {
+        if(argc != 2) throw invalid_argument("Usage: tdbase mesh_stats compressed.dt");
+        ifstream input(argv[1], ios::binary | ios::ate);
+        if(!input) throw runtime_error("Cannot open dataset");
+        const streamoff file_size = input.tellg();
+        input.seekg(0);
+        char type = -1;
+        input.read(&type, 1);
+        if(!input || type != 0) throw runtime_error("Expected a compressed 3D tile");
+        uint64_t objects = 0, vertices = 0, faces = 0;
+        while(input.tellg() < file_size){
+            uint64_t size = 0, voxels = 0;
+            input.read(reinterpret_cast<char *>(&size), sizeof(size));
+            const streamoff remaining = file_size - input.tellg();
+            if(!input || size < 34 || remaining < 8 || size > uint64_t(remaining - 8))
+                throw runtime_error("Invalid compressed object length");
+            vector<char> buffer(size);
+            input.read(buffer.data(), size);
+            input.read(reinterpret_cast<char *>(&voxels), sizeof(voxels));
+            if(!input || voxels > uint64_t(file_size - input.tellg()) / 36)
+                throw runtime_error("Invalid voxel metadata");
+            input.seekg(voxels * 36, ios::cur);
+            HiMesh mesh(buffer.data(), size, false);
+            mesh.decode(100);
+            set<array<float, 3>> points;
+            for(auto vertex = mesh.vertices_begin(); vertex != mesh.vertices_end(); ++vertex){
+                const Point &point = vertex->point();
+                points.insert({float(point.x()), float(point.y()), float(point.z())});
+            }
+            vertices += points.size();
+            faces += mesh.size_of_triangles();
+            ++objects;
+        }
+        cout << "{\"objects\":" << objects << ",\"vertices\":" << vertices
+             << ",\"faces\":" << faces << "}" << endl;
+    } catch(const exception &error) {
+        cerr << error.what() << endl;
+        exit(1);
+    }
+}
 
 /*
  * print himesh to wkt
@@ -644,6 +691,7 @@ int main(int argc, char **argv){
 
 	// register the functions
 	functions["to_sql"] = to_sql;
+	functions["mesh_stats"] = mesh_stats;
 	functions["to_wkt"] = to_wkt;
 	functions["get_voxel_boxes"] = get_voxel_boxes;
 	functions["get_skeleton"] = get_skeleton;

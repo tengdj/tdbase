@@ -48,7 +48,7 @@ public:
 	bool perform_refine = true;
 	float sample_rate = 1.0;
 	size_t batch_size = 0;
-	int bitwidth = 4;
+	int bitwidth = 3;
 	float merge_threshold = 0.9;
 	float approx_confidence = 0.9;
 	int NLow = 1;

@@ -20,6 +20,7 @@
 #include <thread>
 #include <mutex>
 #include <cstdint>
+#include <chrono>
 
 #if __linux
 #include <sys/syscall.h>
@@ -75,13 +76,16 @@ inline int gettimeofday(struct timeval* tp, struct timezone* tzp)
 
 inline struct timeval get_cur_time(){
 	struct timeval t1;
-	gettimeofday(&t1, NULL);
+	// Elapsed durations must be independent of system clock adjustments (including WSL sync).
+	const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
+			std::chrono::steady_clock::now().time_since_epoch()).count();
+	t1.tv_sec = microseconds / 1000000;
+	t1.tv_usec = microseconds % 1000000;
 	return t1;
 }
 inline double get_time_elapsed(struct timeval &t1, bool update_start = false){
-	struct timeval t2;
+	struct timeval t2 = get_cur_time();
     double elapsedTime;
-	gettimeofday(&t2, NULL);
 	// compute and print the elapsed time in millisec
 	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
 	elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms

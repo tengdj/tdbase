@@ -480,37 +480,32 @@ result_container MeshDist(const float *data1, const float *data2, size_t size1, 
 }
 
 result_container MeshInt(const float *data1, const float *data2, size_t size1, size_t size2, const float *hausdorff1, const float *hausdorff2){
-	result_container res;
-	res.intersected = false;
-
-	res.distance = DBL_MAX;
-
-	if(!hausdorff1 || !hausdorff2){
-		for(size_t i=0;i<size1;i++){
-			for(size_t j=0;j<size2;j++){
-				if(TriInt(data1+9*i, data2+9*j)){
-					res.intersected = true;
-					res.p1 = i;
-					res.p2 = j;
-					return res;
-				}
-			}
-		}
-		return res;
-	}
+	result_container res{};
+	res.distance = FLT_MAX;
+	res.min_dist = FLT_MAX;
+	res.max_dist = FLT_MAX;
+	const bool has_hausdorff = hausdorff1 && hausdorff2;
 
 	for(size_t i=0;i<size1;i++){
 		for(size_t j=0;j<size2;j++){
-			float dist = TriDist(data1+9*i, data2+9*j);
-			float phdist1 = 0;
-			float phdist2 = 0;
-			if(hausdorff1 != NULL && hausdorff2 != NULL){
-				phdist1 = *(hausdorff1+2*i);
-				phdist2 = *(hausdorff2+2*j);
+			const float *triangle1 = data1+9*i;
+			const float *triangle2 = data2+9*j;
+			float dist = !has_hausdorff && TriInt(triangle1, triangle2)
+					? 0.0f : TriDist(triangle1, triangle2);
+			if(dist < res.distance){
+				res.distance = dist;
+				res.p1 = i;
+				res.p2 = j;
 			}
-			res.distance = min(res.distance, dist - phdist1 - phdist2);
+			float phdist1 = has_hausdorff ? hausdorff1[2*i] : 0.0f;
+			float phdist2 = has_hausdorff ? hausdorff2[2*j] : 0.0f;
+			float hdist1 = has_hausdorff ? hausdorff1[2*i+1] : 0.0f;
+			float hdist2 = has_hausdorff ? hausdorff2[2*j+1] : 0.0f;
+			res.min_dist = min(res.min_dist, max(dist-phdist1-phdist2, 0.0f));
+			res.max_dist = min(res.max_dist, dist+hdist1+hdist2);
 
-			if(dist==0) {
+			// A coarse mesh contact is conclusive only when the error upper bound is zero.
+			if(res.max_dist==0.0f) {
 				res.intersected = true;
 				res.p1 = i;
 				res.p2 = j;

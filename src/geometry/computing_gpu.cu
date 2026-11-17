@@ -477,11 +477,6 @@ void TriInt_cuda(const float* data, const uint32_t* offset_size,
 		return;
 	}
 
-	// determined
-	if (results[pair_id].intersected) {
-		return;
-	}
-
 	//if (results[pair_id].min_dist < 100000000 && results[pair_id].min_dist > 0) {
 	//	if(pair_id == 1)
 	//	printf("teng %d %d %f\n",tri_offset_1, tri_offset_2, results[pair_id].min_dist);
@@ -495,23 +490,15 @@ void TriInt_cuda(const float* data, const uint32_t* offset_size,
 	const float* cur_T = data + 9 * (obj_offset2 + tri_offset_2);
 	float dd = TriDist_kernel(cur_S, cur_T);
 
-	float phdist1 = *(hausdorff + 2 * (obj_offset1 + tri_offset_1));
-	float phdist2 = *(hausdorff + 2 * (obj_offset2 + tri_offset_2));
-	float hdist1 = *(hausdorff + 2 * (obj_offset1 + tri_offset_1) + 1);
-	float hdist2 = *(hausdorff + 2 * (obj_offset2 + tri_offset_2) + 1);
+	float phdist1 = hausdorff ? hausdorff[2 * (obj_offset1 + tri_offset_1)] : 0.0f;
+	float phdist2 = hausdorff ? hausdorff[2 * (obj_offset2 + tri_offset_2)] : 0.0f;
+	float hdist1 = hausdorff ? hausdorff[2 * (obj_offset1 + tri_offset_1) + 1] : 0.0f;
+	float hdist2 = hausdorff ? hausdorff[2 * (obj_offset2 + tri_offset_2) + 1] : 0.0f;
 
 	float low_dist = max(dd - phdist1 - phdist2, (float)0.0);
 	float high_dist = dd + hdist1 + hdist2;
 
-	if (tri_offset_1 == 0 && tri_offset_2 == 0) {
-		results[pair_id].distance = dd;
-		results[pair_id].p1 = tri_offset_1;
-		results[pair_id].p2 = tri_offset_2;
-		results[pair_id].min_dist = low_dist;
-		results[pair_id].max_dist = high_dist;
-		return;
-	}
-
+	// Every thread reduces into values initialized before this kernel launch.
 	atomicMin(&(results[pair_id].distance), dd);
 
 	if (results[pair_id].distance == dd) {
@@ -521,9 +508,6 @@ void TriInt_cuda(const float* data, const uint32_t* offset_size,
 
 	atomicMin(&(results[pair_id].min_dist), low_dist);
 	atomicMin(&(results[pair_id].max_dist), high_dist);
-	if (results[pair_id].max_dist == 0.0) {
-		results[pair_id].intersected = true;
-	}
 
 	//	printf("%d %d:\t%f %f | %d %d:\t%f %f | %f %f %f | %f %f\n", obj_offset1, tri_offset_1, phdist1, hdist1, obj_offset2, tri_offset_2, phdist2, hdist2, low_dist, high_dist, dd, dist[pair_id].min_dist, dist[pair_id].max_dist);
 }
@@ -638,8 +622,11 @@ void clear_resultset(result_container *result, uint32_t pairnum){
 		return;
 	}
 	result[id].intersected = 0;
-	result[id].min_dist = DBL_MAX;
-	result[id].max_dist = DBL_MAX;
+	result[id].p1 = 0;
+	result[id].p2 = 0;
+	result[id].distance = FLT_MAX;
+	result[id].min_dist = FLT_MAX;
+	result[id].max_dist = FLT_MAX;
 }
 
 void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_size, const float *hausdorff, 
@@ -701,6 +688,9 @@ void TriInt_batch_gpu(gpu_info *gpu, const float *data, const uint32_t *offset_s
 	//logt("distances computations", start);
 
 	CUDA_SAFE_CALL(cudaMemcpy(intersection, d_intersect, pair_num*sizeof(result_container), cudaMemcpyDeviceToHost));
+	for(uint32_t i=0;i<pair_num;i++){
+		intersection[i].intersected = intersection[i].max_dist==0.0f;
+	}
 	//logt("copy data out", start);
 }
 

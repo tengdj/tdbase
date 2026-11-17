@@ -40,12 +40,17 @@ void print_gpus(){
 	for (int i = 0; i < num_gpus; i++) {
 		cudaDeviceProp prop;
 		cudaGetDeviceProperties(&prop, i);
+		int memory_clock_rate = 0;
+		// CUDA 13 removed cudaDeviceProp::memoryClockRate. Query the
+		// attribute directly so this diagnostic remains compatible with
+		// both older and newer CUDA toolkits.
+		cudaDeviceGetAttribute(&memory_clock_rate, cudaDevAttrMemoryClockRate, i);
 		log("Device Number: %d", i);
 		log("  Device name: %s", prop.name);
-		log("  Memory Clock Rate (KHz): %d", prop.memoryClockRate);
+		log("  Memory Clock Rate (KHz): %d", memory_clock_rate);
 		log("  Memory Bus Width (bits): %d", prop.memoryBusWidth);
 		log("  Peak Memory Bandwidth (GB/s): %f",
-				2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
+				2.0*memory_clock_rate*(prop.memoryBusWidth/8)/1.0e6);
 		log("  Memory size (MB): %ld\n", prop.totalGlobalMem/1024/1024);
 	}
 }

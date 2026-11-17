@@ -1,4 +1,5 @@
 #include "api.h"
+#include <chrono>
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <filesystem>
@@ -20,13 +21,14 @@ void help()
         "Options:\n"
         "  -g, --gpu                  Use CUDA (default: CPU)\n"
         "      --cpu                  Use CPU explicitly\n"
+        "      --target-object ID     Query one source object (zero-based; default: all)\n"
         "  -h, --hierarchy            Enable hierarchical rasters\n"
         "  -a, --approximation        Approximate query\n"
         "  -n, --threads N            CPU worker threads\n"
         "  -v, --vpr N                Vertices per raster (default: 10)\n"
-        "  -w, --bitwidth N           Fill-ratio bits (2..8; default: 4)\n"
+        "  -w, --bitwidth N           Fill-ratio bits (2..8; default: 3)\n"
         "  -d, --within_distance KM   Nonnegative integer kilometers (default: 10)\n"
-        "  -b, --batch_size N         GPU candidate pairs per batch\n"
+        "  -b, --batch_size N         GPU candidate pairs per batch (default: up to 100000)\n"
         "  -m, --merge_threshold F    GPU merge threshold [0,1]\n"
         "  -c, --approx_confidence F  Approximation confidence [0,1]\n"
         "  -l, --NLow N               Lowest hierarchy layer\n"
@@ -67,6 +69,7 @@ void write_result(std::ostream &out, const Result &result, Query query, const st
 
 int command(int argc, char **argv)
 {
+    const auto total_start = std::chrono::steady_clock::now();
     try{
         if(argc < 2){ help(); return 0; }
         std::string action = argv[1];
@@ -95,6 +98,7 @@ int command(int argc, char **argv)
             ("target,t", po::value<std::string>(&options.target), "target")
             ("tile1", po::value<std::string>(&options.source), "source")
             ("tile2", po::value<std::string>(&options.target), "target")
+            ("target-object", po::value<std::int64_t>(&options.target_object), "source object ID")
             ("query,q", po::value<std::string>(&query_name), "query")
             ("dim", po::value<int>(&dimension), "dimension")
             ("hierarchy,h", "hierarchy")("approximation,a", "approximation")
@@ -118,6 +122,8 @@ int command(int argc, char **argv)
         if(dimension != 2) throw std::invalid_argument("FARM requires --dim 2");
         if(vm.count("gpu") && vm.count("cpu")) throw std::invalid_argument("Choose --gpu or --cpu");
         if(vm.count("threads") && options.threads <= 0) throw std::invalid_argument("--threads must be positive");
+        if(vm.count("target-object") && options.target_object < 0)
+            throw std::invalid_argument("--target-object must be a nonnegative source object ID");
         if(format != "tsv" && format != "json") throw std::invalid_argument("--format must be tsv or json");
         if(query_name == "within_polygon") query_name = "within";
         if(query_name == "intersect") options.query = Query::Intersect;
@@ -141,10 +147,20 @@ int command(int argc, char **argv)
         const auto result = execute(options);
         std::cerr << "candidate-pairs:\t" << result.candidates << "\ncount-found:\t" << result.count << '\n';
         if(vm.count("print_result")) write_result(std::cout, result, options.query, format);
+        if(vm.count("print_result")) std::cout.flush();
         if(file.is_open()){
             write_result(file, result, options.query, format);
+            file.close();
             if(!file) throw std::runtime_error("Failed writing output: " + output);
         }
+        const double total_seconds = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - total_start).count();
+        std::cerr << std::fixed << std::setprecision(6)
+            << "total:\t" << total_seconds << " s\n"
+            << "load:\t" << result.load_milliseconds / 1000.0 << " s\n"
+            << "index:\t" << result.index_milliseconds / 1000.0 << " s\n"
+            << "rasterization:\t" << result.rasterization_milliseconds / 1000.0 << " s\n"
+            << "compute:\t" << result.compute_milliseconds / 1000.0 << " s\n";
         return 0;
     }catch(const std::exception &error){
         std::cerr << "FARM: " << error.what() << '\n';
